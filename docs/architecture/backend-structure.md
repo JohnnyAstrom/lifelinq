@@ -149,6 +149,11 @@ Infrastructure:
 - implements interfaces defined in `domain`
 - is replaceable without affecting domain or application code
 
+Wiring note:
+In early stages, manual wiring may live in `infrastructure` as small factories that assemble use cases
+using port interfaces and in-memory adapters. Application code depends only on ports, not on wiring
+or adapter implementation details.
+
 ---
 
 ## Cross-feature rules
