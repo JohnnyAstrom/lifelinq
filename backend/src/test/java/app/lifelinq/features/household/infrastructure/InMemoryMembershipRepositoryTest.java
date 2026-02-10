@@ -39,4 +39,17 @@ class InMemoryMembershipRepositoryTest {
         assertEquals(householdId, result.get(0).getHouseholdId());
         assertEquals(householdId, result.get(1).getHouseholdId());
     }
+
+    @Test
+    void deletesByHouseholdIdAndUserId() {
+        InMemoryMembershipRepository repository = new InMemoryMembershipRepository();
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        repository.save(new Membership(householdId, userId, HouseholdRole.MEMBER));
+
+        boolean removed = repository.deleteByHouseholdIdAndUserId(householdId, userId);
+
+        assertEquals(true, removed);
+        assertEquals(0, repository.findByHouseholdId(householdId).size());
+    }
 }
