@@ -1,11 +1,13 @@
 package app.lifelinq.features.todo.domain;
 
 import java.util.UUID;
+import java.time.Instant;
 
 public final class Todo {
     private final UUID id;
     private final UUID householdId;
     private final String text;
+    private TodoStatus status;
 
     public Todo(UUID id, UUID householdId, String text) {
         if (id == null) {
@@ -20,6 +22,7 @@ public final class Todo {
         this.id = id;
         this.householdId = householdId;
         this.text = text;
+        this.status = TodoStatus.OPEN;
     }
 
     public UUID getId() {
@@ -32,5 +35,20 @@ public final class Todo {
 
     public String getText() {
         return text;
+    }
+
+    public TodoStatus getStatus() {
+        return status;
+    }
+
+    public boolean complete(Instant now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
+        if (status != TodoStatus.OPEN) {
+            return false;
+        }
+        status = TodoStatus.COMPLETED;
+        return true;
     }
 }
