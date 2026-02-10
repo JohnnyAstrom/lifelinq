@@ -16,6 +16,19 @@ Before doing any work, read:
 - Backend + frontend features map 1:1.
 - Do not introduce new layers or cross-feature coupling.
 
+## AI Guidance: Auth & User Feature Proposals
+
+When proposing next steps related to authentication, users, or tokens, follow these rules strictly:
+
+- Do not propose or implement authentication features yet.
+- Auth-related domain objects (e.g. User, UserIdentity) must not be introduced until persistence and a security context exist.
+- Avoid proposing auth use cases that depend on "current user", tokens, or security context before auth is explicitly started.
+- Access token and refresh token handling must remain documented-only until auth implementation begins.
+- Invite tokens are domain-specific, single-use tokens and must never be treated as auth or session tokens.
+- Any auth-related proposal must clearly explain why it is architecturally significant at this point in the project.
+
+This section defines how AI should reason about auth-related suggestions going forward.
+
 ## Backend structure
 All code lives under `app.lifelinq`.
 Use: `features/<feature>/{api,application,domain,infrastructure}`.
