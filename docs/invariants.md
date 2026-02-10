@@ -147,3 +147,12 @@ If a design or implementation violates an invariant, **the design is wrong**.
 **Implication:**
 - A change is not complete if the documentation is outdated.
 - If code and documentation disagree, the documentation must be updated or the change reverted.
+
+---
+
+## 12. Refresh tokens are server‑side and rotation‑safe (future)
+
+When authentication is introduced:
+- refresh tokens are stored server‑side
+- refresh tokens are rotated on use
+- reuse detection is enforced to prevent replay

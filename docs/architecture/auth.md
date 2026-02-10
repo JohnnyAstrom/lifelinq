@@ -92,3 +92,26 @@ Authorization establishes context.
 
 Both are enforced strictly to protect shared household data.
 
+---
+
+## Future Auth Model (Not Implemented Yet)
+
+This section describes the intended direction for LifeLinq authentication. It is **not implemented yet**.
+
+Planned model:
+- Short‑lived **access token** for API authorization.
+- Long‑lived **opaque refresh token** stored **server‑side** with rotation and reuse‑detection.
+- Refresh token delivered as **HttpOnly cookie** (web) or **secure storage** (React Native).
+
+These are architectural guidelines only and do not reflect current code.
+
+---
+
+## Invite Tokens vs Auth Tokens
+
+Invite tokens are **domain‑specific, one‑time tokens** used only to accept household invitations.
+
+Invite tokens:
+- are **not** access or refresh tokens
+- do **not** create sessions
+- are **not** used for API authorization
