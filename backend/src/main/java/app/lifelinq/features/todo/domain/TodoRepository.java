@@ -7,4 +7,6 @@ public interface TodoRepository {
     Optional<Todo> findById(UUID id);
 
     void save(Todo todo);
+
+    java.util.List<Todo> findAll();
 }

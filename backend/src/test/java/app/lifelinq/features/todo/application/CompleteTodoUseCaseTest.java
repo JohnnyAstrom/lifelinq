@@ -67,5 +67,10 @@ class CompleteTodoUseCaseTest {
             store.put(todo.getId(), todo);
             saveCount++;
         }
+
+        @Override
+        public java.util.List<Todo> findAll() {
+            return new java.util.ArrayList<>(store.values());
+        }
     }
 }
