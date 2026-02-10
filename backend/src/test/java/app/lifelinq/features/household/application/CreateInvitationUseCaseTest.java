@@ -108,6 +108,17 @@ class CreateInvitationUseCaseTest {
         public boolean existsByToken(String token) {
             return findByToken(token).isPresent();
         }
+
+        @Override
+        public List<Invitation> findPending() {
+            List<Invitation> result = new ArrayList<>();
+            for (Invitation invitation : saved) {
+                if (invitation.getStatus() == InvitationStatus.PENDING) {
+                    result.add(invitation);
+                }
+            }
+            return result;
+        }
     }
 
     private static final class FixedTokenGenerator implements InvitationTokenGenerator {

@@ -11,6 +11,7 @@ public final class HouseholdUseCases {
     private final RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase;
     private final CreateInvitationUseCase createInvitationUseCase;
     private final AcceptInvitationUseCase acceptInvitationUseCase;
+    private final ExpireInvitationsUseCase expireInvitationsUseCase;
 
     public HouseholdUseCases(
             HouseholdRepository householdRepository,
@@ -36,6 +37,7 @@ public final class HouseholdUseCases {
         this.removeMemberFromHouseholdUseCase = new RemoveMemberFromHouseholdUseCase(membershipRepository);
         this.createInvitationUseCase = new CreateInvitationUseCase(invitationRepository, tokenGenerator);
         this.acceptInvitationUseCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
+        this.expireInvitationsUseCase = new ExpireInvitationsUseCase(invitationRepository);
     }
 
     public CreateHouseholdUseCase createHousehold() {
@@ -60,5 +62,9 @@ public final class HouseholdUseCases {
 
     public AcceptInvitationUseCase acceptInvitation() {
         return acceptInvitationUseCase;
+    }
+
+    public ExpireInvitationsUseCase expireInvitations() {
+        return expireInvitationsUseCase;
     }
 }

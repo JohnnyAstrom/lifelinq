@@ -18,5 +18,6 @@ class HouseholdInMemoryWiringTest {
         assertNotNull(useCases.removeMember());
         assertNotNull(useCases.createInvitation());
         assertNotNull(useCases.acceptInvitation());
+        assertNotNull(useCases.expireInvitations());
     }
 }

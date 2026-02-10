@@ -43,4 +43,27 @@ class InMemoryInvitationRepositoryTest {
         assertEquals(true, found.isPresent());
         assertEquals("token-1", found.get().getToken());
     }
+
+    @Test
+    void findsPendingOnly() {
+        InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
+        repository.save(new Invitation(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "test@example.com",
+                "token-1",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                InvitationStatus.PENDING
+        ));
+        repository.save(new Invitation(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "test2@example.com",
+                "token-2",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                InvitationStatus.ACCEPTED
+        ));
+
+        assertEquals(1, repository.findPending().size());
+    }
 }

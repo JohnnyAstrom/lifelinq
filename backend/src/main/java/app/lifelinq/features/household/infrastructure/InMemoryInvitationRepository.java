@@ -2,7 +2,10 @@ package app.lifelinq.features.household.infrastructure;
 
 import app.lifelinq.features.household.domain.Invitation;
 import app.lifelinq.features.household.domain.InvitationRepository;
+import app.lifelinq.features.household.domain.InvitationStatus;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,5 +34,16 @@ public final class InMemoryInvitationRepository implements InvitationRepository 
             throw new IllegalArgumentException("token must not be blank");
         }
         return invitationsByToken.containsKey(token);
+    }
+
+    @Override
+    public List<Invitation> findPending() {
+        List<Invitation> result = new ArrayList<>();
+        for (Invitation invitation : invitationsByToken.values()) {
+            if (invitation.getStatus() == InvitationStatus.PENDING) {
+                result.add(invitation);
+            }
+        }
+        return result;
     }
 }

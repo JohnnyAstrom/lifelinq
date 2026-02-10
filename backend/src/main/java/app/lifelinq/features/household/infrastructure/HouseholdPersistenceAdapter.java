@@ -57,4 +57,9 @@ public final class HouseholdPersistenceAdapter
     public boolean existsByToken(String token) {
         return invitationRepository.existsByToken(token);
     }
+
+    @Override
+    public List<Invitation> findPending() {
+        return invitationRepository.findPending();
+    }
 }
