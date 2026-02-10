@@ -1,0 +1,94 @@
+# Authentication and Authorization
+
+This document defines how identity, authentication, and authorization work in LifeLinq.
+
+Authentication answers **who a user is**.
+Authorization answers **what a user may do**.
+
+---
+
+## Identity model
+
+LifeLinq distinguishes clearly between:
+
+- User – a real person
+- Household – a shared context
+- Membership – the relationship between them
+
+Users do not own data.
+Households own data.
+
+---
+
+## Authentication
+
+LifeLinq uses external identity providers via OAuth2.
+
+Primary provider:
+- Google
+
+Authentication flow:
+1. User authenticates with external provider
+2. Backend validates identity
+3. User record is created or retrieved
+4. A token is issued
+
+---
+
+## Authorization
+
+Authorization is enforced server-side.
+
+Access is determined by:
+- household membership
+- role within the household
+
+Roles are intentionally simple:
+- owner
+- member
+
+---
+
+## JWT usage
+
+JSON Web Tokens are used for stateless authorization.
+
+Tokens contain:
+- user identity
+- household context
+- role
+
+Tokens do not contain:
+- business data
+- permissions beyond role
+
+---
+
+## Household context
+
+Clients never choose a household.
+
+Household context is always:
+- derived from the token
+- validated server-side
+
+Switching households requires issuing a new token.
+
+---
+
+## Security principles
+
+- Clients are untrusted
+- Backend is authoritative
+- All checks are server-side
+- Tokens are short-lived
+
+---
+
+## Summary
+
+Authentication establishes identity.
+Authorization establishes context.
+
+Both are enforced strictly to protect shared household data.
+
