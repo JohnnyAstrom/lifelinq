@@ -97,4 +97,15 @@ public final class Invitation {
             status = InvitationStatus.EXPIRED;
         }
     }
+
+    public boolean revoke(Instant now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
+        if (status != InvitationStatus.PENDING) {
+            return false;
+        }
+        status = InvitationStatus.REVOKED;
+        return true;
+    }
 }
