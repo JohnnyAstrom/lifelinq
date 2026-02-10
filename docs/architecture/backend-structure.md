@@ -83,6 +83,10 @@ The domain layer:
 - defines business rules and invariants
 - contains repository interfaces
 
+Architectural note:
+The domain layer may define repository interfaces as pure contracts.
+Implementations belong to the infrastructure layer and are not part of the domain.
+
 Rules:
 - no Spring annotations
 - no persistence annotations

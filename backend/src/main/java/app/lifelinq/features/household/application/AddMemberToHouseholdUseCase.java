@@ -2,8 +2,17 @@ package app.lifelinq.features.household.application;
 
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.Membership;
+import app.lifelinq.features.household.domain.MembershipRepository;
 
 public final class AddMemberToHouseholdUseCase {
+    private final MembershipRepository membershipRepository;
+
+    public AddMemberToHouseholdUseCase(MembershipRepository membershipRepository) {
+        if (membershipRepository == null) {
+            throw new IllegalArgumentException("membershipRepository must not be null");
+        }
+        this.membershipRepository = membershipRepository;
+    }
 
     public AddMemberToHouseholdResult execute(AddMemberToHouseholdCommand command) {
         if (command == null) {
@@ -21,6 +30,8 @@ public final class AddMemberToHouseholdUseCase {
                 command.getUserId(),
                 HouseholdRole.MEMBER
         );
+
+        membershipRepository.save(membership);
 
         return new AddMemberToHouseholdResult(
                 membership.getHouseholdId(),
