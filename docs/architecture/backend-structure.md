@@ -149,10 +149,11 @@ Infrastructure:
 - implements interfaces defined in `domain`
 - is replaceable without affecting domain or application code
 
-Wiring note:
-In early stages, manual wiring may live in `infrastructure` as small factories that assemble use cases
-using port interfaces and in-memory adapters. Application code depends only on ports, not on wiring
-or adapter implementation details.
+Wiring note (current pattern):
+Manual wiring lives in `infrastructure` via a clearly named factory (e.g. `HouseholdInMemoryWiring`).
+Persistence adapters implement ports and are not exposed through getters.
+Application use cases depend only on ports and abstractions, never on adapter internals.
+Wiring is a technical responsibility, separate from both domain and use cases.
 
 ---
 
