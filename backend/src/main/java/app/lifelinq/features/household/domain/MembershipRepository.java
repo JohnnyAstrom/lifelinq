@@ -7,4 +7,6 @@ public interface MembershipRepository {
     void save(Membership membership);
 
     List<Membership> findByHouseholdId(UUID householdId);
+
+    boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId);
 }

@@ -1,7 +1,9 @@
 package app.lifelinq.features.household.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.Membership;
@@ -11,41 +13,55 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-class AddMemberToHouseholdUseCaseTest {
+class RemoveMemberFromHouseholdUseCaseTest {
 
     @Test
-    void addsMemberWithMemberRole() {
+    void removesMemberWhenPresent() {
         InMemoryMembershipRepository repository = new InMemoryMembershipRepository();
-        AddMemberToHouseholdUseCase useCase = new AddMemberToHouseholdUseCase(repository);
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(householdId, userId);
+        repository.save(new Membership(householdId, userId, HouseholdRole.MEMBER));
 
-        AddMemberToHouseholdResult result = useCase.execute(command);
+        RemoveMemberFromHouseholdUseCase useCase = new RemoveMemberFromHouseholdUseCase(repository);
+        RemoveMemberFromHouseholdCommand command = new RemoveMemberFromHouseholdCommand(householdId, userId);
 
-        assertEquals(householdId, result.getHouseholdId());
-        assertEquals(userId, result.getUserId());
-        assertEquals(HouseholdRole.MEMBER, result.getRole());
-        assertEquals(1, repository.saved.size());
+        RemoveMemberFromHouseholdResult result = useCase.execute(command);
+
+        assertTrue(result.isRemoved());
+        assertEquals(0, repository.saved.size());
+    }
+
+    @Test
+    void returnsFalseWhenNoMatch() {
+        InMemoryMembershipRepository repository = new InMemoryMembershipRepository();
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        RemoveMemberFromHouseholdUseCase useCase = new RemoveMemberFromHouseholdUseCase(repository);
+        RemoveMemberFromHouseholdCommand command = new RemoveMemberFromHouseholdCommand(householdId, userId);
+
+        RemoveMemberFromHouseholdResult result = useCase.execute(command);
+
+        assertFalse(result.isRemoved());
     }
 
     @Test
     void requiresCommand() {
-        AddMemberToHouseholdUseCase useCase = new AddMemberToHouseholdUseCase(new InMemoryMembershipRepository());
+        RemoveMemberFromHouseholdUseCase useCase = new RemoveMemberFromHouseholdUseCase(new InMemoryMembershipRepository());
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
     }
 
     @Test
     void requiresHouseholdId() {
-        AddMemberToHouseholdUseCase useCase = new AddMemberToHouseholdUseCase(new InMemoryMembershipRepository());
-        AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(null, UUID.randomUUID());
+        RemoveMemberFromHouseholdUseCase useCase = new RemoveMemberFromHouseholdUseCase(new InMemoryMembershipRepository());
+        RemoveMemberFromHouseholdCommand command = new RemoveMemberFromHouseholdCommand(null, UUID.randomUUID());
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
     }
 
     @Test
     void requiresUserId() {
-        AddMemberToHouseholdUseCase useCase = new AddMemberToHouseholdUseCase(new InMemoryMembershipRepository());
-        AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(UUID.randomUUID(), null);
+        RemoveMemberFromHouseholdUseCase useCase = new RemoveMemberFromHouseholdUseCase(new InMemoryMembershipRepository());
+        RemoveMemberFromHouseholdCommand command = new RemoveMemberFromHouseholdCommand(UUID.randomUUID(), null);
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
     }
 

@@ -76,5 +76,17 @@ class CreateHouseholdUseCaseTest {
             }
             return result;
         }
+
+        @Override
+        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+            for (int i = 0; i < saved.size(); i++) {
+                Membership membership = saved.get(i);
+                if (householdId.equals(membership.getHouseholdId()) && userId.equals(membership.getUserId())) {
+                    saved.remove(i);
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }
