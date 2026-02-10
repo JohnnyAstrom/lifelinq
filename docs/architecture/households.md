@@ -65,6 +65,16 @@ Invitations:
 
 ---
 
+## Invitation Lifecycle (Domain)
+
+At the domain level, invitations follow a simple lifecycle:
+- `PENDING` → `ACCEPTED` when a valid invitation is accepted
+- `PENDING` → `EXPIRED` when the invitation has passed its expiry time
+
+Invitations are time‑limited, and acceptance of a valid invitation creates a household membership.
+
+---
+
 ## Design rationale
 
 Separating users from households:
@@ -80,4 +90,3 @@ Households own data.
 Users participate via memberships.
 
 This separation is foundational to LifeLinq.
-
