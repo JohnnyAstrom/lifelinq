@@ -109,6 +109,16 @@ It must not:
 
 ---
 
+## Application use cases
+
+Use cases live in `features/<feature>/application` and are plain classes without Spring annotations.
+Inputs are simple command objects (passive data‑carriers) and validation happens inside the use case.
+Use cases compose domain objects and return minimal results needed by callers.
+Example: `CreateHouseholdUseCase` builds a `Household` and an owner `Membership`, then returns only `householdId`.
+Tests are plain unit tests under `src/test/java` and do not require Spring or database configuration.
+
+---
+
 ## API layer (`api`)
 
 The API layer:
