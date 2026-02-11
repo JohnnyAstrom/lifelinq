@@ -1,12 +1,15 @@
 package app.lifelinq.features.household.api;
 
+import app.lifelinq.config.RequestContext;
+import app.lifelinq.config.RequestContextHolder;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
-import app.lifelinq.features.household.domain.MembershipId;
 import app.lifelinq.features.household.domain.Membership;
+import app.lifelinq.features.household.domain.MembershipId;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,23 +34,37 @@ public class HouseholdController {
     }
 
     @PostMapping("/households/{id}/members")
-    public AddMemberResponse addMember(
+    public ResponseEntity<?> addMember(
             @PathVariable("id") UUID householdId,
             @RequestBody AddMemberRequest request
     ) {
+        RequestContext context = RequestContextHolder.getCurrent();
+        if (context == null || context.getHouseholdId() == null) {
+            return ResponseEntity.status(401).body("Missing household context");
+        }
+        if (!householdId.equals(context.getHouseholdId())) {
+            return ResponseEntity.status(403).body("Household mismatch");
+        }
         Membership membership = householdApplicationService.addMember(householdId, request.getUserId());
-        return new AddMemberResponse(
+        return ResponseEntity.ok(new AddMemberResponse(
                 membership.getHouseholdId(),
                 membership.getUserId(),
                 membership.getRole()
-        );
+        ));
     }
 
     @GetMapping("/households/{id}/members")
-    public ListMembersResponse listMembers(@PathVariable("id") UUID householdId) {
-        return new ListMembersResponse(toResponseItems(
+    public ResponseEntity<?> listMembers(@PathVariable("id") UUID householdId) {
+        RequestContext context = RequestContextHolder.getCurrent();
+        if (context == null || context.getHouseholdId() == null) {
+            return ResponseEntity.status(401).body("Missing household context");
+        }
+        if (!householdId.equals(context.getHouseholdId())) {
+            return ResponseEntity.status(403).body("Household mismatch");
+        }
+        return ResponseEntity.ok(new ListMembersResponse(toResponseItems(
                 householdApplicationService.listMembers(householdId)
-        ));
+        )));
     }
 
     @PostMapping("/households/invitations/accept")
