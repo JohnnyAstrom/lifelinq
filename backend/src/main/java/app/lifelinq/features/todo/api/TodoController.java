@@ -1,5 +1,7 @@
 package app.lifelinq.features.todo.api;
 
+import app.lifelinq.config.RequestContext;
+import app.lifelinq.config.RequestContextHolder;
 import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoStatus;
@@ -7,6 +9,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,10 +28,14 @@ public class TodoController {
     }
 
     @PostMapping("/todos")
-    public CreateTodoResponse create(@RequestBody CreateTodoRequest request) {
-        return new CreateTodoResponse(
-                todoApplicationService.createTodo(request.getHouseholdId(), request.getText())
-        );
+    public ResponseEntity<?> create(@RequestBody CreateTodoRequest request) {
+        RequestContext context = RequestContextHolder.getCurrent();
+        if (context == null || context.getHouseholdId() == null) {
+            return ResponseEntity.status(401).body("Missing household context");
+        }
+        return ResponseEntity.ok(new CreateTodoResponse(
+                todoApplicationService.createTodo(context.getHouseholdId(), request.getText())
+        ));
     }
 
     @PostMapping("/todos/{id}/complete")
@@ -38,14 +45,17 @@ public class TodoController {
     }
 
     @GetMapping("/todos")
-    public ListTodosResponse list(
-            @RequestParam(name = "status", defaultValue = "ALL") String status,
-            @RequestParam(name = "householdId", required = false) UUID householdId
+    public ResponseEntity<?> list(
+            @RequestParam(name = "status", defaultValue = "ALL") String status
     ) {
+        RequestContext context = RequestContextHolder.getCurrent();
+        if (context == null || context.getHouseholdId() == null) {
+            return ResponseEntity.status(401).body("Missing household context");
+        }
         TodoStatus filter = TodoStatus.valueOf(status);
-        return new ListTodosResponse(toResponseItems(
-                todoApplicationService.listTodos(householdId, filter)
-        ));
+        return ResponseEntity.ok(new ListTodosResponse(toResponseItems(
+                todoApplicationService.listTodos(context.getHouseholdId(), filter)
+        )));
     }
 
     private List<TodoItemResponse> toResponseItems(List<Todo> todos) {
