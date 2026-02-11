@@ -4,7 +4,7 @@ import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
 import java.time.Instant;
 
-public final class CompleteTodoUseCase {
+final class CompleteTodoUseCase {
     private final TodoRepository todoRepository;
 
     public CompleteTodoUseCase(TodoRepository todoRepository) {

@@ -156,3 +156,12 @@ When authentication is introduced:
 - refresh tokens are stored server‑side
 - refresh tokens are rotated on use
 - reuse detection is enforced to prevent replay
+
+---
+
+## 13. Feature application boundary is explicit
+
+Each feature exposes exactly one `ApplicationService` as its public entry point.
+Controllers may only depend on the feature’s `ApplicationService`.
+Write use cases must be package‑private and not referenced outside the application layer.
+Transactions are defined at the `ApplicationService` boundary.

@@ -1,14 +1,7 @@
 package app.lifelinq.features.household.api;
 
-import app.lifelinq.features.household.application.AddMemberToHouseholdCommand;
-import app.lifelinq.features.household.application.AcceptInvitationCommand;
-import app.lifelinq.features.household.application.AcceptInvitationResult;
-import app.lifelinq.features.household.application.CreateHouseholdCommand;
-import app.lifelinq.features.household.application.CreateHouseholdResult;
-import app.lifelinq.features.household.application.ListHouseholdMembersCommand;
-import app.lifelinq.features.household.application.ListHouseholdMembersResult;
-import app.lifelinq.features.household.application.ListHouseholdMembersUseCase;
-import app.lifelinq.features.household.application.HouseholdTransactionalService;
+import app.lifelinq.features.household.application.HouseholdApplicationService;
+import app.lifelinq.features.household.domain.MembershipId;
 import app.lifelinq.features.household.domain.Membership;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,25 +15,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class HouseholdController {
-    private final ListHouseholdMembersUseCase listHouseholdMembersUseCase;
-    private final HouseholdTransactionalService householdTransactionalService;
+    private final HouseholdApplicationService householdApplicationService;
 
     public HouseholdController(
-            ListHouseholdMembersUseCase listHouseholdMembersUseCase,
-            HouseholdTransactionalService householdTransactionalService
+            HouseholdApplicationService householdApplicationService
     ) {
-        this.listHouseholdMembersUseCase = listHouseholdMembersUseCase;
-        this.householdTransactionalService = householdTransactionalService;
+        this.householdApplicationService = householdApplicationService;
     }
 
     @PostMapping("/households")
     public CreateHouseholdResponse create(@RequestBody CreateHouseholdRequest request) {
-        CreateHouseholdCommand command = new CreateHouseholdCommand(
-                request.getName(),
-                request.getOwnerUserId()
+        return new CreateHouseholdResponse(
+                householdApplicationService.createHousehold(request.getName(), request.getOwnerUserId())
         );
-        CreateHouseholdResult result = householdTransactionalService.createHousehold(command);
-        return new CreateHouseholdResponse(result.getHouseholdId());
     }
 
     @PostMapping("/households/{id}/members")
@@ -48,28 +35,29 @@ public class HouseholdController {
             @PathVariable("id") UUID householdId,
             @RequestBody AddMemberRequest request
     ) {
-        AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(householdId, request.getUserId());
-        AddMemberToHouseholdResult result = householdTransactionalService.addMember(command);
-        return new AddMemberResponse(result.getHouseholdId(), result.getUserId(), result.getRole());
+        Membership membership = householdApplicationService.addMember(householdId, request.getUserId());
+        return new AddMemberResponse(
+                membership.getHouseholdId(),
+                membership.getUserId(),
+                membership.getRole()
+        );
     }
 
     @GetMapping("/households/{id}/members")
     public ListMembersResponse listMembers(@PathVariable("id") UUID householdId) {
-        ListHouseholdMembersResult result = listHouseholdMembersUseCase.execute(
-                new ListHouseholdMembersCommand(householdId)
-        );
-        return new ListMembersResponse(toResponseItems(result.getMembers()));
+        return new ListMembersResponse(toResponseItems(
+                householdApplicationService.listMembers(householdId)
+        ));
     }
 
     @PostMapping("/households/invitations/accept")
     public AcceptInvitationResponse acceptInvitation(@RequestBody AcceptInvitationRequest request) {
-        AcceptInvitationCommand command = new AcceptInvitationCommand(
+        MembershipId membershipId = householdApplicationService.acceptInvitation(
                 request.getToken(),
                 request.getUserId(),
                 Instant.now()
         );
-        AcceptInvitationResult result = householdTransactionalService.acceptInvitation(command);
-        return new AcceptInvitationResponse(result.getHouseholdId(), result.getUserId());
+        return new AcceptInvitationResponse(membershipId.getHouseholdId(), membershipId.getUserId());
     }
 
     private List<MemberItemResponse> toResponseItems(List<Membership> memberships) {

@@ -3,7 +3,7 @@ package app.lifelinq.features.todo.application;
 import app.lifelinq.features.todo.domain.Todo;
 import java.util.UUID;
 
-public final class CreateTodoUseCase {
+final class CreateTodoUseCase {
 
     public CreateTodoResult execute(CreateTodoCommand command) {
         if (command == null) {

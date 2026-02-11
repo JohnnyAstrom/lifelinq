@@ -1,14 +1,6 @@
 package app.lifelinq.features.todo.api;
 
-import app.lifelinq.features.todo.application.CompleteTodoCommand;
-import app.lifelinq.features.todo.application.CompleteTodoResult;
-import app.lifelinq.features.todo.application.CompleteTodoUseCase;
-import app.lifelinq.features.todo.application.CreateTodoCommand;
-import app.lifelinq.features.todo.application.CreateTodoResult;
-import app.lifelinq.features.todo.application.CreateTodoUseCase;
-import app.lifelinq.features.todo.application.ListTodosResult;
-import app.lifelinq.features.todo.application.ListTodosUseCase;
-import app.lifelinq.features.todo.application.TodoQuery;
+import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
@@ -24,32 +16,25 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class TodoController {
-    private final CreateTodoUseCase createTodoUseCase;
-    private final CompleteTodoUseCase completeTodoUseCase;
-    private final ListTodosUseCase listTodosUseCase;
+    private final TodoApplicationService todoApplicationService;
 
     public TodoController(
-            CreateTodoUseCase createTodoUseCase,
-            CompleteTodoUseCase completeTodoUseCase,
-            ListTodosUseCase listTodosUseCase
+            TodoApplicationService todoApplicationService
     ) {
-        this.createTodoUseCase = createTodoUseCase;
-        this.completeTodoUseCase = completeTodoUseCase;
-        this.listTodosUseCase = listTodosUseCase;
+        this.todoApplicationService = todoApplicationService;
     }
 
     @PostMapping("/todos")
     public CreateTodoResponse create(@RequestBody CreateTodoRequest request) {
-        CreateTodoCommand command = new CreateTodoCommand(request.getHouseholdId(), request.getText());
-        CreateTodoResult result = createTodoUseCase.execute(command);
-        return new CreateTodoResponse(result.getTodoId());
+        return new CreateTodoResponse(
+                todoApplicationService.createTodo(request.getHouseholdId(), request.getText())
+        );
     }
 
     @PostMapping("/todos/{id}/complete")
     public CompleteTodoResponse complete(@PathVariable("id") UUID id) {
-        CompleteTodoCommand command = new CompleteTodoCommand(id, Instant.now());
-        CompleteTodoResult result = completeTodoUseCase.execute(command);
-        return new CompleteTodoResponse(result.isCompleted());
+        boolean completed = todoApplicationService.completeTodo(id, Instant.now());
+        return new CompleteTodoResponse(completed);
     }
 
     @GetMapping("/todos")
@@ -58,8 +43,9 @@ public class TodoController {
             @RequestParam(name = "householdId", required = false) UUID householdId
     ) {
         TodoStatus filter = TodoStatus.valueOf(status);
-        ListTodosResult result = listTodosUseCase.execute(new TodoQuery(householdId, filter));
-        return new ListTodosResponse(toResponseItems(result.getTodos()));
+        return new ListTodosResponse(toResponseItems(
+                todoApplicationService.listTodos(householdId, filter)
+        ));
     }
 
     private List<TodoItemResponse> toResponseItems(List<Todo> todos) {

@@ -55,15 +55,17 @@ public class HouseholdApplicationConfig {
     }
 
     @Bean
-    public HouseholdTransactionalService householdTransactionalService(
+    public HouseholdApplicationService householdApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
             CreateHouseholdUseCase createHouseholdUseCase,
-            AddMemberToHouseholdUseCase addMemberToHouseholdUseCase
+            AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
+            ListHouseholdMembersUseCase listHouseholdMembersUseCase
     ) {
-        return new HouseholdTransactionalService(
+        return new HouseholdApplicationService(
                 acceptInvitationUseCase,
                 createHouseholdUseCase,
-                addMemberToHouseholdUseCase
+                addMemberToHouseholdUseCase,
+                listHouseholdMembersUseCase
         );
     }
 

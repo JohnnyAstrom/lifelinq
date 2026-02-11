@@ -1,13 +1,13 @@
 package app.lifelinq.features.todo.infrastructure;
 
-import app.lifelinq.features.todo.application.TodoUseCases;
+import app.lifelinq.features.todo.application.TodoApplicationService;
 
 public final class TodoInMemoryWiring {
     private TodoInMemoryWiring() {
     }
 
-    public static TodoUseCases createUseCases() {
+    public static TodoApplicationService createUseCases() {
         InMemoryTodoRepository repository = new InMemoryTodoRepository();
-        return new TodoUseCases(repository);
+        return new TodoApplicationService(repository);
     }
 }
