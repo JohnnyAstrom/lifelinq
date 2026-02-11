@@ -1,7 +1,7 @@
 package app.lifelinq.features.household.api;
 
 import app.lifelinq.config.RequestContext;
-import app.lifelinq.config.RequestContextHolder;
+import app.lifelinq.features.api.ApiScoping;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
@@ -38,12 +38,12 @@ public class HouseholdController {
             @PathVariable("id") UUID householdId,
             @RequestBody AddMemberRequest request
     ) {
-        RequestContext context = RequestContextHolder.getCurrent();
+        RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
-            return ResponseEntity.status(401).body("Missing household context");
+            return ApiScoping.missingContext();
         }
-        if (!householdId.equals(context.getHouseholdId())) {
-            return ResponseEntity.status(403).body("Household mismatch");
+        if (!ApiScoping.matchesHousehold(context, householdId)) {
+            return ApiScoping.householdMismatch();
         }
         Membership membership = householdApplicationService.addMember(householdId, request.getUserId());
         return ResponseEntity.ok(new AddMemberResponse(
@@ -55,12 +55,12 @@ public class HouseholdController {
 
     @GetMapping("/households/{id}/members")
     public ResponseEntity<?> listMembers(@PathVariable("id") UUID householdId) {
-        RequestContext context = RequestContextHolder.getCurrent();
+        RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
-            return ResponseEntity.status(401).body("Missing household context");
+            return ApiScoping.missingContext();
         }
-        if (!householdId.equals(context.getHouseholdId())) {
-            return ResponseEntity.status(403).body("Household mismatch");
+        if (!ApiScoping.matchesHousehold(context, householdId)) {
+            return ApiScoping.householdMismatch();
         }
         return ResponseEntity.ok(new ListMembersResponse(toResponseItems(
                 householdApplicationService.listMembers(householdId)

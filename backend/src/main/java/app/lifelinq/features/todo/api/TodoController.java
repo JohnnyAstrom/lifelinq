@@ -1,7 +1,7 @@
 package app.lifelinq.features.todo.api;
 
 import app.lifelinq.config.RequestContext;
-import app.lifelinq.config.RequestContextHolder;
+import app.lifelinq.features.api.ApiScoping;
 import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoStatus;
@@ -29,9 +29,9 @@ public class TodoController {
 
     @PostMapping("/todos")
     public ResponseEntity<?> create(@RequestBody CreateTodoRequest request) {
-        RequestContext context = RequestContextHolder.getCurrent();
+        RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
-            return ResponseEntity.status(401).body("Missing household context");
+            return ApiScoping.missingContext();
         }
         return ResponseEntity.ok(new CreateTodoResponse(
                 todoApplicationService.createTodo(context.getHouseholdId(), request.getText())
@@ -48,9 +48,9 @@ public class TodoController {
     public ResponseEntity<?> list(
             @RequestParam(name = "status", defaultValue = "ALL") String status
     ) {
-        RequestContext context = RequestContextHolder.getCurrent();
+        RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
-            return ResponseEntity.status(401).body("Missing household context");
+            return ApiScoping.missingContext();
         }
         TodoStatus filter = TodoStatus.valueOf(status);
         return ResponseEntity.ok(new ListTodosResponse(toResponseItems(
