@@ -49,6 +49,11 @@ If a design or implementation violates an invariant, **the design is wrong**.
 - JWT always includes household context when required.
 - Switching households requires issuing a new token.
 
+**Transitional note (temporary):**
+- Some endpoints still accept `householdId` in the URL path.
+- This is temporarily allowed only when **validated against the token**.
+- The long‑term goal is full server‑derived scoping with no client‑provided householdId.
+
 ---
 
 ## 4. Features are isolated by domain boundaries

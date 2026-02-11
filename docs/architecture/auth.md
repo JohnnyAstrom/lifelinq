@@ -20,14 +20,30 @@ Households own data.
 
 ---
 
-## Authentication
+## CURRENT: Minimal request scoping (implemented)
 
-LifeLinq uses external identity providers via OAuth2.
+The backend currently derives request context from a **JWT Bearer token**:
+
+- `Authorization: Bearer <token>`
+- Required claims: `householdId`, `userId`, `exp`
+
+Tokens are **validated for signature and expiration**. If missing or invalid, the request is rejected with **401**.
+
+This is a **minimal scoping layer** only:
+- no OAuth flow
+- no refresh tokens
+- no user persistence yet
+
+---
+
+## FUTURE: Authentication via OAuth2 (not implemented yet)
+
+LifeLinq will use external identity providers via OAuth2.
 
 Primary provider:
 - Google
 
-Authentication flow:
+Planned authentication flow (future):
 1. User authenticates with external provider
 2. Backend validates identity
 3. User record is created or retrieved
@@ -120,14 +136,4 @@ Invite tokens:
 
 ## JWT‑based request scoping (minimal)
 
-The backend now derives request context from a **JWT Bearer token**:
-
-- `Authorization: Bearer <token>`
-- Required claims: `householdId`, `userId`, `exp`
-
-Tokens are **validated for signature and expiration**. If missing or invalid, the request is rejected with **401**.
-
-This is a **minimal scoping layer** only:
-- no OAuth flow
-- no refresh tokens
-- no user persistence yet
+This is the **current** request‑scoping mechanism described above.
