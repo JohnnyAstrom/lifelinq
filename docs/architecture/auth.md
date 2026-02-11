@@ -118,11 +118,16 @@ Invite tokens:
 
 ---
 
-## TEMPORARY: Header‑based household scoping (pre‑auth)
+## JWT‑based request scoping (minimal)
 
-Until JWT‑based scoping is introduced, the backend accepts **temporary request headers** to populate server‑side household context:
+The backend now derives request context from a **JWT Bearer token**:
 
-- `X-Household-Id`
-- `X-User-Id` (optional)
+- `Authorization: Bearer <token>`
+- Required claims: `householdId`, `userId`, `exp`
 
-These headers are **temporary scaffolding only**. They will be removed once JWT‑derived household scoping is implemented.
+Tokens are **validated for signature and expiration**. If missing or invalid, the request is rejected with **401**.
+
+This is a **minimal scoping layer** only:
+- no OAuth flow
+- no refresh tokens
+- no user persistence yet

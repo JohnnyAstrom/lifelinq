@@ -5,10 +5,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.UUID;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class RequestContextFilter extends OncePerRequestFilter {
+    private final JwtVerifier jwtVerifier;
+
+    public RequestContextFilter(JwtVerifier jwtVerifier) {
+        this.jwtVerifier = jwtVerifier;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -16,31 +20,40 @@ public class RequestContextFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        RequestContext context = new RequestContext();
-        // TODO: Temporary header-based context; replace with JWT-derived scoping.
-        populateFromHeaders(request, context);
-        RequestContextHolder.set(context);
         try {
+            String token = extractBearerToken(request);
+            if (token == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+            JwtClaims claims;
+            try {
+                claims = jwtVerifier.verify(token);
+            } catch (JwtValidationException ex) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+            RequestContext context = new RequestContext();
+            context.setHouseholdId(claims.getHouseholdId());
+            context.setUserId(claims.getUserId());
+            RequestContextHolder.set(context);
             filterChain.doFilter(request, response);
         } finally {
             RequestContextHolder.clear();
         }
     }
 
-    private void populateFromHeaders(HttpServletRequest request, RequestContext context) {
-        context.setHouseholdId(parseUuidHeader(request, "X-Household-Id"));
-        context.setUserId(parseUuidHeader(request, "X-User-Id"));
-    }
-
-    private UUID parseUuidHeader(HttpServletRequest request, String name) {
-        String value = request.getHeader(name);
-        if (value == null || value.isBlank()) {
+    private String extractBearerToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || header.isBlank()) {
             return null;
         }
-        try {
-            return UUID.fromString(value.trim());
-        } catch (IllegalArgumentException ex) {
+        String prefix = "Bearer ";
+        if (!header.startsWith(prefix) || header.length() <= prefix.length()) {
             return null;
         }
+        return header.substring(prefix.length()).trim();
     }
 }
