@@ -2,7 +2,8 @@
 
 This document describes the **conceptual data model** of LifeLinq.
 
-It focuses on relationships and ownership, not on database schemas or SQL.
+It focuses on relationships and ownership, with a compact persistence snapshot
+to reflect the current storage structure.
 
 ---
 
@@ -90,9 +91,47 @@ All domain entities belong to a household.
 
 ---
 
+## Persistence Snapshot (Current)
+
+This is a structural overview of tables and relations (no SQL, no code).
+
+### Tables
+
+- `households`: `id`, `name`
+- `todos`: `id`, `household_id`, `text`, `status`
+- `memberships`: composite key (`household_id`, `user_id`), `role`
+- `invitations`: `id`, `household_id`, `invitee_email`, `token`, `expires_at`, `status`
+
+### Relations (ID‑based)
+
+- `todos.household_id` → `households.id`
+- `memberships.household_id` → `households.id`
+- `invitations.household_id` → `households.id`
+
+### ASCII Sketch
+
+```text
+households (id)
+  ↑            ↑            ↑
+  │            │            │
+todos          memberships  invitations
+(household_id) (household_id, user_id) (household_id)
+```
+
+### Constraints
+
+- `memberships` primary key is (`household_id`, `user_id`)
+- `invitations.token` is unique
+
+### Aggregate boundaries
+
+- `household` is the aggregate root for `memberships` and `invitations`
+- `todo` is its own aggregate, bound to `household_id`
+
+---
+
 ## Summary
 
 The data model reinforces LifeLinq’s household-first philosophy.
 
 Technical persistence details are intentionally excluded.
-
