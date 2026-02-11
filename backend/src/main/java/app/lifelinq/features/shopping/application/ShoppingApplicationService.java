@@ -12,8 +12,8 @@ public class ShoppingApplicationService {
     }
 
     @Transactional
-    public AddShoppingItemResult addItem(UUID householdId, String name) {
+    public UUID addItem(UUID householdId, String name) {
         AddShoppingItemCommand command = new AddShoppingItemCommand(householdId, name);
-        return addShoppingItemUseCase.execute(command);
+        return addShoppingItemUseCase.execute(command).getItemId();
     }
 }
