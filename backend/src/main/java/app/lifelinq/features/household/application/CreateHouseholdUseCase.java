@@ -7,7 +7,7 @@ import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import java.util.UUID;
 
-public final class CreateHouseholdUseCase {
+final class CreateHouseholdUseCase {
     private final HouseholdRepository householdRepository;
     private final MembershipRepository membershipRepository;
 

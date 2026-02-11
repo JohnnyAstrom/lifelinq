@@ -1,15 +1,16 @@
 package app.lifelinq.features.household.api;
 
 import app.lifelinq.features.household.application.AddMemberToHouseholdCommand;
-import app.lifelinq.features.household.application.AddMemberToHouseholdResult;
-import app.lifelinq.features.household.application.AddMemberToHouseholdUseCase;
+import app.lifelinq.features.household.application.AcceptInvitationCommand;
+import app.lifelinq.features.household.application.AcceptInvitationResult;
 import app.lifelinq.features.household.application.CreateHouseholdCommand;
 import app.lifelinq.features.household.application.CreateHouseholdResult;
-import app.lifelinq.features.household.application.CreateHouseholdUseCase;
 import app.lifelinq.features.household.application.ListHouseholdMembersCommand;
 import app.lifelinq.features.household.application.ListHouseholdMembersResult;
 import app.lifelinq.features.household.application.ListHouseholdMembersUseCase;
+import app.lifelinq.features.household.application.HouseholdTransactionalService;
 import app.lifelinq.features.household.domain.Membership;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,18 +22,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class HouseholdController {
-    private final CreateHouseholdUseCase createHouseholdUseCase;
-    private final AddMemberToHouseholdUseCase addMemberToHouseholdUseCase;
     private final ListHouseholdMembersUseCase listHouseholdMembersUseCase;
+    private final HouseholdTransactionalService householdTransactionalService;
 
     public HouseholdController(
-            CreateHouseholdUseCase createHouseholdUseCase,
-            AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
-            ListHouseholdMembersUseCase listHouseholdMembersUseCase
+            ListHouseholdMembersUseCase listHouseholdMembersUseCase,
+            HouseholdTransactionalService householdTransactionalService
     ) {
-        this.createHouseholdUseCase = createHouseholdUseCase;
-        this.addMemberToHouseholdUseCase = addMemberToHouseholdUseCase;
         this.listHouseholdMembersUseCase = listHouseholdMembersUseCase;
+        this.householdTransactionalService = householdTransactionalService;
     }
 
     @PostMapping("/households")
@@ -41,7 +39,7 @@ public class HouseholdController {
                 request.getName(),
                 request.getOwnerUserId()
         );
-        CreateHouseholdResult result = createHouseholdUseCase.execute(command);
+        CreateHouseholdResult result = householdTransactionalService.createHousehold(command);
         return new CreateHouseholdResponse(result.getHouseholdId());
     }
 
@@ -51,7 +49,7 @@ public class HouseholdController {
             @RequestBody AddMemberRequest request
     ) {
         AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(householdId, request.getUserId());
-        AddMemberToHouseholdResult result = addMemberToHouseholdUseCase.execute(command);
+        AddMemberToHouseholdResult result = householdTransactionalService.addMember(command);
         return new AddMemberResponse(result.getHouseholdId(), result.getUserId(), result.getRole());
     }
 
@@ -61,6 +59,17 @@ public class HouseholdController {
                 new ListHouseholdMembersCommand(householdId)
         );
         return new ListMembersResponse(toResponseItems(result.getMembers()));
+    }
+
+    @PostMapping("/households/invitations/accept")
+    public AcceptInvitationResponse acceptInvitation(@RequestBody AcceptInvitationRequest request) {
+        AcceptInvitationCommand command = new AcceptInvitationCommand(
+                request.getToken(),
+                request.getUserId(),
+                Instant.now()
+        );
+        AcceptInvitationResult result = householdTransactionalService.acceptInvitation(command);
+        return new AcceptInvitationResponse(result.getHouseholdId(), result.getUserId());
     }
 
     private List<MemberItemResponse> toResponseItems(List<Membership> memberships) {

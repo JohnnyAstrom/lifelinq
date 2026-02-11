@@ -3,7 +3,7 @@ package app.lifelinq.features.household.application;
 import app.lifelinq.features.household.domain.Invitation;
 import app.lifelinq.features.household.domain.InvitationRepository;
 
-public final class RevokeInvitationUseCase {
+final class RevokeInvitationUseCase {
     private final InvitationRepository invitationRepository;
 
     public RevokeInvitationUseCase(InvitationRepository invitationRepository) {

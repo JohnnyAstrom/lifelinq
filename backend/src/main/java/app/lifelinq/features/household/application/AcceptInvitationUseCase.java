@@ -6,7 +6,7 @@ import app.lifelinq.features.household.domain.InvitationRepository;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 
-public final class AcceptInvitationUseCase {
+final class AcceptInvitationUseCase {
     private final InvitationRepository invitationRepository;
     private final MembershipRepository membershipRepository;
 

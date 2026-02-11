@@ -6,7 +6,7 @@ import app.lifelinq.features.household.domain.InvitationStatus;
 import java.time.Instant;
 import java.util.List;
 
-public final class ExpireInvitationsUseCase {
+final class ExpireInvitationsUseCase {
     private final InvitationRepository invitationRepository;
 
     public ExpireInvitationsUseCase(InvitationRepository invitationRepository) {

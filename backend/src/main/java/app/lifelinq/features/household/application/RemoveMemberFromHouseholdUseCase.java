@@ -2,7 +2,7 @@ package app.lifelinq.features.household.application;
 
 import app.lifelinq.features.household.domain.MembershipRepository;
 
-public final class RemoveMemberFromHouseholdUseCase {
+final class RemoveMemberFromHouseholdUseCase {
     private final MembershipRepository membershipRepository;
 
     public RemoveMemberFromHouseholdUseCase(MembershipRepository membershipRepository) {

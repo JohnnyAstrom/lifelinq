@@ -7,7 +7,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
-public final class CreateInvitationUseCase {
+final class CreateInvitationUseCase {
     private static final int MAX_TOKEN_ATTEMPTS = 5;
 
     private final InvitationRepository invitationRepository;

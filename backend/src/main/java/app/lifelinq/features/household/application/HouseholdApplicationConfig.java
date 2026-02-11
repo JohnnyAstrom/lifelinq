@@ -55,6 +55,19 @@ public class HouseholdApplicationConfig {
     }
 
     @Bean
+    public HouseholdTransactionalService householdTransactionalService(
+            AcceptInvitationUseCase acceptInvitationUseCase,
+            CreateHouseholdUseCase createHouseholdUseCase,
+            AddMemberToHouseholdUseCase addMemberToHouseholdUseCase
+    ) {
+        return new HouseholdTransactionalService(
+                acceptInvitationUseCase,
+                createHouseholdUseCase,
+                addMemberToHouseholdUseCase
+        );
+    }
+
+    @Bean
     public ExpireInvitationsUseCase expireInvitationsUseCase(
             InvitationRepository invitationRepository
     ) {
