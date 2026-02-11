@@ -43,7 +43,7 @@ class HouseholdControllerTest {
 
     @Test
     void addMemberReturns401WhenContextMissing() throws Exception {
-        mockMvc.perform(post("/households/{id}/members", UUID.randomUUID())
+        mockMvc.perform(post("/household/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"" + UUID.randomUUID() + "\"}"))
                 .andExpect(status().isUnauthorized());
@@ -53,37 +53,8 @@ class HouseholdControllerTest {
 
     @Test
     void listMembersReturns401WhenContextMissing() throws Exception {
-        mockMvc.perform(get("/households/{id}/members", UUID.randomUUID()))
+        mockMvc.perform(get("/household/members"))
                 .andExpect(status().isUnauthorized());
-
-        verifyNoInteractions(householdApplicationService);
-    }
-
-    @Test
-    void addMemberReturns403OnHouseholdMismatch() throws Exception {
-        UUID pathHouseholdId = UUID.randomUUID();
-        UUID tokenHouseholdId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        String token = createToken(tokenHouseholdId, UUID.randomUUID(), Instant.now().plusSeconds(60));
-
-        mockMvc.perform(post("/households/{id}/members", pathHouseholdId)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\":\"" + userId + "\"}"))
-                .andExpect(status().isForbidden());
-
-        verifyNoInteractions(householdApplicationService);
-    }
-
-    @Test
-    void listMembersReturns403OnHouseholdMismatch() throws Exception {
-        UUID pathHouseholdId = UUID.randomUUID();
-        UUID tokenHouseholdId = UUID.randomUUID();
-        String token = createToken(tokenHouseholdId, UUID.randomUUID(), Instant.now().plusSeconds(60));
-
-        mockMvc.perform(get("/households/{id}/members", pathHouseholdId)
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isForbidden());
 
         verifyNoInteractions(householdApplicationService);
     }
@@ -97,7 +68,7 @@ class HouseholdControllerTest {
 
         when(householdApplicationService.addMember(householdId, userId)).thenReturn(membership);
 
-        mockMvc.perform(post("/households/{id}/members", householdId)
+        mockMvc.perform(post("/household/members")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"" + userId + "\"}"))
@@ -113,7 +84,7 @@ class HouseholdControllerTest {
 
         when(householdApplicationService.listMembers(householdId)).thenReturn(List.of());
 
-        mockMvc.perform(get("/households/{id}/members", householdId)
+        mockMvc.perform(get("/household/members")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 

@@ -1,7 +1,6 @@
 package app.lifelinq.features.household.api;
 
 import app.lifelinq.config.RequestContext;
-import app.lifelinq.features.api.ApiScoping;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
@@ -33,19 +32,18 @@ public class HouseholdController {
         );
     }
 
-    @PostMapping("/households/{id}/members")
+    @PostMapping("/household/members")
     public ResponseEntity<?> addMember(
-            @PathVariable("id") UUID householdId,
             @RequestBody AddMemberRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
             return ApiScoping.missingContext();
         }
-        if (!ApiScoping.matchesHousehold(context, householdId)) {
-            return ApiScoping.householdMismatch();
-        }
-        Membership membership = householdApplicationService.addMember(householdId, request.getUserId());
+        Membership membership = householdApplicationService.addMember(
+                context.getHouseholdId(),
+                request.getUserId()
+        );
         return ResponseEntity.ok(new AddMemberResponse(
                 membership.getHouseholdId(),
                 membership.getUserId(),
@@ -53,17 +51,14 @@ public class HouseholdController {
         ));
     }
 
-    @GetMapping("/households/{id}/members")
-    public ResponseEntity<?> listMembers(@PathVariable("id") UUID householdId) {
+    @GetMapping("/household/members")
+    public ResponseEntity<?> listMembers() {
         RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
             return ApiScoping.missingContext();
         }
-        if (!ApiScoping.matchesHousehold(context, householdId)) {
-            return ApiScoping.householdMismatch();
-        }
         return ResponseEntity.ok(new ListMembersResponse(toResponseItems(
-                householdApplicationService.listMembers(householdId)
+                householdApplicationService.listMembers(context.getHouseholdId())
         )));
     }
 

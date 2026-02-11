@@ -1,7 +1,6 @@
 package app.lifelinq.features.shopping.api;
 
 import app.lifelinq.config.RequestContext;
-import app.lifelinq.features.api.ApiScoping;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;

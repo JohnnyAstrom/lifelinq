@@ -1,7 +1,6 @@
 package app.lifelinq.features.todo.api;
 
 import app.lifelinq.config.RequestContext;
-import app.lifelinq.features.api.ApiScoping;
 import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoStatus;
