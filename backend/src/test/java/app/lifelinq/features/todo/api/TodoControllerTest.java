@@ -1,0 +1,118 @@
+package app.lifelinq.features.todo.api;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import app.lifelinq.config.JwtVerifier;
+import app.lifelinq.config.RequestContextFilter;
+import app.lifelinq.features.todo.application.TodoApplicationService;
+import app.lifelinq.features.todo.domain.TodoStatus;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+class TodoControllerTest {
+    private static final String SECRET = "test-secret";
+
+    private MockMvc mockMvc;
+    private TodoApplicationService todoApplicationService;
+
+    @BeforeEach
+    void setUp() {
+        todoApplicationService = Mockito.mock(TodoApplicationService.class);
+        TodoController controller = new TodoController(todoApplicationService);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET)))
+                .build();
+    }
+
+    @Test
+    void createReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(post("/todos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Buy milk\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
+    void listReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(get("/todos"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
+    void createSucceedsWithValidToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID todoId = UUID.randomUUID();
+        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+
+        when(todoApplicationService.createTodo(householdId, "Buy milk")).thenReturn(todoId);
+
+        mockMvc.perform(post("/todos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Buy milk\"}"))
+                .andExpect(status().isOk());
+
+        verify(todoApplicationService).createTodo(householdId, "Buy milk");
+    }
+
+    @Test
+    void listSucceedsWithValidToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+
+        when(todoApplicationService.listTodos(householdId, TodoStatus.ALL)).thenReturn(List.of());
+
+        mockMvc.perform(get("/todos")
+                        .header("Authorization", "Bearer " + token)
+                        .param("status", "ALL"))
+                .andExpect(status().isOk());
+
+        verify(todoApplicationService).listTodos(householdId, TodoStatus.ALL);
+    }
+
+    private String createToken(UUID householdId, UUID userId, Instant exp) throws Exception {
+        String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
+        String payloadJson = String.format(
+                "{\"householdId\":\"%s\",\"userId\":\"%s\",\"exp\":%d}",
+                householdId,
+                userId,
+                exp.getEpochSecond()
+        );
+        String headerPart = base64Url(headerJson.getBytes(StandardCharsets.UTF_8));
+        String payloadPart = base64Url(payloadJson.getBytes(StandardCharsets.UTF_8));
+        String signaturePart = base64Url(hmacSha256(headerPart + "." + payloadPart));
+        return headerPart + "." + payloadPart + "." + signaturePart;
+    }
+
+    private byte[] hmacSha256(String data) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String base64Url(byte[] data) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
+    }
+}
