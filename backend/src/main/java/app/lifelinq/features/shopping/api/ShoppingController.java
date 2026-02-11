@@ -1,7 +1,10 @@
 package app.lifelinq.features.shopping.api;
 
+import app.lifelinq.config.RequestContext;
+import app.lifelinq.config.RequestContextHolder;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,10 +18,12 @@ public class ShoppingController {
     }
 
     @PostMapping("/shopping-items")
-    public CreateShoppingItemResponse create(@RequestBody CreateShoppingItemRequest request) {
-        // TODO: Remove householdId from request once auth derives household context from token.
-        UUID householdId = request.getHouseholdId();
-        UUID itemId = shoppingApplicationService.addItem(householdId, request.getName());
-        return new CreateShoppingItemResponse(itemId);
+    public ResponseEntity<?> create(@RequestBody CreateShoppingItemRequest request) {
+        RequestContext context = RequestContextHolder.getCurrent();
+        if (context == null || context.getHouseholdId() == null) {
+            return ResponseEntity.badRequest().body("Missing household context");
+        }
+        UUID itemId = shoppingApplicationService.addItem(context.getHouseholdId(), request.getName());
+        return ResponseEntity.ok(new CreateShoppingItemResponse(itemId));
     }
 }
