@@ -15,7 +15,11 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
-@EnableJpaRepositories(basePackageClasses = {HouseholdJpaRepository.class, MembershipJpaRepository.class})
+@EnableJpaRepositories(basePackageClasses = {
+        HouseholdJpaRepository.class,
+        MembershipJpaRepository.class,
+        InvitationJpaRepository.class
+})
 @EnableTransactionManagement
 public class HouseholdJpaTestApplication {
 
