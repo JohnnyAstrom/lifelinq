@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import app.lifelinq.features.shopping.domain.ShoppingItem;
 import app.lifelinq.features.shopping.domain.ShoppingItemRepository;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +53,11 @@ class AddShoppingItemUseCaseTest {
         @Override
         public void save(ShoppingItem item) {
             saveCount++;
+        }
+
+        @Override
+        public Optional<ShoppingItem> findById(UUID id) {
+            return Optional.empty();
         }
     }
 }
