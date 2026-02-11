@@ -1,13 +1,14 @@
 package app.lifelinq.features.shopping.application;
 
+import app.lifelinq.features.shopping.domain.ShoppingItemRepository;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 public class ShoppingApplicationService {
     private final AddShoppingItemUseCase addShoppingItemUseCase;
 
-    public ShoppingApplicationService() {
-        this.addShoppingItemUseCase = new AddShoppingItemUseCase();
+    public ShoppingApplicationService(ShoppingItemRepository repository) {
+        this.addShoppingItemUseCase = new AddShoppingItemUseCase(repository);
     }
 
     @Transactional
