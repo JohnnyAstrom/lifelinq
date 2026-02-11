@@ -29,6 +29,11 @@ public final class HouseholdPersistenceAdapter
     }
 
     @Override
+    public Optional<Household> findById(UUID id) {
+        return householdRepository.findById(id);
+    }
+
+    @Override
     public void save(Membership membership) {
         membershipRepository.save(membership);
     }

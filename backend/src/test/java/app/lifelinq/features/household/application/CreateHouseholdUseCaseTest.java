@@ -56,6 +56,16 @@ class CreateHouseholdUseCaseTest {
         public void save(Household household) {
             saved.add(household);
         }
+
+        @Override
+        public java.util.Optional<Household> findById(UUID id) {
+            for (Household household : saved) {
+                if (id.equals(household.getId())) {
+                    return java.util.Optional.of(household);
+                }
+            }
+            return java.util.Optional.empty();
+        }
     }
 
     private static final class InMemoryMembershipRepository implements MembershipRepository {
