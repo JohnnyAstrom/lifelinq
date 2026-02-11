@@ -115,3 +115,14 @@ Invite tokens:
 - are **not** access or refresh tokens
 - do **not** create sessions
 - are **not** used for API authorization
+
+---
+
+## TEMPORARY: Header‑based household scoping (pre‑auth)
+
+Until JWT‑based scoping is introduced, the backend accepts **temporary request headers** to populate server‑side household context:
+
+- `X-Household-Id`
+- `X-User-Id` (optional)
+
+These headers are **temporary scaffolding only**. They will be removed once JWT‑derived household scoping is implemented.
