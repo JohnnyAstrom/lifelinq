@@ -59,6 +59,20 @@ LifeLinq currently supports a **minimal OAuth2 login**:
 
 This is intentionally minimal and does **not** include refresh tokens or session management.
 
+## OAuth2 configuration (local/dev)
+
+Minimal OAuth2 setup requires provider registration properties.
+Example (Google):
+
+```
+spring.security.oauth2.client.registration.google.client-id=...
+spring.security.oauth2.client.registration.google.client-secret=...
+spring.security.oauth2.client.registration.google.scope=openid,profile,email
+spring.security.oauth2.client.provider.google.user-name-attribute=sub
+```
+
+These are required for local OAuth2 login but do not enable refresh tokens or session management.
+
 ## FUTURE: Full OAuth2 authentication flow (not implemented yet)
 
 LifeLinq will expand OAuth2 to a full authentication flow.
