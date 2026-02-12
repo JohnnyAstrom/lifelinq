@@ -47,9 +47,21 @@ If there is no authenticated context, the endpoint returns **401**.
 
 ---
 
-## FUTURE: Authentication via OAuth2 (not implemented yet)
+## CURRENT: Minimal OAuth2 login (implemented)
 
-LifeLinq will use external identity providers via OAuth2.
+LifeLinq currently supports a **minimal OAuth2 login**:
+
+- OAuth2 login is wired via Spring Security.
+- On successful OAuth2 login, the backend:
+  - derives a deterministic internal `userId` from provider + subject
+  - ensures the user exists
+  - issues a JWT (access token)
+
+This is intentionally minimal and does **not** include refresh tokens or session management.
+
+## FUTURE: Full OAuth2 authentication flow (not implemented yet)
+
+LifeLinq will expand OAuth2 to a full authentication flow.
 
 Primary provider:
 - Google
