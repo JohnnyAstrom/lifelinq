@@ -5,6 +5,7 @@ import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.household.domain.HouseholdRole;
+import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,7 @@ public class HouseholdApplicationService {
     private final CreateHouseholdUseCase createHouseholdUseCase;
     private final AddMemberToHouseholdUseCase addMemberToHouseholdUseCase;
     private final ListHouseholdMembersUseCase listHouseholdMembersUseCase;
+    private final RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase;
     private final MembershipRepository membershipRepository;
 
     public HouseholdApplicationService(
@@ -21,12 +23,14 @@ public class HouseholdApplicationService {
             CreateHouseholdUseCase createHouseholdUseCase,
             AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
             ListHouseholdMembersUseCase listHouseholdMembersUseCase,
+            RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase,
             MembershipRepository membershipRepository
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
         this.createHouseholdUseCase = createHouseholdUseCase;
         this.addMemberToHouseholdUseCase = addMemberToHouseholdUseCase;
         this.listHouseholdMembersUseCase = listHouseholdMembersUseCase;
+        this.removeMemberFromHouseholdUseCase = removeMemberFromHouseholdUseCase;
         this.membershipRepository = membershipRepository;
     }
 
@@ -52,6 +56,16 @@ public class HouseholdApplicationService {
         return new Membership(result.getHouseholdId(), result.getUserId(), result.getRole());
     }
 
+    @Transactional
+    public boolean removeMember(UUID householdId, UUID actorUserId, UUID targetUserId) {
+        List<Membership> memberships = membershipRepository.findByHouseholdId(householdId);
+        ensureOwner(householdId, actorUserId, memberships);
+        ensureNotLastOwner(targetUserId, memberships);
+        RemoveMemberFromHouseholdCommand command = new RemoveMemberFromHouseholdCommand(householdId, targetUserId);
+        RemoveMemberFromHouseholdResult result = removeMemberFromHouseholdUseCase.execute(command);
+        return result.isRemoved();
+    }
+
     @Transactional(readOnly = true)
     public List<Membership> listMembers(UUID householdId) {
         ListHouseholdMembersResult result = listHouseholdMembersUseCase.execute(
@@ -61,14 +75,34 @@ public class HouseholdApplicationService {
     }
 
     private void ensureOwner(UUID householdId, UUID actorUserId) {
-        for (Membership membership : membershipRepository.findByHouseholdId(householdId)) {
+        ensureOwner(householdId, actorUserId, membershipRepository.findByHouseholdId(householdId));
+    }
+
+    private void ensureOwner(UUID householdId, UUID actorUserId, List<Membership> memberships) {
+        for (Membership membership : memberships) {
             if (membership.getUserId().equals(actorUserId)) {
                 if (membership.getRole() == HouseholdRole.OWNER) {
                     return;
                 }
-                throw new AccessDeniedException("Only owners can add members");
+                throw new AccessDeniedException("Only owners can perform this action");
             }
         }
         throw new AccessDeniedException("Actor is not a member of the household");
+    }
+
+    private void ensureNotLastOwner(UUID targetUserId, List<Membership> memberships) {
+        int ownerCount = 0;
+        boolean targetIsOwner = false;
+        for (Membership membership : memberships) {
+            if (membership.getRole() == HouseholdRole.OWNER) {
+                ownerCount++;
+                if (membership.getUserId().equals(targetUserId)) {
+                    targetIsOwner = true;
+                }
+            }
+        }
+        if (targetIsOwner && ownerCount <= 1) {
+            throw new LastOwnerRemovalException("Cannot remove the last owner");
+        }
     }
 }

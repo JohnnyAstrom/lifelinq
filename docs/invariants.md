@@ -170,3 +170,10 @@ Each feature exposes exactly one `ApplicationService` as its public entry point.
 Controllers may only depend on the feature’s `ApplicationService`.
 Write use cases must be package‑private and not referenced outside the application layer.
 Transactions are defined at the `ApplicationService` boundary.
+
+---
+
+## 14. A household must always have an owner
+
+- A household cannot be left without an OWNER.
+- Removing the last OWNER is forbidden.

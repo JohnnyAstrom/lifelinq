@@ -12,6 +12,7 @@ import app.lifelinq.config.RequestContextFilter;
 import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.HouseholdRole;
+import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
 import java.nio.charset.StandardCharsets;
@@ -176,6 +177,73 @@ class HouseholdControllerTest {
                 .andExpect(status().isOk());
 
         verify(householdApplicationService).listMembers(householdId);
+    }
+
+    @Test
+    void removeMemberReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(post("/household/members/remove")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
+    void removeMemberReturns403WhenActorIsNotOwner() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.removeMember(householdId, actorUserId, targetUserId))
+                .thenThrow(new AccessDeniedException("not owner"));
+
+        mockMvc.perform(post("/household/members/remove")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(householdApplicationService).removeMember(householdId, actorUserId, targetUserId);
+    }
+
+    @Test
+    void removeMemberReturns409WhenRemovingLastOwner() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.removeMember(householdId, actorUserId, targetUserId))
+                .thenThrow(new LastOwnerRemovalException("last owner"));
+
+        mockMvc.perform(post("/household/members/remove")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
+                .andExpect(status().isConflict());
+
+        verify(householdApplicationService).removeMember(householdId, actorUserId, targetUserId);
+    }
+
+    @Test
+    void removeMemberSucceedsWhenActorIsOwner() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.removeMember(householdId, actorUserId, targetUserId))
+                .thenReturn(true);
+
+        mockMvc.perform(post("/household/members/remove")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
+                .andExpect(status().isOk());
+
+        verify(householdApplicationService).removeMember(householdId, actorUserId, targetUserId);
     }
 
     private String createToken(UUID householdId, UUID userId, Instant exp) throws Exception {

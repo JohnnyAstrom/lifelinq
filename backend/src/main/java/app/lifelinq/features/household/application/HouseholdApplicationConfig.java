@@ -60,6 +60,7 @@ public class HouseholdApplicationConfig {
             CreateHouseholdUseCase createHouseholdUseCase,
             AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
             ListHouseholdMembersUseCase listHouseholdMembersUseCase,
+            RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase,
             MembershipRepository membershipRepository
     ) {
         return new HouseholdApplicationService(
@@ -67,6 +68,7 @@ public class HouseholdApplicationConfig {
                 createHouseholdUseCase,
                 addMemberToHouseholdUseCase,
                 listHouseholdMembersUseCase,
+                removeMemberFromHouseholdUseCase,
                 membershipRepository
         );
     }

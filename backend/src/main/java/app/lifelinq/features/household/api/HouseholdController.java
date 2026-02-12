@@ -5,6 +5,7 @@ import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
+import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +62,26 @@ public class HouseholdController {
             ));
         } catch (AccessDeniedException ex) {
             return ResponseEntity.status(403).body("Access denied");
+        }
+    }
+
+    @PostMapping("/household/members/remove")
+    public ResponseEntity<?> removeMember(@RequestBody RemoveMemberRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        try {
+            boolean removed = householdApplicationService.removeMember(
+                    context.getHouseholdId(),
+                    context.getUserId(),
+                    request.getUserId()
+            );
+            return ResponseEntity.ok(new RemoveMemberResponse(removed));
+        } catch (AccessDeniedException ex) {
+            return ResponseEntity.status(403).body("Access denied");
+        } catch (LastOwnerRemovalException ex) {
+            return ResponseEntity.status(409).body("Cannot remove last owner");
         }
     }
 
