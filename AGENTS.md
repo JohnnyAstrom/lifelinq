@@ -20,10 +20,11 @@ Before doing any work, read:
 
 When proposing next steps related to authentication, users, or tokens, follow these rules strictly:
 
-- Do not propose or implement authentication features yet.
-- Auth-related domain objects (e.g. User, UserIdentity) must not be introduced until persistence and a security context exist.
-- Avoid proposing auth use cases that depend on "current user", tokens, or security context before auth is explicitly started.
-- Access token and refresh token handling must remain documented-only until auth implementation begins.
+- Minimal identity read endpoints (e.g. `/me`) and JWT-based request scoping are allowed.
+- Do not introduce full authentication features yet (OAuth flows, refresh tokens, session management).
+- Auth-related domain objects beyond the current minimal `User` must not be introduced until persistence and a security context are expanded.
+- Avoid proposing auth use cases that depend on permissions or roles beyond current household membership checks.
+- Access token and refresh token handling (rotation, reuse detection) must remain documented-only until auth implementation explicitly begins.
 - Invite tokens are domain-specific, single-use tokens and must never be treated as auth or session tokens.
 - Any auth-related proposal must clearly explain why it is architecturally significant at this point in the project.
 

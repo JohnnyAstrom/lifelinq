@@ -39,19 +39,19 @@ If a design or implementation violates an invariant, **the design is wrong**.
 
 ---
 
-## 3. Household context is derived from authentication
+## 3. Household context is derived server‑side
 
 - Clients never send `householdId` explicitly in requests.
-- Household context is extracted from the authenticated token.
-- If household context is missing or invalid, the request is rejected.
+- Household context is resolved server‑side from membership data.
+- If household context is missing or ambiguous, scoped endpoints are rejected.
 
 **Implication:**
-- JWT always includes household context when required.
-- Switching households requires issuing a new token.
+- JWT does **not** need to carry household context.
+- Active household selection is a separate, explicit step (not implemented yet).
 
 **Transitional note (temporary):**
 - Some endpoints still accept `householdId` in the URL path.
-- This is temporarily allowed only when **validated against the token**.
+- This is temporarily allowed only when **validated against server‑derived context**.
 - The long‑term goal is full server‑derived scoping with no client‑provided householdId.
 
 ---

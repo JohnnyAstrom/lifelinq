@@ -49,8 +49,11 @@ Roles control access, not ownership.
 A user may belong to multiple households.
 
 At any given time:
-- exactly one household is active
-- the active household is defined by the authentication token
+- exactly one household can be used for scoped operations
+- the active household is resolved server‑side from membership data
+
+If the user has multiple households, active household selection is required
+(not implemented yet).
 
 ---
 
