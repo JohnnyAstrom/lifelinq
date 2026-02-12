@@ -1,6 +1,7 @@
 package app.lifelinq.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
@@ -16,21 +17,19 @@ class JwtVerifierTest {
 
     @Test
     void verifiesValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+        String token = createToken(userId, Instant.now().plusSeconds(60));
 
         JwtClaims claims = new JwtVerifier(SECRET).verify(token);
 
-        assertEquals(householdId, claims.getHouseholdId());
+        assertNull(claims.getHouseholdId());
         assertEquals(userId, claims.getUserId());
     }
 
     @Test
     void rejectsExpiredToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        String token = createToken(householdId, userId, Instant.now().minusSeconds(60));
+        String token = createToken(userId, Instant.now().minusSeconds(60));
 
         assertThrows(JwtValidationException.class, () -> new JwtVerifier(SECRET).verify(token));
     }
@@ -48,17 +47,15 @@ class JwtVerifierTest {
 
     @Test
     void rejectsInvalidSignature() throws Exception {
-        UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        String token = createTokenWithSecret("other-secret", householdId, userId, Instant.now().plusSeconds(60));
+        String token = createTokenWithSecret("other-secret", userId, Instant.now().plusSeconds(60));
 
         assertThrows(JwtValidationException.class, () -> new JwtVerifier(SECRET).verify(token));
     }
 
-    private String createToken(UUID householdId, UUID userId, Instant exp) throws Exception {
+    private String createToken(UUID userId, Instant exp) throws Exception {
         String payloadJson = String.format(
-                "{\"householdId\":\"%s\",\"userId\":\"%s\",\"exp\":%d}",
-                householdId,
+                "{\"userId\":\"%s\",\"exp\":%d}",
                 userId,
                 exp.getEpochSecond()
         );
@@ -73,10 +70,9 @@ class JwtVerifierTest {
         return headerPart + "." + payloadPart + "." + signaturePart;
     }
 
-    private String createTokenWithSecret(String secret, UUID householdId, UUID userId, Instant exp) throws Exception {
+    private String createTokenWithSecret(String secret, UUID userId, Instant exp) throws Exception {
         String payloadJson = String.format(
-                "{\"householdId\":\"%s\",\"userId\":\"%s\",\"exp\":%d}",
-                householdId,
+                "{\"userId\":\"%s\",\"exp\":%d}",
                 userId,
                 exp.getEpochSecond()
         );

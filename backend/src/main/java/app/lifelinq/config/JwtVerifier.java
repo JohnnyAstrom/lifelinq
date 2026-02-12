@@ -41,8 +41,8 @@ public final class JwtVerifier {
         verifySignature(parts[0], parts[1], parts[2]);
 
         String payloadJson = decodeJson(parts[1]);
-        UUID householdId = parseUuidClaim(payloadJson, "householdId");
-        UUID userId = parseUuidClaim(payloadJson, "userId");
+        UUID householdId = parseOptionalUuidClaim(payloadJson, "householdId");
+        UUID userId = parseRequiredUuidClaim(payloadJson, "userId");
         long exp = parseExp(payloadJson);
         if (Instant.now().getEpochSecond() >= exp) {
             throw new JwtValidationException("Token expired");
@@ -76,8 +76,20 @@ public final class JwtVerifier {
         }
     }
 
-    private UUID parseUuidClaim(String payloadJson, String name) {
+    private UUID parseRequiredUuidClaim(String payloadJson, String name) {
         String value = extractStringClaim(payloadJson, name);
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            throw new JwtValidationException("Invalid claim: " + name, ex);
+        }
+    }
+
+    private UUID parseOptionalUuidClaim(String payloadJson, String name) {
+        String value = extractOptionalStringClaim(payloadJson, name);
+        if (value == null) {
+            return null;
+        }
         try {
             return UUID.fromString(value);
         } catch (IllegalArgumentException ex) {
@@ -99,6 +111,15 @@ public final class JwtVerifier {
         Matcher matcher = pattern.matcher(json);
         if (!matcher.find()) {
             throw new JwtValidationException("Missing claim: " + name);
+        }
+        return matcher.group(1);
+    }
+
+    private String extractOptionalStringClaim(String json, String name) {
+        Pattern pattern = Pattern.compile(String.format(STRING_CLAIM.pattern(), Pattern.quote(name)));
+        Matcher matcher = pattern.matcher(json);
+        if (!matcher.find()) {
+            return null;
         }
         return matcher.group(1);
     }

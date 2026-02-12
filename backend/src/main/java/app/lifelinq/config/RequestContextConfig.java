@@ -20,4 +20,14 @@ public class RequestContextConfig {
     public JwtVerifier jwtVerifier(@Value("${lifelinq.jwt.secret:dev-secret}") String secret) {
         return new JwtVerifier(secret);
     }
+
+    @Bean
+    public JwtSigner jwtSigner(
+            @Value("${lifelinq.jwt.secret:dev-secret}") String secret,
+            @Value("${lifelinq.jwt.ttlSeconds:900}") long ttlSeconds,
+            @Value("${lifelinq.jwt.issuer:}") String issuer,
+            @Value("${lifelinq.jwt.audience:}") String audience
+    ) {
+        return new JwtSigner(secret, ttlSeconds, issuer, audience, java.time.Clock.systemUTC());
+    }
 }
