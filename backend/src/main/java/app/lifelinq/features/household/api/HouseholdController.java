@@ -26,10 +26,14 @@ public class HouseholdController {
     }
 
     @PostMapping("/households")
-    public CreateHouseholdResponse create(@RequestBody CreateHouseholdRequest request) {
-        return new CreateHouseholdResponse(
-                householdApplicationService.createHousehold(request.getName(), request.getOwnerUserId())
-        );
+    public ResponseEntity<?> create(@RequestBody CreateHouseholdRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        return ResponseEntity.ok(new CreateHouseholdResponse(
+                householdApplicationService.createHousehold(request.getName(), context.getUserId())
+        ));
     }
 
     @PostMapping("/household/members")

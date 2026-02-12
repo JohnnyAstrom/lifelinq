@@ -60,6 +60,33 @@ class HouseholdControllerTest {
     }
 
     @Test
+    void createReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(post("/households")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Home\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
+    void createSucceedsWithUserIdFromToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.createHousehold("Home", userId)).thenReturn(householdId);
+
+        mockMvc.perform(post("/households")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Home\"}"))
+                .andExpect(status().isOk());
+
+        verify(householdApplicationService).createHousehold("Home", userId);
+    }
+
+    @Test
     void addMemberSucceedsWhenHouseholdMatches() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
