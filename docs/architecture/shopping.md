@@ -36,6 +36,64 @@ Decision: API contracts are list-centric.
 Rationale: Frontend needs stable listId boundaries for 1:1 feature mapping.
 Consequences: Endpoints accept `listId` for list and item mutations.
 
+## Shopping Model (Phase 1)
+
+### Aggregate root
+
+- `ShoppingList` is the aggregate root.
+- `ShoppingItem` belongs to exactly one list.
+- No cross-list moves in V0 (to "move", create a new item in the target list).
+
+### Item lifecycle
+
+- Item is created in "to buy".
+- Item can be toggled to "bought".
+- Item can be toggled back to "to buy".
+- Item can be removed entirely.
+
+### Allowed state transitions
+
+- `to_buy` → `bought`
+- `bought` → `to_buy`
+
+### Identity and uniqueness
+
+- Item name must be unique within a list (case-insensitive, normalized).
+- Name is normalized in ApplicationService before uniqueness checks.
+
+### Household scoping
+
+- List is household-scoped.
+- Item inherits household through its list.
+- All mutations must verify list belongs to current household.
+
+### Invariants
+
+- Item name is required and non-blank.
+- List must exist before adding or mutating items.
+- Item must exist before toggling or removing.
+- Item name must be unique within its list (case-insensitive, normalized).
+- Item must belong to the list being mutated.
+- Toggle is only allowed within the owning list.
+- List and item household scope must match the request context.
+
+### Status representation
+
+- Domain uses enum: `TO_BUY` | `BOUGHT`.
+- Persistence may use boolean for V0.
+
+### Toggle policy
+
+- `boughtAt` is set when status becomes `BOUGHT`.
+- `boughtAt` is cleared when toggled back to `TO_BUY`.
+
+### Non-goals (V0)
+
+- No moving items between lists.
+- No multi-state lifecycle (archived/cancelled) beyond `to_buy`/`bought`.
+- No per-user personal shopping lists.
+- No historical retention of removed items (hard delete).
+
 ## UX principles
 
 - Shared by default (household list, not personal).
