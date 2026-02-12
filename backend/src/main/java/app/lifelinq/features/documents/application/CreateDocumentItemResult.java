@@ -1,11 +1,11 @@
-package app.lifelinq.features.important.application;
+package app.lifelinq.features.documents.application;
 
 import java.util.UUID;
 
-public final class CreateImportantItemResult {
+public final class CreateDocumentItemResult {
     private final UUID itemId;
 
-    public CreateImportantItemResult(UUID itemId) {
+    public CreateDocumentItemResult(UUID itemId) {
         this.itemId = itemId;
     }
 

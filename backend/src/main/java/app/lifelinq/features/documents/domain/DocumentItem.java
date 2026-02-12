@@ -1,13 +1,13 @@
-package app.lifelinq.features.important.domain;
+package app.lifelinq.features.documents.domain;
 
 import java.util.UUID;
 
-public final class ImportantItem {
+public final class DocumentItem {
     private final UUID id;
     private final UUID householdId;
     private final String text;
 
-    public ImportantItem(UUID id, UUID householdId, String text) {
+    public DocumentItem(UUID id, UUID householdId, String text) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }

@@ -1,12 +1,12 @@
-package app.lifelinq.features.important.application;
+package app.lifelinq.features.documents.application;
 
 import java.util.UUID;
 
-public final class CreateImportantItemCommand {
+public final class CreateDocumentItemCommand {
     private final UUID householdId;
     private final String text;
 
-    public CreateImportantItemCommand(UUID householdId, String text) {
+    public CreateDocumentItemCommand(UUID householdId, String text) {
         this.householdId = householdId;
         this.text = text;
     }

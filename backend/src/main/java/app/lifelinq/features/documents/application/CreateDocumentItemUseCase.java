@@ -1,11 +1,11 @@
-package app.lifelinq.features.important.application;
+package app.lifelinq.features.documents.application;
 
-import app.lifelinq.features.important.domain.ImportantItem;
+import app.lifelinq.features.documents.domain.DocumentItem;
 import java.util.UUID;
 
-final class CreateImportantItemUseCase {
+final class CreateDocumentItemUseCase {
 
-    public CreateImportantItemResult execute(CreateImportantItemCommand command) {
+    public CreateDocumentItemResult execute(CreateDocumentItemCommand command) {
         if (command == null) {
             throw new IllegalArgumentException("command must not be null");
         }
@@ -16,7 +16,7 @@ final class CreateImportantItemUseCase {
             throw new IllegalArgumentException("text must not be blank");
         }
 
-        ImportantItem item = new ImportantItem(UUID.randomUUID(), command.getHouseholdId(), command.getText());
-        return new CreateImportantItemResult(item.getId());
+        DocumentItem item = new DocumentItem(UUID.randomUUID(), command.getHouseholdId(), command.getText());
+        return new CreateDocumentItemResult(item.getId());
     }
 }
