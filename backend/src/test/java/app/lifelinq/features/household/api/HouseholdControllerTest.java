@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import app.lifelinq.config.JwtVerifier;
@@ -12,6 +13,7 @@ import app.lifelinq.config.RequestContextFilter;
 import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
 import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
+import app.lifelinq.features.household.contract.CreateInvitationOutput;
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import app.lifelinq.features.household.domain.Membership;
@@ -46,6 +48,7 @@ class HouseholdControllerTest {
         householdApplicationService = Mockito.mock(HouseholdApplicationService.class);
         HouseholdController controller = new HouseholdController(householdApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new HouseholdExceptionHandler())
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
                         new ResolveHouseholdForUserUseCase(membershipRepository)
@@ -132,6 +135,127 @@ class HouseholdControllerTest {
                 Mockito.eq("invite-token"),
                 Mockito.eq(userId)
         );
+    }
+
+    @Test
+    void createInvitationReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(post("/households/invitations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@example.com\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
+    void createInvitationReturns403WhenActorIsNotOwner() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.createInvitation(
+                Mockito.eq(householdId),
+                Mockito.eq(actorUserId),
+                Mockito.eq("test@example.com"),
+                Mockito.isNull()
+        )).thenThrow(new AccessDeniedException("not owner"));
+
+        mockMvc.perform(post("/households/invitations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@example.com\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createInvitationReturns409WhenDuplicateExists() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.createInvitation(
+                Mockito.eq(householdId),
+                Mockito.eq(actorUserId),
+                Mockito.eq("test@example.com"),
+                Mockito.isNull()
+        )).thenThrow(new IllegalStateException("duplicate"));
+
+        mockMvc.perform(post("/households/invitations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@example.com\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void createInvitationSucceeds() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        UUID invitationId = UUID.randomUUID();
+        Instant expiresAt = Instant.now().plusSeconds(3600);
+        CreateInvitationOutput result = new CreateInvitationOutput(
+                invitationId,
+                "invite-token",
+                expiresAt
+        );
+
+        when(householdApplicationService.createInvitation(
+                Mockito.eq(householdId),
+                Mockito.eq(actorUserId),
+                Mockito.eq("test@example.com"),
+                Mockito.isNull()
+        )).thenReturn(result);
+
+        mockMvc.perform(post("/households/invitations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"test@example.com\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void revokeInvitationReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(delete("/households/invitations/" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
+    void revokeInvitationReturns403WhenActorIsNotOwner() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID invitationId = UUID.randomUUID();
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.revokeInvitation(householdId, actorUserId, invitationId))
+                .thenThrow(new AccessDeniedException("not owner"));
+
+        mockMvc.perform(delete("/households/invitations/" + invitationId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void revokeInvitationSucceeds() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID invitationId = UUID.randomUUID();
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.revokeInvitation(householdId, actorUserId, invitationId))
+                .thenReturn(true);
+
+        mockMvc.perform(delete("/households/invitations/" + invitationId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
     }
 
     @Test

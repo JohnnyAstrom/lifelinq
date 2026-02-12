@@ -9,6 +9,7 @@ import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import app.lifelinq.features.household.contract.CreateInvitationOutput;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ public class HouseholdApplicationService {
     private final ListHouseholdMembersUseCase listHouseholdMembersUseCase;
     private final RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase;
     private final CreateInvitationUseCase createInvitationUseCase;
+    private final RevokeInvitationUseCase revokeInvitationUseCase;
     private final MembershipRepository membershipRepository;
     private final EnsureUserExistsUseCase ensureUserExistsUseCase;
     private final Clock clock;
@@ -33,6 +35,7 @@ public class HouseholdApplicationService {
             ListHouseholdMembersUseCase listHouseholdMembersUseCase,
             RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase,
             CreateInvitationUseCase createInvitationUseCase,
+            RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             EnsureUserExistsUseCase ensureUserExistsUseCase,
             Clock clock
@@ -43,6 +46,7 @@ public class HouseholdApplicationService {
         this.listHouseholdMembersUseCase = listHouseholdMembersUseCase;
         this.removeMemberFromHouseholdUseCase = removeMemberFromHouseholdUseCase;
         this.createInvitationUseCase = createInvitationUseCase;
+        this.revokeInvitationUseCase = revokeInvitationUseCase;
         this.membershipRepository = membershipRepository;
         this.ensureUserExistsUseCase = ensureUserExistsUseCase;
         this.clock = clock;
@@ -57,7 +61,7 @@ public class HouseholdApplicationService {
     }
 
     @Transactional
-    public CreateInvitationResult createInvitation(
+    public CreateInvitationOutput createInvitation(
             UUID householdId,
             UUID actorUserId,
             String inviteeEmail,
@@ -73,7 +77,21 @@ public class HouseholdApplicationService {
                 clock.instant(),
                 effectiveTtl
         );
-        return createInvitationUseCase.execute(command);
+        CreateInvitationResult result = createInvitationUseCase.execute(command);
+        return new CreateInvitationOutput(
+                result.getInvitationId(),
+                result.getToken(),
+                result.getExpiresAt()
+        );
+    }
+
+    @Transactional
+    public boolean revokeInvitation(UUID householdId, UUID actorUserId, UUID invitationId) {
+        ensureUserExistsUseCase.execute(actorUserId);
+        ensureOwner(householdId, actorUserId);
+        RevokeInvitationCommand command = new RevokeInvitationCommand(invitationId, clock.instant());
+        RevokeInvitationResult result = revokeInvitationUseCase.execute(command);
+        return result.isRevoked();
     }
 
     @Transactional
@@ -150,4 +168,5 @@ public class HouseholdApplicationService {
         }
         return email.trim().toLowerCase();
     }
+
 }

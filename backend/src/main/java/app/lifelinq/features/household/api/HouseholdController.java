@@ -1,15 +1,18 @@
 package app.lifelinq.features.household.api;
 
 import app.lifelinq.config.RequestContext;
-import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
+import app.lifelinq.features.household.application.AccessDeniedException;
+import app.lifelinq.features.household.contract.CreateInvitationOutput;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -109,6 +112,45 @@ public class HouseholdController {
                 membershipId.getHouseholdId(),
                 membershipId.getUserId()
         ));
+    }
+
+    @PostMapping("/households/invitations")
+    public ResponseEntity<?> createInvitation(@RequestBody CreateInvitationRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        Duration ttl = request == null || request.getTtlSeconds() == null
+                ? null
+                : Duration.ofSeconds(request.getTtlSeconds());
+        CreateInvitationOutput result = householdApplicationService.createInvitation(
+                context.getHouseholdId(),
+                context.getUserId(),
+                request == null ? null : request.getEmail(),
+                ttl
+        );
+        return ResponseEntity.status(201).body(new CreateInvitationResponse(
+                result.invitationId(),
+                result.token(),
+                result.expiresAt()
+        ));
+    }
+
+    @DeleteMapping("/households/invitations/{invitationId}")
+    public ResponseEntity<?> revokeInvitation(@PathVariable UUID invitationId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        boolean revoked = householdApplicationService.revokeInvitation(
+                context.getHouseholdId(),
+                context.getUserId(),
+                invitationId
+        );
+        if (!revoked) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
     }
 
     private List<MemberItemResponse> toResponseItems(List<Membership> memberships) {

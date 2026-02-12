@@ -71,6 +71,7 @@ public class HouseholdApplicationConfig {
             ListHouseholdMembersUseCase listHouseholdMembersUseCase,
             RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase,
             CreateInvitationUseCase createInvitationUseCase,
+            RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             EnsureUserExistsUseCase ensureUserExistsUseCase,
             Clock clock
@@ -82,6 +83,7 @@ public class HouseholdApplicationConfig {
                 listHouseholdMembersUseCase,
                 removeMemberFromHouseholdUseCase,
                 createInvitationUseCase,
+                revokeInvitationUseCase,
                 membershipRepository,
                 ensureUserExistsUseCase,
                 clock
