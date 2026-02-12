@@ -63,6 +63,18 @@ class MeControllerTest {
                 .andExpect(jsonPath("$.householdId").value(householdId.toString()));
     }
 
+    @Test
+    void returnsNullHouseholdWhenMissingMembership() throws Exception {
+        UUID userId = UUID.randomUUID();
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(get("/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(userId.toString()))
+                .andExpect(jsonPath("$.householdId").value(org.hamcrest.Matchers.nullValue()));
+    }
+
     private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(
