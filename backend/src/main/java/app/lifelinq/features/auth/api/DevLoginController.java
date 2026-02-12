@@ -1,9 +1,6 @@
 package app.lifelinq.features.auth.api;
 
-import app.lifelinq.config.JwtSigner;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
+import app.lifelinq.features.auth.application.AuthApplicationService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,12 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Profile("dev")
 public class DevLoginController {
-    private final EnsureUserExistsUseCase ensureUserExistsUseCase;
-    private final JwtSigner jwtSigner;
+    private final AuthApplicationService authApplicationService;
 
-    public DevLoginController(EnsureUserExistsUseCase ensureUserExistsUseCase, JwtSigner jwtSigner) {
-        this.ensureUserExistsUseCase = ensureUserExistsUseCase;
-        this.jwtSigner = jwtSigner;
+    public DevLoginController(AuthApplicationService authApplicationService) {
+        this.authApplicationService = authApplicationService;
     }
 
     // Development-only endpoint. Do not expose in production.
@@ -27,9 +22,7 @@ public class DevLoginController {
         if (request == null || request.email() == null || request.email().isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        UUID userId = UUID.nameUUIDFromBytes(request.email().trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
-        ensureUserExistsUseCase.execute(userId);
-        String token = jwtSigner.sign(userId);
+        String token = authApplicationService.devLogin(request.email());
         return ResponseEntity.ok(new DevLoginResponse(token));
     }
 

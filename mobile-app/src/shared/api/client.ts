@@ -60,7 +60,14 @@ export async function fetchJson<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new ApiError(response.status, text);
+    const error = new ApiError(response.status, text);
+    // Dev-friendly logging to surface API failures during debugging.
+    console.error('API error', {
+      url: `${baseUrl}${path}`,
+      status: response.status,
+      body: text,
+    });
+    throw error;
   }
 
   if (response.status === 204) {

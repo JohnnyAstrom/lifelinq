@@ -1,5 +1,6 @@
 package app.lifelinq.features.auth.api;
 
+import app.lifelinq.test.DevAuthTestApplication;
 import org.junit.jupiter.api.Test;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;

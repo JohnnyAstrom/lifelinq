@@ -1,7 +1,9 @@
-package app.lifelinq.features.auth.api;
+package app.lifelinq.test;
 
 import app.lifelinq.config.RequestContextConfig;
 import app.lifelinq.config.SecurityConfig;
+import app.lifelinq.features.auth.api.DevTokenController;
+import app.lifelinq.features.auth.api.MeController;
 import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.household.infrastructure.InMemoryMembershipRepository;

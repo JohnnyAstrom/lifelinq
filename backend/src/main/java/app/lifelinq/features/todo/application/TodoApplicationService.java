@@ -25,7 +25,7 @@ public class TodoApplicationService {
         if (ensureUserExistsUseCase == null) {
             throw new IllegalArgumentException("ensureUserExistsUseCase must not be null");
         }
-        this.createTodoUseCase = new CreateTodoUseCase();
+        this.createTodoUseCase = new CreateTodoUseCase(todoRepository);
         this.completeTodoUseCase = new CompleteTodoUseCase(todoRepository);
         this.listTodosUseCase = new ListTodosUseCase(todoRepository);
         this.ensureUserExistsUseCase = ensureUserExistsUseCase;
