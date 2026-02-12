@@ -3,6 +3,8 @@ package app.lifelinq.features.household.application;
 import org.springframework.transaction.annotation.Transactional;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
+import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.household.domain.HouseholdRole;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -12,17 +14,20 @@ public class HouseholdApplicationService {
     private final CreateHouseholdUseCase createHouseholdUseCase;
     private final AddMemberToHouseholdUseCase addMemberToHouseholdUseCase;
     private final ListHouseholdMembersUseCase listHouseholdMembersUseCase;
+    private final MembershipRepository membershipRepository;
 
     public HouseholdApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
             CreateHouseholdUseCase createHouseholdUseCase,
             AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
-            ListHouseholdMembersUseCase listHouseholdMembersUseCase
+            ListHouseholdMembersUseCase listHouseholdMembersUseCase,
+            MembershipRepository membershipRepository
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
         this.createHouseholdUseCase = createHouseholdUseCase;
         this.addMemberToHouseholdUseCase = addMemberToHouseholdUseCase;
         this.listHouseholdMembersUseCase = listHouseholdMembersUseCase;
+        this.membershipRepository = membershipRepository;
     }
 
     @Transactional
@@ -40,8 +45,9 @@ public class HouseholdApplicationService {
     }
 
     @Transactional
-    public Membership addMember(UUID householdId, UUID userId) {
-        AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(householdId, userId);
+    public Membership addMember(UUID householdId, UUID actorUserId, UUID targetUserId) {
+        ensureOwner(householdId, actorUserId);
+        AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(householdId, targetUserId);
         AddMemberToHouseholdResult result = addMemberToHouseholdUseCase.execute(command);
         return new Membership(result.getHouseholdId(), result.getUserId(), result.getRole());
     }
@@ -52,5 +58,17 @@ public class HouseholdApplicationService {
                 new ListHouseholdMembersCommand(householdId)
         );
         return result.getMembers();
+    }
+
+    private void ensureOwner(UUID householdId, UUID actorUserId) {
+        for (Membership membership : membershipRepository.findByHouseholdId(householdId)) {
+            if (membership.getUserId().equals(actorUserId)) {
+                if (membership.getRole() == HouseholdRole.OWNER) {
+                    return;
+                }
+                throw new AccessDeniedException("Only owners can add members");
+            }
+        }
+        throw new AccessDeniedException("Actor is not a member of the household");
     }
 }

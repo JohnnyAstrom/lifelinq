@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
+import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.Membership;
@@ -125,21 +126,42 @@ class HouseholdControllerTest {
     }
 
     @Test
-    void addMemberSucceedsWhenHouseholdMatches() throws Exception {
+    void addMemberReturns403WhenActorIsNotOwner() throws Exception {
         UUID householdId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        String token = createToken(householdId, UUID.randomUUID(), Instant.now().plusSeconds(60));
-        Membership membership = new Membership(householdId, userId, HouseholdRole.MEMBER);
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
 
-        when(householdApplicationService.addMember(householdId, userId)).thenReturn(membership);
+        when(householdApplicationService.addMember(householdId, actorUserId, targetUserId))
+                .thenThrow(new AccessDeniedException("not owner"));
 
         mockMvc.perform(post("/household/members")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\":\"" + userId + "\"}"))
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(householdApplicationService).addMember(householdId, actorUserId, targetUserId);
+    }
+
+    @Test
+    void addMemberSucceedsWhenActorIsOwner() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+        Membership membership = new Membership(householdId, targetUserId, HouseholdRole.MEMBER);
+
+        when(householdApplicationService.addMember(householdId, actorUserId, targetUserId))
+                .thenReturn(membership);
+
+        mockMvc.perform(post("/household/members")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
                 .andExpect(status().isOk());
 
-        verify(householdApplicationService).addMember(householdId, userId);
+        verify(householdApplicationService).addMember(householdId, actorUserId, targetUserId);
     }
 
     @Test

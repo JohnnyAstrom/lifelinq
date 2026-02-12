@@ -1,6 +1,7 @@
 package app.lifelinq.features.household.api;
 
 import app.lifelinq.config.RequestContext;
+import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
@@ -44,15 +45,23 @@ public class HouseholdController {
         if (context == null || context.getHouseholdId() == null) {
             return ApiScoping.missingContext();
         }
-        Membership membership = householdApplicationService.addMember(
-                context.getHouseholdId(),
-                request.getUserId()
-        );
-        return ResponseEntity.ok(new AddMemberResponse(
-                membership.getHouseholdId(),
-                membership.getUserId(),
-                membership.getRole()
-        ));
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        try {
+            Membership membership = householdApplicationService.addMember(
+                    context.getHouseholdId(),
+                    context.getUserId(),
+                    request.getUserId()
+            );
+            return ResponseEntity.ok(new AddMemberResponse(
+                    membership.getHouseholdId(),
+                    membership.getUserId(),
+                    membership.getRole()
+            ));
+        } catch (AccessDeniedException ex) {
+            return ResponseEntity.status(403).body("Access denied");
+        }
     }
 
     @GetMapping("/household/members")

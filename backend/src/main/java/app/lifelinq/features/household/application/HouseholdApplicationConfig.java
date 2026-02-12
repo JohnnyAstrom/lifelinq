@@ -59,13 +59,15 @@ public class HouseholdApplicationConfig {
             AcceptInvitationUseCase acceptInvitationUseCase,
             CreateHouseholdUseCase createHouseholdUseCase,
             AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
-            ListHouseholdMembersUseCase listHouseholdMembersUseCase
+            ListHouseholdMembersUseCase listHouseholdMembersUseCase,
+            MembershipRepository membershipRepository
     ) {
         return new HouseholdApplicationService(
                 acceptInvitationUseCase,
                 createHouseholdUseCase,
                 addMemberToHouseholdUseCase,
-                listHouseholdMembersUseCase
+                listHouseholdMembersUseCase,
+                membershipRepository
         );
     }
 
