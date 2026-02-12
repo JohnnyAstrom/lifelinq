@@ -22,7 +22,14 @@ public class ShoppingController {
         if (context == null || context.getHouseholdId() == null) {
             return ApiScoping.missingContext();
         }
-        UUID itemId = shoppingApplicationService.addItem(context.getHouseholdId(), request.getName());
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        UUID itemId = shoppingApplicationService.addItem(
+                context.getHouseholdId(),
+                context.getUserId(),
+                request.getName()
+        );
         return ResponseEntity.ok(new CreateShoppingItemResponse(itemId));
     }
 }

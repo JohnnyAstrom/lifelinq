@@ -32,15 +32,22 @@ public class TodoController {
         if (context == null || context.getHouseholdId() == null) {
             return ApiScoping.missingContext();
         }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
         return ResponseEntity.ok(new CreateTodoResponse(
-                todoApplicationService.createTodo(context.getHouseholdId(), request.getText())
+                todoApplicationService.createTodo(context.getHouseholdId(), context.getUserId(), request.getText())
         ));
     }
 
     @PostMapping("/todos/{id}/complete")
-    public CompleteTodoResponse complete(@PathVariable("id") UUID id) {
-        boolean completed = todoApplicationService.completeTodo(id, Instant.now());
-        return new CompleteTodoResponse(completed);
+    public ResponseEntity<?> complete(@PathVariable("id") UUID id) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        boolean completed = todoApplicationService.completeTodo(id, context.getUserId(), Instant.now());
+        return ResponseEntity.ok(new CompleteTodoResponse(completed));
     }
 
     @GetMapping("/todos")

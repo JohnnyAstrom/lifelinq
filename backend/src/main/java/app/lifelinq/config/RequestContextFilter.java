@@ -6,15 +6,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.web.filter.OncePerRequestFilter;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 
 public class RequestContextFilter extends OncePerRequestFilter {
     private final JwtVerifier jwtVerifier;
-    private final EnsureUserExistsUseCase ensureUserExistsUseCase;
 
-    public RequestContextFilter(JwtVerifier jwtVerifier, EnsureUserExistsUseCase ensureUserExistsUseCase) {
+    public RequestContextFilter(JwtVerifier jwtVerifier) {
         this.jwtVerifier = jwtVerifier;
-        this.ensureUserExistsUseCase = ensureUserExistsUseCase;
     }
 
     @Override
@@ -37,8 +34,6 @@ public class RequestContextFilter extends OncePerRequestFilter {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
-
-            ensureUserExistsUseCase.execute(claims.getUserId());
 
             RequestContext context = new RequestContext();
             context.setHouseholdId(claims.getHouseholdId());

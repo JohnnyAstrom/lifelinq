@@ -11,7 +11,6 @@ import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
 import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import app.lifelinq.features.household.domain.Membership;
@@ -40,9 +39,8 @@ class HouseholdControllerTest {
     void setUp() {
         householdApplicationService = Mockito.mock(HouseholdApplicationService.class);
         HouseholdController controller = new HouseholdController(householdApplicationService);
-        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase))
+                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET)))
                 .build();
     }
 

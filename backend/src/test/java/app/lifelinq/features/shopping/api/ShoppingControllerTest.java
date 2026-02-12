@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -33,9 +32,8 @@ class ShoppingControllerTest {
     void setUp() {
         shoppingApplicationService = Mockito.mock(ShoppingApplicationService.class);
         ShoppingController controller = new ShoppingController(shoppingApplicationService);
-        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase))
+                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET)))
                 .build();
     }
 
@@ -67,7 +65,7 @@ class ShoppingControllerTest {
         UUID itemId = UUID.randomUUID();
         String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
 
-        when(shoppingApplicationService.addItem(householdId, "Milk")).thenReturn(itemId);
+        when(shoppingApplicationService.addItem(householdId, userId, "Milk")).thenReturn(itemId);
 
         mockMvc.perform(post("/shopping-items")
                         .header("Authorization", "Bearer " + token)
@@ -75,7 +73,7 @@ class ShoppingControllerTest {
                         .content("{\"name\":\"Milk\"}"))
                 .andExpect(status().isOk());
 
-        verify(shoppingApplicationService).addItem(householdId, "Milk");
+        verify(shoppingApplicationService).addItem(householdId, userId, "Milk");
     }
 
     private String createToken(UUID householdId, UUID userId, Instant exp) throws Exception {

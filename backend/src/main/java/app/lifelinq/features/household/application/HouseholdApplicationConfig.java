@@ -3,6 +3,7 @@ package app.lifelinq.features.household.application;
 import app.lifelinq.features.household.domain.HouseholdRepository;
 import app.lifelinq.features.household.domain.InvitationRepository;
 import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -61,7 +62,8 @@ public class HouseholdApplicationConfig {
             AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
             ListHouseholdMembersUseCase listHouseholdMembersUseCase,
             RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase,
-            MembershipRepository membershipRepository
+            MembershipRepository membershipRepository,
+            EnsureUserExistsUseCase ensureUserExistsUseCase
     ) {
         return new HouseholdApplicationService(
                 acceptInvitationUseCase,
@@ -69,7 +71,8 @@ public class HouseholdApplicationConfig {
                 addMemberToHouseholdUseCase,
                 listHouseholdMembersUseCase,
                 removeMemberFromHouseholdUseCase,
-                membershipRepository
+                membershipRepository,
+                ensureUserExistsUseCase
         );
     }
 

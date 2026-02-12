@@ -18,15 +18,13 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 
 class RequestContextFilterTest {
     private static final String SECRET = "test-secret";
 
     @Test
     void setsContextFromHeadersAndClearsAfterChain() throws Exception {
-        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase);
+        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
         UUID householdId = UUID.randomUUID();
@@ -43,14 +41,12 @@ class RequestContextFilterTest {
 
         filter.doFilter(request, response, chain);
 
-        Mockito.verify(ensureUserExistsUseCase).execute(userId);
         assertNull(RequestContextHolder.getCurrent());
     }
 
     @Test
     void clearsContextWhenChainThrows() throws Exception {
-        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase);
+        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -63,14 +59,12 @@ class RequestContextFilterTest {
 
         assertThrows(ServletException.class, () -> filter.doFilter(request, response, chain));
 
-        Mockito.verify(ensureUserExistsUseCase).execute(Mockito.any(UUID.class));
         assertNull(RequestContextHolder.getCurrent());
     }
 
     @Test
     void returnsUnauthorizedWhenTokenMissing() throws Exception {
-        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase);
+        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -80,14 +74,12 @@ class RequestContextFilterTest {
 
         Mockito.verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         Mockito.verifyNoInteractions(chain);
-        Mockito.verifyNoInteractions(ensureUserExistsUseCase);
         assertNull(RequestContextHolder.getCurrent());
     }
 
     @Test
     void returnsUnauthorizedWhenTokenInvalid() throws Exception {
-        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase);
+        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -99,7 +91,6 @@ class RequestContextFilterTest {
 
         Mockito.verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         Mockito.verifyNoInteractions(chain);
-        Mockito.verifyNoInteractions(ensureUserExistsUseCase);
         assertNull(RequestContextHolder.getCurrent());
     }
 
