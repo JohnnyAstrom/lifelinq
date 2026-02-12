@@ -40,6 +40,11 @@ This is a **minimal scoping layer** only:
 - no refresh tokens
 - minimal user persistence only (ensure user exists)
 
+## Current identity endpoint (minimal)
+
+`GET /me` returns the current request context (userId and householdId).
+If there is no authenticated context, the endpoint returns **401**.
+
 ---
 
 ## FUTURE: Authentication via OAuth2 (not implemented yet)
