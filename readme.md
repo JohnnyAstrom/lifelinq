@@ -24,26 +24,31 @@ Examples:
 
 These are not projects.
 They are memory offloading.
+The todo experience is **list-first with a simple calendar view**, and switching between them should be effortless.
+Scheduled items should be able to **sync with Google Calendar**.
+Assignment is for coordination only; any household member can assign or clear it.
 
 ---
 
-### 2. Food & shopping
+### 2. Meals & shopping
 
-Food is handled separately because it:
-- happens every day
-- creates automatic follow‑up actions (shopping)
-- causes disproportionate mental friction
+Meals are handled separately because they:
+- happen every day
+- create automatic follow‑up actions (shopping)
+- cause disproportionate mental friction
 
 The system prioritizes:
 - shopping lists
 - recurring staple items
 - quick additions ("out of milk")
 
-Meal planning and recipes are optional and secondary.
+Meal planning is a core use case with a week view as the primary planning surface.
+Recipes can feed ingredients into shopping lists.
+Meals calendar sync is optional and export-only (read-only).
 
 ---
 
-### 3. Important things
+### 3. Documents
 
 A safety layer for things that are:
 - expensive
@@ -54,7 +59,6 @@ Examples:
 - contracts and warranties
 - subscriptions and bills
 - receipts and guarantees
-- important contacts
 
 The focus is on **retrievability**, not structure.
 
@@ -67,6 +71,7 @@ The focus is on **retrievability**, not structure.
 - **Shared by default**: multiple people collaborate in the same household
 - **Backend authority**: all business rules live on the server
 - **Long‑term thinking**: architecture favors clarity and durability over shortcuts
+- **Bilingual by default**: full support for Swedish and English from the start
 
 ---
 

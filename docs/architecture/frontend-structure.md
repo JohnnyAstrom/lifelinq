@@ -36,9 +36,10 @@ Each backend feature has a corresponding frontend feature folder:
 features/
   todo/
   shopping/
-  important/
+  documents/
   household/
   auth/
+  meals/
 ```
 
 Each feature may contain:
@@ -75,6 +76,7 @@ The shared layer contains reusable, non‑domain‑specific code:
 - generic hooks
 - API client setup
 - utilities
+- i18n setup and translation resources
 
 Shared code must not encode feature or business meaning.
 
@@ -87,6 +89,22 @@ Global state is limited to:
 - active household
 
 All other state is feature‑local.
+
+--- 
+
+## Internationalization (i18n)
+
+LifeLinq ships with **full Swedish and English support** from the start.
+
+Principles:
+- All user‑facing text must come from translation files.
+- Feature‑local strings live under the feature, shared UI strings live in shared i18n.
+- Keys are stable and semantic (not raw English strings).
+- Locale selection defaults to the device language, with a manual override in settings.
+
+Suggested structure:
+- `src/shared/i18n/` for base setup and shared strings
+- `src/features/<feature>/i18n/` for feature‑local strings
 
 ---
 
@@ -107,4 +125,3 @@ This structure:
 - keeps frontend and backend aligned
 - scales with feature growth
 - remains easy to reason about over time
-

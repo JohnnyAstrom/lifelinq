@@ -52,7 +52,8 @@ Current core features:
 - household
 - todo
 - shopping
-- important
+- meals
+- documents
 
 New functionality must either:
 - fit into an existing feature, or

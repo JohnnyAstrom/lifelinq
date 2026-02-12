@@ -41,6 +41,7 @@ Roles are intentionally minimal:
 - member – participates in the household
 
 Roles control access, not ownership.
+Roles do not gate everyday coordination actions like task assignment.
 
 ---
 

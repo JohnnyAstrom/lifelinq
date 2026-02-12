@@ -101,7 +101,7 @@ If a design or implementation violates an invariant, **the design is wrong**.
 
 - Todos are simple items, not projects.
 - Shopping is driven by needs, not plans.
-- “Important things” prioritize retrievability over structure.
+- “Documents” prioritize retrievability over structure.
 
 **Implication:**
 - The system must tolerate incomplete and messy data.

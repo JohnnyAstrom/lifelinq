@@ -49,6 +49,10 @@ All domain entities belong to a household.
 - optional due date
 - optional recurrence
 - optional assignee
+- assignment is coordination only, not ownership
+- any household member may reassign or clear assignment
+- optional due time (scheduled items)
+- optional calendar sync reference (external event id + provider)
 
 ---
 
@@ -58,13 +62,42 @@ All domain entities belong to a household.
 - may be recurring
 - may be marked as acquired
 
+### MealPlan
+
+- weekly planning surface for meals
+- composed of day entries within a household
+- supports history and forward planning (via week navigation)
+
+### MealEntry
+
+- planned meal on a specific date (e.g. lunch/dinner)
+- may reference a Recipe
+
+### Recipe
+
+- named recipe with a list of ingredients
+- ingredients can be pushed to ShoppingList
+
+### Ingredient
+
+- name + optional quantity/unit
+- used by Recipe
+
+### ShoppingList
+
+- a named list within a household
+- can be created ad hoc
+- holds ShoppingItems derived from recipes or manual input
+
 ---
 
-### ImportantItem
+### DocumentItem
 
-- represents a document, record, or reference
+- represents a document, receipt, or record
 - optimized for retrieval
-- may include attachments and metadata
+- metadata-first in V0
+- local attachments in V0.5 (creator-only storage)
+- cloud attachments in V1 (household shared)
 
 ---
 
@@ -93,18 +126,21 @@ All domain entities belong to a household.
 
 ## Persistence Snapshot (Current)
 
-This is a structural overview of tables and relations (no SQL, no code).
+This is a structural overview of tables and relations that are implemented today.
 
 ### Tables
 
+- `users`: `id`
 - `households`: `id`, `name`
 - `todos`: `id`, `household_id`, `text`, `status`
+- `shopping_items`: `id`, `household_id`, `name`, `created_at`
 - `memberships`: composite key (`household_id`, `user_id`), `role`
 - `invitations`: `id`, `household_id`, `invitee_email`, `token`, `expires_at`, `status`
 
 ### Relations (ID‑based)
 
 - `todos.household_id` → `households.id`
+- `shopping_items.household_id` → `households.id`
 - `memberships.household_id` → `households.id`
 - `invitations.household_id` → `households.id`
 
@@ -112,10 +148,10 @@ This is a structural overview of tables and relations (no SQL, no code).
 
 ```text
 households (id)
-  ↑            ↑            ↑
-  │            │            │
-todos          memberships  invitations
-(household_id) (household_id, user_id) (household_id)
+  ↑            ↑            ↑            ↑
+  │            │            │            │
+todos          memberships  invitations  shopping_items
+(household_id) (household_id, user_id) (household_id) (household_id)
 ```
 
 ### Constraints
@@ -127,6 +163,32 @@ todos          memberships  invitations
 
 - `household` is the aggregate root for `memberships` and `invitations`
 - `todo` is its own aggregate, bound to `household_id`
+
+---
+
+## Persistence Snapshot (Planned)
+
+This is a target structure based on the current architecture plan.
+
+### Tables (planned)
+
+- `meal_plans`: `id`, `household_id`, `week_start`
+- `meal_entries`: `id`, `meal_plan_id`, `date`, `slot`, `recipe_id`
+- `recipes`: `id`, `household_id`, `name`
+- `recipe_ingredients`: `id`, `recipe_id`, `name`, `quantity`, `unit`
+- `shopping_lists`: `id`, `household_id`, `name`
+- `shopping_items`: `id`, `shopping_list_id`, `name`, `status`
+- `document_items`: `id`, `household_id`, `title`, `notes`, `category`, `tags`, `external_link`
+
+### Relations (planned, ID‑based)
+
+- `meal_plans.household_id` → `households.id`
+- `meal_entries.meal_plan_id` → `meal_plans.id`
+- `recipes.household_id` → `households.id`
+- `recipe_ingredients.recipe_id` → `recipes.id`
+- `shopping_lists.household_id` → `households.id`
+- `shopping_items.shopping_list_id` → `shopping_lists.id`
+- `document_items.household_id` → `households.id`
 
 ---
 
