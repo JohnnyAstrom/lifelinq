@@ -124,6 +124,120 @@ All domain entities belong to a household.
 
 ---
 
+## Long-term Core Schema (Guiding)
+
+This section describes a **long-term, stable core** for each domain object.
+It is a guiding target, not a strict implementation requirement.
+
+### Household
+
+- `id` (core)
+- `name` (core)
+- `createdAt` (core)
+- `updatedAt` (later)
+
+### Membership
+
+- `householdId` (core)
+- `userId` (core)
+- `role` (core)
+- `createdAt` (core)
+
+### Invitation
+
+- `id` (core)
+- `householdId` (core)
+- `inviteeEmail` (core)
+- `token` (core)
+- `expiresAt` (core)
+- `status` (core)
+- `createdAt` (core)
+
+### TodoItem
+
+- `id` (core)
+- `householdId` (core)
+- `text` (core)
+- `status` (core)
+- `createdAt` (core)
+- `completedAt` (later)
+- `deletedAt` (later)
+- `dueDate` (core)
+- `dueTime` (later)
+- `recurrenceRule` (later)
+- `assignedToUserId` (later)
+- `createdByUserId` (later)
+- `calendarSyncId` (later)
+- `notes` (optional)
+- `tags` (optional)
+
+### ShoppingList
+
+- `id` (core)
+- `householdId` (core)
+- `name` (core)
+- `createdAt` (core)
+
+### ShoppingItem
+
+- `id` (core)
+- `shoppingListId` (core)
+- `name` (core)
+- `status` (core)
+- `createdAt` (core)
+- `boughtAt` (later)
+- `quantity` (optional)
+- `unit` (optional)
+- `source` (optional)
+
+### MealPlan
+
+- `id` (core)
+- `householdId` (core)
+- `weekStart` (core)
+- `createdAt` (core)
+
+### MealEntry
+
+- `id` (core)
+- `mealPlanId` (core)
+- `date` (core)
+- `slot` (core)
+- `recipeId` (later)
+- `notes` (optional)
+
+### Recipe
+
+- `id` (core)
+- `householdId` (core)
+- `name` (core)
+- `createdAt` (core)
+- `instructions` (later)
+- `sourceUrl` (optional)
+
+### Ingredient
+
+- `id` (core)
+- `recipeId` (core)
+- `name` (core)
+- `quantity` (optional)
+- `unit` (optional)
+
+### DocumentItem
+
+- `id` (core)
+- `householdId` (core)
+- `title` (core)
+- `createdAt` (core)
+- `notes` (later)
+- `date` (later)
+- `category` (later)
+- `tags` (optional)
+- `externalLink` (core for V0)
+- `attachmentRef` (later, V0.5/V1)
+
+---
+
 ## Persistence Snapshot (Current)
 
 This is a structural overview of tables and relations that are implemented today.
