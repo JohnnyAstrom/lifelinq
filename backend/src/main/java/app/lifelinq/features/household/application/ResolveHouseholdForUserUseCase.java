@@ -23,6 +23,9 @@ public final class ResolveHouseholdForUserUseCase {
         if (householdIds.size() == 1) {
             return Optional.of(householdIds.get(0));
         }
+        if (householdIds.size() > 1) {
+            throw new AmbiguousHouseholdException("Multiple households for user");
+        }
         return Optional.empty();
     }
 }

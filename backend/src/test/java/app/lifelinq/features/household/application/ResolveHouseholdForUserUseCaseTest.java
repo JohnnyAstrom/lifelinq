@@ -1,6 +1,7 @@
 package app.lifelinq.features.household.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.household.domain.Membership;
@@ -44,9 +45,7 @@ class ResolveHouseholdForUserUseCaseTest {
                 new FakeMembershipRepository(userId, List.of(UUID.randomUUID(), UUID.randomUUID()))
         );
 
-        var result = useCase.resolveForUser(userId);
-
-        assertTrue(result.isEmpty());
+        assertThrows(AmbiguousHouseholdException.class, () -> useCase.resolveForUser(userId));
     }
 
     private static final class FakeMembershipRepository implements MembershipRepository {

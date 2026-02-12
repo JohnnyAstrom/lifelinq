@@ -32,7 +32,8 @@ Tokens are **validated for signature and expiration**. If missing or invalid, th
 
 After validation, the server resolves **household context**:
 - If the user has exactly one household membership → use it.
-- If the user has none or multiple → return **401** (active household selection not implemented yet).
+- If the user has none → continue with `householdId = null` (endpoints requiring scope return 401).
+- If the user has multiple → return **401** (active household selection not implemented yet).
 
 This is a **minimal scoping layer** only:
 - no OAuth flow

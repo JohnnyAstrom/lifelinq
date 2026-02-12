@@ -118,11 +118,37 @@ class RequestContextFilterTest {
     }
 
     @Test
-    void returnsUnauthorizedWhenHouseholdResolutionMissing() throws Exception {
+    void proceedsWhenHouseholdMissing() throws Exception {
         UUID userId = UUID.randomUUID();
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
                 new ResolveHouseholdForUserUseCase(new FakeMembershipRepository())
+        );
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+        Mockito.when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+
+        FilterChain chain = (req, res) -> {
+            RequestContext context = RequestContextHolder.getCurrent();
+            assertNull(context.getHouseholdId());
+            assertEquals(userId, context.getUserId());
+        };
+
+        filter.doFilter(request, response, chain);
+
+        assertNull(RequestContextHolder.getCurrent());
+    }
+
+    @Test
+    void returnsUnauthorizedWhenHouseholdResolutionAmbiguous() throws Exception {
+        UUID userId = UUID.randomUUID();
+        FakeMembershipRepository repository = new FakeMembershipRepository()
+                .withMemberships(userId, List.of(UUID.randomUUID(), UUID.randomUUID()));
+        RequestContextFilter filter = new RequestContextFilter(
+                new JwtVerifier(SECRET),
+                new ResolveHouseholdForUserUseCase(repository)
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -166,7 +192,11 @@ class RequestContextFilterTest {
         private final Map<UUID, List<UUID>> byUser = new HashMap<>();
 
         FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
-            byUser.put(userId, List.of(householdId));
+            return withMemberships(userId, List.of(householdId));
+        }
+
+        FakeMembershipRepository withMemberships(UUID userId, List<UUID> householdIds) {
+            byUser.put(userId, householdIds);
             return this;
         }
 

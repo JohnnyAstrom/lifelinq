@@ -41,13 +41,15 @@ public class RequestContextFilter extends OncePerRequestFilter {
             }
 
             UUID userId = claims.getUserId();
-            Optional<UUID> householdId = resolveHouseholdForUserUseCase.resolveForUser(userId);
-            if (householdId.isEmpty()) {
+            Optional<UUID> householdId;
+            try {
+                householdId = resolveHouseholdForUserUseCase.resolveForUser(userId);
+            } catch (app.lifelinq.features.household.application.AmbiguousHouseholdException ex) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
             RequestContext context = new RequestContext();
-            context.setHouseholdId(householdId.get());
+            context.setHouseholdId(householdId.orElse(null));
             context.setUserId(userId);
             RequestContextHolder.set(context);
             filterChain.doFilter(request, response);
