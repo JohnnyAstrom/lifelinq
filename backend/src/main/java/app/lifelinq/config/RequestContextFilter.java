@@ -7,6 +7,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collections;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
 
@@ -17,6 +20,11 @@ public class RequestContextFilter extends OncePerRequestFilter {
     public RequestContextFilter(JwtVerifier jwtVerifier, ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase) {
         this.jwtVerifier = jwtVerifier;
         this.resolveHouseholdForUserUseCase = resolveHouseholdForUserUseCase;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return "/dev/token".equals(request.getRequestURI());
     }
 
     @Override
@@ -52,9 +60,13 @@ public class RequestContextFilter extends OncePerRequestFilter {
             context.setHouseholdId(householdId.orElse(null));
             context.setUserId(userId);
             RequestContextHolder.set(context);
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(userId.toString(), null, Collections.emptyList());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
         } finally {
             RequestContextHolder.clear();
+            SecurityContextHolder.clearContext();
         }
     }
 

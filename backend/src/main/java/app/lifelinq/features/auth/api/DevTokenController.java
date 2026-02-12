@@ -2,12 +2,14 @@ package app.lifelinq.features.auth.api;
 
 import app.lifelinq.config.JwtSigner;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@ConditionalOnProperty(name = "lifelinq.devAuth.enabled", havingValue = "true")
 public class DevTokenController {
     private final JwtSigner jwtSigner;
 

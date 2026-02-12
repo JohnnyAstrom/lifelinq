@@ -1,6 +1,5 @@
 package app.lifelinq.config;
 
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,14 +10,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class RequestContextConfig {
 
     @Bean(name = "lifeLinqRequestContextFilter")
-    public FilterRegistrationBean<RequestContextFilter> lifeLinqRequestContextFilter(
+    public RequestContextFilter lifeLinqRequestContextFilter(
             JwtVerifier jwtVerifier,
             ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase
     ) {
-        FilterRegistrationBean<RequestContextFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new RequestContextFilter(jwtVerifier, resolveHouseholdForUserUseCase));
-        registration.setOrder(0);
-        return registration;
+        return new RequestContextFilter(jwtVerifier, resolveHouseholdForUserUseCase);
     }
 
     @Bean
