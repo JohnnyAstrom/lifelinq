@@ -3,6 +3,7 @@ package app.lifelinq.features.household.application;
 import app.lifelinq.features.household.domain.HouseholdRepository;
 import app.lifelinq.features.household.domain.InvitationRepository;
 import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
@@ -107,5 +108,12 @@ public class HouseholdApplicationConfig {
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    public EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase(
+            MembershipRepository membershipRepository
+    ) {
+        return new EnsureHouseholdMemberUseCaseImpl(membershipRepository);
     }
 }
