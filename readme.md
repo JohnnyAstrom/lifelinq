@@ -125,4 +125,8 @@ The focus is currently on:
 If a change conflicts with the documented invariants or architecture, **the change is wrong**.
 
 LifeLinq is designed to evolve — but never drift.
+## Mobile dev setup
+
+- Copy .env.example to .env.
+- Adjust EXPO_PUBLIC_API_BASE_URL if the backend runs elsewhere.
 
