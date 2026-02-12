@@ -36,7 +36,7 @@ class CreateInvitationUseCaseTest {
         assertEquals("token-1", result.getToken());
         assertEquals(Instant.parse("2026-01-03T00:00:00Z"), result.getExpiresAt());
         assertEquals(1, repository.saved.size());
-        assertEquals(InvitationStatus.PENDING, repository.saved.get(0).getStatus());
+        assertEquals(InvitationStatus.ACTIVE, repository.saved.get(0).getStatus());
     }
 
     @Test
@@ -60,13 +60,13 @@ class CreateInvitationUseCaseTest {
     @Test
     void generatesNewTokenWhenCollision() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
-        repository.saved.add(new Invitation(
+        repository.saved.add(Invitation.rehydrate(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "test@example.com",
                 "token-1",
                 Instant.parse("2026-01-02T00:00:00Z"),
-                InvitationStatus.PENDING
+                InvitationStatus.ACTIVE
         ));
 
         CreateInvitationUseCase useCase = new CreateInvitationUseCase(
@@ -105,19 +105,41 @@ class CreateInvitationUseCaseTest {
         }
 
         @Override
+        public Optional<Invitation> findById(UUID id) {
+            for (Invitation invitation : saved) {
+                if (id.equals(invitation.getId())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existsByToken(String token) {
             return findByToken(token).isPresent();
         }
 
         @Override
-        public List<Invitation> findPending() {
+        public List<Invitation> findActive() {
             List<Invitation> result = new ArrayList<>();
             for (Invitation invitation : saved) {
-                if (invitation.getStatus() == InvitationStatus.PENDING) {
+                if (invitation.getStatus() == InvitationStatus.ACTIVE) {
                     result.add(invitation);
                 }
             }
             return result;
+        }
+
+        @Override
+        public Optional<Invitation> findActiveByHouseholdIdAndInviteeEmail(UUID householdId, String inviteeEmail) {
+            for (Invitation invitation : saved) {
+                if (invitation.getStatus() == InvitationStatus.ACTIVE
+                        && householdId.equals(invitation.getHouseholdId())
+                        && inviteeEmail.equals(invitation.getInviteeEmail())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
         }
     }
 

@@ -27,13 +27,12 @@ class JpaInvitationRepositoryAdapterTest {
                 new InvitationMapper()
         );
         Instant expiresAt = Instant.parse("2026-01-01T00:00:00Z");
-        Invitation invitation = new Invitation(
+        Invitation invitation = Invitation.createActive(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "test@example.com",
                 "token-1",
-                expiresAt,
-                InvitationStatus.PENDING
+                expiresAt
         );
 
         adapter.save(invitation);
@@ -45,23 +44,20 @@ class JpaInvitationRepositoryAdapterTest {
         assertEquals(invitation.getInviteeEmail(), loaded.get().getInviteeEmail());
         assertEquals("token-1", loaded.get().getToken());
         assertEquals(expiresAt, loaded.get().getExpiresAt());
-        assertEquals(InvitationStatus.PENDING, loaded.get().getStatus());
+        assertEquals(InvitationStatus.ACTIVE, loaded.get().getStatus());
 
-        boolean revoked = loaded.get().revoke(Instant.parse("2025-12-31T00:00:00Z"));
-        assertTrue(revoked);
+        loaded.get().revoke();
         assertEquals(InvitationStatus.REVOKED, loaded.get().getStatus());
 
-        Invitation expiredCandidate = new Invitation(
+        Invitation expiredCandidate = Invitation.createActive(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "expire@example.com",
                 "token-2",
-                Instant.parse("2025-01-01T00:00:00Z"),
-                InvitationStatus.PENDING
+                Instant.parse("2025-01-01T00:00:00Z")
         );
         adapter.save(expiredCandidate);
         Invitation loadedExpired = adapter.findByToken("token-2").orElseThrow();
-        loadedExpired.expire(Instant.parse("2026-01-01T00:00:00Z"));
-        assertEquals(InvitationStatus.EXPIRED, loadedExpired.getStatus());
+        assertTrue(loadedExpired.isExpired(Instant.parse("2026-01-01T00:00:00Z")));
     }
 }

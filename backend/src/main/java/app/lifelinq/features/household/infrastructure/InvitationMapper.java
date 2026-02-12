@@ -22,7 +22,7 @@ public final class InvitationMapper {
         if (entity == null) {
             throw new IllegalArgumentException("entity must not be null");
         }
-        return new Invitation(
+        return Invitation.rehydrate(
                 entity.getId(),
                 entity.getHouseholdId(),
                 entity.getInviteeEmail(),

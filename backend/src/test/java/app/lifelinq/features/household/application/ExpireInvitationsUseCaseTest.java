@@ -18,21 +18,19 @@ class ExpireInvitationsUseCaseTest {
     @Test
     void expiresOnlyPastDueInvitations() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
-        repository.saved.add(new Invitation(
+        repository.saved.add(Invitation.createActive(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "a@example.com",
                 "token-1",
-                Instant.parse("2025-01-01T00:00:00Z"),
-                InvitationStatus.PENDING
+                Instant.parse("2025-01-01T00:00:00Z")
         ));
-        repository.saved.add(new Invitation(
+        repository.saved.add(Invitation.createActive(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "b@example.com",
                 "token-2",
-                Instant.parse("2027-01-01T00:00:00Z"),
-                InvitationStatus.PENDING
+                Instant.parse("2027-01-01T00:00:00Z")
         ));
 
         ExpireInvitationsUseCase useCase = new ExpireInvitationsUseCase(repository);
@@ -41,8 +39,8 @@ class ExpireInvitationsUseCaseTest {
         ExpireInvitationsResult result = useCase.execute(command);
 
         assertEquals(1, result.getExpiredCount());
-        assertEquals(InvitationStatus.EXPIRED, repository.saved.get(0).getStatus());
-        assertEquals(InvitationStatus.PENDING, repository.saved.get(1).getStatus());
+        assertEquals(InvitationStatus.ACTIVE, repository.saved.get(0).getStatus());
+        assertEquals(InvitationStatus.ACTIVE, repository.saved.get(1).getStatus());
     }
 
     @Test
@@ -77,19 +75,41 @@ class ExpireInvitationsUseCaseTest {
         }
 
         @Override
+        public Optional<Invitation> findById(UUID id) {
+            for (Invitation invitation : saved) {
+                if (id.equals(invitation.getId())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existsByToken(String token) {
             return findByToken(token).isPresent();
         }
 
         @Override
-        public List<Invitation> findPending() {
+        public List<Invitation> findActive() {
             List<Invitation> result = new ArrayList<>();
             for (Invitation invitation : saved) {
-                if (invitation.getStatus() == InvitationStatus.PENDING) {
+                if (invitation.getStatus() == InvitationStatus.ACTIVE) {
                     result.add(invitation);
                 }
             }
             return result;
+        }
+
+        @Override
+        public Optional<Invitation> findActiveByHouseholdIdAndInviteeEmail(UUID householdId, String inviteeEmail) {
+            for (Invitation invitation : saved) {
+                if (invitation.getStatus() == InvitationStatus.ACTIVE
+                        && householdId.equals(invitation.getHouseholdId())
+                        && inviteeEmail.equals(invitation.getInviteeEmail())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
         }
     }
 }

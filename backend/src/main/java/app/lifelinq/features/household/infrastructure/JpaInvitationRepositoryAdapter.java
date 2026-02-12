@@ -6,6 +6,7 @@ import app.lifelinq.features.household.domain.InvitationStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public final class JpaInvitationRepositoryAdapter implements InvitationRepository {
     private final InvitationJpaRepository invitationJpaRepository;
@@ -37,6 +38,14 @@ public final class JpaInvitationRepositoryAdapter implements InvitationRepositor
     }
 
     @Override
+    public Optional<Invitation> findById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id must not be null");
+        }
+        return invitationJpaRepository.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
     public boolean existsByToken(String token) {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("token must not be blank");
@@ -45,11 +54,24 @@ public final class JpaInvitationRepositoryAdapter implements InvitationRepositor
     }
 
     @Override
-    public List<Invitation> findPending() {
+    public List<Invitation> findActive() {
         List<Invitation> result = new ArrayList<>();
-        for (InvitationEntity entity : invitationJpaRepository.findByStatus(InvitationStatus.PENDING)) {
+        for (InvitationEntity entity : invitationJpaRepository.findByStatus(InvitationStatus.ACTIVE)) {
             result.add(mapper.toDomain(entity));
         }
         return result;
+    }
+
+    @Override
+    public Optional<Invitation> findActiveByHouseholdIdAndInviteeEmail(UUID householdId, String inviteeEmail) {
+        if (householdId == null) {
+            throw new IllegalArgumentException("householdId must not be null");
+        }
+        if (inviteeEmail == null || inviteeEmail.isBlank()) {
+            throw new IllegalArgumentException("inviteeEmail must not be blank");
+        }
+        return invitationJpaRepository
+                .findByHouseholdIdAndInviteeEmailAndStatus(householdId, inviteeEmail, InvitationStatus.ACTIVE)
+                .map(mapper::toDomain);
     }
 }

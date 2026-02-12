@@ -118,8 +118,7 @@ class HouseholdControllerTest {
         MembershipId membershipId = new MembershipId(householdId, userId);
         when(householdApplicationService.acceptInvitation(
                 Mockito.eq("invite-token"),
-                Mockito.eq(userId),
-                Mockito.any(Instant.class)
+                Mockito.eq(userId)
         ))
                 .thenReturn(membershipId);
 
@@ -131,8 +130,7 @@ class HouseholdControllerTest {
 
         verify(householdApplicationService).acceptInvitation(
                 Mockito.eq("invite-token"),
-                Mockito.eq(userId),
-                Mockito.any(Instant.class)
+                Mockito.eq(userId)
         );
     }
 

@@ -8,7 +8,8 @@ public final class HouseholdInMemoryWiring {
 
     public static HouseholdUseCases createUseCases() {
         HouseholdPersistenceAdapter adapter = new HouseholdPersistenceAdapter();
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
         InMemoryInvitationTokenGenerator tokenGenerator = new InMemoryInvitationTokenGenerator();
-        return new HouseholdUseCases(adapter, adapter, adapter, tokenGenerator);
+        return new HouseholdUseCases(adapter, adapter, invitationRepository, tokenGenerator);
     }
 }

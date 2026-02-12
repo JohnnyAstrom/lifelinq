@@ -6,7 +6,6 @@ import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -104,8 +103,7 @@ public class HouseholdController {
         }
         MembershipId membershipId = householdApplicationService.acceptInvitation(
                 request.getToken(),
-                context.getUserId(),
-                Instant.now()
+                context.getUserId()
         );
         return ResponseEntity.ok(new AcceptInvitationResponse(
                 membershipId.getHouseholdId(),

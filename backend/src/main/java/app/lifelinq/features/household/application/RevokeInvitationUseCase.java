@@ -17,23 +17,20 @@ final class RevokeInvitationUseCase {
         if (command == null) {
             throw new IllegalArgumentException("command must not be null");
         }
-        if (command.getToken() == null || command.getToken().isBlank()) {
-            throw new IllegalArgumentException("token must not be blank");
+        if (command.getInvitationId() == null) {
+            throw new IllegalArgumentException("invitationId must not be null");
         }
         if (command.getNow() == null) {
             throw new IllegalArgumentException("now must not be null");
         }
 
-        Invitation invitation = invitationRepository.findByToken(command.getToken()).orElse(null);
+        Invitation invitation = invitationRepository.findById(command.getInvitationId()).orElse(null);
         if (invitation == null) {
             return new RevokeInvitationResult(false);
         }
 
-        boolean revoked = invitation.revoke(command.getNow());
-        if (revoked) {
-            invitationRepository.save(invitation);
-        }
-
-        return new RevokeInvitationResult(revoked);
+        invitation.revoke();
+        invitationRepository.save(invitation);
+        return new RevokeInvitationResult(true);
     }
 }

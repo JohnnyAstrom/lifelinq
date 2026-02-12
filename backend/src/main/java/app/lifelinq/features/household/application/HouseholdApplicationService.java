@@ -1,24 +1,30 @@
 package app.lifelinq.features.household.application;
 
-import org.springframework.transaction.annotation.Transactional;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 public class HouseholdApplicationService {
+    private static final Duration DEFAULT_INVITATION_TTL = Duration.ofDays(7);
+
     private final AcceptInvitationUseCase acceptInvitationUseCase;
     private final CreateHouseholdUseCase createHouseholdUseCase;
     private final AddMemberToHouseholdUseCase addMemberToHouseholdUseCase;
     private final ListHouseholdMembersUseCase listHouseholdMembersUseCase;
     private final RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase;
+    private final CreateInvitationUseCase createInvitationUseCase;
     private final MembershipRepository membershipRepository;
     private final EnsureUserExistsUseCase ensureUserExistsUseCase;
+    private final Clock clock;
 
     public HouseholdApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
@@ -26,24 +32,48 @@ public class HouseholdApplicationService {
             AddMemberToHouseholdUseCase addMemberToHouseholdUseCase,
             ListHouseholdMembersUseCase listHouseholdMembersUseCase,
             RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase,
+            CreateInvitationUseCase createInvitationUseCase,
             MembershipRepository membershipRepository,
-            EnsureUserExistsUseCase ensureUserExistsUseCase
+            EnsureUserExistsUseCase ensureUserExistsUseCase,
+            Clock clock
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
         this.createHouseholdUseCase = createHouseholdUseCase;
         this.addMemberToHouseholdUseCase = addMemberToHouseholdUseCase;
         this.listHouseholdMembersUseCase = listHouseholdMembersUseCase;
         this.removeMemberFromHouseholdUseCase = removeMemberFromHouseholdUseCase;
+        this.createInvitationUseCase = createInvitationUseCase;
         this.membershipRepository = membershipRepository;
         this.ensureUserExistsUseCase = ensureUserExistsUseCase;
+        this.clock = clock;
     }
 
     @Transactional
-    public MembershipId acceptInvitation(String token, UUID userId, Instant now) {
+    public MembershipId acceptInvitation(String token, UUID userId) {
         ensureUserExistsUseCase.execute(userId);
-        AcceptInvitationCommand command = new AcceptInvitationCommand(token, userId, now);
+        AcceptInvitationCommand command = new AcceptInvitationCommand(token, userId, clock.instant());
         AcceptInvitationResult result = acceptInvitationUseCase.execute(command);
         return new MembershipId(result.getHouseholdId(), result.getUserId());
+    }
+
+    @Transactional
+    public CreateInvitationResult createInvitation(
+            UUID householdId,
+            UUID actorUserId,
+            String inviteeEmail,
+            Duration ttl
+    ) {
+        ensureUserExistsUseCase.execute(actorUserId);
+        ensureOwner(householdId, actorUserId);
+        String normalizedEmail = normalizeEmail(inviteeEmail);
+        Duration effectiveTtl = ttl == null ? DEFAULT_INVITATION_TTL : ttl;
+        CreateInvitationCommand command = new CreateInvitationCommand(
+                householdId,
+                normalizedEmail,
+                clock.instant(),
+                effectiveTtl
+        );
+        return createInvitationUseCase.execute(command);
     }
 
     @Transactional
@@ -112,5 +142,12 @@ public class HouseholdApplicationService {
         if (targetIsOwner && ownerCount <= 1) {
             throw new LastOwnerRemovalException("Cannot remove the last owner");
         }
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        return email.trim().toLowerCase();
     }
 }

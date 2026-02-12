@@ -1,18 +1,19 @@
 package app.lifelinq.features.household.application;
 
 import java.time.Instant;
+import java.util.UUID;
 
 public final class RevokeInvitationCommand {
-    private final String token;
+    private final UUID invitationId;
     private final Instant now;
 
-    public RevokeInvitationCommand(String token, Instant now) {
-        this.token = token;
+    public RevokeInvitationCommand(UUID invitationId, Instant now) {
+        this.invitationId = invitationId;
         this.now = now;
     }
 
-    public String getToken() {
-        return token;
+    public UUID getInvitationId() {
+        return invitationId;
     }
 
     public Instant getNow() {

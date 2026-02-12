@@ -2,7 +2,6 @@ package app.lifelinq.features.household.application;
 
 import app.lifelinq.features.household.domain.Invitation;
 import app.lifelinq.features.household.domain.InvitationRepository;
-import app.lifelinq.features.household.domain.InvitationStatus;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -46,14 +45,21 @@ final class CreateInvitationUseCase {
         }
 
         Instant expiresAt = command.getNow().plus(ttl);
+        invitationRepository.findActiveByHouseholdIdAndInviteeEmail(
+                        command.getHouseholdId(),
+                        command.getInviteeEmail()
+                )
+                .filter(existing -> existing.isActive(command.getNow()))
+                .ifPresent(existing -> {
+                    throw new IllegalStateException("active invitation already exists");
+                });
         String token = generateUniqueToken();
-        Invitation invitation = new Invitation(
+        Invitation invitation = Invitation.createActive(
                 UUID.randomUUID(),
                 command.getHouseholdId(),
                 command.getInviteeEmail(),
                 token,
-                expiresAt,
-                InvitationStatus.PENDING
+                expiresAt
         );
 
         invitationRepository.save(invitation);

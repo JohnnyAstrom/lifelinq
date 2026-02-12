@@ -28,13 +28,12 @@ class InMemoryInvitationRepositoryTest {
     @Test
     void savesAndFindsByToken() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
-        Invitation invitation = new Invitation(
+        Invitation invitation = Invitation.createActive(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "test@example.com",
                 "token-1",
-                Instant.parse("2026-01-01T00:00:00Z"),
-                InvitationStatus.PENDING
+                Instant.parse("2026-01-01T00:00:00Z")
         );
 
         repository.save(invitation);
@@ -45,25 +44,24 @@ class InMemoryInvitationRepositoryTest {
     }
 
     @Test
-    void findsPendingOnly() {
+    void findsActiveOnly() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
-        repository.save(new Invitation(
+        repository.save(Invitation.createActive(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "test@example.com",
                 "token-1",
-                Instant.parse("2026-01-01T00:00:00Z"),
-                InvitationStatus.PENDING
+                Instant.parse("2026-01-01T00:00:00Z")
         ));
-        repository.save(new Invitation(
+        repository.save(Invitation.rehydrate(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "test2@example.com",
                 "token-2",
                 Instant.parse("2026-01-01T00:00:00Z"),
-                InvitationStatus.ACCEPTED
+                InvitationStatus.REVOKED
         ));
 
-        assertEquals(1, repository.findPending().size());
+        assertEquals(1, repository.findActive().size());
     }
 }

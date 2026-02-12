@@ -11,7 +11,7 @@ public final class Invitation {
     private final Instant expiresAt;
     private InvitationStatus status;
 
-    public Invitation(
+    private Invitation(
             UUID id,
             UUID householdId,
             String inviteeEmail,
@@ -45,6 +45,27 @@ public final class Invitation {
         this.status = status;
     }
 
+    public static Invitation createActive(
+            UUID id,
+            UUID householdId,
+            String inviteeEmail,
+            String token,
+            Instant expiresAt
+    ) {
+        return new Invitation(id, householdId, inviteeEmail, token, expiresAt, InvitationStatus.ACTIVE);
+    }
+
+    public static Invitation rehydrate(
+            UUID id,
+            UUID householdId,
+            String inviteeEmail,
+            String token,
+            Instant expiresAt,
+            InvitationStatus status
+    ) {
+        return new Invitation(id, householdId, inviteeEmail, token, expiresAt, status);
+    }
+
     public UUID getId() {
         return id;
     }
@@ -69,6 +90,10 @@ public final class Invitation {
         return status;
     }
 
+    public boolean isActive(Instant now) {
+        return status == InvitationStatus.ACTIVE && !isExpired(now);
+    }
+
     public boolean isExpired(Instant now) {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
@@ -76,36 +101,10 @@ public final class Invitation {
         return now.isAfter(expiresAt);
     }
 
-    public void accept(Instant now) {
-        if (now == null) {
-            throw new IllegalArgumentException("now must not be null");
-        }
-        if (status != InvitationStatus.PENDING) {
-            throw new IllegalStateException("invitation is not pending");
-        }
-        if (isExpired(now)) {
-            throw new IllegalStateException("invitation is expired");
-        }
-        status = InvitationStatus.ACCEPTED;
-    }
-
-    public void expire(Instant now) {
-        if (now == null) {
-            throw new IllegalArgumentException("now must not be null");
-        }
-        if (status == InvitationStatus.PENDING && isExpired(now)) {
-            status = InvitationStatus.EXPIRED;
-        }
-    }
-
-    public boolean revoke(Instant now) {
-        if (now == null) {
-            throw new IllegalArgumentException("now must not be null");
-        }
-        if (status != InvitationStatus.PENDING) {
-            return false;
+    public void revoke() {
+        if (status == InvitationStatus.REVOKED) {
+            throw new IllegalStateException("invitation is already revoked");
         }
         status = InvitationStatus.REVOKED;
-        return true;
     }
 }

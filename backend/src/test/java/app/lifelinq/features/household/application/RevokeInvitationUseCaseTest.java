@@ -18,19 +18,18 @@ class RevokeInvitationUseCaseTest {
     @Test
     void revokesWhenPending() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
-        Invitation invitation = new Invitation(
+        Invitation invitation = Invitation.createActive(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "test@example.com",
                 "token-1",
-                Instant.parse("2026-01-01T00:00:00Z"),
-                InvitationStatus.PENDING
+                Instant.parse("2026-01-01T00:00:00Z")
         );
         repository.save(invitation);
 
         RevokeInvitationUseCase useCase = new RevokeInvitationUseCase(repository);
         RevokeInvitationCommand command = new RevokeInvitationCommand(
-                "token-1",
+                invitation.getId(),
                 Instant.parse("2025-12-31T00:00:00Z")
         );
 
@@ -44,34 +43,11 @@ class RevokeInvitationUseCaseTest {
     void returnsFalseWhenNotFound() {
         RevokeInvitationUseCase useCase = new RevokeInvitationUseCase(new InMemoryInvitationRepository());
         RevokeInvitationCommand command = new RevokeInvitationCommand(
-                "missing",
+                UUID.randomUUID(),
                 Instant.parse("2025-12-31T00:00:00Z")
         );
         RevokeInvitationResult result = useCase.execute(command);
         assertEquals(false, result.isRevoked());
-    }
-
-    @Test
-    void returnsFalseWhenNotPending() {
-        InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
-        Invitation invitation = new Invitation(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "test@example.com",
-                "token-1",
-                Instant.parse("2026-01-01T00:00:00Z"),
-                InvitationStatus.ACCEPTED
-        );
-        repository.save(invitation);
-
-        RevokeInvitationUseCase useCase = new RevokeInvitationUseCase(repository);
-        RevokeInvitationCommand command = new RevokeInvitationCommand(
-                "token-1",
-                Instant.parse("2025-12-31T00:00:00Z")
-        );
-        RevokeInvitationResult result = useCase.execute(command);
-        assertEquals(false, result.isRevoked());
-        assertEquals(InvitationStatus.ACCEPTED, repository.saved.get(0).getStatus());
     }
 
     @Test
@@ -83,7 +59,7 @@ class RevokeInvitationUseCaseTest {
     @Test
     void requiresNow() {
         RevokeInvitationUseCase useCase = new RevokeInvitationUseCase(new InMemoryInvitationRepository());
-        RevokeInvitationCommand command = new RevokeInvitationCommand("token-1", null);
+        RevokeInvitationCommand command = new RevokeInvitationCommand(UUID.randomUUID(), null);
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
     }
 
@@ -106,19 +82,41 @@ class RevokeInvitationUseCaseTest {
         }
 
         @Override
+        public Optional<Invitation> findById(UUID id) {
+            for (Invitation invitation : saved) {
+                if (id.equals(invitation.getId())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existsByToken(String token) {
             return findByToken(token).isPresent();
         }
 
         @Override
-        public List<Invitation> findPending() {
+        public List<Invitation> findActive() {
             List<Invitation> result = new ArrayList<>();
             for (Invitation invitation : saved) {
-                if (invitation.getStatus() == InvitationStatus.PENDING) {
+                if (invitation.getStatus() == InvitationStatus.ACTIVE) {
                     result.add(invitation);
                 }
             }
             return result;
+        }
+
+        @Override
+        public Optional<Invitation> findActiveByHouseholdIdAndInviteeEmail(UUID householdId, String inviteeEmail) {
+            for (Invitation invitation : saved) {
+                if (invitation.getStatus() == InvitationStatus.ACTIVE
+                        && householdId.equals(invitation.getHouseholdId())
+                        && inviteeEmail.equals(invitation.getInviteeEmail())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
         }
     }
 }

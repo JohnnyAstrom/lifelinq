@@ -12,4 +12,10 @@ public interface InvitationJpaRepository extends JpaRepository<InvitationEntity,
     boolean existsByToken(String token);
 
     List<InvitationEntity> findByStatus(InvitationStatus status);
+
+    Optional<InvitationEntity> findByHouseholdIdAndInviteeEmailAndStatus(
+            UUID householdId,
+            String inviteeEmail,
+            InvitationStatus status
+    );
 }

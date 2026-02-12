@@ -41,7 +41,10 @@ final class AcceptInvitationUseCase {
         Invitation invitation = invitationRepository.findByToken(command.getToken())
                 .orElseThrow(() -> new IllegalArgumentException("invitation not found"));
 
-        invitation.accept(command.getNow());
+        if (!invitation.isActive(command.getNow())) {
+            throw new IllegalStateException("invitation is not active");
+        }
+        invitation.revoke();
 
         Membership membership = new Membership(
                 invitation.getHouseholdId(),

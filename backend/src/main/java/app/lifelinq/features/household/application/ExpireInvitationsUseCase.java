@@ -2,7 +2,6 @@ package app.lifelinq.features.household.application;
 
 import app.lifelinq.features.household.domain.Invitation;
 import app.lifelinq.features.household.domain.InvitationRepository;
-import app.lifelinq.features.household.domain.InvitationStatus;
 import java.time.Instant;
 import java.util.List;
 
@@ -25,16 +24,13 @@ final class ExpireInvitationsUseCase {
             throw new IllegalArgumentException("now must not be null");
         }
 
-        List<Invitation> pending = invitationRepository.findPending();
+        List<Invitation> active = invitationRepository.findActive();
         int expiredCount = 0;
-        for (Invitation invitation : pending) {
+        for (Invitation invitation : active) {
             if (invitation == null) {
                 continue;
             }
-            InvitationStatus before = invitation.getStatus();
-            invitation.expire(now);
-            if (before != invitation.getStatus()) {
-                invitationRepository.save(invitation);
+            if (invitation.isExpired(now)) {
                 expiredCount++;
             }
         }
