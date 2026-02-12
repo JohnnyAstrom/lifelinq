@@ -70,6 +70,20 @@ class ShoppingControllerTest {
     }
 
     @Test
+    void createReturns401WhenHouseholdMissing() throws Exception {
+        UUID userId = UUID.randomUUID();
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post("/shopping-items")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Milk\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(shoppingApplicationService);
+    }
+
+    @Test
     void createSucceedsWithValidToken() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

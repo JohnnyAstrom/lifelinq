@@ -85,7 +85,6 @@ class HouseholdControllerTest {
     void createSucceedsWithUserIdFromToken() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(householdApplicationService.createHousehold("Home", userId)).thenReturn(householdId);
@@ -138,6 +137,21 @@ class HouseholdControllerTest {
     }
 
     @Test
+    void addMemberReturns401WhenHouseholdMissing() throws Exception {
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post("/household/members")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
     void addMemberReturns403WhenActorIsNotOwner() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
@@ -179,6 +193,18 @@ class HouseholdControllerTest {
     }
 
     @Test
+    void listMembersReturns401WhenHouseholdMissing() throws Exception {
+        UUID userId = UUID.randomUUID();
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(get("/household/members")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
     void listMembersSucceedsWhenHouseholdMatches() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -199,6 +225,21 @@ class HouseholdControllerTest {
         mockMvc.perform(post("/household/members/remove")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
+    void removeMemberReturns401WhenHouseholdMissing() throws Exception {
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post("/household/members/remove")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(householdApplicationService);

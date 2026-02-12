@@ -61,8 +61,34 @@ class TodoControllerTest {
     }
 
     @Test
+    void createReturns401WhenHouseholdMissing() throws Exception {
+        UUID userId = UUID.randomUUID();
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post("/todos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Buy milk\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
     void listReturns401WhenContextMissing() throws Exception {
         mockMvc.perform(get("/todos"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
+    void listReturns401WhenHouseholdMissing() throws Exception {
+        UUID userId = UUID.randomUUID();
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(get("/todos")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(todoApplicationService);
