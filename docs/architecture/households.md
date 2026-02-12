@@ -74,6 +74,31 @@ Rationale: Invitations are a household-scoped onboarding tool, not an independen
 Consequences: Invitation logic stays in Household; no separate repositories or APIs outside the feature.
 Future: May be extracted if resend, tracking, or pending-user workflows become core.
 
+## Invitation Model (Phase 1)
+
+### Decision
+
+Identity: invitationId  
+Token: random value used only for acceptance flow  
+Ownership: only OWNER may create/revoke  
+Expiry: default TTL applied if not provided  
+Status: ACTIVE | REVOKED | EXPIRED  
+Duplicate rule: only one ACTIVE invitation per email per household  
+Expiry evaluation: EXPIRED is implicit when status is ACTIVE and now > expiresAt
+
+### Rationale
+
+invitationId separates domain identity from delivery mechanism  
+token can be rotated/resend without changing identity  
+ACTIVE constraint prevents inconsistent onboarding state
+
+### Consequences
+
+Revoke operates on invitationId  
+409 returned when ACTIVE invitation already exists  
+Future resend flow can reuse invitationId but regenerate token  
+Expiry evaluation can be derived from expiresAt + status logic
+
 ---
 
 ## Invitation Lifecycle (Domain)
