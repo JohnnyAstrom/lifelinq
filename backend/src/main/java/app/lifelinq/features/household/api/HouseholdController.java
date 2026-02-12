@@ -67,13 +67,20 @@ public class HouseholdController {
     }
 
     @PostMapping("/households/invitations/accept")
-    public AcceptInvitationResponse acceptInvitation(@RequestBody AcceptInvitationRequest request) {
+    public ResponseEntity<?> acceptInvitation(@RequestBody AcceptInvitationRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
         MembershipId membershipId = householdApplicationService.acceptInvitation(
                 request.getToken(),
-                request.getUserId(),
+                context.getUserId(),
                 Instant.now()
         );
-        return new AcceptInvitationResponse(membershipId.getHouseholdId(), membershipId.getUserId());
+        return ResponseEntity.ok(new AcceptInvitationResponse(
+                membershipId.getHouseholdId(),
+                membershipId.getUserId()
+        ));
     }
 
     private List<MemberItemResponse> toResponseItems(List<Membership> memberships) {

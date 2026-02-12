@@ -12,6 +12,7 @@ import app.lifelinq.config.RequestContextFilter;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.Membership;
+import app.lifelinq.features.household.domain.MembershipId;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -84,6 +85,43 @@ class HouseholdControllerTest {
                 .andExpect(status().isOk());
 
         verify(householdApplicationService).createHousehold("Home", userId);
+    }
+
+    @Test
+    void acceptInvitationReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(post("/households/invitations/accept")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"invite-token\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
+    void acceptInvitationSucceedsWithUserIdFromToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+
+        MembershipId membershipId = new MembershipId(householdId, userId);
+        when(householdApplicationService.acceptInvitation(
+                Mockito.eq("invite-token"),
+                Mockito.eq(userId),
+                Mockito.any(Instant.class)
+        ))
+                .thenReturn(membershipId);
+
+        mockMvc.perform(post("/households/invitations/accept")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"invite-token\"}"))
+                .andExpect(status().isOk());
+
+        verify(householdApplicationService).acceptInvitation(
+                Mockito.eq("invite-token"),
+                Mockito.eq(userId),
+                Mockito.any(Instant.class)
+        );
     }
 
     @Test
