@@ -13,7 +13,62 @@ Meals is a separate feature from Shopping, with an explicit integration point.
 Decision: Meals integrates with Shopping via application-level command orchestration.
 Rationale: Preserves feature isolation and avoids cross-feature repository access.
 Consequences: Meals never accesses Shopping repositories; it calls a Shopping use case.
+Integration is one-way (Meals → Shopping).
 Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a list).
+
+## Meals Model (Phase 1)
+
+### Aggregate root
+
+- `WeekPlan` is the aggregate root.
+- Primary identity: UUID id.
+- Unique constraint: (householdId, year, isoWeek).
+- `createdAt` is stored on `WeekPlan` and set via application Clock.
+
+### Scope
+
+- Household-scoped.
+- One `WeekPlan` per household per ISO week.
+
+### Entities / value objects
+
+- `WeekPlan`
+  - `id`, `householdId`, `year`, `isoWeek`, `createdAt`, `meals`
+- `PlannedMeal`
+  - `dayOfWeek` (1–7, ISO)
+  - `recipeRef`
+  - Identity within `WeekPlan` is `dayOfWeek` (no separate UUID in V0).
+  - Inherits household scope from `WeekPlan` (no householdId on `PlannedMeal`).
+- `RecipeRef`
+  - `recipeId`, `title`
+
+### Invariants
+
+- `dayOfWeek` must be 1–7.
+- Max 1 planned meal per day within a week.
+- Adding a meal for an existing day replaces the current meal.
+- `WeekPlan` unique per household + ISO week.
+- `isoWeek` must be valid for the given year (validated in application layer).
+- No cross-week move in V0 (move = delete + re-add).
+- Household scope is enforced at application layer.
+
+### Creation policy
+
+- `WeekPlan` is created implicitly if missing when adding a meal.
+
+### Integration rule
+
+- Meals → Shopping only via application-level command.
+- Shopping has no dependency on Meals.
+
+### Non-goals (V0)
+
+- No recurring meals.
+- No nutrition tracking.
+- No recipe editing.
+- No ingredient-level modeling beyond simple references.
+- Shopping push may use placeholder items (e.g., recipe title) or simple mapping.
+- No calendar sync.
 
 ## Core views
 
@@ -29,9 +84,9 @@ Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a li
 
 ## Recipes
 
-- Meals may reference a Recipe.
-- Recipes contain ingredients (name + optional quantity/unit).
-- Ingredients can be pushed to a Shopping List.
+- Meals reference recipes via `RecipeRef` (id + title).
+- Recipe storage/editing is out of scope for V0.
+- Ingredients can be pushed to a Shopping List via command orchestration.
 
 ## Calendar sync
 
