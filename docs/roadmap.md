@@ -1,7 +1,8 @@
 # Roadmap
 
 This roadmap describes the intended path to the long-term product vision.
-It is expected to evolve as the product and constraints become clearer.
+It is a **guiding overview**, not a fixed contract.
+Later phases are tentative and may shift as we learn.
 
 ## Phase 0 — Foundation Alignment (Now)
 
@@ -44,4 +45,3 @@ It is expected to evolve as the product and constraints become clearer.
 - Active household selection (multi-household support).
 - Meals enhancements (history tooling, week templates, faster planning flows).
 - Observability, backups, and scaling hardening.
-

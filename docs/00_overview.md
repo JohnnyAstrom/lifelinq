@@ -164,4 +164,4 @@ LifeLinq is designed to grow incrementally.
 
 This document defines the intent of the system.
 Detailed rules and constraints are defined in `INVARIANTS.md`.
-The phased delivery plan lives in `docs/roadmap.md`.
+The phased delivery plan lives in `docs/roadmap.md` and is a guiding overview that may evolve.
