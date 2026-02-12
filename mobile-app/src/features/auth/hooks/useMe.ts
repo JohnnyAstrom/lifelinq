@@ -5,6 +5,7 @@ export function useMe(token: string | null) {
   const [data, setData] = useState<MeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +39,11 @@ export function useMe(token: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, reloadKey]);
 
-  return { data, error, loading };
+  function reload() {
+    setReloadKey((value) => value + 1);
+  }
+
+  return { data, error, loading, reload };
 }

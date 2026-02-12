@@ -2,8 +2,10 @@ package app.lifelinq.config;
 
 import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.beans.factory.ObjectProvider;
@@ -11,6 +13,10 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
@@ -25,9 +31,10 @@ public class SecurityConfig {
     ) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/login/**", "/error").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/dev/token")
+                        .requestMatchers(HttpMethod.POST, "/dev/token", "/auth/dev-login")
                         .access((authentication, context) ->
                                 new org.springframework.security.authorization.AuthorizationDecision(devAuthEnabled))
                         .anyRequest().authenticated()
@@ -47,5 +54,23 @@ public class SecurityConfig {
             ObjectMapper objectMapper
     ) {
         return new OAuth2LoginSuccessHandler(ensureUserExistsUseCase, jwtSigner, objectMapper);
+    }
+
+    @Bean
+    @Profile("dev")
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${lifelinq.cors.allowed-origins}") String allowedOrigins
+    ) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList());
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

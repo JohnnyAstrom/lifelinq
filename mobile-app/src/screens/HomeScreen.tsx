@@ -1,26 +1,22 @@
 import { Button, Text, View } from 'react-native';
-import { useMe } from '../features/auth/hooks/useMe';
+import type { MeResponse } from '../features/auth/api/meApi';
 import { useTodos } from '../features/todo/hooks/useTodos';
 
 type Props = {
   token: string;
+  me: MeResponse;
   onCreateTodo: () => void;
 };
 
-export function HomeScreen({ token, onCreateTodo }: Props) {
-  const me = useMe(token);
+export function HomeScreen({ token, me, onCreateTodo }: Props) {
   const todos = useTodos(token, 'OPEN');
 
   return (
     <View>
       <Text>Me:</Text>
-      {me.loading ? <Text>Loading /me...</Text> : null}
-      {me.error ? <Text>{me.error}</Text> : null}
-      {me.data ? (
-        <Text>
-          userId: {me.data.userId} householdId: {me.data.householdId || 'null'}
-        </Text>
-      ) : null}
+      <Text>
+        userId: {me.userId} householdId: {me.householdId || 'null'}
+      </Text>
 
       <Text>Todos:</Text>
       {todos.loading ? <Text>Loading todos...</Text> : null}

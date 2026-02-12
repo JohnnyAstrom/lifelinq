@@ -24,7 +24,8 @@ public class RequestContextFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return "/dev/token".equals(request.getRequestURI());
+        String path = request.getRequestURI();
+        return "/dev/token".equals(path) || "/auth/dev-login".equals(path);
     }
 
     @Override
