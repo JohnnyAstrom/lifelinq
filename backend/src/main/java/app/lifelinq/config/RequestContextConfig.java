@@ -5,12 +5,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
 import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 public class RequestContextConfig {
 
-    @Bean
-    public FilterRegistrationBean<RequestContextFilter> requestContextFilter(
+    @Bean(name = "lifeLinqRequestContextFilter")
+    public FilterRegistrationBean<RequestContextFilter> lifeLinqRequestContextFilter(
             JwtVerifier jwtVerifier,
             ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase
     ) {
@@ -33,5 +34,10 @@ public class RequestContextConfig {
             @Value("${lifelinq.jwt.audience:}") String audience
     ) {
         return new JwtSigner(secret, ttlSeconds, issuer, audience, java.time.Clock.systemUTC());
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }
