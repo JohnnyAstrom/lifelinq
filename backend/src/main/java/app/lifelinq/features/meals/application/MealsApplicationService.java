@@ -104,8 +104,12 @@ public class MealsApplicationService {
         ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
         validateIsoWeek(year, isoWeek);
         WeekPlan weekPlan = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
-                .orElseThrow(() -> new IllegalArgumentException("Week plan not found"));
-        weekPlan.removeMeal(dayOfWeek);
+                .orElseThrow(() -> new MealNotFoundException("Meal not found"));
+        try {
+            weekPlan.removeMeal(dayOfWeek);
+        } catch (IllegalArgumentException ex) {
+            throw new MealNotFoundException("Meal not found");
+        }
         weekPlanRepository.save(weekPlan);
     }
 
