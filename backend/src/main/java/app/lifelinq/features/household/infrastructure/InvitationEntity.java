@@ -6,12 +6,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "invitations")
+@Table(
+        name = "invitations",
+        indexes = {
+                @Index(name = "idx_invitation_household_email_status", columnList = "householdId,inviteeEmail,status")
+        }
+)
 public class InvitationEntity {
     @Id
     private UUID id;

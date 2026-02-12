@@ -259,6 +259,22 @@ class HouseholdControllerTest {
     }
 
     @Test
+    void revokeInvitationReturns404WhenNotFound() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID invitationId = UUID.randomUUID();
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(householdApplicationService.revokeInvitation(householdId, actorUserId, invitationId))
+                .thenReturn(false);
+
+        mockMvc.perform(delete("/households/invitations/" + invitationId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void addMemberReturns401WhenHouseholdMissing() throws Exception {
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
