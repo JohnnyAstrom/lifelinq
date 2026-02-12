@@ -4,6 +4,36 @@ export type ApiClientOptions = {
 
 const DEFAULT_BASE_URL = 'http://localhost:8080';
 
+export class ApiError extends Error {
+  status: number;
+  body: string;
+
+  constructor(status: number, body: string) {
+    super(`HTTP ${status}: ${body}`);
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export function formatApiError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401) {
+      return 'You must create a household first or log in again.';
+    }
+    if (err.status === 403) {
+      return 'Access denied.';
+    }
+    if (err.status === 409) {
+      return 'Conflict: action not allowed.';
+    }
+    return err.message;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return 'Unknown error';
+}
+
 export async function fetchJson<T>(
   path: string,
   options: RequestInit = {},
@@ -30,7 +60,7 @@ export async function fetchJson<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`HTTP ${response.status}: ${text}`);
+    throw new ApiError(response.status, text);
   }
 
   if (response.status === 204) {

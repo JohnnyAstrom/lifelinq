@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
-import { completeTodo, createTodo, fetchTodos, TodoResponse } from '../api/todoApi';
+import { addMember, fetchMembers, MemberItemResponse, removeMember } from '../api/householdMembersApi';
 
-export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'ALL' = 'OPEN') {
-  const [items, setItems] = useState<TodoResponse[]>([]);
+export function useHouseholdMembers(token: string | null) {
+  const [items, setItems] = useState<MemberItemResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -12,13 +12,10 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
       setItems([]);
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
-      const queryStatus = status === 'ALL' ? undefined : status;
-      const result = await fetchTodos(token, queryStatus);
+      const result = await fetchMembers(token);
       setItems(result);
     } catch (err) {
       setError(formatApiError(err));
@@ -27,26 +24,26 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     }
   }
 
-  async function add(text: string) {
+  async function add(userId: string) {
     if (!token) {
       throw new Error('Missing token');
     }
     setError(null);
     try {
-      await createTodo(token, text);
+      await addMember(token, userId);
       await load();
     } catch (err) {
       setError(formatApiError(err));
     }
   }
 
-  async function complete(id: string) {
+  async function remove(userId: string) {
     if (!token) {
       throw new Error('Missing token');
     }
     setError(null);
     try {
-      await completeTodo(token, id);
+      await removeMember(token, userId);
       await load();
     } catch (err) {
       setError(formatApiError(err));
@@ -55,7 +52,7 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
 
   useEffect(() => {
     load();
-  }, [token, status]);
+  }, [token]);
 
-  return { items, error, loading, reload: load, add, complete };
+  return { items, error, loading, reload: load, add, remove };
 }

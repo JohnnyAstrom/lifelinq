@@ -15,16 +15,22 @@ export function CreateTodoScreen({ token, onDone }: Props) {
     if (!text.trim()) {
       return;
     }
+    if (todos.loading) {
+      return;
+    }
     await todos.add(text.trim());
     setText('');
-    onDone();
+    if (!todos.error) {
+      onDone();
+    }
   }
 
   return (
     <View>
       <Text>New todo:</Text>
       <TextInput value={text} onChangeText={setText} />
-      <Button title="Save" onPress={handleCreate} />
+      {todos.error ? <Text>{todos.error}</Text> : null}
+      <Button title={todos.loading ? 'Saving...' : 'Save'} onPress={handleCreate} />
     </View>
   );
 }

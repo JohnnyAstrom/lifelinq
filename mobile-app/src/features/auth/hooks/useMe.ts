@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatApiError } from '../../../shared/api/client';
 import { fetchMe, MeResponse } from '../api/meApi';
 
 export function useMe(token: string | null) {
@@ -26,7 +27,7 @@ export function useMe(token: string | null) {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Unknown error');
+          setError(formatApiError(err));
         }
       } finally {
         if (!cancelled) {

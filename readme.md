@@ -130,3 +130,14 @@ LifeLinq is designed to evolve — but never drift.
 - Copy .env.example to .env.
 - Adjust EXPO_PUBLIC_API_BASE_URL if the backend runs elsewhere.
 
+## Dev auth flow (local)
+
+1. Start backend in dev profile:
+   - `mvn spring-boot:run "-Dspring-boot.run.profiles=dev"`
+2. Start Expo:
+   - `npm start` in `mobile-app/` and press `w` for web.
+3. Log in with any email in the UI (dev-only):
+   - The app calls `POST /auth/dev-login` and stores a JWT.
+4. If `/me` returns `householdId: null`, create a household once.
+5. Todos and other scoped endpoints require a household context.
+
