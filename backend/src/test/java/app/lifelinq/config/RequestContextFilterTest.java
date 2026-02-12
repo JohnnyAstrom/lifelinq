@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
+import app.lifelinq.features.household.domain.Membership;
+import app.lifelinq.features.household.domain.MembershipRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,6 +16,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -24,13 +31,17 @@ class RequestContextFilterTest {
 
     @Test
     void setsContextFromHeadersAndClearsAfterChain() throws Exception {
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        RequestContextFilter filter = new RequestContextFilter(
+                new JwtVerifier(SECRET),
+                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository()
+                        .withMembership(userId, householdId))
+        );
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+        String token = createToken(userId, Instant.now().plusSeconds(60));
         Mockito.when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
 
         FilterChain chain = (req, res) -> {
@@ -46,11 +57,17 @@ class RequestContextFilterTest {
 
     @Test
     void clearsContextWhenChainThrows() throws Exception {
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        RequestContextFilter filter = new RequestContextFilter(
+                new JwtVerifier(SECRET),
+                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository()
+                        .withMembership(userId, householdId))
+        );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
-        String token = createToken(UUID.randomUUID(), UUID.randomUUID(), Instant.now().plusSeconds(60));
+        String token = createToken(userId, Instant.now().plusSeconds(60));
         Mockito.when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
 
         FilterChain chain = (req, res) -> {
@@ -64,7 +81,10 @@ class RequestContextFilterTest {
 
     @Test
     void returnsUnauthorizedWhenTokenMissing() throws Exception {
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
+        RequestContextFilter filter = new RequestContextFilter(
+                new JwtVerifier(SECRET),
+                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository())
+        );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -79,7 +99,10 @@ class RequestContextFilterTest {
 
     @Test
     void returnsUnauthorizedWhenTokenInvalid() throws Exception {
-        RequestContextFilter filter = new RequestContextFilter(new JwtVerifier(SECRET));
+        RequestContextFilter filter = new RequestContextFilter(
+                new JwtVerifier(SECRET),
+                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository())
+        );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
 
@@ -94,11 +117,32 @@ class RequestContextFilterTest {
         assertNull(RequestContextHolder.getCurrent());
     }
 
-    private String createToken(UUID householdId, UUID userId, Instant exp) throws Exception {
+    @Test
+    void returnsUnauthorizedWhenHouseholdResolutionMissing() throws Exception {
+        UUID userId = UUID.randomUUID();
+        RequestContextFilter filter = new RequestContextFilter(
+                new JwtVerifier(SECRET),
+                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository())
+        );
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+        Mockito.when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+
+        FilterChain chain = Mockito.mock(FilterChain.class);
+
+        filter.doFilter(request, response, chain);
+
+        Mockito.verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        Mockito.verifyNoInteractions(chain);
+        assertNull(RequestContextHolder.getCurrent());
+    }
+
+    private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(
-                "{\"householdId\":\"%s\",\"userId\":\"%s\",\"exp\":%d}",
-                householdId,
+                "{\"userId\":\"%s\",\"exp\":%d}",
                 userId,
                 exp.getEpochSecond()
         );
@@ -116,5 +160,34 @@ class RequestContextFilterTest {
 
     private String base64Url(byte[] data) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
+    }
+
+    private static final class FakeMembershipRepository implements MembershipRepository {
+        private final Map<UUID, List<UUID>> byUser = new HashMap<>();
+
+        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
+            byUser.put(userId, List.of(householdId));
+            return this;
+        }
+
+        @Override
+        public void save(Membership membership) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<Membership> findByHouseholdId(UUID householdId) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+            return byUser.getOrDefault(userId, List.of());
+        }
+
+        @Override
+        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+            throw new UnsupportedOperationException("not used");
+        }
     }
 }

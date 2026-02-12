@@ -55,4 +55,19 @@ class JpaMembershipRepositoryAdapterTest {
         assertTrue(removed);
         assertEquals(0, adapter.findByHouseholdId(householdId).size());
     }
+
+    @Test
+    void findsHouseholdIdsByUser() {
+        JpaMembershipRepositoryAdapter adapter = new JpaMembershipRepositoryAdapter(
+                membershipJpaRepository,
+                new MembershipMapper()
+        );
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        adapter.save(new Membership(householdId, userId, HouseholdRole.MEMBER));
+
+        List<UUID> ids = adapter.findHouseholdIdsByUserId(userId);
+
+        assertEquals(List.of(householdId), ids);
+    }
 }

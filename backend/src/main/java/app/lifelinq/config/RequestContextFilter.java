@@ -5,13 +5,18 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.web.filter.OncePerRequestFilter;
+import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
 
 public class RequestContextFilter extends OncePerRequestFilter {
     private final JwtVerifier jwtVerifier;
+    private final ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase;
 
-    public RequestContextFilter(JwtVerifier jwtVerifier) {
+    public RequestContextFilter(JwtVerifier jwtVerifier, ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase) {
         this.jwtVerifier = jwtVerifier;
+        this.resolveHouseholdForUserUseCase = resolveHouseholdForUserUseCase;
     }
 
     @Override
@@ -35,9 +40,15 @@ public class RequestContextFilter extends OncePerRequestFilter {
                 return;
             }
 
+            UUID userId = claims.getUserId();
+            Optional<UUID> householdId = resolveHouseholdForUserUseCase.resolveForUser(userId);
+            if (householdId.isEmpty()) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
             RequestContext context = new RequestContext();
-            context.setHouseholdId(claims.getHouseholdId());
-            context.setUserId(claims.getUserId());
+            context.setHouseholdId(householdId.get());
+            context.setUserId(userId);
             RequestContextHolder.set(context);
             filterChain.doFilter(request, response);
         } finally {

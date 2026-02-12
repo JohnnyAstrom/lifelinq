@@ -44,6 +44,11 @@ public final class HouseholdPersistenceAdapter
     }
 
     @Override
+    public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        return membershipRepository.findHouseholdIdsByUserId(userId);
+    }
+
+    @Override
     public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
         return membershipRepository.deleteByHouseholdIdAndUserId(householdId, userId);
     }

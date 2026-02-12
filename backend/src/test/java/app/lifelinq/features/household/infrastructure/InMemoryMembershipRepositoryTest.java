@@ -52,4 +52,16 @@ class InMemoryMembershipRepositoryTest {
         assertEquals(true, removed);
         assertEquals(0, repository.findByHouseholdId(householdId).size());
     }
+
+    @Test
+    void findsHouseholdIdsByUserId() {
+        InMemoryMembershipRepository repository = new InMemoryMembershipRepository();
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        repository.save(new Membership(householdId, userId, HouseholdRole.MEMBER));
+
+        List<UUID> result = repository.findHouseholdIdsByUserId(userId);
+
+        assertEquals(List.of(householdId), result);
+    }
 }

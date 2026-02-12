@@ -8,10 +8,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
+import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
+import app.lifelinq.features.household.domain.Membership;
+import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -27,13 +33,18 @@ class ShoppingControllerTest {
 
     private MockMvc mockMvc;
     private ShoppingApplicationService shoppingApplicationService;
+    private FakeMembershipRepository membershipRepository;
 
     @BeforeEach
     void setUp() {
+        membershipRepository = new FakeMembershipRepository();
         shoppingApplicationService = Mockito.mock(ShoppingApplicationService.class);
         ShoppingController controller = new ShoppingController(shoppingApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET)))
+                .addFilters(new RequestContextFilter(
+                        new JwtVerifier(SECRET),
+                        new ResolveHouseholdForUserUseCase(membershipRepository)
+                ))
                 .build();
     }
 
@@ -63,7 +74,8 @@ class ShoppingControllerTest {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID itemId = UUID.randomUUID();
-        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(shoppingApplicationService.addItem(householdId, userId, "Milk")).thenReturn(itemId);
 
@@ -76,11 +88,10 @@ class ShoppingControllerTest {
         verify(shoppingApplicationService).addItem(householdId, userId, "Milk");
     }
 
-    private String createToken(UUID householdId, UUID userId, Instant exp) throws Exception {
+    private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(
-                "{\"householdId\":\"%s\",\"userId\":\"%s\",\"exp\":%d}",
-                householdId,
+                "{\"userId\":\"%s\",\"exp\":%d}",
                 userId,
                 exp.getEpochSecond()
         );
@@ -98,5 +109,34 @@ class ShoppingControllerTest {
 
     private String base64Url(byte[] data) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
+    }
+
+    private static final class FakeMembershipRepository implements MembershipRepository {
+        private final Map<UUID, List<UUID>> byUser = new HashMap<>();
+
+        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
+            byUser.put(userId, List.of(householdId));
+            return this;
+        }
+
+        @Override
+        public void save(Membership membership) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<Membership> findByHouseholdId(UUID householdId) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+            return byUser.getOrDefault(userId, List.of());
+        }
+
+        @Override
+        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+            throw new UnsupportedOperationException("not used");
+        }
     }
 }

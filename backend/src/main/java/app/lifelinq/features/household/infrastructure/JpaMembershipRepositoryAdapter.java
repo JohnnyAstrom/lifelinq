@@ -40,6 +40,21 @@ public final class JpaMembershipRepositoryAdapter implements MembershipRepositor
     }
 
     @Override
+    public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        List<UUID> result = new ArrayList<>();
+        for (MembershipEntity entity : membershipJpaRepository.findByIdUserId(userId)) {
+            UUID householdId = entity.getId().getHouseholdId();
+            if (!result.contains(householdId)) {
+                result.add(householdId);
+            }
+        }
+        return result;
+    }
+
+    @Override
     public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
         if (householdId == null) {
             throw new IllegalArgumentException("householdId must not be null");

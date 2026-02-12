@@ -25,14 +25,19 @@ Households own data.
 The backend currently derives request context from a **JWT Bearer token**:
 
 - `Authorization: Bearer <token>`
-- Required claims: `householdId`, `userId`, `exp`
+- Required claims: `userId`, `exp`
+- Optional claims: `iss`, `aud`
 
 Tokens are **validated for signature and expiration**. If missing or invalid, the request is rejected with **401**.
+
+After validation, the server resolves **household context**:
+- If the user has exactly one household membership → use it.
+- If the user has none or multiple → return **401** (active household selection not implemented yet).
 
 This is a **minimal scoping layer** only:
 - no OAuth flow
 - no refresh tokens
-- no user persistence yet
+- minimal user persistence only (ensure user exists)
 
 ---
 
@@ -71,12 +76,12 @@ JSON Web Tokens are used for stateless authorization.
 
 Tokens contain:
 - user identity
-- household context
-- role
+- expiration (`exp`)
 
 Tokens do not contain:
 - business data
-- permissions beyond role
+- household context (current)
+- roles or permissions (current)
 
 ---
 
@@ -85,10 +90,10 @@ Tokens do not contain:
 Clients never choose a household.
 
 Household context is always:
-- derived from the token
+- derived server-side from membership
 - validated server-side
 
-Switching households requires issuing a new token.
+Switching households requires an explicit active-household selection (not implemented yet).
 
 ---
 

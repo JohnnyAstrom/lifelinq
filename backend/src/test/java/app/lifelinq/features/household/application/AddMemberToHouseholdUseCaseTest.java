@@ -69,6 +69,17 @@ class AddMemberToHouseholdUseCaseTest {
         }
 
         @Override
+        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+            List<UUID> result = new ArrayList<>();
+            for (Membership membership : saved) {
+                if (userId.equals(membership.getUserId()) && !result.contains(membership.getHouseholdId())) {
+                    result.add(membership.getHouseholdId());
+                }
+            }
+            return result;
+        }
+
+        @Override
         public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
             for (int i = 0; i < saved.size(); i++) {
                 Membership membership = saved.get(i);

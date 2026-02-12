@@ -119,6 +119,11 @@ class AcceptInvitationUseCaseTest {
         }
 
         @Override
+        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+            return List.of();
+        }
+
+        @Override
         public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
             return false;
         }

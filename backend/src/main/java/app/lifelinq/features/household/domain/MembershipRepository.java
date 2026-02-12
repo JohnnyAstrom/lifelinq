@@ -8,5 +8,7 @@ public interface MembershipRepository {
 
     List<Membership> findByHouseholdId(UUID householdId);
 
+    List<UUID> findHouseholdIdsByUserId(UUID userId);
+
     boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId);
 }

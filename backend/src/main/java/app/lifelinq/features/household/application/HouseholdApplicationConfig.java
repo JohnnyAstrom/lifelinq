@@ -33,6 +33,13 @@ public class HouseholdApplicationConfig {
     }
 
     @Bean
+    public ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase(
+            MembershipRepository membershipRepository
+    ) {
+        return new ResolveHouseholdForUserUseCase(membershipRepository);
+    }
+
+    @Bean
     public RemoveMemberFromHouseholdUseCase removeMemberFromHouseholdUseCase(
             MembershipRepository membershipRepository
     ) {

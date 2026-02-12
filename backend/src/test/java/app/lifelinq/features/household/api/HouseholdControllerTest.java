@@ -9,16 +9,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
+import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
 import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipId;
+import app.lifelinq.features.household.domain.MembershipRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -34,13 +38,18 @@ class HouseholdControllerTest {
 
     private MockMvc mockMvc;
     private HouseholdApplicationService householdApplicationService;
+    private FakeMembershipRepository membershipRepository;
 
     @BeforeEach
     void setUp() {
+        membershipRepository = new FakeMembershipRepository();
         householdApplicationService = Mockito.mock(HouseholdApplicationService.class);
         HouseholdController controller = new HouseholdController(householdApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET)))
+                .addFilters(new RequestContextFilter(
+                        new JwtVerifier(SECRET),
+                        new ResolveHouseholdForUserUseCase(membershipRepository)
+                ))
                 .build();
     }
 
@@ -76,7 +85,8 @@ class HouseholdControllerTest {
     void createSucceedsWithUserIdFromToken() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(householdApplicationService.createHousehold("Home", userId)).thenReturn(householdId);
 
@@ -103,7 +113,8 @@ class HouseholdControllerTest {
     void acceptInvitationSucceedsWithUserIdFromToken() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        String token = createToken(householdId, userId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
 
         MembershipId membershipId = new MembershipId(householdId, userId);
         when(householdApplicationService.acceptInvitation(
@@ -131,7 +142,8 @@ class HouseholdControllerTest {
         UUID householdId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(householdApplicationService.addMember(householdId, actorUserId, targetUserId))
                 .thenThrow(new AccessDeniedException("not owner"));
@@ -150,7 +162,8 @@ class HouseholdControllerTest {
         UUID householdId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
         Membership membership = new Membership(householdId, targetUserId, HouseholdRole.MEMBER);
 
         when(householdApplicationService.addMember(householdId, actorUserId, targetUserId))
@@ -168,7 +181,9 @@ class HouseholdControllerTest {
     @Test
     void listMembersSucceedsWhenHouseholdMatches() throws Exception {
         UUID householdId = UUID.randomUUID();
-        String token = createToken(householdId, UUID.randomUUID(), Instant.now().plusSeconds(60));
+        UUID userId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(householdApplicationService.listMembers(householdId)).thenReturn(List.of());
 
@@ -194,7 +209,8 @@ class HouseholdControllerTest {
         UUID householdId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(householdApplicationService.removeMember(householdId, actorUserId, targetUserId))
                 .thenThrow(new AccessDeniedException("not owner"));
@@ -213,7 +229,8 @@ class HouseholdControllerTest {
         UUID householdId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(householdApplicationService.removeMember(householdId, actorUserId, targetUserId))
                 .thenThrow(new LastOwnerRemovalException("last owner"));
@@ -232,7 +249,8 @@ class HouseholdControllerTest {
         UUID householdId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        String token = createToken(householdId, actorUserId, Instant.now().plusSeconds(60));
+        membershipRepository.withMembership(actorUserId, householdId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(householdApplicationService.removeMember(householdId, actorUserId, targetUserId))
                 .thenReturn(true);
@@ -246,11 +264,10 @@ class HouseholdControllerTest {
         verify(householdApplicationService).removeMember(householdId, actorUserId, targetUserId);
     }
 
-    private String createToken(UUID householdId, UUID userId, Instant exp) throws Exception {
+    private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(
-                "{\"householdId\":\"%s\",\"userId\":\"%s\",\"exp\":%d}",
-                householdId,
+                "{\"userId\":\"%s\",\"exp\":%d}",
                 userId,
                 exp.getEpochSecond()
         );
@@ -268,5 +285,34 @@ class HouseholdControllerTest {
 
     private String base64Url(byte[] data) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
+    }
+
+    private static final class FakeMembershipRepository implements MembershipRepository {
+        private final Map<UUID, List<UUID>> byUser = new HashMap<>();
+
+        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
+            byUser.put(userId, List.of(householdId));
+            return this;
+        }
+
+        @Override
+        public void save(Membership membership) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<Membership> findByHouseholdId(UUID householdId) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+            return byUser.getOrDefault(userId, List.of());
+        }
+
+        @Override
+        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+            throw new UnsupportedOperationException("not used");
+        }
     }
 }

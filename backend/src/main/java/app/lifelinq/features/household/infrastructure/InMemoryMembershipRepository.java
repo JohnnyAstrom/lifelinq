@@ -4,6 +4,7 @@ import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.UUID;
 
 public final class InMemoryMembershipRepository implements MembershipRepository {
@@ -29,6 +30,20 @@ public final class InMemoryMembershipRepository implements MembershipRepository 
             }
         }
         return result;
+    }
+
+    @Override
+    public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        LinkedHashSet<UUID> ids = new LinkedHashSet<>();
+        for (Membership membership : memberships) {
+            if (userId.equals(membership.getUserId())) {
+                ids.add(membership.getHouseholdId());
+            }
+        }
+        return new ArrayList<>(ids);
     }
 
     @Override
