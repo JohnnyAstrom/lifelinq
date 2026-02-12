@@ -82,9 +82,10 @@ Identity: invitationId
 Token: random value used only for acceptance flow  
 Ownership: only OWNER may create/revoke  
 Expiry: default TTL applied if not provided  
-Status: ACTIVE | REVOKED | EXPIRED  
-Duplicate rule: only one ACTIVE invitation per email per household  
-Expiry evaluation: EXPIRED is implicit when status is ACTIVE and now > expiresAt
+Status: ACTIVE | REVOKED  
+Duplicate rule: only one non-expired ACTIVE invitation per email per household  
+Expiry evaluation: expired is derived when status is ACTIVE and now > expiresAt  
+Default TTL applied in ApplicationService when expiresAt is not provided
 
 ### Rationale
 
@@ -98,6 +99,7 @@ Revoke operates on invitationId
 409 returned when ACTIVE invitation already exists  
 Future resend flow can reuse invitationId but regenerate token  
 Expiry evaluation can be derived from expiresAt + status logic
+Acceptance validates: invitation exists, status is ACTIVE, and it is not expired
 
 ---
 
