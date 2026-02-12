@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
+import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.TodoStatus;
 import java.nio.charset.StandardCharsets;
@@ -35,8 +36,9 @@ class TodoControllerTest {
     void setUp() {
         todoApplicationService = Mockito.mock(TodoApplicationService.class);
         TodoController controller = new TodoController(todoApplicationService);
+        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET)))
+                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase))
                 .build();
     }
 

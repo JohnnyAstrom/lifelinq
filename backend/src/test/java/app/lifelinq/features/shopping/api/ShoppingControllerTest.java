@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
+import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -32,8 +33,9 @@ class ShoppingControllerTest {
     void setUp() {
         shoppingApplicationService = Mockito.mock(ShoppingApplicationService.class);
         ShoppingController controller = new ShoppingController(shoppingApplicationService);
+        EnsureUserExistsUseCase ensureUserExistsUseCase = Mockito.mock(EnsureUserExistsUseCase.class);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET)))
+                .addFilters(new RequestContextFilter(new JwtVerifier(SECRET), ensureUserExistsUseCase))
                 .build();
     }
 
