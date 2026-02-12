@@ -1,8 +1,9 @@
 package app.lifelinq.features.shopping.infrastructure;
 
+import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
-import app.lifelinq.features.shopping.domain.ShoppingItemRepository;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import app.lifelinq.features.shopping.domain.ShoppingListRepository;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,9 +12,10 @@ public class ShoppingApplicationConfig {
 
     @Bean
     public ShoppingApplicationService shoppingApplicationService(
-            ShoppingItemRepository repository,
-            EnsureUserExistsUseCase ensureUserExistsUseCase
+            ShoppingListRepository repository,
+            EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase,
+            Clock clock
     ) {
-        return new ShoppingApplicationService(repository, ensureUserExistsUseCase);
+        return new ShoppingApplicationService(repository, ensureHouseholdMemberUseCase, clock);
     }
 }
