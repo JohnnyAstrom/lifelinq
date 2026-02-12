@@ -22,6 +22,20 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 - `ShoppingList`: `name`, `householdId`
 - `ShoppingItem`: `name`, `status`, `shoppingListId`
 
+## Decisions
+
+Decision: Household → ShoppingLists → ShoppingItems.
+Rationale: Supports multiple lists while keeping ownership clear and bounded.
+Consequences: Every item belongs to exactly one list.
+
+Decision: ShoppingList is the aggregate root.
+Rationale: List-level invariants (toggle, ordering, bulk add) belong to the list.
+Consequences: Toggling is a state mutation within the list, not a cross-aggregate event.
+
+Decision: API contracts are list-centric.
+Rationale: Frontend needs stable listId boundaries for 1:1 feature mapping.
+Consequences: Endpoints accept `listId` for list and item mutations.
+
 ## UX principles
 
 - Shared by default (household list, not personal).

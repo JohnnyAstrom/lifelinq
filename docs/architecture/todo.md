@@ -34,6 +34,16 @@ The system must be fast to capture and easy to recall.
 - **Delete** means the item was intentionally removed and not completed.
 - Completion and deletion are distinct actions with distinct meaning.
 
+## Decisions
+
+Decision: Todo is historical (soft delete).
+Rationale: Completed work must remain visible for accountability and recall.
+Consequences: Use `deletedAt` (soft delete) and keep completed items in history.
+
+Decision: Default views list non-deleted items.
+Rationale: Keep daily views clean while preserving history.
+Consequences: Filters can include completed and deleted history explicitly.
+
 ## Calendar sync
 
 - **Google Calendar sync** is supported for scheduled items.

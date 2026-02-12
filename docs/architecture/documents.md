@@ -16,6 +16,16 @@ Documents is the household’s **retrieval-first archive** for:
 - Optional: `notes`, `date`, `category`, `tags`, `externalLink`
 - All household members can see and search records.
 
+## Decisions
+
+Decision: Documents are household-shared with createdBy attribution.
+Rationale: Shared access is required, while authorship still matters.
+Consequences: Store `createdByUserId` for traceability.
+
+Decision: V0 makes no storage decision.
+Rationale: Storage choices are costly and premature.
+Consequences: `externalLink` may point to Drive/iCloud/OneDrive or other external storage.
+
 ## Roadmap
 
 ### V0 (now)
@@ -40,4 +50,3 @@ Documents is the household’s **retrieval-first archive** for:
 - Capture must be fast.
 - Search and filter are the primary retrieval tools.
 - Structure is optional; retrievability is the goal.
-

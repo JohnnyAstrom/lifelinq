@@ -16,6 +16,16 @@ Later phases are tentative and may shift as we learn.
 - Minimal auth scoping is consistent across all features.
 - Todos baseline (list + calendar, completion vs deletion).
 
+### Locked decisions (Phase 1)
+
+- Invitations are a sub-aggregate within Household, not a separate feature. Why: keeps onboarding scoped to household domain.
+- Shopping model is Household → ShoppingList → ShoppingItem. Why: supports multiple lists without cross-feature leakage.
+- ShoppingList is the aggregate root; toggling bought/to-buy is a state mutation. Why: preserves list integrity.
+- Todo is historical; COMPLETED ≠ DELETED. Why: keeps accountability and avoids data loss.
+- Meals → Shopping integration is application-level command orchestration. Why: avoids cross-feature repo access.
+- Documents are household-shared with createdBy attribution. Why: shared access with traceability.
+- Documents V0 has no storage decisions; externalLink points elsewhere. Why: defer storage without blocking value.
+
 ## Phase 2 — Meals (V0)
 
 - Week view as primary planning surface.

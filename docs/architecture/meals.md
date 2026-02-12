@@ -8,6 +8,13 @@ Meals is a **meal planning** surface for the household.
 It exists to turn planned meals into actionable shopping items.
 Meals is a separate feature from Shopping, with an explicit integration point.
 
+## Decisions
+
+Decision: Meals integrates with Shopping via application-level command orchestration.
+Rationale: Preserves feature isolation and avoids cross-feature repository access.
+Consequences: Meals never accesses Shopping repositories; it calls a Shopping use case.
+Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a list).
+
 ## Core views
 
 - **Week view** is the primary planning surface.

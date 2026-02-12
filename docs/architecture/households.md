@@ -67,6 +67,13 @@ Invitations:
 - are time-limited
 - grant membership upon acceptance
 
+## Decisions
+
+Decision: Invitations are a sub-aggregate within Household (Phase 1), not a separate feature.
+Rationale: Invitations are a household-scoped onboarding tool, not an independent domain.
+Consequences: Invitation logic stays in Household; no separate repositories or APIs outside the feature.
+Future: May be extracted if resend, tracking, or pending-user workflows become core.
+
 ---
 
 ## Invitation Lifecycle (Domain)
