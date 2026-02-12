@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
-@EnableJpaRepositories(basePackageClasses = ShoppingItemJpaRepository.class)
+@EnableJpaRepositories(basePackageClasses = ShoppingListJpaRepository.class)
 @EnableTransactionManagement
 public class ShoppingJpaTestApplication {
 
@@ -37,15 +37,15 @@ public class ShoppingJpaTestApplication {
     }
 
     @Bean
-    public ShoppingItemMapper shoppingItemMapper() {
-        return new ShoppingItemMapper();
+    public ShoppingListMapper shoppingListMapper() {
+        return new ShoppingListMapper();
     }
 
     @Bean
-    public JpaShoppingItemRepositoryAdapter shoppingItemRepository(
-            ShoppingItemJpaRepository repository,
-            ShoppingItemMapper mapper
+    public JpaShoppingListRepositoryAdapter shoppingListRepository(
+            ShoppingListJpaRepository repository,
+            ShoppingListMapper mapper
     ) {
-        return new JpaShoppingItemRepositoryAdapter(repository, mapper);
+        return new JpaShoppingListRepositoryAdapter(repository, mapper);
     }
 }

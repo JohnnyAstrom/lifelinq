@@ -12,6 +12,7 @@ import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCas
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
+import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -50,9 +51,9 @@ class ShoppingControllerTest {
 
     @Test
     void createReturns401WhenTokenMissing() throws Exception {
-        mockMvc.perform(post("/shopping-items")
+        mockMvc.perform(post("/shopping-lists")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Milk\"}"))
+                        .content("{\"name\":\"Groceries\"}"))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(shoppingApplicationService);
@@ -60,10 +61,10 @@ class ShoppingControllerTest {
 
     @Test
     void createReturns401WhenTokenInvalid() throws Exception {
-        mockMvc.perform(post("/shopping-items")
+        mockMvc.perform(post("/shopping-lists")
                         .header("Authorization", "Bearer invalid")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Milk\"}"))
+                        .content("{\"name\":\"Groceries\"}"))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(shoppingApplicationService);
@@ -74,10 +75,10 @@ class ShoppingControllerTest {
         UUID userId = UUID.randomUUID();
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        mockMvc.perform(post("/shopping-items")
+        mockMvc.perform(post("/shopping-lists")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Milk\"}"))
+                        .content("{\"name\":\"Groceries\"}"))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(shoppingApplicationService);
@@ -87,19 +88,20 @@ class ShoppingControllerTest {
     void createSucceedsWithValidToken() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        UUID itemId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
         membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(shoppingApplicationService.addItem(householdId, userId, "Milk")).thenReturn(itemId);
+        when(shoppingApplicationService.createShoppingList(householdId, userId, "Groceries"))
+                .thenReturn(new CreateShoppingListOutput(listId, "groceries"));
 
-        mockMvc.perform(post("/shopping-items")
+        mockMvc.perform(post("/shopping-lists")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Milk\"}"))
-                .andExpect(status().isOk());
+                        .content("{\"name\":\"Groceries\"}"))
+                .andExpect(status().isCreated());
 
-        verify(shoppingApplicationService).addItem(householdId, userId, "Milk");
+        verify(shoppingApplicationService).createShoppingList(householdId, userId, "Groceries");
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {
