@@ -272,6 +272,7 @@ todos          memberships  invitations  shopping_items
 
 - `memberships` primary key is (`household_id`, `user_id`)
 - `invitations.token` is unique
+- `invitations.status` is `ACTIVE` or `REVOKED`; expired is derived from `expires_at`
 
 ### Aggregate boundaries
 

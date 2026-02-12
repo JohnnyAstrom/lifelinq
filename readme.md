@@ -8,59 +8,43 @@ LifeLinq is **mobile‑first**, collaborative by default, and built for long‑t
 
 ---
 
-## What LifeLinq solves
+## What LifeLinq is
 
-LifeLinq focuses on three core areas of everyday household life:
+LifeLinq focuses on four core domains of everyday household life:
 
 ### 1. Things to do / remember
 
-Simple, non‑project tasks and reminders.
+Simple, non‑project tasks and reminders with a **dual view**:
+- a clear all‑items list
+- a simple, legible calendar view
 
-Examples:
-- book a dentist appointment
-- do the laundry
-- return a package
-- change water filter (Oct 1)
-
-These are not projects.
-They are memory offloading.
-The todo experience is **list-first with a simple calendar view**, and switching between them should be effortless.
-Scheduled items should be able to **sync with Google Calendar**.
-Assignment is for coordination only; any household member can assign or clear it.
+Completion is distinct from deletion, and scheduled items may sync with Google Calendar.
 
 ---
 
-### 2. Meals & shopping
+### 2. Meals
 
-Meals are handled separately because they:
-- happen every day
-- create automatic follow‑up actions (shopping)
-- cause disproportionate mental friction
-
-The system prioritizes:
-- shopping lists
-- recurring staple items
-- quick additions ("out of milk")
-
-Meal planning is a core use case with a week view as the primary planning surface.
-Recipes can feed ingredients into shopping lists.
-Meals calendar sync is optional and export-only (read-only).
+Meal planning is a **core** use case with week view as the primary planning surface.
+Recipes can be attached to meals and ingredients can be pushed to shopping lists.
+Calendar sync for meals is optional and export‑only.
 
 ---
 
-### 3. Documents
+### 3. Shopping
 
-A safety layer for things that are:
-- expensive
-- hard to replace
-- stressful to lose
+Shopping lists are **simple, fast, and shared**.
+Bought items stay in the same list (toggle back and forth).
 
-Examples:
-- contracts and warranties
-- subscriptions and bills
-- receipts and guarantees
+---
 
-The focus is on **retrievability**, not structure.
+### 4. Documents
+
+A safety layer for items that are expensive, hard to replace, or stressful to lose.
+
+Documents roadmap:
+- **V0 (now)**: metadata only (title, notes, date, category, tags, external link)
+- **V0.5 (future)**: local attachments (visible to household as "stored locally by X")
+- **V1 (future)**: cloud attachments with compression, previews, and sharing
 
 ---
 
@@ -68,9 +52,9 @@ The focus is on **retrievability**, not structure.
 
 - **Household‑first**: all data belongs to a household, not an individual user
 - **Low friction**: it must be easier to write something down than to remember it
+- **Tolerance for messiness**: real life is incomplete and inconsistent
 - **Shared by default**: multiple people collaborate in the same household
 - **Backend authority**: all business rules live on the server
-- **Long‑term thinking**: architecture favors clarity and durability over shortcuts
 - **Bilingual by default**: full support for Swedish and English from the start
 
 ---
@@ -83,8 +67,9 @@ Everything related to the same real‑world capability lives in the same feature
 
 Authoritative documentation lives in `docs/`:
 
-- `docs/INVARIANTS.md` – system laws (non‑negotiable rules)
-- `docs/00-overview.md` – system purpose and scope
+- `docs/00_overview.md` – system purpose and scope
+- `docs/invariants.md` – system laws (non‑negotiable rules)
+- `docs/roadmap.md` – phased delivery plan
 - `docs/architecture/` – backend & frontend structure
 - `docs/decisions/` – architectural decision records (ADRs)
 
@@ -107,7 +92,7 @@ The stack is intentionally conservative and well‑supported.
 ```text
 lifelinq/
   backend/        # Spring Boot application
-  mobile/         # React Native app
+  mobile-app/     # React Native app
   infra/          # Docker, database, deployment helpers
   docs/           # Architecture and system documentation
 ```
@@ -118,10 +103,10 @@ lifelinq/
 
 LifeLinq is under active development.
 
-The focus is currently on:
-- establishing a solid domain model
-- enforcing household‑first data ownership
-- building a durable foundation for future features
+The current focus is Phase 1 (see `docs/roadmap.md`):
+- solid domain model and household scoping
+- invitation flow and onboarding foundation
+- durable feature boundaries for future growth
 
 ---
 

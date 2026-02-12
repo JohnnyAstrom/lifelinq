@@ -86,6 +86,8 @@ Status: ACTIVE | REVOKED
 Duplicate rule: only one non-expired ACTIVE invitation per email per household  
 Expiry evaluation: expired is derived when status is ACTIVE and now > expiresAt  
 Default TTL applied in ApplicationService when expiresAt is not provided
+Invitee email is normalized (trim + lowercase) in ApplicationService before duplicate checks  
+Time policy (clock/now) is owned by ApplicationService and passed into the use case
 
 ### Rationale
 
@@ -106,8 +108,8 @@ Acceptance validates: invitation exists, status is ACTIVE, and it is not expired
 ## Invitation Lifecycle (Domain)
 
 At the domain level, invitations follow a simple lifecycle:
-- `PENDING` → `ACCEPTED` when a valid invitation is accepted
-- `PENDING` → `EXPIRED` when the invitation has passed its expiry time
+- `ACTIVE` → `REVOKED` when an owner revokes an invitation
+- `ACTIVE` → expired (derived) when `now > expiresAt`
 
 Invitations are time‑limited, and acceptance of a valid invitation creates a household membership.
 
