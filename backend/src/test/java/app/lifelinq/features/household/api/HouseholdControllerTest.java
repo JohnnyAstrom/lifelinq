@@ -205,6 +205,19 @@ class HouseholdControllerTest {
     }
 
     @Test
+    void listMembersReturns401WhenHouseholdAmbiguous() throws Exception {
+        UUID userId = UUID.randomUUID();
+        membershipRepository.withMemberships(userId, List.of(UUID.randomUUID(), UUID.randomUUID()));
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(get("/household/members")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(householdApplicationService);
+    }
+
+    @Test
     void listMembersSucceedsWhenHouseholdMatches() throws Exception {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -332,7 +345,11 @@ class HouseholdControllerTest {
         private final Map<UUID, List<UUID>> byUser = new HashMap<>();
 
         FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
-            byUser.put(userId, List.of(householdId));
+            return withMemberships(userId, List.of(householdId));
+        }
+
+        FakeMembershipRepository withMemberships(UUID userId, List<UUID> householdIds) {
+            byUser.put(userId, householdIds);
             return this;
         }
 
