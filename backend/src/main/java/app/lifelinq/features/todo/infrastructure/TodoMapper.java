@@ -24,7 +24,7 @@ public final class TodoMapper {
         }
         Todo todo = new Todo(entity.getId(), entity.getHouseholdId(), entity.getText());
         if (entity.getStatus() == TodoStatus.COMPLETED) {
-            todo.complete(Instant.EPOCH);
+            todo.toggle(Instant.EPOCH);
         }
         return todo;
     }

@@ -19,7 +19,7 @@ class ListTodosUseCaseTest {
         InMemoryTodoRepository repository = new InMemoryTodoRepository();
         Todo open = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Open");
         Todo completed = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Done");
-        completed.complete(java.time.Instant.parse("2026-01-01T00:00:00Z"));
+        completed.toggle(java.time.Instant.parse("2026-01-01T00:00:00Z"));
         repository.save(open);
         repository.save(completed);
 

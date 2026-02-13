@@ -31,23 +31,21 @@ class TodoTest {
     }
 
     @Test
-    void completesWhenOpen() {
+    void togglesToCompletedWhenOpen() {
         Todo todo = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Task");
 
-        boolean completed = todo.complete(Instant.parse("2026-01-01T00:00:00Z"));
+        todo.toggle(Instant.parse("2026-01-01T00:00:00Z"));
 
-        assertEquals(true, completed);
         assertEquals(TodoStatus.COMPLETED, todo.getStatus());
     }
 
     @Test
-    void completeReturnsFalseWhenAlreadyCompleted() {
+    void togglesBackToOpenWhenCompleted() {
         Todo todo = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Task");
-        todo.complete(Instant.parse("2026-01-01T00:00:00Z"));
+        todo.toggle(Instant.parse("2026-01-01T00:00:00Z"));
 
-        boolean completed = todo.complete(Instant.parse("2026-01-02T00:00:00Z"));
+        todo.toggle(Instant.parse("2026-01-02T00:00:00Z"));
 
-        assertEquals(false, completed);
-        assertEquals(TodoStatus.COMPLETED, todo.getStatus());
+        assertEquals(TodoStatus.OPEN, todo.getStatus());
     }
 }

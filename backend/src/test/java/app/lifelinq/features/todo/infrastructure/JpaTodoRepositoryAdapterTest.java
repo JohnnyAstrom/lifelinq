@@ -34,8 +34,7 @@ class JpaTodoRepositoryAdapterTest {
         assertEquals(todo.getText(), loaded.get().getText());
         assertEquals(TodoStatus.OPEN, loaded.get().getStatus());
 
-        boolean completed = loaded.get().complete(Instant.parse("2026-01-01T00:00:00Z"));
-        assertTrue(completed);
+        loaded.get().toggle(Instant.parse("2026-01-01T00:00:00Z"));
         assertEquals(TodoStatus.COMPLETED, loaded.get().getStatus());
     }
 }
