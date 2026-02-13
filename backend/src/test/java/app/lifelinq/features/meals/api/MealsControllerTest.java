@@ -16,6 +16,8 @@ import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.PlannedMealView;
+import app.lifelinq.features.shopping.domain.DuplicateShoppingItemNameException;
+import app.lifelinq.features.shopping.domain.ShoppingListNotFoundException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -140,6 +142,46 @@ class MealsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"recipeId\":\"" + recipeId + "\",\"recipeTitle\":\"Pasta\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void addReturns404WhenShoppingListMissing() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID targetListId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        Mockito.doThrow(new ShoppingListNotFoundException(targetListId))
+                .when(mealsApplicationService)
+                .addOrReplaceMeal(householdId, userId, 2025, 10, 1, recipeId, "Pasta", targetListId);
+
+        mockMvc.perform(post("/meals/weeks/2025/10/days/1")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"recipeId\":\"" + recipeId + "\",\"recipeTitle\":\"Pasta\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addReturns409WhenShoppingItemNameDuplicate() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID targetListId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        Mockito.doThrow(new DuplicateShoppingItemNameException("pasta"))
+                .when(mealsApplicationService)
+                .addOrReplaceMeal(householdId, userId, 2025, 10, 1, recipeId, "Pasta", targetListId);
+
+        mockMvc.perform(post("/meals/weeks/2025/10/days/1")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"recipeId\":\"" + recipeId + "\",\"recipeTitle\":\"Pasta\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
+                .andExpect(status().isConflict());
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {

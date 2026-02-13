@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 public class MealsApplicationService {
     private final WeekPlanRepository weekPlanRepository;
@@ -72,7 +73,7 @@ public class MealsApplicationService {
 
         RecipeRef recipeRef = new RecipeRef(recipeId, recipeTitle);
         weekPlan.addOrReplaceMeal(dayOfWeek, recipeRef);
-        WeekPlan saved = weekPlanRepository.save(weekPlan);
+        WeekPlan saved = saveWithRetryOnWeekPlanConflict(weekPlan, householdId, year, isoWeek, dayOfWeek);
 
         if (targetShoppingListId != null) {
             // ShoppingApplicationService will verify list ownership.
@@ -91,6 +92,23 @@ public class MealsApplicationService {
                 savedMeal.getRecipeRef().title()
         );
         return new AddMealOutput(saved.getId(), saved.getYear(), saved.getIsoWeek(), mealView);
+    }
+
+    private WeekPlan saveWithRetryOnWeekPlanConflict(
+            WeekPlan weekPlan,
+            UUID householdId,
+            int year,
+            int isoWeek,
+            int dayOfWeek
+    ) {
+        try {
+            return weekPlanRepository.save(weekPlan);
+        } catch (DataIntegrityViolationException ex) {
+            WeekPlan existing = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
+                    .orElseThrow(() -> ex);
+            existing.addOrReplaceMeal(dayOfWeek, weekPlan.getMealOrThrow(dayOfWeek).getRecipeRef());
+            return weekPlanRepository.save(existing);
+        }
     }
 
     @Transactional
