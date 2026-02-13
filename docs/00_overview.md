@@ -19,7 +19,7 @@ It focuses on four core domains:
 
 Everyday items that need to happen or be remembered, with a **dual view**:
 - a clear **all-items overview**
-- a simple, legible **calendar view**
+- a simple, legible **calendar view** (planned)
 
 Examples:
 - book a dentist appointment
@@ -33,8 +33,8 @@ Characteristics:
 - incomplete data is allowed
 - recurring items are supported
 - items may be scheduled on dates/times
-- fast switching between list and calendar is core UX
-- optional calendar sync (e.g. Google Calendar) for scheduled items
+- fast switching between list and calendar is core UX (planned)
+- optional calendar sync (e.g. Google Calendar) for scheduled items (planned)
 - assignment is coordination only; any household member may assign or clear it
 - completion is distinct from deletion (done vs intentionally removed)
 
@@ -106,7 +106,7 @@ This domain prioritizes **retrievability over structure**.
 ### User-facing navigation
 
 - **Today/Overview**: today's todos, meals, and shopping needs in one place.
-- **Todos**: list view + calendar view with fast switching.
+- **Todos**: list view now, calendar view planned.
 - **Meals**: week view as primary, with day and month for detail/overview.
 - **Shopping**: simple lists with items toggled between "to buy" and "bought".
 - **Documents**: household archive for receipts, warranties, contracts, and bills.

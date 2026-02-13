@@ -10,8 +10,8 @@ The system must be fast to capture and easy to recall.
 ## Core views
 
 - **List view**: the primary overview of all items.
-- **Calendar view**: simple scheduling view for dated items.
-- Switching between list and calendar must be frictionless.
+- **Calendar view** (planned): simple scheduling view for dated items.
+- Target: switching between list and calendar must be frictionless.
 
 ## Data shape (conceptual)
 
@@ -46,7 +46,7 @@ Consequences: Filters can include completed and deleted history explicitly.
 
 ## Calendar sync
 
-- **Google Calendar sync** is supported for scheduled items.
+- **Google Calendar sync** is planned for scheduled items.
 - Sync is for items with date/time only.
 - Exact sync direction (one-way vs two-way) can be decided later, but must stay minimal.
 

@@ -163,7 +163,7 @@ It is a guiding target, not a strict implementation requirement.
 - `completedAt` (later)
 - `deletedAt` (later)
 - `dueDate` (core)
-- `dueTime` (later)
+- `dueTime` (core)
 - `recurrenceRule` (later)
 - `assignedToUserId` (later)
 - `createdByUserId` (later)
@@ -246,7 +246,7 @@ This is a structural overview of tables and relations that are implemented today
 
 - `users`: `id`
 - `households`: `id`, `name`
-- `todos`: `id`, `household_id`, `text`, `status`
+- `todos`: `id`, `household_id`, `text`, `status`, `due_date`, `due_time`
 - `shopping_lists`: `id`, `household_id`, `name`, `created_at`
 - `shopping_items`: `id`, `list_id`, `name`, `status`, `quantity`, `unit`, `created_at`, `bought_at`
 - `memberships`: composite key (`household_id`, `user_id`), `role`
