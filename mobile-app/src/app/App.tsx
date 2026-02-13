@@ -4,13 +4,13 @@ import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
-import { CreateTodoScreen } from '../screens/CreateTodoScreen';
 import { CreateHouseholdScreen } from '../screens/CreateHouseholdScreen';
 import { HouseholdMembersScreen } from '../screens/HouseholdMembersScreen';
+import { TodoListScreen } from '../screens/TodoListScreen';
 import { MealsWeekScreen } from '../screens/MealsWeekScreen';
 import { ShoppingListScreen } from '../screens/ShoppingListScreen';
 
-type Screen = 'login' | 'home' | 'create' | 'members' | 'shopping' | 'meals';
+type Screen = 'login' | 'home' | 'todos' | 'members' | 'shopping' | 'meals';
 
 export default function App() {
   return (
@@ -88,9 +88,9 @@ function AppShell() {
     );
   }
 
-  if (screen === 'create') {
+  if (screen === 'todos') {
     return (
-      <CreateTodoScreen
+      <TodoListScreen
         token={token}
         onDone={() => {
           setScreen('home');
@@ -138,7 +138,7 @@ function AppShell() {
         token={token}
         me={me.data}
         onCreateTodo={() => {
-          setScreen('create');
+          setScreen('todos');
         }}
         onManageMembers={() => {
           setScreen('members');
