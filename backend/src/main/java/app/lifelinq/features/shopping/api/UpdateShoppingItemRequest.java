@@ -1,6 +1,6 @@
 package app.lifelinq.features.shopping.api;
 
-public final class AddShoppingItemRequest {
+public final class UpdateShoppingItemRequest {
     private String name;
     private java.math.BigDecimal quantity;
     private String unit;

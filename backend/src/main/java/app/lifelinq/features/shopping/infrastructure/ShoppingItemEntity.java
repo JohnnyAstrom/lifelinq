@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -36,6 +37,13 @@ public class ShoppingItemEntity {
     @Column(name = "status", nullable = false)
     private ShoppingItemStatusEntity status;
 
+    @Column(name = "quantity")
+    private BigDecimal quantity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unit")
+    private ShoppingUnitEntity unit;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -50,6 +58,8 @@ public class ShoppingItemEntity {
             ShoppingListEntity list,
             String name,
             ShoppingItemStatusEntity status,
+            BigDecimal quantity,
+            ShoppingUnitEntity unit,
             Instant createdAt,
             Instant boughtAt
     ) {
@@ -57,6 +67,8 @@ public class ShoppingItemEntity {
         this.list = list;
         this.name = name;
         this.status = status;
+        this.quantity = quantity;
+        this.unit = unit;
         this.createdAt = createdAt;
         this.boughtAt = boughtAt;
     }
@@ -75,6 +87,14 @@ public class ShoppingItemEntity {
 
     ShoppingItemStatusEntity getStatus() {
         return status;
+    }
+
+    BigDecimal getQuantity() {
+        return quantity;
+    }
+
+    ShoppingUnitEntity getUnit() {
+        return unit;
     }
 
     Instant getCreatedAt() {

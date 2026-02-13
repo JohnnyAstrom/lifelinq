@@ -1,5 +1,6 @@
 package app.lifelinq.features.shopping.domain;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,16 @@ public final class ShoppingList {
     }
 
     public UUID addItem(UUID itemId, String normalizedName, Instant now) {
+        return addItem(itemId, normalizedName, null, null, now);
+    }
+
+    public UUID addItem(
+            UUID itemId,
+            String normalizedName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            Instant now
+    ) {
         if (itemId == null) {
             throw new IllegalArgumentException("itemId must not be null");
         }
@@ -50,7 +61,7 @@ public final class ShoppingList {
             throw new IllegalArgumentException("now must not be null");
         }
         ensureUniqueName(normalizedName);
-        ShoppingItem item = new ShoppingItem(itemId, normalizedName, now);
+        ShoppingItem item = new ShoppingItem(itemId, normalizedName, now, quantity, unit);
         items.add(item);
         return itemId;
     }
@@ -58,6 +69,17 @@ public final class ShoppingList {
     public void toggleItem(UUID itemId, Instant now) {
         ShoppingItem item = findItemOrThrow(itemId);
         item.toggle(now);
+    }
+
+    public void updateItem(UUID itemId, String normalizedName, BigDecimal quantity, ShoppingUnit unit) {
+        if (normalizedName == null || normalizedName.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        ShoppingItem item = findItemOrThrow(itemId);
+        if (!item.getName().equals(normalizedName)) {
+            ensureUniqueName(normalizedName);
+        }
+        item.updateDetails(normalizedName, quantity, unit);
     }
 
     public void removeItem(UUID itemId) {

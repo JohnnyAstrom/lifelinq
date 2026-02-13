@@ -7,6 +7,7 @@ import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.contract.ShoppingItemView;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
 import app.lifelinq.features.shopping.contract.ToggleShoppingItemOutput;
+import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -82,16 +83,53 @@ public class ShoppingController {
                 context.getHouseholdId(),
                 context.getUserId(),
                 listId,
-                request.getName()
+                request.getName(),
+                request.getQuantity(),
+                parseUnit(request.getUnit())
         );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new AddShoppingItemResponse(
                         output.itemId(),
                         output.name(),
                         output.status().name(),
+                        output.quantity(),
+                        output.unit() != null ? output.unit().name() : null,
                         output.createdAt(),
                         output.boughtAt()
                 ));
+    }
+
+    @PatchMapping("/shopping-lists/{listId}/items/{itemId}")
+    public ResponseEntity<?> updateItem(
+            @PathVariable UUID listId,
+            @PathVariable UUID itemId,
+            @RequestBody UpdateShoppingItemRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        ShoppingItemView item = shoppingApplicationService.updateShoppingItem(
+                context.getHouseholdId(),
+                context.getUserId(),
+                listId,
+                itemId,
+                request.getName(),
+                request.getQuantity(),
+                parseUnit(request.getUnit())
+        );
+        return ResponseEntity.ok(new ShoppingItemResponse(
+                item.id(),
+                item.name(),
+                item.status().name(),
+                item.quantity(),
+                item.unit() != null ? item.unit().name() : null,
+                item.createdAt(),
+                item.boughtAt()
+        ));
     }
 
     @PatchMapping("/shopping-lists/{listId}/items/{itemId}/toggle")
@@ -147,10 +185,23 @@ public class ShoppingController {
                     item.id(),
                     item.name(),
                     item.status().name(),
+                    item.quantity(),
+                    item.unit() != null ? item.unit().name() : null,
                     item.createdAt(),
                     item.boughtAt()
             ));
         }
         return new ShoppingListResponse(list.id(), list.name(), items);
+    }
+
+    private ShoppingUnit parseUnit(String unit) {
+        if (unit == null || unit.isBlank()) {
+            return null;
+        }
+        String normalized = unit.trim().toUpperCase().replace("Ö", "O").replace("Ä", "A").replace("Å", "A");
+        if ("FÖRP".equals(normalized) || "FORP".equals(normalized)) {
+            return ShoppingUnit.FORP;
+        }
+        return ShoppingUnit.valueOf(normalized);
     }
 }

@@ -3,6 +3,7 @@ package app.lifelinq.features.shopping.domain;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,8 @@ class ShoppingItemTest {
         assertEquals(createdAt, item.getCreatedAt());
         assertEquals(ShoppingItemStatus.TO_BUY, item.getStatus());
         assertEquals(null, item.getBoughtAt());
+        assertEquals(null, item.getQuantity());
+        assertEquals(null, item.getUnit());
     }
 
     @Test
@@ -68,10 +71,14 @@ class ShoppingItemTest {
                 "Milk",
                 createdAt,
                 ShoppingItemStatus.BOUGHT,
-                boughtAt
+                boughtAt,
+                new BigDecimal("2.5"),
+                ShoppingUnit.DL
         );
         assertEquals(ShoppingItemStatus.BOUGHT, bought.getStatus());
         assertEquals(boughtAt, bought.getBoughtAt());
+        assertEquals(new BigDecimal("2.5"), bought.getQuantity());
+        assertEquals(ShoppingUnit.DL, bought.getUnit());
 
         assertThrows(IllegalArgumentException.class, () ->
                 ShoppingItem.rehydrate(
@@ -79,6 +86,8 @@ class ShoppingItemTest {
                         "Milk",
                         createdAt,
                         ShoppingItemStatus.BOUGHT,
+                        null,
+                        null,
                         null
                 )
         );
@@ -88,8 +97,31 @@ class ShoppingItemTest {
                         "Milk",
                         createdAt,
                         ShoppingItemStatus.TO_BUY,
-                        Instant.now()
+                        Instant.now(),
+                        null,
+                        null
                 )
+        );
+    }
+
+    @Test
+    void rejectsQuantityWithoutUnit() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), new BigDecimal("1"), null)
+        );
+    }
+
+    @Test
+    void rejectsUnitWithoutQuantity() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, ShoppingUnit.ST)
+        );
+    }
+
+    @Test
+    void rejectsNonPositiveQuantity() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), BigDecimal.ZERO, ShoppingUnit.ST)
         );
     }
 }

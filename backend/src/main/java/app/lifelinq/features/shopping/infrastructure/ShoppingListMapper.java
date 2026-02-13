@@ -3,6 +3,7 @@ package app.lifelinq.features.shopping.infrastructure;
 import app.lifelinq.features.shopping.domain.ShoppingItem;
 import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
 import app.lifelinq.features.shopping.domain.ShoppingList;
+import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +42,8 @@ final class ShoppingListMapper {
                 list,
                 item.getName(),
                 toEntityStatus(item.getStatus()),
+                item.getQuantity(),
+                toEntityUnit(item.getUnit()),
                 item.getCreatedAt(),
                 item.getBoughtAt()
         );
@@ -52,7 +55,9 @@ final class ShoppingListMapper {
                 entity.getName(),
                 entity.getCreatedAt(),
                 toDomainStatus(entity.getStatus()),
-                entity.getBoughtAt()
+                entity.getBoughtAt(),
+                entity.getQuantity(),
+                toDomainUnit(entity.getUnit())
         );
     }
 
@@ -68,5 +73,19 @@ final class ShoppingListMapper {
             return ShoppingItemStatus.BOUGHT;
         }
         return ShoppingItemStatus.TO_BUY;
+    }
+
+    private ShoppingUnitEntity toEntityUnit(ShoppingUnit unit) {
+        if (unit == null) {
+            return null;
+        }
+        return ShoppingUnitEntity.valueOf(unit.name());
+    }
+
+    private ShoppingUnit toDomainUnit(ShoppingUnitEntity unit) {
+        if (unit == null) {
+            return null;
+        }
+        return ShoppingUnit.valueOf(unit.name());
     }
 }
