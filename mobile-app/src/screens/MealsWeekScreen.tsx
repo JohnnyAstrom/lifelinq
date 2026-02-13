@@ -16,6 +16,7 @@ type Props = {
 };
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function uuidv4() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -43,12 +44,28 @@ function getIsoWeekParts(date: Date): { year: number; isoWeek: number } {
   return { year: target.getFullYear(), isoWeek: week };
 }
 
+function getWeekStartDate(year: number, isoWeek: number): Date {
+  const date = new Date(Date.UTC(year, 0, 4));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 1 - day);
+  date.setUTCDate(date.getUTCDate() + (isoWeek - 1) * 7);
+  return date;
+}
+
+function formatDayLabel(date: Date, dayIndex: number) {
+  const dayLabel = DAY_LABELS[dayIndex];
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = MONTH_LABELS[date.getUTCMonth()];
+  return `${dayLabel} ${day} ${month}`;
+}
+
 export function MealsWeekScreen({ token, onDone }: Props) {
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const { year, isoWeek } = useMemo(
     () => getIsoWeekParts(anchorDate),
     [anchorDate]
   );
+  const weekStart = useMemo(() => getWeekStartDate(year, isoWeek), [year, isoWeek]);
   const plan = useWeekPlan(token, year, isoWeek);
   const shopping = useShoppingLists(token);
 
@@ -101,8 +118,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
 
       <View style={styles.list}>
-        {DAY_LABELS.map((label, index) => {
+        {DAY_LABELS.map((_, index) => {
           const day = index + 1;
+          const date = new Date(weekStart.getTime());
+          date.setUTCDate(weekStart.getUTCDate() + index);
+          const label = formatDayLabel(date, index);
           const meal = mealsByDay.get(day) || 'Empty';
           return (
             <View key={label} style={styles.row}>
