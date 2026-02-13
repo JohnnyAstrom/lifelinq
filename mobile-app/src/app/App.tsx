@@ -8,8 +8,9 @@ import { CreateTodoScreen } from '../screens/CreateTodoScreen';
 import { CreateHouseholdScreen } from '../screens/CreateHouseholdScreen';
 import { HouseholdMembersScreen } from '../screens/HouseholdMembersScreen';
 import { CreateShoppingItemScreen } from '../screens/CreateShoppingItemScreen';
+import { MealsProofScreen } from '../screens/MealsProofScreen';
 
-type Screen = 'login' | 'home' | 'create' | 'members' | 'shopping';
+type Screen = 'login' | 'home' | 'create' | 'members' | 'shopping' | 'meals';
 
 export default function App() {
   return (
@@ -120,6 +121,17 @@ function AppShell() {
     );
   }
 
+  if (screen === 'meals') {
+    return (
+      <MealsProofScreen
+        token={token}
+        onDone={() => {
+          setScreen('home');
+        }}
+      />
+    );
+  }
+
   if (screen === 'home') {
     return (
       <HomeScreen
@@ -133,6 +145,9 @@ function AppShell() {
         }}
         onCreateShopping={() => {
           setScreen('shopping');
+        }}
+        onMealsProof={() => {
+          setScreen('meals');
         }}
         onLogout={async () => {
           await logout();
