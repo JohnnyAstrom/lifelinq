@@ -1,7 +1,9 @@
-import { Button, ScrollView, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { getWeekPlan, type WeekPlanResponse } from '../shared/api/meals';
 import { formatApiError } from '../shared/api/client';
+import { AppButton, AppCard, AppScreen, Subtle } from '../shared/ui/components';
+import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -33,6 +35,14 @@ export function MealsProofScreen({ token, onDone }: Props) {
     error: null,
     data: null,
   });
+  const strings = {
+    title: 'Meals proof-screen',
+    yearLabel: 'Year',
+    weekLabel: 'Week',
+    loading: 'Loading...',
+    reload: 'Reload',
+    back: 'Back',
+  };
 
   const load = async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
@@ -50,20 +60,45 @@ export function MealsProofScreen({ token, onDone }: Props) {
   }, []);
 
   return (
-    <ScrollView>
-      <View>
-        <Text>Meals proof-screen</Text>
-        <Text>
-          Year: {year} Week: {isoWeek}
-        </Text>
-        {state.loading ? <Text>Loading...</Text> : null}
-        {state.error ? <Text>{state.error}</Text> : null}
+    <AppScreen>
+      <AppCard style={styles.card}>
+        <Text style={textStyles.h2}>{strings.title}</Text>
+        <Subtle>
+          {strings.yearLabel}: {year} · {strings.weekLabel}: {isoWeek}
+        </Subtle>
+        {state.loading ? <Subtle>{strings.loading}</Subtle> : null}
+        {state.error ? <Text style={styles.error}>{state.error}</Text> : null}
         {!state.loading && state.data ? (
-          <Text>{JSON.stringify(state.data, null, 2)}</Text>
+          <Text style={styles.code}>{JSON.stringify(state.data, null, 2)}</Text>
         ) : null}
-        <Button title="Reload" onPress={load} />
-        <Button title="Back" onPress={onDone} />
-      </View>
-    </ScrollView>
+        <View style={styles.actions}>
+          <AppButton title={strings.reload} onPress={load} fullWidth />
+          <AppButton title={strings.back} onPress={onDone} variant="ghost" fullWidth />
+        </View>
+      </AppCard>
+    </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    gap: theme.spacing.sm,
+  },
+  error: {
+    color: theme.colors.danger,
+    fontFamily: theme.typography.body,
+  },
+  code: {
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.surfaceAlt,
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  actions: {
+    gap: theme.spacing.sm,
+  },
+});
