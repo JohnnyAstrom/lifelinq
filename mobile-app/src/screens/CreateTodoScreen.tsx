@@ -25,6 +25,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const todos = useTodos(token, 'OPEN');
+  const canCreateTodo = text.trim().length > 0;
   const strings = {
     title: 'New todo',
     subtitle: 'Add something you want to remember today.',
@@ -41,7 +42,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
     timeAfternoon: 'Afternoon',
     timeEvening: 'Evening',
     timePick: 'Pick time',
-    timeNone: 'None',
+    timeNone: 'Any',
     pendingDatePrefix: 'Scheduled:',
     pickDateTitle: 'Pick a date',
     pickTimeTitle: 'Pick a time',
@@ -170,12 +171,14 @@ export function CreateTodoScreen({ token, onDone }: Props) {
           </View>
         ) : null}
         {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
-        <AppButton
-          title={todos.loading ? strings.saving : strings.save}
-          onPress={handleCreate}
-          fullWidth
-          disabled={todos.loading}
-        />
+        {canCreateTodo || todos.loading ? (
+          <AppButton
+            title={todos.loading ? strings.saving : strings.save}
+            onPress={handleCreate}
+            fullWidth
+            disabled={todos.loading}
+          />
+        ) : null}
         <AppButton title={strings.back} onPress={onDone} variant="ghost" fullWidth />
       </AppCard>
 

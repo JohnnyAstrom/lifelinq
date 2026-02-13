@@ -131,6 +131,8 @@ type InputProps = {
   multiline?: boolean;
   style?: StyleProp<TextStyle>;
   autoFocus?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export function AppInput({
@@ -140,6 +142,8 @@ export function AppInput({
   multiline,
   style,
   autoFocus,
+  onFocus,
+  onBlur,
 }: InputProps) {
   return (
     <TextInput
@@ -148,6 +152,8 @@ export function AppInput({
       onChangeText={onChangeText}
       multiline={multiline}
       autoFocus={autoFocus}
+      onFocus={onFocus}
+      onBlur={onBlur}
       style={[styles.input, style]}
       placeholderTextColor={theme.colors.subtle}
     />

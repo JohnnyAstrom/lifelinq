@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useTodos } from '../features/todo/hooks/useTodos';
@@ -27,9 +30,11 @@ type Props = {
 };
 
 export function TodoListScreen({ token, onDone }: Props) {
+  const { width: viewportWidth } = useWindowDimensions();
   const [status, setStatus] = useState<'OPEN' | 'COMPLETED' | 'ALL'>('OPEN');
   const [view, setView] = useState<'ALL' | 'TODAY' | 'SCHEDULED' | 'DONE'>('ALL');
   const [text, setText] = useState('');
+  const [isAddComposerExpanded, setIsAddComposerExpanded] = useState(false);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
   const [pendingTime, setPendingTime] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -68,7 +73,7 @@ export function TodoListScreen({ token, onDone }: Props) {
     timeAfternoon: 'Afternoon',
     timeEvening: 'Evening',
     timePick: 'Pick time',
-    timeNone: 'None',
+    timeNone: 'Any',
     pendingDatePrefix: 'Scheduled:',
     dateFiltersInfo: 'Filtered by date.',
     details: 'Details',
@@ -93,6 +98,7 @@ export function TodoListScreen({ token, onDone }: Props) {
       setText('');
       setPendingDate(null);
       setPendingTime(null);
+      setIsAddComposerExpanded(false);
     }
   }
 
@@ -175,6 +181,10 @@ export function TodoListScreen({ token, onDone }: Props) {
   const selectedTodo = detailsTodoId
     ? todos.items.find((item) => item.id === detailsTodoId)
     : null;
+  const showSchedulingControls = isAddComposerExpanded || !!pendingDate || !!pendingTime;
+  const canAddTodo = text.trim().length > 0;
+  const horizontalGutter = theme.spacing.sm * 2;
+  const modalWidth = Math.max(280, Math.min(760, viewportWidth - horizontalGutter));
 
   useEffect(() => {
     if (!selectedTodo) {
@@ -300,39 +310,42 @@ export function TodoListScreen({ token, onDone }: Props) {
             value={text}
             placeholder={strings.addPlaceholder}
             onChangeText={setText}
+            onFocus={() => setIsAddComposerExpanded(true)}
           />
-          <View style={styles.quickDateRow}>
-            <Text style={styles.quickDateLabel}>{strings.quickDateTitle}</Text>
-            <View style={styles.quickDateChips}>
-              <AppChip
-                label={strings.quickToday}
-                active={!!pendingDate && isSameDay(pendingDate, new Date())}
-                onPress={setDateToToday}
-              />
-              <AppChip
-                label={strings.quickTomorrow}
-                active={(() => {
-                  if (!pendingDate) {
-                    return false;
-                  }
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  return isSameDay(pendingDate, tomorrow);
-                })()}
-                onPress={setDateToTomorrow}
-              />
-              <AppChip
-                label={strings.quickPick}
-                active={showDatePicker}
-                onPress={() => setShowDatePicker(true)}
-              />
+          {showSchedulingControls ? (
+            <View style={styles.quickDateRow}>
+              <Text style={styles.quickDateLabel}>{strings.quickDateTitle}</Text>
+              <View style={styles.quickDateChips}>
+                <AppChip
+                  label={strings.quickToday}
+                  active={!!pendingDate && isSameDay(pendingDate, new Date())}
+                  onPress={setDateToToday}
+                />
+                <AppChip
+                  label={strings.quickTomorrow}
+                  active={(() => {
+                    if (!pendingDate) {
+                      return false;
+                    }
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    return isSameDay(pendingDate, tomorrow);
+                  })()}
+                  onPress={setDateToTomorrow}
+                />
+                <AppChip
+                  label={strings.quickPick}
+                  active={showDatePicker}
+                  onPress={() => setShowDatePicker(true)}
+                />
+              </View>
+              {pendingDate ? (
+                <Subtle>
+                  {strings.pendingDatePrefix} {formatDate(pendingDate)} {pendingTime ? `· ${pendingTime}` : ''}
+                </Subtle>
+              ) : null}
             </View>
-            {pendingDate ? (
-              <Subtle>
-                {strings.pendingDatePrefix} {formatDate(pendingDate)} {pendingTime ? `· ${pendingTime}` : ''}
-              </Subtle>
-            ) : null}
-          </View>
+          ) : null}
           {pendingDate ? (
             <View style={styles.quickTimeRow}>
               <Text style={styles.quickDateLabel}>{strings.quickTimeTitle}</Text>
@@ -358,12 +371,16 @@ export function TodoListScreen({ token, onDone }: Props) {
               </View>
             </View>
           ) : null}
-          <AppButton
-            title={todos.loading ? strings.adding : strings.addAction}
-            onPress={handleAdd}
-            fullWidth
-            disabled={todos.loading}
-          />
+          {canAddTodo || todos.loading ? (
+            <View style={styles.addButtonSpacing}>
+              <AppButton
+                title={todos.loading ? strings.adding : strings.addAction}
+                onPress={handleAdd}
+                fullWidth
+                disabled={todos.loading}
+              />
+            </View>
+          ) : null}
         </AppCard>
         </View>
         {showDatePicker ? (
@@ -382,7 +399,7 @@ export function TodoListScreen({ token, onDone }: Props) {
             />
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDatePicker(false)}>
-            <Pressable style={styles.sheet} onPress={() => null}>
+            <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
               <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.pickDateTitle}</Text>
               <View style={styles.pickerList}>
@@ -548,89 +565,113 @@ export function TodoListScreen({ token, onDone }: Props) {
           )
         ) : null}
 
-        {detailsTodoId ? (
-          <Pressable style={styles.backdrop} onPress={() => setDetailsTodoId(null)}>
+        <Modal
+          visible={!!detailsTodoId}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setDetailsTodoId(null)}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={() => setDetailsTodoId(null)}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
-              <Text style={textStyles.h3}>{strings.editTitle}</Text>
-              <Subtle>{strings.editSubtitle}</Subtle>
-              <AppInput
-                value={detailText}
-                placeholder={strings.addPlaceholder}
-                onChangeText={setDetailText}
-              />
-              <View style={styles.quickDateRow}>
-                <Text style={styles.quickDateLabel}>{strings.quickDateTitle}</Text>
-                <View style={styles.quickDateChips}>
-                  <AppChip
-                    label={strings.quickToday}
-                    active={!!detailDate && isSameDay(detailDate, new Date())}
-                    onPress={setDetailDateToToday}
-                  />
-                  <AppChip
-                    label={strings.quickTomorrow}
-                    active={(() => {
-                      if (!detailDate) {
-                        return false;
-                      }
-                      const tomorrow = new Date();
-                      tomorrow.setDate(tomorrow.getDate() + 1);
-                      return isSameDay(detailDate, tomorrow);
-                    })()}
-                    onPress={setDetailDateToTomorrow}
-                  />
-                  <AppChip
-                    label={strings.quickPick}
-                    active={showDetailDatePicker}
-                    onPress={() => setShowDetailDatePicker(true)}
-                  />
-                  <AppChip
-                    label={strings.clearDate}
-                    active={!detailDate}
-                    onPress={clearDetailDate}
+              <ScrollView
+                style={styles.detailScroll}
+                contentContainerStyle={styles.detailContent}
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                horizontal={false}
+                bounces={false}
+                alwaysBounceHorizontal={false}
+              >
+                <View style={styles.detailHeader}>
+                  <Text style={textStyles.h3}>{strings.editTitle}</Text>
+                  <Subtle>{strings.editSubtitle}</Subtle>
+                </View>
+
+                <View style={styles.detailSection}>
+                  <Text style={styles.quickDateLabel}>{strings.addTodoTitle}</Text>
+                  <AppInput
+                    value={detailText}
+                    placeholder={strings.addPlaceholder}
+                    onChangeText={setDetailText}
                   />
                 </View>
-                {detailDate ? (
-                  <Subtle>
-                    {strings.pendingDatePrefix} {formatDate(detailDate)} {detailTime ? `· ${detailTime}` : ''}
-                  </Subtle>
-                ) : null}
-              </View>
-              {detailDate ? (
-                <View style={styles.quickTimeRow}>
-                  <Text style={styles.quickDateLabel}>{strings.quickTimeTitle}</Text>
+
+                <View style={styles.detailSection}>
+                  <Text style={styles.quickDateLabel}>{strings.quickDateTitle}</Text>
                   <View style={styles.quickDateChips}>
-                    {timeOptions.map((option) => (
-                      <AppChip
-                        key={option.value}
-                        label={option.label}
-                        active={detailTime === option.value}
-                        onPress={() => setDetailTime(option.value)}
-                      />
-                    ))}
                     <AppChip
-                      label={strings.timePick}
-                      active={showDetailTimePicker}
-                      onPress={() => setShowDetailTimePicker(true)}
+                      label={strings.quickToday}
+                      active={!!detailDate && isSameDay(detailDate, new Date())}
+                      onPress={setDetailDateToToday}
                     />
                     <AppChip
-                      label={strings.timeNone}
-                      active={!detailTime}
-                      onPress={() => setDetailTime(null)}
+                      label={strings.quickTomorrow}
+                      active={(() => {
+                        if (!detailDate) {
+                          return false;
+                        }
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        return isSameDay(detailDate, tomorrow);
+                      })()}
+                      onPress={setDetailDateToTomorrow}
+                    />
+                    <AppChip
+                      label={strings.quickPick}
+                      active={showDetailDatePicker}
+                      onPress={() => setShowDetailDatePicker(true)}
                     />
                   </View>
+                  <View style={styles.clearDateRow}>
+                    <AppButton title={strings.clearDate} onPress={clearDetailDate} variant="ghost" />
+                  </View>
+                  {detailDate ? (
+                    <Subtle>
+                      {strings.pendingDatePrefix} {formatDate(detailDate)} {detailTime ? `· ${detailTime}` : ''}
+                    </Subtle>
+                  ) : null}
                 </View>
-              ) : null}
-              <AppButton
-                title={savingDetails ? strings.savingChanges : strings.saveChanges}
-                onPress={handleSaveDetails}
-                fullWidth
-                disabled={savingDetails || !detailText.trim()}
-              />
-              <AppButton title={strings.close} onPress={() => setDetailsTodoId(null)} variant="ghost" fullWidth />
+
+                {detailDate ? (
+                  <View style={styles.detailSection}>
+                    <Text style={styles.quickDateLabel}>{strings.quickTimeTitle}</Text>
+                    <View style={styles.quickDateChips}>
+                      {timeOptions.map((option) => (
+                        <AppChip
+                          key={option.value}
+                          label={option.label}
+                          active={detailTime === option.value}
+                          onPress={() => setDetailTime(option.value)}
+                        />
+                      ))}
+                      <AppChip
+                        label={strings.timePick}
+                        active={showDetailTimePicker}
+                        onPress={() => setShowDetailTimePicker(true)}
+                      />
+                      <AppChip
+                        label={strings.timeNone}
+                        active={!detailTime}
+                        onPress={() => setDetailTime(null)}
+                      />
+                    </View>
+                  </View>
+                ) : null}
+
+                <View style={styles.detailActions}>
+                  <AppButton
+                    title={savingDetails ? strings.savingChanges : strings.saveChanges}
+                    onPress={handleSaveDetails}
+                    fullWidth
+                    disabled={savingDetails || !detailText.trim()}
+                  />
+                  <AppButton title={strings.close} onPress={() => setDetailsTodoId(null)} variant="ghost" fullWidth />
+                </View>
+              </ScrollView>
             </Pressable>
           </Pressable>
-        ) : null}
+        </Modal>
     </AppScreen>
   );
 }
@@ -736,12 +777,14 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.radius.xl,
-    borderTopRightRadius: theme.radius.xl,
+    borderRadius: theme.radius.xl,
     padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    maxWidth: 760,
+    maxHeight: Platform.OS === 'web' ? '94%' : '86%',
+    alignSelf: 'center',
+    overflow: 'hidden',
   },
   sheetHandle: {
     alignSelf: 'center',
@@ -762,5 +805,44 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
+  },
+  addButtonSpacing: {
+    marginTop: theme.spacing.md,
+  },
+  detailScroll: {
+    marginTop: theme.spacing.xs,
+  },
+  detailContent: {
+    gap: theme.spacing.md,
+    paddingBottom: theme.spacing.xs,
+    minWidth: 0,
+  },
+  detailHeader: {
+    gap: theme.spacing.xs,
+  },
+  detailSection: {
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceAlt,
+    minWidth: 0,
+  },
+  clearDateRow: {
+    alignItems: 'flex-start',
+  },
+  detailActions: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: Platform.OS === 'web' ? 'flex-start' : 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: Platform.OS === 'web' ? 0 : theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
   },
 });
