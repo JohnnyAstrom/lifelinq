@@ -30,13 +30,16 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     }
   }
 
-  async function add(text: string) {
+  async function add(
+    text: string,
+    options?: { dueDate?: string | null; dueTime?: string | null }
+  ) {
     if (!token) {
       throw new Error('Missing token');
     }
     setError(null);
     try {
-      await createTodo(token, text);
+      await createTodo(token, text, options?.dueDate, options?.dueTime);
       await load();
     } catch (err) {
       await handleApiError(err);

@@ -61,7 +61,7 @@ export function TodoListScreen({ token, onDone }: Props) {
     timePick: 'Pick time',
     timeNone: 'None',
     pendingDatePrefix: 'Scheduled:',
-    dateFiltersSoon: 'Date-based filters are coming soon.',
+    dateFiltersInfo: 'Filtered by date.',
     details: 'Details',
     editTitle: 'Edit todo',
     editSubtitle: 'Editing and scheduling will be available soon.',
@@ -74,7 +74,9 @@ export function TodoListScreen({ token, onDone }: Props) {
     if (!text.trim() || todos.loading) {
       return;
     }
-    await todos.add(text.trim());
+    const dueDate = pendingDate ? toApiDate(pendingDate) : undefined;
+    const dueTime = pendingDate && pendingTime ? pendingTime : undefined;
+    await todos.add(text.trim(), { dueDate, dueTime });
     setText('');
     setPendingDate(null);
     setPendingTime(null);
@@ -108,6 +110,44 @@ export function TodoListScreen({ token, onDone }: Props) {
     return `${day} · ${date}`;
   }
 
+  function toApiDate(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function parseApiDate(value?: string | null) {
+    if (!value) {
+      return null;
+    }
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) {
+      return null;
+    }
+    return new Date(year, month - 1, day);
+  }
+
+  function isToday(date: Date) {
+    return isSameDay(date, new Date());
+  }
+
+  function formatDueLabel(dueDate?: string | null, dueTime?: string | null) {
+    const parsed = parseApiDate(dueDate);
+    if (!parsed) {
+      return null;
+    }
+    const day = parsed.toLocaleDateString(undefined, { weekday: 'short' });
+    const date = parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return dueTime ? `${day} · ${date} · ${dueTime}` : `${day} · ${date}`;
+  }
+
+  const timeOptions = [
+    { label: strings.timeMorning, value: '08:00' },
+    { label: strings.timeAfternoon, value: '13:00' },
+    { label: strings.timeEvening, value: '18:00' },
+  ];
+
   function setFilter(nextView: 'ALL' | 'TODAY' | 'SCHEDULED' | 'DONE') {
     setView(nextView);
     if (nextView === 'DONE') {
@@ -118,6 +158,18 @@ export function TodoListScreen({ token, onDone }: Props) {
       setStatus('OPEN');
     }
   }
+
+  const visibleItems = todos.items.filter((item) => {
+    if (view === 'TODAY') {
+      const due = parseApiDate(item.dueDate);
+      return due ? isToday(due) : false;
+    }
+    if (view === 'SCHEDULED') {
+      const due = parseApiDate(item.dueDate);
+      return !!due && !isToday(due);
+    }
+    return true;
+  });
 
   return (
     <AppScreen
@@ -147,13 +199,15 @@ export function TodoListScreen({ token, onDone }: Props) {
         <AppCard>
           <SectionTitle>{strings.listTitle}</SectionTitle>
           {view === 'TODAY' || view === 'SCHEDULED' ? (
-            <Subtle>{strings.dateFiltersSoon}</Subtle>
+            <Subtle>{strings.dateFiltersInfo}</Subtle>
           ) : null}
-          {todos.items.length === 0 && !todos.loading ? (
+          {visibleItems.length === 0 && !todos.loading ? (
             <Subtle>{strings.noTodos}</Subtle>
           ) : null}
           <View style={styles.list}>
-            {todos.items.map((item) => (
+            {visibleItems.map((item) => {
+              const dueLabel = formatDueLabel(item.dueDate, item.dueTime);
+              return (
               <View key={item.id} style={styles.itemRow}>
                 <Pressable
                   style={styles.checkboxPressable}
@@ -169,13 +223,15 @@ export function TodoListScreen({ token, onDone }: Props) {
                   <Text style={[styles.itemText, item.status === 'COMPLETED' ? styles.itemTextDone : null]}>
                     {item.text}
                   </Text>
+                  {dueLabel ? <Text style={styles.itemMeta}>{dueLabel}</Text> : null}
                 </View>
                 <Pressable style={styles.detailZone} onPress={() => setDetailsTodoId(item.id)}>
                   <Text style={styles.itemHintText}>{strings.details}</Text>
                   <Text style={styles.itemHintChevron}>›</Text>
                 </Pressable>
               </View>
-            ))}
+              );
+            })}
           </View>
         </AppCard>
 
@@ -213,28 +269,23 @@ export function TodoListScreen({ token, onDone }: Props) {
               />
             </View>
             {pendingDate ? (
-              <Subtle>{strings.pendingDatePrefix} {formatPendingDate()} {pendingTime ? `· ${pendingTime}` : ''}</Subtle>
+              <Subtle>
+                {strings.pendingDatePrefix} {formatPendingDate()} {pendingTime ? `· ${pendingTime}` : ''}
+              </Subtle>
             ) : null}
           </View>
           {pendingDate ? (
             <View style={styles.quickTimeRow}>
               <Text style={styles.quickDateLabel}>{strings.quickTimeTitle}</Text>
               <View style={styles.quickDateChips}>
-                <AppChip
-                  label={strings.timeMorning}
-                  active={pendingTime === strings.timeMorning}
-                  onPress={() => setPendingTime(strings.timeMorning)}
-                />
-                <AppChip
-                  label={strings.timeAfternoon}
-                  active={pendingTime === strings.timeAfternoon}
-                  onPress={() => setPendingTime(strings.timeAfternoon)}
-                />
-                <AppChip
-                  label={strings.timeEvening}
-                  active={pendingTime === strings.timeEvening}
-                  onPress={() => setPendingTime(strings.timeEvening)}
-                />
+                {timeOptions.map((option) => (
+                  <AppChip
+                    key={option.value}
+                    label={option.label}
+                    active={pendingTime === option.value}
+                    onPress={() => setPendingTime(option.value)}
+                  />
+                ))}
                 <AppChip
                   label={strings.timePick}
                   active={showTimePicker}

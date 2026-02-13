@@ -5,6 +5,8 @@ export type TodoResponse = {
   householdId: string;
   text: string;
   status: 'OPEN' | 'COMPLETED';
+  dueDate?: string | null;
+  dueTime?: string | null;
 };
 
 type ListTodosResponse = {
@@ -17,12 +19,24 @@ export async function fetchTodos(token: string, status?: string): Promise<TodoRe
   return response.todos;
 }
 
-export async function createTodo(token: string, text: string): Promise<void> {
+export async function createTodo(
+  token: string,
+  text: string,
+  dueDate?: string | null,
+  dueTime?: string | null
+): Promise<void> {
+  const payload: { text: string; dueDate?: string | null; dueTime?: string | null } = { text };
+  if (dueDate) {
+    payload.dueDate = dueDate;
+  }
+  if (dueTime) {
+    payload.dueTime = dueTime;
+  }
   await fetchJson<void>(
     '/todos',
     {
       method: 'POST',
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(payload),
     },
     { token }
   );
