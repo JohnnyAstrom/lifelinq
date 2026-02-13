@@ -32,9 +32,17 @@ public class TodoApplicationService {
     }
 
     @Transactional
-    public UUID createTodo(UUID householdId, UUID actorUserId, String text) {
+    public UUID createTodo(
+            UUID householdId,
+            UUID actorUserId,
+            String text,
+            java.time.LocalDate dueDate,
+            java.time.LocalTime dueTime
+    ) {
         ensureUserExistsUseCase.execute(actorUserId);
-        CreateTodoResult result = createTodoUseCase.execute(new CreateTodoCommand(householdId, text));
+        CreateTodoResult result = createTodoUseCase.execute(
+                new CreateTodoCommand(householdId, text, dueDate, dueTime)
+        );
         return result.getTodoId();
     }
 

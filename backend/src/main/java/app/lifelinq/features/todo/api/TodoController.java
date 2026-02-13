@@ -36,7 +36,13 @@ public class TodoController {
             return ApiScoping.missingContext();
         }
         return ResponseEntity.ok(new CreateTodoResponse(
-                todoApplicationService.createTodo(context.getHouseholdId(), context.getUserId(), request.getText())
+                todoApplicationService.createTodo(
+                        context.getHouseholdId(),
+                        context.getUserId(),
+                        request.getText(),
+                        request.getDueDate(),
+                        request.getDueTime()
+                )
         ));
     }
 
@@ -71,7 +77,9 @@ public class TodoController {
                     todo.getId(),
                     todo.getHouseholdId(),
                     todo.getText(),
-                    todo.getStatus()
+                    todo.getStatus(),
+                    todo.getDueDate(),
+                    todo.getDueTime()
             ));
         }
         return items;

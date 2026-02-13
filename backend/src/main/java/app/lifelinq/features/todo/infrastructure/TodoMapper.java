@@ -14,7 +14,9 @@ public final class TodoMapper {
                 todo.getId(),
                 todo.getHouseholdId(),
                 todo.getText(),
-                todo.getStatus()
+                todo.getStatus(),
+                todo.getDueDate(),
+                todo.getDueTime()
         );
     }
 
@@ -22,7 +24,13 @@ public final class TodoMapper {
         if (entity == null) {
             throw new IllegalArgumentException("entity must not be null");
         }
-        Todo todo = new Todo(entity.getId(), entity.getHouseholdId(), entity.getText());
+        Todo todo = new Todo(
+                entity.getId(),
+                entity.getHouseholdId(),
+                entity.getText(),
+                entity.getDueDate(),
+                entity.getDueTime()
+        );
         if (entity.getStatus() == TodoStatus.COMPLETED) {
             todo.toggle(Instant.EPOCH);
         }

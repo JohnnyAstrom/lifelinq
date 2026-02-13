@@ -1,15 +1,23 @@
 package app.lifelinq.features.todo.domain;
 
-import java.util.UUID;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.UUID;
 
 public final class Todo {
     private final UUID id;
     private final UUID householdId;
     private final String text;
     private TodoStatus status;
+    private final LocalDate dueDate;
+    private final LocalTime dueTime;
 
     public Todo(UUID id, UUID householdId, String text) {
+        this(id, householdId, text, null, null);
+    }
+
+    public Todo(UUID id, UUID householdId, String text, LocalDate dueDate, LocalTime dueTime) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
@@ -19,9 +27,14 @@ public final class Todo {
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("text must not be blank");
         }
+        if (dueTime != null && dueDate == null) {
+            throw new IllegalArgumentException("dueDate must not be null when dueTime is set");
+        }
         this.id = id;
         this.householdId = householdId;
         this.text = text;
+        this.dueDate = dueDate;
+        this.dueTime = dueTime;
         this.status = TodoStatus.OPEN;
     }
 
@@ -35,6 +48,14 @@ public final class Todo {
 
     public String getText() {
         return text;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public LocalTime getDueTime() {
+        return dueTime;
     }
 
     public TodoStatus getStatus() {

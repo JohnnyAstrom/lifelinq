@@ -25,7 +25,13 @@ final class CreateTodoUseCase {
             throw new IllegalArgumentException("text must not be blank");
         }
 
-        Todo todo = new Todo(UUID.randomUUID(), command.getHouseholdId(), command.getText());
+        Todo todo = new Todo(
+                UUID.randomUUID(),
+                command.getHouseholdId(),
+                command.getText(),
+                command.getDueDate(),
+                command.getDueTime()
+        );
         todoRepository.save(todo);
         return new CreateTodoResult(todo.getId());
     }

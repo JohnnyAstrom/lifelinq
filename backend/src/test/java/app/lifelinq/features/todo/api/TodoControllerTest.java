@@ -102,7 +102,7 @@ class TodoControllerTest {
         membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(todoApplicationService.createTodo(householdId, userId, "Buy milk")).thenReturn(todoId);
+        when(todoApplicationService.createTodo(householdId, userId, "Buy milk", null, null)).thenReturn(todoId);
 
         mockMvc.perform(post("/todos")
                         .header("Authorization", "Bearer " + token)
@@ -110,7 +110,7 @@ class TodoControllerTest {
                         .content("{\"text\":\"Buy milk\"}"))
                 .andExpect(status().isOk());
 
-        verify(todoApplicationService).createTodo(householdId, userId, "Buy milk");
+        verify(todoApplicationService).createTodo(householdId, userId, "Buy milk", null, null);
     }
 
     @Test

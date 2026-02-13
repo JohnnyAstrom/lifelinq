@@ -7,6 +7,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -25,14 +27,27 @@ public class TodoEntity {
     @Column(nullable = false)
     private TodoStatus status;
 
+    private LocalDate dueDate;
+
+    private LocalTime dueTime;
+
     protected TodoEntity() {
     }
 
-    public TodoEntity(UUID id, UUID householdId, String text, TodoStatus status) {
+    public TodoEntity(
+            UUID id,
+            UUID householdId,
+            String text,
+            TodoStatus status,
+            LocalDate dueDate,
+            LocalTime dueTime
+    ) {
         this.id = id;
         this.householdId = householdId;
         this.text = text;
         this.status = status;
+        this.dueDate = dueDate;
+        this.dueTime = dueTime;
     }
 
     public UUID getId() {
@@ -49,5 +64,13 @@ public class TodoEntity {
 
     public TodoStatus getStatus() {
         return status;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public LocalTime getDueTime() {
+        return dueTime;
     }
 }
