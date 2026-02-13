@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
 import { type ShoppingUnit } from '../shared/api/shopping';
-import { AppButton, AppCard, AppChip, AppInput, AppScreen, SectionTitle, Subtle } from '../shared/ui/components';
+import { AppButton, AppCard, AppChip, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
@@ -173,14 +173,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 
   return (
     <AppScreen scroll={false} contentStyle={styles.screenContent}>
-      <View style={styles.topBar}>
-        <AppButton title={strings.back} onPress={onBack} variant="ghost" />
-        <View style={styles.topBarText}>
-          <Text style={styles.topTitle}>
-            {selected ? selected.name : strings.titleFallback}
-          </Text>
-        </View>
-      </View>
+      <TopBar
+        title={selected ? selected.name : strings.titleFallback}
+        left={<AppButton title={strings.back} onPress={onBack} variant="ghost" />}
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
@@ -417,31 +413,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: theme.spacing.lg,
-    paddingTop: 110,
+    paddingTop: 90,
     paddingBottom: 220,
     gap: theme.spacing.md,
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    zIndex: 5,
-  },
-  topBarText: {
-    flex: 1,
-  },
-  topTitle: {
-    ...textStyles.h2,
   },
   sectionHeader: {
     flexDirection: 'row',

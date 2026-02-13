@@ -162,6 +162,26 @@ export function Subtle({ children }: { children: React.ReactNode }) {
   return <Text style={textStyles.subtle}>{children}</Text>;
 }
 
+type TopBarProps = {
+  title: string;
+  subtitle?: string;
+  left?: React.ReactNode;
+  right?: React.ReactNode;
+};
+
+export function TopBar({ title, subtitle, left, right }: TopBarProps) {
+  return (
+    <View style={styles.topBar}>
+      <View style={styles.topBarSide}>{left}</View>
+      <View style={styles.topBarCenter}>
+        <Text style={textStyles.h2}>{title}</Text>
+        {subtitle ? <Text style={textStyles.subtle}>{subtitle}</Text> : null}
+      </View>
+      <View style={styles.topBarSide}>{right}</View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -279,5 +299,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     backgroundColor: theme.colors.surfaceAlt,
     color: theme.colors.text,
+  },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    zIndex: 5,
+  },
+  topBarSide: {
+    minWidth: 64,
+  },
+  topBarCenter: {
+    flex: 1,
+    gap: 2,
   },
 });

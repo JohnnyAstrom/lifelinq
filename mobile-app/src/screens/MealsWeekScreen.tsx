@@ -16,6 +16,7 @@ import {
   AppScreen,
   SectionTitle,
   Subtle,
+  TopBar,
 } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 import { addShoppingItem } from '../shared/api/shopping';
@@ -299,27 +300,32 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   return (
     <View style={styles.root}>
       <AppScreen>
-        <AppCard style={styles.headerCard}>
-          <Text style={textStyles.h2}>{strings.title}</Text>
-          <Subtle>{strings.subtitle}</Subtle>
-          <View style={styles.viewSwitchRow}>
-            <AppChip
-              label={strings.daily}
-              active={viewMode === 'daily'}
-              onPress={() => setViewMode('daily')}
-            />
-            <AppChip
-              label={strings.weekly}
-              active={viewMode === 'weekly'}
-              onPress={() => setViewMode('weekly')}
-            />
-            <AppChip
-              label={strings.monthly}
-              active={viewMode === 'monthly'}
-              onPress={() => setViewMode('monthly')}
-            />
-          </View>
-        </AppCard>
+        <TopBar
+          title={strings.title}
+          subtitle={strings.subtitle}
+          left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+        />
+
+        <View style={styles.contentOffset}>
+          <AppCard style={styles.headerCard}>
+            <View style={styles.viewSwitchRow}>
+              <AppChip
+                label={strings.daily}
+                active={viewMode === 'daily'}
+                onPress={() => setViewMode('daily')}
+              />
+              <AppChip
+                label={strings.weekly}
+                active={viewMode === 'weekly'}
+                onPress={() => setViewMode('weekly')}
+              />
+              <AppChip
+                label={strings.monthly}
+                active={viewMode === 'monthly'}
+                onPress={() => setViewMode('monthly')}
+              />
+            </View>
+          </AppCard>
 
         {viewMode === 'weekly' ? (
           <AppCard>
@@ -493,9 +499,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           </AppCard>
         ) : null}
 
-        <AppCard>
-          <AppButton title={strings.back} onPress={onDone} variant="ghost" fullWidth />
-        </AppCard>
+        </View>
       </AppScreen>
 
       {selectedDay && selectedMealType ? (
@@ -593,6 +597,10 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     gap: theme.spacing.xs,
+  },
+  contentOffset: {
+    paddingTop: 90,
+    gap: theme.spacing.md,
   },
   viewSwitchRow: {
     flexDirection: 'row',

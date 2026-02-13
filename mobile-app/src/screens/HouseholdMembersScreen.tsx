@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useHouseholdMembers } from '../features/household/hooks/useHouseholdMembers';
-import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle } from '../shared/ui/components';
+import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
@@ -37,11 +37,13 @@ export function HouseholdMembersScreen({ token, onDone }: Props) {
 
   return (
     <AppScreen>
-      <AppCard style={styles.headerCard}>
-        <Text style={textStyles.h2}>{strings.title}</Text>
-        <Subtle>{strings.subtitle}</Subtle>
-      </AppCard>
+      <TopBar
+        title={strings.title}
+        subtitle={strings.subtitle}
+        left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+      />
 
+      <View style={styles.contentOffset}>
       <AppCard>
         <SectionTitle>{strings.membersTitle}</SectionTitle>
         {members.loading ? <Subtle>{strings.loadingMembers}</Subtle> : null}
@@ -75,17 +77,15 @@ export function HouseholdMembersScreen({ token, onDone }: Props) {
         />
         <AppButton title={strings.addMemberAction} onPress={handleAdd} fullWidth />
       </AppCard>
-
-      <AppCard>
-        <AppButton title={strings.back} onPress={onDone} variant="secondary" fullWidth />
-      </AppCard>
+      </View>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  headerCard: {
-    gap: theme.spacing.xs,
+  contentOffset: {
+    paddingTop: 90,
+    gap: theme.spacing.md,
   },
   list: {
     gap: theme.spacing.sm,
