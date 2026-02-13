@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MeResponse } from '../features/auth/api/meApi';
+import { useTodos } from '../features/todo/hooks/useTodos';
 import { AppButton, AppCard, AppScreen, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -24,6 +25,7 @@ export function HomeScreen({
   onSettings,
   onLogout,
 }: Props) {
+  const todos = useTodos(token, 'OPEN');
   const strings = {
     appName: 'LifeLinq',
     tagline: 'Your household, in sync.',
@@ -40,12 +42,22 @@ export function HomeScreen({
     documentsSubtitle: 'Store receipts and records',
     quickActions: 'Quick actions',
     todayTitle: 'Today',
-    todaySubtitle: 'Your plan for today will appear here.',
+    todaySubtitle: 'Open todos for today.',
     todayPlaceholderTitle: 'No items yet',
-    todayPlaceholderBody: 'Once you add meals or todos, they will show up here.',
+    todayPlaceholderBody: 'Add a dated todo and it will show up here.',
     sectionTitle: 'Home',
     settings: 'Settings',
+    todayTodoCount: 'items due today',
   };
+
+  const todayItems = todos.items.filter((item) => {
+    if (!item.dueDate) {
+      return false;
+    }
+    const due = parseApiDate(item.dueDate);
+    return due ? isSameDay(due, new Date()) : false;
+  });
+
   return (
     <AppScreen scroll={false}>
       <TopBar
@@ -58,10 +70,26 @@ export function HomeScreen({
         <AppCard style={styles.primaryCard}>
           <Text style={styles.sectionTitle}>{strings.todayTitle}</Text>
           <Subtle>{strings.todaySubtitle}</Subtle>
-          <View style={styles.todayPlaceholder}>
-            <Text style={styles.todayPlaceholderTitle}>{strings.todayPlaceholderTitle}</Text>
-            <Subtle>{strings.todayPlaceholderBody}</Subtle>
-          </View>
+          {todayItems.length === 0 ? (
+            <View style={styles.todayPlaceholder}>
+              <Text style={styles.todayPlaceholderTitle}>{strings.todayPlaceholderTitle}</Text>
+              <Subtle>{strings.todayPlaceholderBody}</Subtle>
+            </View>
+          ) : (
+            <View style={styles.todayList}>
+              <Subtle>
+                {todayItems.length} {strings.todayTodoCount}
+              </Subtle>
+              {todayItems.slice(0, 3).map((item) => (
+                <View key={item.id} style={styles.todayRow}>
+                  <Text style={styles.todayRowText} numberOfLines={1}>{item.text}</Text>
+                  <Text style={styles.todayRowMeta}>
+                    {item.dueTime ? item.dueTime.slice(0, 5) : 'Any time'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </AppCard>
 
         <AppCard>
@@ -76,6 +104,23 @@ export function HomeScreen({
       </View>
     </AppScreen>
   );
+}
+
+function parseApiDate(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
+
+function isSameDay(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
 }
 
 function ActionTile({
@@ -119,6 +164,29 @@ const styles = StyleSheet.create({
   },
   todayPlaceholderTitle: {
     ...textStyles.h3,
+  },
+  todayList: {
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  todayRow: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceAlt,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  todayRowText: {
+    ...textStyles.body,
+    flex: 1,
+  },
+  todayRowMeta: {
+    ...textStyles.subtle,
   },
   grid: {
     flexDirection: 'row',

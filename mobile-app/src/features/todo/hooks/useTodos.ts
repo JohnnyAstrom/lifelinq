@@ -33,7 +33,7 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
   async function add(
     text: string,
     options?: { dueDate?: string | null; dueTime?: string | null }
-  ) {
+  ): Promise<boolean> {
     if (!token) {
       throw new Error('Missing token');
     }
@@ -41,13 +41,15 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     try {
       await createTodo(token, text, options?.dueDate, options?.dueTime);
       await load();
+      return true;
     } catch (err) {
       await handleApiError(err);
       setError(formatApiError(err));
+      return false;
     }
   }
 
-  async function complete(id: string) {
+  async function complete(id: string): Promise<boolean> {
     if (!token) {
       throw new Error('Missing token');
     }
@@ -55,9 +57,11 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     try {
       await completeTodo(token, id);
       await load();
+      return true;
     } catch (err) {
       await handleApiError(err);
       setError(formatApiError(err));
+      return false;
     }
   }
 
@@ -65,7 +69,7 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     id: string,
     text: string,
     options?: { dueDate?: string | null; dueTime?: string | null }
-  ) {
+  ): Promise<boolean> {
     if (!token) {
       throw new Error('Missing token');
     }
@@ -73,9 +77,11 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     try {
       await updateTodo(token, id, text, options?.dueDate, options?.dueTime);
       await load();
+      return true;
     } catch (err) {
       await handleApiError(err);
       setError(formatApiError(err));
+      return false;
     }
   }
 

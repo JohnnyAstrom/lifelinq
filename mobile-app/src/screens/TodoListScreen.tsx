@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -38,6 +40,7 @@ export function TodoListScreen({ token, onDone }: Props) {
   const [detailTime, setDetailTime] = useState<string | null>(null);
   const [showDetailDatePicker, setShowDetailDatePicker] = useState(false);
   const [showDetailTimePicker, setShowDetailTimePicker] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
   const todos = useTodos(token, status);
   const strings = {
     title: 'Todos',
@@ -54,6 +57,7 @@ export function TodoListScreen({ token, onDone }: Props) {
     addTodoTitle: 'Add todo',
     addPlaceholder: 'What needs to be done?',
     addAction: 'Add',
+    adding: 'Adding...',
     back: 'Back',
     quickDateTitle: 'Quick date',
     quickToday: 'Today',
@@ -71,6 +75,7 @@ export function TodoListScreen({ token, onDone }: Props) {
     editTitle: 'Edit todo',
     editSubtitle: 'Update details and scheduling.',
     saveChanges: 'Save changes',
+    savingChanges: 'Saving...',
     close: 'Close',
     clearDate: 'Clear date',
     pickDateTitle: 'Pick a date',
@@ -83,10 +88,12 @@ export function TodoListScreen({ token, onDone }: Props) {
     }
     const dueDate = pendingDate ? toApiDate(pendingDate) : undefined;
     const dueTime = pendingDate && pendingTime ? pendingTime : undefined;
-    await todos.add(text.trim(), { dueDate, dueTime });
-    setText('');
-    setPendingDate(null);
-    setPendingTime(null);
+    const added = await todos.add(text.trim(), { dueDate, dueTime });
+    if (added) {
+      setText('');
+      setPendingDate(null);
+      setPendingTime(null);
+    }
   }
 
   function setDateToToday() {
@@ -176,19 +183,23 @@ export function TodoListScreen({ token, onDone }: Props) {
     setDetailText(selectedTodo.text);
     setDetailDate(parseApiDate(selectedTodo.dueDate));
     setDetailTime(selectedTodo.dueTime ?? null);
-  }, [detailsTodoId, selectedTodo?.id]);
+  }, [selectedTodo]);
 
   async function handleSaveDetails() {
-    if (!selectedTodo) {
+    if (!selectedTodo || savingDetails) {
       return;
     }
     if (!detailText.trim()) {
       return;
     }
+    setSavingDetails(true);
     const dueDate = detailDate ? toApiDate(detailDate) : null;
     const dueTime = detailDate ? detailTime : null;
-    await todos.update(selectedTodo.id, detailText.trim(), { dueDate, dueTime });
-    setDetailsTodoId(null);
+    const updated = await todos.update(selectedTodo.id, detailText.trim(), { dueDate, dueTime });
+    setSavingDetails(false);
+    if (updated) {
+      setDetailsTodoId(null);
+    }
   }
 
   function clearDetailDate() {
@@ -347,10 +358,29 @@ export function TodoListScreen({ token, onDone }: Props) {
               </View>
             </View>
           ) : null}
-          <AppButton title={strings.addAction} onPress={handleAdd} fullWidth />
+          <AppButton
+            title={todos.loading ? strings.adding : strings.addAction}
+            onPress={handleAdd}
+            fullWidth
+            disabled={todos.loading}
+          />
         </AppCard>
         </View>
         {showDatePicker ? (
+          Platform.OS !== 'web' ? (
+            <DateTimePicker
+              value={pendingDate ?? new Date()}
+              mode="date"
+              onChange={(event, date) => {
+                setShowDatePicker(false);
+                if (event.type !== 'set' || !date) {
+                  return;
+                }
+                date.setHours(0, 0, 0, 0);
+                setPendingDate(date);
+              }}
+            />
+          ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDatePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
@@ -377,9 +407,33 @@ export function TodoListScreen({ token, onDone }: Props) {
               </View>
             </Pressable>
           </Pressable>
+          )
         ) : null}
 
         {showTimePicker ? (
+          Platform.OS !== 'web' ? (
+            <DateTimePicker
+              value={(() => {
+                const value = new Date();
+                if (pendingTime) {
+                  const [hours, minutes] = pendingTime.split(':').map(Number);
+                  value.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+                }
+                return value;
+              })()}
+              mode="time"
+              is24Hour
+              onChange={(event, value) => {
+                setShowTimePicker(false);
+                if (event.type !== 'set' || !value) {
+                  return;
+                }
+                const hours = String(value.getHours()).padStart(2, '0');
+                const minutes = String(value.getMinutes()).padStart(2, '0');
+                setPendingTime(`${hours}:${minutes}`);
+              }}
+            />
+          ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowTimePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
@@ -400,9 +454,24 @@ export function TodoListScreen({ token, onDone }: Props) {
               </View>
             </Pressable>
           </Pressable>
+          )
         ) : null}
 
         {showDetailDatePicker ? (
+          Platform.OS !== 'web' ? (
+            <DateTimePicker
+              value={detailDate ?? new Date()}
+              mode="date"
+              onChange={(event, value) => {
+                setShowDetailDatePicker(false);
+                if (event.type !== 'set' || !value) {
+                  return;
+                }
+                value.setHours(0, 0, 0, 0);
+                setDetailDate(value);
+              }}
+            />
+          ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDetailDatePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
@@ -429,9 +498,33 @@ export function TodoListScreen({ token, onDone }: Props) {
               </View>
             </Pressable>
           </Pressable>
+          )
         ) : null}
 
         {showDetailTimePicker ? (
+          Platform.OS !== 'web' ? (
+            <DateTimePicker
+              value={(() => {
+                const value = new Date();
+                if (detailTime) {
+                  const [hours, minutes] = detailTime.split(':').map(Number);
+                  value.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+                }
+                return value;
+              })()}
+              mode="time"
+              is24Hour
+              onChange={(event, value) => {
+                setShowDetailTimePicker(false);
+                if (event.type !== 'set' || !value) {
+                  return;
+                }
+                const hours = String(value.getHours()).padStart(2, '0');
+                const minutes = String(value.getMinutes()).padStart(2, '0');
+                setDetailTime(`${hours}:${minutes}`);
+              }}
+            />
+          ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDetailTimePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
@@ -452,6 +545,7 @@ export function TodoListScreen({ token, onDone }: Props) {
               </View>
             </Pressable>
           </Pressable>
+          )
         ) : null}
 
         {detailsTodoId ? (
@@ -527,7 +621,12 @@ export function TodoListScreen({ token, onDone }: Props) {
                   </View>
                 </View>
               ) : null}
-              <AppButton title={strings.saveChanges} onPress={handleSaveDetails} fullWidth />
+              <AppButton
+                title={savingDetails ? strings.savingChanges : strings.saveChanges}
+                onPress={handleSaveDetails}
+                fullWidth
+                disabled={savingDetails || !detailText.trim()}
+              />
               <AppButton title={strings.close} onPress={() => setDetailsTodoId(null)} variant="ghost" fullWidth />
             </Pressable>
           </Pressable>

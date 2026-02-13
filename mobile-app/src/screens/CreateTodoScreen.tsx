@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTodos } from '../features/todo/hooks/useTodos';
 import {
   AppButton,
@@ -55,11 +56,11 @@ export function CreateTodoScreen({ token, onDone }: Props) {
     }
     const dueDate = pendingDate ? toApiDate(pendingDate) : undefined;
     const dueTime = pendingDate && pendingTime ? pendingTime : undefined;
-    await todos.add(text.trim(), { dueDate, dueTime });
-    setText('');
-    setPendingDate(null);
-    setPendingTime(null);
-    if (!todos.error) {
+    const created = await todos.add(text.trim(), { dueDate, dueTime });
+    if (created) {
+      setText('');
+      setPendingDate(null);
+      setPendingTime(null);
       onDone();
     }
   }
@@ -179,6 +180,20 @@ export function CreateTodoScreen({ token, onDone }: Props) {
       </AppCard>
 
       {showDatePicker ? (
+        Platform.OS !== 'web' ? (
+          <DateTimePicker
+            value={pendingDate ?? new Date()}
+            mode="date"
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (event.type !== 'set' || !date) {
+                return;
+              }
+              date.setHours(0, 0, 0, 0);
+              setPendingDate(date);
+            }}
+          />
+        ) : (
         <Pressable style={styles.backdrop} onPress={() => setShowDatePicker(false)}>
           <Pressable style={styles.sheet} onPress={() => null}>
             <View style={styles.sheetHandle} />
@@ -205,9 +220,33 @@ export function CreateTodoScreen({ token, onDone }: Props) {
             </View>
           </Pressable>
         </Pressable>
+        )
       ) : null}
 
       {showTimePicker ? (
+        Platform.OS !== 'web' ? (
+          <DateTimePicker
+            value={(() => {
+              const value = new Date();
+              if (pendingTime) {
+                const [hours, minutes] = pendingTime.split(':').map(Number);
+                value.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+              }
+              return value;
+            })()}
+            mode="time"
+            is24Hour
+            onChange={(event, value) => {
+              setShowTimePicker(false);
+              if (event.type !== 'set' || !value) {
+                return;
+              }
+              const hours = String(value.getHours()).padStart(2, '0');
+              const minutes = String(value.getMinutes()).padStart(2, '0');
+              setPendingTime(`${hours}:${minutes}`);
+            }}
+          />
+        ) : (
         <Pressable style={styles.backdrop} onPress={() => setShowTimePicker(false)}>
           <Pressable style={styles.sheet} onPress={() => null}>
             <View style={styles.sheetHandle} />
@@ -228,6 +267,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
             </View>
           </Pressable>
         </Pressable>
+        )
       ) : null}
     </AppScreen>
   );
