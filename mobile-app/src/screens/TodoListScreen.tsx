@@ -35,19 +35,25 @@ export function TodoListScreen({ token, onDone }: Props) {
         <RefreshControl refreshing={todos.loading} onRefresh={todos.reload} />
       }
     >
-      <Text style={styles.header}>Todos</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.header}>Todos</Text>
+        <Text style={styles.subtle}>Keep the list moving.</Text>
+      </View>
 
-      <View style={styles.filters}>
-        <Button title="OPEN" onPress={() => setStatus('OPEN')} />
-        <Button title="COMPLETED" onPress={() => setStatus('COMPLETED')} />
-        <Button title="ALL" onPress={() => setStatus('ALL')} />
+      <View style={styles.filtersCard}>
+        <Text style={styles.sectionTitle}>Filter</Text>
+        <View style={styles.filters}>
+          <Button title="OPEN" onPress={() => setStatus('OPEN')} />
+          <Button title="COMPLETED" onPress={() => setStatus('COMPLETED')} />
+          <Button title="ALL" onPress={() => setStatus('ALL')} />
+        </View>
       </View>
 
       {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
 
-      <View style={styles.list}>
+      <View style={styles.listCard}>
         {todos.items.length === 0 && !todos.loading ? (
-          <Text>No todos yet.</Text>
+          <Text style={styles.subtle}>No todos yet.</Text>
         ) : null}
         {todos.items.map((item) => (
           <View key={item.id} style={styles.itemRow}>
@@ -62,7 +68,7 @@ export function TodoListScreen({ token, onDone }: Props) {
         ))}
       </View>
 
-      <View style={styles.editor}>
+      <View style={styles.editorCard}>
         <Text style={styles.sectionTitle}>Add todo</Text>
         <TextInput
           style={styles.input}
@@ -73,7 +79,9 @@ export function TodoListScreen({ token, onDone }: Props) {
         <Button title="Add" onPress={handleAdd} />
       </View>
 
-      <Button title="Back" onPress={onDone} />
+      <View style={styles.footerCard}>
+        <Button title="Back" onPress={onDone} />
+      </View>
     </ScrollView>
   );
 }
@@ -82,46 +90,83 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 12,
+    backgroundColor: '#f6f5f2',
+  },
+  headerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
+    gap: 6,
   },
   header: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1e1c16',
+  },
+  filtersCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
+    gap: 8,
   },
   filters: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  list: {
+  listCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
     gap: 8,
   },
   itemRow: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
+    borderColor: '#efe7da',
+    borderRadius: 10,
     padding: 10,
     gap: 6,
+    backgroundColor: '#fffaf0',
   },
   itemText: {
-    color: '#333',
-  },
-  editor: {
-    borderWidth: 1,
-    borderColor: '#d3d3d3',
-    borderRadius: 10,
-    padding: 12,
-    gap: 8,
+    color: '#40372c',
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1e1c16',
+  },
+  editorCard: {
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    backgroundColor: '#ffffff',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#999',
+    borderColor: '#c9bfae',
     borderRadius: 8,
     padding: 8,
+    backgroundColor: '#fffdf8',
+  },
+  subtle: {
+    color: '#6f675b',
   },
   error: {
     color: '#b00020',
+  },
+  footerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
   },
 });

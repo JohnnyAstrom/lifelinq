@@ -46,15 +46,18 @@ export function ShoppingListScreen({ token, onDone }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Shopping lists</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.header}>Shopping lists</Text>
+        <Text style={styles.subtle}>Keep track of household items.</Text>
+      </View>
 
       {shopping.loading ? <Text>Loading lists...</Text> : null}
       {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-      <View style={styles.section}>
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Lists</Text>
         {lists.length === 0 ? (
-          <Text>No lists yet.</Text>
+          <Text style={styles.subtle}>No lists yet.</Text>
         ) : (
           lists.map((list) => (
             <Button
@@ -66,7 +69,7 @@ export function ShoppingListScreen({ token, onDone }: Props) {
         )}
       </View>
 
-      <View style={styles.section}>
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Create list</Text>
         <TextInput
           style={styles.input}
@@ -77,12 +80,14 @@ export function ShoppingListScreen({ token, onDone }: Props) {
         <Button title="Create list" onPress={handleCreateList} />
       </View>
 
-      <View style={styles.section}>
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Items</Text>
         {!selected ? <Text>Select or create a list.</Text> : null}
         {selected ? (
           <View style={styles.items}>
-            {items.length === 0 ? <Text>No items yet.</Text> : null}
+            {items.length === 0 ? (
+              <Text style={styles.subtle}>No items yet.</Text>
+            ) : null}
             {items.map((item) => (
               <View key={item.id} style={styles.itemRow}>
                 <Text style={styles.itemText}>
@@ -104,7 +109,7 @@ export function ShoppingListScreen({ token, onDone }: Props) {
         ) : null}
       </View>
 
-      <View style={styles.section}>
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Add item</Text>
         <TextInput
           style={styles.input}
@@ -115,7 +120,9 @@ export function ShoppingListScreen({ token, onDone }: Props) {
         <Button title="Add item" onPress={handleAddItem} />
       </View>
 
-      <Button title="Back" onPress={onDone} />
+      <View style={styles.footerCard}>
+        <Button title="Back" onPress={onDone} />
+      </View>
     </ScrollView>
   );
 }
@@ -124,46 +131,70 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 12,
+    backgroundColor: '#f6f5f2',
+  },
+  headerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
+    gap: 6,
   },
   header: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1e1c16',
   },
-  section: {
+  sectionCard: {
     borderWidth: 1,
-    borderColor: '#d3d3d3',
-    borderRadius: 10,
+    borderColor: '#e7e1d7',
+    borderRadius: 12,
     padding: 12,
     gap: 8,
+    backgroundColor: '#ffffff',
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1e1c16',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#999',
+    borderColor: '#c9bfae',
     borderRadius: 8,
     padding: 8,
+    backgroundColor: '#fffdf8',
   },
   items: {
     gap: 8,
   },
   itemRow: {
     borderWidth: 1,
-    borderColor: '#e1e1e1',
-    borderRadius: 8,
-    padding: 8,
+    borderColor: '#efe7da',
+    borderRadius: 10,
+    padding: 10,
     gap: 6,
+    backgroundColor: '#fffaf0',
   },
   itemText: {
-    color: '#333',
+    color: '#40372c',
   },
   itemActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  subtle: {
+    color: '#6f675b',
+  },
   error: {
     color: '#b00020',
+  },
+  footerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
   },
 });

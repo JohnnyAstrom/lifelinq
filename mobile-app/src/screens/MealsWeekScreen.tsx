@@ -16,7 +16,20 @@ type Props = {
 };
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_LABELS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 function uuidv4() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -65,7 +78,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     () => getIsoWeekParts(anchorDate),
     [anchorDate]
   );
-  const weekStart = useMemo(() => getWeekStartDate(year, isoWeek), [year, isoWeek]);
+  const weekStart = useMemo(
+    () => getWeekStartDate(year, isoWeek),
+    [year, isoWeek]
+  );
   const plan = useWeekPlan(token, year, isoWeek);
   const shopping = useShoppingLists(token);
 
@@ -106,32 +122,45 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.headerRow}>
-        <Button title="Prev" onPress={() => setAnchorDate(addDays(anchorDate, -7))} />
-        <Text style={styles.headerText}>
-          Week {isoWeek} · {year}
+      <View style={styles.headerCard}>
+        <View style={styles.headerRow}>
+          <Button
+            title="Prev"
+            onPress={() => setAnchorDate(addDays(anchorDate, -7))}
+          />
+          <Text style={styles.headerText}>
+            Week {isoWeek} · {year}
+          </Text>
+          <Button
+            title="Next"
+            onPress={() => setAnchorDate(addDays(anchorDate, 7))}
+          />
+        </View>
+        <Text style={styles.subtle}>
+          Plan meals and optionally push to shopping lists.
         </Text>
-        <Button title="Next" onPress={() => setAnchorDate(addDays(anchorDate, 7))} />
       </View>
 
       {plan.loading ? <Text>Loading week plan...</Text> : null}
       {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
 
-      <View style={styles.list}>
+      <View style={styles.listCard}>
         {DAY_LABELS.map((_, index) => {
           const day = index + 1;
           const date = new Date(weekStart.getTime());
           date.setUTCDate(weekStart.getUTCDate() + index);
           const label = formatDayLabel(date, index);
           const meal = mealsByDay.get(day) || 'Empty';
+          const hasMeal = meal !== 'Empty';
           return (
             <View key={label} style={styles.row}>
-              <View style={styles.rowInfo}>
-                <Text style={styles.dayLabel}>{label}</Text>
-                <Text style={styles.mealText}>{meal}</Text>
-              </View>
+              <Text style={styles.dayLabel}>{label}</Text>
+              <Text style={styles.mealText}>{meal}</Text>
               <View style={styles.rowActions}>
-                <Button title="Edit" onPress={() => setSelectedDay(day)} />
+                <Button
+                  title={hasMeal ? 'Edit' : 'Create'}
+                  onPress={() => setSelectedDay(day)}
+                />
                 <Button title="Remove" onPress={() => plan.removeMeal(day)} />
               </View>
             </View>
@@ -139,9 +168,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         })}
       </View>
 
-      <View style={styles.editor}>
+      <View style={styles.editorCard}>
         <Text style={styles.sectionTitle}>Add / Replace</Text>
-        <Text>Selected day: {selectedDay ?? 'None'}</Text>
+        <Text style={styles.subtle}>
+          Selected day: {selectedDay ?? 'None'}
+        </Text>
         <TextInput
           style={styles.input}
           placeholder="Recipe title"
@@ -156,7 +187,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         </View>
         <View style={styles.lists}>
           {lists.length === 0 ? (
-            <Text>No shopping lists yet.</Text>
+            <Text style={styles.subtle}>No shopping lists yet.</Text>
           ) : (
             lists.map((list) => (
               <Button
@@ -170,7 +201,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         <Button title="Save meal" onPress={handleSave} />
       </View>
 
-      <Button title="Back" onPress={onDone} />
+      <View style={styles.footerCard}>
+        <Button title="Back" onPress={onDone} />
+      </View>
     </ScrollView>
   );
 }
@@ -179,6 +212,15 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 12,
+    backgroundColor: '#f6f5f2',
+  },
+  headerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
+    gap: 6,
   },
   headerRow: {
     flexDirection: 'row',
@@ -187,48 +229,55 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1e1c16',
   },
-  list: {
-    gap: 8,
+  listCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
+    gap: 10,
   },
   row: {
     borderWidth: 1,
-    borderColor: '#d2d2d2',
+    borderColor: '#efe7da',
     padding: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  rowInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderRadius: 10,
+    gap: 6,
+    backgroundColor: '#fffaf0',
   },
   dayLabel: {
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#2b2418',
   },
   mealText: {
-    color: '#333',
+    color: '#40372c',
   },
   rowActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  editor: {
+  editorCard: {
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#c7c7c7',
+    borderColor: '#e7e1d7',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 14,
     gap: 8,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#1e1c16',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#999',
+    borderColor: '#c9bfae',
     borderRadius: 8,
     padding: 8,
+    backgroundColor: '#fffdf8',
   },
   toggleRow: {
     flexDirection: 'row',
@@ -237,7 +286,17 @@ const styles = StyleSheet.create({
   lists: {
     gap: 6,
   },
+  subtle: {
+    color: '#6f675b',
+  },
   error: {
     color: '#b00020',
+  },
+  footerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e7e1d7',
   },
 });
