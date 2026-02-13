@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.beans.factory.ObjectProvider;
@@ -57,7 +57,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Profile("dev")
+    @ConditionalOnProperty(name = "lifelinq.cors.allowed-origins")
     public CorsConfigurationSource corsConfigurationSource(
             @Value("${lifelinq.cors.allowed-origins}") String allowedOrigins
     ) {
@@ -66,7 +66,7 @@ public class SecurityConfig {
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
                 .toList());
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
