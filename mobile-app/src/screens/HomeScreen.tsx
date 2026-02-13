@@ -9,7 +9,7 @@ type Props = {
   onCreateTodo: () => void;
   onManageMembers: () => void;
   onCreateShopping: () => void;
-  onMealsProof: () => void;
+  onMeals: () => void;
   onLogout: () => void;
 };
 
@@ -19,7 +19,7 @@ export function HomeScreen({
   onCreateTodo,
   onManageMembers,
   onCreateShopping,
-  onMealsProof,
+  onMeals,
   onLogout,
 }: Props) {
   const [status, setStatus] = useState<'OPEN' | 'COMPLETED' | 'ALL'>('OPEN');
@@ -61,8 +61,8 @@ export function HomeScreen({
 
         <Button title="Create todo" onPress={onCreateTodo} />
         <Button title="Household members" onPress={onManageMembers} />
-        <Button title="Add shopping item" onPress={onCreateShopping} />
-        <Button title="Meals proof" onPress={onMealsProof} />
+        <Button title="Shopping" onPress={onCreateShopping} />
+        <Button title="Meals" onPress={onMeals} />
         <Button title="Logout" onPress={onLogout} />
       </View>
     </ScrollView>

@@ -7,8 +7,8 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { CreateTodoScreen } from '../screens/CreateTodoScreen';
 import { CreateHouseholdScreen } from '../screens/CreateHouseholdScreen';
 import { HouseholdMembersScreen } from '../screens/HouseholdMembersScreen';
-import { CreateShoppingItemScreen } from '../screens/CreateShoppingItemScreen';
-import { MealsProofScreen } from '../screens/MealsProofScreen';
+import { MealsWeekScreen } from '../screens/MealsWeekScreen';
+import { ShoppingListScreen } from '../screens/ShoppingListScreen';
 
 type Screen = 'login' | 'home' | 'create' | 'members' | 'shopping' | 'meals';
 
@@ -112,7 +112,7 @@ function AppShell() {
 
   if (screen === 'shopping') {
     return (
-      <CreateShoppingItemScreen
+      <ShoppingListScreen
         token={token}
         onDone={() => {
           setScreen('home');
@@ -123,7 +123,7 @@ function AppShell() {
 
   if (screen === 'meals') {
     return (
-      <MealsProofScreen
+      <MealsWeekScreen
         token={token}
         onDone={() => {
           setScreen('home');
@@ -146,7 +146,7 @@ function AppShell() {
         onCreateShopping={() => {
           setScreen('shopping');
         }}
-        onMealsProof={() => {
+        onMeals={() => {
           setScreen('meals');
         }}
         onLogout={async () => {
