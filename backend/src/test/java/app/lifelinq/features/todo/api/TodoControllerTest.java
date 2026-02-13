@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import app.lifelinq.config.JwtVerifier;
@@ -128,6 +129,42 @@ class TodoControllerTest {
                 .andExpect(status().isOk());
 
         verify(todoApplicationService).listTodos(householdId, TodoStatus.ALL);
+    }
+
+    @Test
+    void updateReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(put("/todos/" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Buy milk\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
+    void updateSucceedsWithValidToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID todoId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(todoApplicationService.updateTodo(todoId, userId, "Buy oat milk", java.time.LocalDate.of(2026, 2, 14), java.time.LocalTime.of(9, 30)))
+                .thenReturn(true);
+
+        mockMvc.perform(put("/todos/" + todoId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Buy oat milk\",\"dueDate\":\"2026-02-14\",\"dueTime\":\"09:30:00\"}"))
+                .andExpect(status().isOk());
+
+        verify(todoApplicationService).updateTodo(
+                todoId,
+                userId,
+                "Buy oat milk",
+                java.time.LocalDate.of(2026, 2, 14),
+                java.time.LocalTime.of(9, 30)
+        );
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {

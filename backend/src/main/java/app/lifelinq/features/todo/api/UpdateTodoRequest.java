@@ -12,11 +12,23 @@ public final class UpdateTodoRequest {
         return text;
     }
 
+    public void setText(String text) {
+        this.text = text;
+    }
+
     public LocalDate getDueDate() {
         return dueDate;
     }
 
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
     public LocalTime getDueTime() {
         return dueTime;
+    }
+
+    public void setDueTime(LocalTime dueTime) {
+        this.dueTime = dueTime;
     }
 }
