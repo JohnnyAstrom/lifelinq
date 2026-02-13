@@ -54,9 +54,10 @@ export function TodoListScreen({ token, onDone }: Props) {
             <Text style={styles.itemText}>
               {item.text} ({item.status})
             </Text>
-            {item.status === 'OPEN' ? (
-              <Button title="Complete" onPress={() => todos.complete(item.id)} />
-            ) : null}
+            <Button
+              title={item.status === 'OPEN' ? 'Complete' : 'Reopen'}
+              onPress={() => todos.complete(item.id)}
+            />
           </View>
         ))}
       </View>
