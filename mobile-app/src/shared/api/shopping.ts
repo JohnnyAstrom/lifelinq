@@ -4,6 +4,8 @@ export type ShoppingItemResponse = {
   id: string;
   name: string;
   status: string;
+  quantity: number | null;
+  unit: ShoppingUnit | null;
   createdAt: string;
   boughtAt: string | null;
 };
@@ -25,12 +27,16 @@ export type CreateShoppingListResponse = {
 
 export type AddShoppingItemRequest = {
   name: string;
+  quantity?: number | null;
+  unit?: ShoppingUnit | null;
 };
 
 export type AddShoppingItemResponse = {
   itemId: string;
   name: string;
   status: string;
+  quantity: number | null;
+  unit: ShoppingUnit | null;
   createdAt: string;
   boughtAt: string | null;
 };
@@ -40,6 +46,16 @@ export type ToggleShoppingItemResponse = {
   status: string;
   boughtAt: string | null;
 };
+
+export type UpdateShoppingItemRequest = {
+  name: string;
+  quantity?: number | null;
+  unit?: ShoppingUnit | null;
+};
+
+export type UpdateShoppingItemResponse = ShoppingItemResponse;
+
+export type ShoppingUnit = 'ST' | 'FORP' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
 
 export async function createShoppingList(
   payload: CreateShoppingListRequest,
@@ -99,6 +115,22 @@ export async function deleteShoppingItem(
     `/shopping-lists/${listId}/items/${itemId}`,
     {
       method: 'DELETE',
+    },
+    clientOptions
+  );
+}
+
+export async function updateShoppingItem(
+  listId: string,
+  itemId: string,
+  payload: UpdateShoppingItemRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<UpdateShoppingItemResponse> {
+  return fetchJson<UpdateShoppingItemResponse>(
+    `/shopping-lists/${listId}/items/${itemId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     },
     clientOptions
   );

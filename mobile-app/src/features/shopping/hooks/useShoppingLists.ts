@@ -7,6 +7,9 @@ import {
   deleteShoppingItem,
   listShoppingLists,
   toggleShoppingItem,
+  updateShoppingItem,
+  type ShoppingUnit,
+  type AddShoppingItemResponse,
   type ShoppingListResponse,
 } from '../../../shared/api/shopping';
 
@@ -61,14 +64,20 @@ export function useShoppingLists(token: string | null) {
     }
   };
 
-  const addItem = async (listId: string, name: string) => {
+  const addItem = async (
+    listId: string,
+    name: string,
+    quantity?: number | null,
+    unit?: ShoppingUnit | null
+  ): Promise<AddShoppingItemResponse | void> => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      await addShoppingItem(listId, { name }, { token });
+      const response = await addShoppingItem(listId, { name, quantity, unit }, { token });
       await load();
+      return response;
     } catch (err) {
       await handleApiError(err);
       setState((prev) => ({
@@ -115,6 +124,30 @@ export function useShoppingLists(token: string | null) {
     }
   };
 
+  const updateItem = async (
+    listId: string,
+    itemId: string,
+    name: string,
+    quantity?: number | null,
+    unit?: ShoppingUnit | null
+  ) => {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      await updateShoppingItem(listId, itemId, { name, quantity, unit }, { token });
+      await load();
+    } catch (err) {
+      await handleApiError(err);
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: formatApiError(err),
+      }));
+    }
+  };
+
   return {
     ...state,
     reload: load,
@@ -122,5 +155,6 @@ export function useShoppingLists(token: string | null) {
     addItem,
     toggleItem,
     removeItem,
+    updateItem,
   };
 }
