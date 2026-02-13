@@ -10,6 +10,8 @@ import { TodoListScreen } from '../screens/TodoListScreen';
 import { MealsWeekScreen } from '../screens/MealsWeekScreen';
 import { ShoppingListsScreen } from '../screens/ShoppingListsScreen';
 import { ShoppingListDetailScreen } from '../screens/ShoppingListDetailScreen';
+import { DocumentsScreen } from '../screens/DocumentsScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { AppCard, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -20,7 +22,9 @@ type Screen =
   | 'members'
   | 'shopping'
   | 'shopping-detail'
-  | 'meals';
+  | 'meals'
+  | 'settings'
+  | 'documents';
 
 export default function App() {
   return (
@@ -130,7 +134,7 @@ function AppShell() {
       <HouseholdMembersScreen
         token={token}
         onDone={() => {
-          setScreen('home');
+          setScreen('settings');
         }}
       />
     );
@@ -174,6 +178,34 @@ function AppShell() {
     );
   }
 
+  if (screen === 'documents') {
+    return (
+      <DocumentsScreen
+        onDone={() => {
+          setScreen('home');
+        }}
+      />
+    );
+  }
+
+  if (screen === 'settings') {
+    return (
+      <SettingsScreen
+        token={token}
+        onDone={() => {
+          setScreen('home');
+        }}
+        onManageMembers={() => {
+          setScreen('members');
+        }}
+        onLogout={async () => {
+          await logout();
+          setScreen('login');
+        }}
+      />
+    );
+  }
+
   if (screen === 'home') {
     return (
       <HomeScreen
@@ -182,14 +214,17 @@ function AppShell() {
         onCreateTodo={() => {
           setScreen('todos');
         }}
-        onManageMembers={() => {
-          setScreen('members');
-        }}
         onCreateShopping={() => {
           setScreen('shopping');
         }}
         onMeals={() => {
           setScreen('meals');
+        }}
+        onDocuments={() => {
+          setScreen('documents');
+        }}
+        onSettings={() => {
+          setScreen('settings');
         }}
         onLogout={async () => {
           await logout();
