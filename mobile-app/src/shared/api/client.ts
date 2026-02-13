@@ -1,3 +1,5 @@
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { getToken } from './tokenStore';
 
 export type ApiClientOptions = {
@@ -5,6 +7,43 @@ export type ApiClientOptions = {
 };
 
 const DEFAULT_BASE_URL = 'http://localhost:8080';
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+function getExpoDevHost(): string | null {
+  const hostUriFromExpoConfig = (Constants.expoConfig as { hostUri?: string } | null)?.hostUri;
+  if (hostUriFromExpoConfig) {
+    return hostUriFromExpoConfig.split(':')[0] ?? null;
+  }
+
+  const hostUriFromManifest = (
+    Constants.manifest2 as { extra?: { expoClient?: { hostUri?: string } } } | null
+  )?.extra?.expoClient?.hostUri;
+  if (hostUriFromManifest) {
+    return hostUriFromManifest.split(':')[0] ?? null;
+  }
+
+  return null;
+}
+
+function resolveBaseUrl(): string {
+  const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (configured) {
+    return trimTrailingSlash(configured);
+  }
+
+  if (Platform.OS === 'android') {
+    const devHost = getExpoDevHost();
+    if (devHost) {
+      return `http://${devHost}:8080`;
+    }
+    return 'http://10.0.2.2:8080';
+  }
+
+  return DEFAULT_BASE_URL;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -47,7 +86,7 @@ export async function fetchJson<T>(
   options: RequestInit = {},
   clientOptions: ApiClientOptions = {}
 ): Promise<T> {
-  const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || DEFAULT_BASE_URL;
+  const baseUrl = resolveBaseUrl();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(options.headers as Record<string, string> | undefined),

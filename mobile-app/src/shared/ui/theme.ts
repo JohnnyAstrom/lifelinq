@@ -2,13 +2,13 @@ import { Platform } from 'react-native';
 
 const headingFont = Platform.select({
   ios: 'Avenir Next',
-  android: 'serif',
+  android: 'sans-serif-medium',
   default: 'Avenir Next',
 });
 
 const bodyFont = Platform.select({
   ios: 'Avenir Next',
-  android: 'sans-serif-condensed',
+  android: 'sans-serif',
   default: 'Avenir Next',
 });
 

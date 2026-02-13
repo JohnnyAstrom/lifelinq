@@ -43,7 +43,7 @@ export function CreateHouseholdScreen({ token, onCreated }: Props) {
   }
 
   return (
-    <AppScreen scroll={false} contentStyle={styles.container}>
+    <AppScreen contentStyle={styles.container}>
       <AppCard style={styles.card}>
         <Text style={textStyles.h1}>{strings.title}</Text>
         <Subtle>{strings.subtitle}</Subtle>
@@ -65,7 +65,7 @@ export function CreateHouseholdScreen({ token, onCreated }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
   },
   card: {

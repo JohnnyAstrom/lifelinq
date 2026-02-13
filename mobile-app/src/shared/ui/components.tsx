@@ -1,5 +1,7 @@
 import React from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -37,6 +39,8 @@ export function AppScreen({
           contentContainerStyle={[styles.content, contentStyle]}
           refreshControl={refreshControl}
           stickyHeaderIndices={stickyHeaderIndices}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {children}
         </ScrollView>
@@ -48,9 +52,14 @@ export function AppScreen({
     <SafeAreaView style={styles.screen}>
       <View style={styles.decorOne} />
       <View style={styles.decorTwo} />
-      <View style={[styles.content, styles.contentNoScroll, contentStyle]}>
-        {children}
-      </View>
+      <KeyboardAvoidingView
+        style={styles.contentNoScroll}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={[styles.content, styles.contentNoScroll, contentStyle]}>
+          {children}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
