@@ -75,6 +75,7 @@ The system prioritizes:
 
 Shopping lists remain simple and fast, and can be created ad hoc.
 Bought items stay in the same list (toggle back and forth).
+Items may optionally include quantity and unit (e.g. "2 kg") for clarity.
 
 ---
 

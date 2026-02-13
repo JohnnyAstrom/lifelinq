@@ -14,13 +14,14 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 - Manual add must be fast and low-friction.
 - Items can be marked as acquired.
 - Items can be generated from Meals/Recipes.
+- Items can be edited (name, optional quantity/unit).
 - Marking acquired moves the item to a "bought" section within the same list.
 - Items can be toggled back to "to buy" with a single action.
 
 ## Data shape (conceptual)
 
 - `ShoppingList`: `name`, `householdId`
-- `ShoppingItem`: `name`, `status`, `shoppingListId`
+- `ShoppingItem`: `name`, `status`, `shoppingListId`, `quantity` (optional), `unit` (optional)
 
 ## Decisions
 
@@ -76,6 +77,7 @@ Consequences: Endpoints accept `listId` for list and item mutations.
 - Item must belong to the list being mutated.
 - Toggle is only allowed within the owning list.
 - List and item household scope must match the request context.
+- Quantity and unit are optional, but when one is present the other must be present.
 
 ### Status representation
 

@@ -34,6 +34,7 @@ Calendar sync for meals is optional and export‑only.
 
 Shopping lists are **simple, fast, and shared**.
 Bought items stay in the same list (toggle back and forth).
+Items can optionally include quantity and unit (e.g. "2 kg").
 
 ---
 

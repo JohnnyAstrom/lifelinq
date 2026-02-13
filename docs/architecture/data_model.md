@@ -247,14 +247,16 @@ This is a structural overview of tables and relations that are implemented today
 - `users`: `id`
 - `households`: `id`, `name`
 - `todos`: `id`, `household_id`, `text`, `status`
-- `shopping_items`: `id`, `household_id`, `name`, `created_at`
+- `shopping_lists`: `id`, `household_id`, `name`, `created_at`
+- `shopping_items`: `id`, `list_id`, `name`, `status`, `quantity`, `unit`, `created_at`, `bought_at`
 - `memberships`: composite key (`household_id`, `user_id`), `role`
 - `invitations`: `id`, `household_id`, `invitee_email`, `token`, `expires_at`, `status`
 
 ### Relations (ID‑based)
 
 - `todos.household_id` → `households.id`
-- `shopping_items.household_id` → `households.id`
+- `shopping_lists.household_id` → `households.id`
+- `shopping_items.list_id` → `shopping_lists.id`
 - `memberships.household_id` → `households.id`
 - `invitations.household_id` → `households.id`
 
@@ -262,10 +264,15 @@ This is a structural overview of tables and relations that are implemented today
 
 ```text
 households (id)
-  ↑            ↑            ↑            ↑
-  │            │            │            │
-todos          memberships  invitations  shopping_items
-(household_id) (household_id, user_id) (household_id) (household_id)
+  ↑            ↑            ↑
+  │            │            │
+todos          memberships  invitations
+(household_id) (household_id, user_id) (household_id)
+
+shopping_lists (id, household_id)
+  ↑
+  │
+shopping_items (list_id)
 ```
 
 ### Constraints
@@ -278,6 +285,7 @@ todos          memberships  invitations  shopping_items
 
 - `household` is the aggregate root for `memberships` and `invitations`
 - `todo` is its own aggregate, bound to `household_id`
+- `shopping_list` is the aggregate root for `shopping_items`
 
 ---
 
