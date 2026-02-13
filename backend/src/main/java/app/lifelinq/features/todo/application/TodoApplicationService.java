@@ -13,6 +13,7 @@ public class TodoApplicationService {
     private final CreateTodoUseCase createTodoUseCase;
     private final CompleteTodoUseCase completeTodoUseCase;
     private final ListTodosUseCase listTodosUseCase;
+    private final UpdateTodoUseCase updateTodoUseCase;
     private final EnsureUserExistsUseCase ensureUserExistsUseCase;
 
     public TodoApplicationService(
@@ -28,6 +29,7 @@ public class TodoApplicationService {
         this.createTodoUseCase = new CreateTodoUseCase(todoRepository);
         this.completeTodoUseCase = new CompleteTodoUseCase(todoRepository);
         this.listTodosUseCase = new ListTodosUseCase(todoRepository);
+        this.updateTodoUseCase = new UpdateTodoUseCase(todoRepository);
         this.ensureUserExistsUseCase = ensureUserExistsUseCase;
     }
 
@@ -51,6 +53,19 @@ public class TodoApplicationService {
         ensureUserExistsUseCase.execute(actorUserId);
         CompleteTodoResult result = completeTodoUseCase.execute(new CompleteTodoCommand(todoId, now));
         return result.isCompleted();
+    }
+
+    @Transactional
+    public boolean updateTodo(
+            UUID todoId,
+            UUID actorUserId,
+            String text,
+            java.time.LocalDate dueDate,
+            java.time.LocalTime dueTime
+    ) {
+        ensureUserExistsUseCase.execute(actorUserId);
+        UpdateTodoResult result = updateTodoUseCase.execute(new UpdateTodoCommand(todoId, text, dueDate, dueTime));
+        return result.isUpdated();
     }
 
     @Transactional(readOnly = true)

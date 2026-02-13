@@ -51,3 +51,27 @@ export async function completeTodo(token: string, id: string): Promise<void> {
     { token }
   );
 }
+
+export async function updateTodo(
+  token: string,
+  id: string,
+  text: string,
+  dueDate?: string | null,
+  dueTime?: string | null
+): Promise<void> {
+  const payload: { text: string; dueDate?: string | null; dueTime?: string | null } = { text };
+  if (dueDate !== undefined) {
+    payload.dueDate = dueDate;
+  }
+  if (dueTime !== undefined) {
+    payload.dueTime = dueTime;
+  }
+  await fetchJson<void>(
+    `/todos/${encodeURIComponent(id)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    { token }
+  );
+}

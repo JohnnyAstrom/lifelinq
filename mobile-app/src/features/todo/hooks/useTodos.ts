@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
-import { completeTodo, createTodo, fetchTodos, TodoResponse } from '../api/todoApi';
+import { completeTodo, createTodo, fetchTodos, TodoResponse, updateTodo } from '../api/todoApi';
 
 export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'ALL' = 'OPEN') {
   const [items, setItems] = useState<TodoResponse[]>([]);
@@ -61,9 +61,27 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     }
   }
 
+  async function update(
+    id: string,
+    text: string,
+    options?: { dueDate?: string | null; dueTime?: string | null }
+  ) {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    setError(null);
+    try {
+      await updateTodo(token, id, text, options?.dueDate, options?.dueTime);
+      await load();
+    } catch (err) {
+      await handleApiError(err);
+      setError(formatApiError(err));
+    }
+  }
+
   useEffect(() => {
     load();
   }, [token, status]);
 
-  return { items, error, loading, reload: load, add, complete };
+  return { items, error, loading, reload: load, add, complete, update };
 }
