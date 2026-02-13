@@ -3,6 +3,7 @@ package app.lifelinq.features.meals.infrastructure;
 import app.lifelinq.features.meals.domain.PlannedMeal;
 import app.lifelinq.features.meals.domain.RecipeRef;
 import app.lifelinq.features.meals.domain.WeekPlan;
+import app.lifelinq.features.meals.domain.MealType;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,12 +24,14 @@ final class WeekPlanMapper {
     }
 
     WeekPlan toDomain(WeekPlanEntity entity) {
-        Map<Integer, PlannedMeal> mealsByDay = new HashMap<>();
+        Map<WeekPlan.DaySlot, PlannedMeal> mealsByDay = new HashMap<>();
         for (PlannedMealEntity meal : entity.getMeals()) {
+            MealType mealType = MealType.valueOf(meal.getMealType());
             mealsByDay.put(
-                    meal.getDayOfWeek(),
+                    new WeekPlan.DaySlot(meal.getDayOfWeek(), mealType),
                     PlannedMeal.rehydrate(
                             meal.getDayOfWeek(),
+                            mealType,
                             new RecipeRef(meal.getRecipeId(), meal.getRecipeTitle())
                     )
             );
@@ -45,7 +48,7 @@ final class WeekPlanMapper {
 
     PlannedMealEntity toEntity(PlannedMeal meal, WeekPlanEntity weekPlan) {
         return new PlannedMealEntity(
-                new PlannedMealId(weekPlan.getId(), meal.getDayOfWeek()),
+                new PlannedMealId(weekPlan.getId(), meal.getDayOfWeek(), meal.getMealType().name()),
                 weekPlan,
                 meal.getRecipeRef().recipeId(),
                 meal.getRecipeRef().title()

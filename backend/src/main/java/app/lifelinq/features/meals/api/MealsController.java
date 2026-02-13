@@ -24,11 +24,15 @@ public class MealsController {
         this.mealsApplicationService = mealsApplicationService;
     }
 
-    @PostMapping("/meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}")
+    @PostMapping({
+            "/meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}",
+            "/meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}"
+    })
     public ResponseEntity<?> addOrReplaceMeal(
             @PathVariable int year,
             @PathVariable int isoWeek,
             @PathVariable int dayOfWeek,
+            @PathVariable(required = false) String mealType,
             @RequestBody AddMealRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
@@ -38,12 +42,17 @@ public class MealsController {
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
+        String resolvedMealType = mealType != null ? mealType : request.getMealType();
+        if (resolvedMealType == null) {
+            throw new IllegalArgumentException("mealType must not be null");
+        }
         AddMealOutput output = mealsApplicationService.addOrReplaceMeal(
                 context.getHouseholdId(),
                 context.getUserId(),
                 year,
                 isoWeek,
                 dayOfWeek,
+                app.lifelinq.features.meals.domain.MealType.valueOf(resolvedMealType),
                 request.getRecipeId(),
                 request.getRecipeTitle(),
                 request.getTargetShoppingListId()
@@ -51,11 +60,12 @@ public class MealsController {
         return ResponseEntity.ok(toAddMealResponse(output));
     }
 
-    @DeleteMapping("/meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}")
+    @DeleteMapping("/meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}")
     public ResponseEntity<?> removeMeal(
             @PathVariable int year,
             @PathVariable int isoWeek,
-            @PathVariable int dayOfWeek
+            @PathVariable int dayOfWeek,
+            @PathVariable String mealType
     ) {
         RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
@@ -69,7 +79,8 @@ public class MealsController {
                 context.getUserId(),
                 year,
                 isoWeek,
-                dayOfWeek
+                dayOfWeek,
+                app.lifelinq.features.meals.domain.MealType.valueOf(mealType)
         );
         return ResponseEntity.noContent().build();
     }
@@ -101,14 +112,19 @@ public class MealsController {
                 output.weekPlanId(),
                 output.year(),
                 output.isoWeek(),
-                new PlannedMealResponse(meal.dayOfWeek(), meal.recipeId(), meal.recipeTitle())
+                new PlannedMealResponse(meal.dayOfWeek(), meal.mealType(), meal.recipeId(), meal.recipeTitle())
         );
     }
 
     private WeekPlanResponse toWeekPlanResponse(WeekPlanView view) {
         List<PlannedMealResponse> meals = new ArrayList<>();
         for (PlannedMealView meal : view.meals()) {
-            meals.add(new PlannedMealResponse(meal.dayOfWeek(), meal.recipeId(), meal.recipeTitle()));
+            meals.add(new PlannedMealResponse(
+                    meal.dayOfWeek(),
+                    meal.mealType(),
+                    meal.recipeId(),
+                    meal.recipeTitle()
+            ));
         }
         return new WeekPlanResponse(
                 view.weekPlanId(),

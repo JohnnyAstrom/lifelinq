@@ -15,6 +15,7 @@ import app.lifelinq.features.shopping.domain.ShoppingList;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import app.lifelinq.test.integration.MealsShoppingIntegrationTestApplication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -58,6 +59,7 @@ class MealsShoppingIntegrationTest {
                 2025,
                 10,
                 1,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
                 recipeId,
                 "Pasta",
                 listOutput.listId()

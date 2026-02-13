@@ -14,12 +14,16 @@ public class PlannedMealId implements Serializable {
     @Column(name = "day_of_week", nullable = false)
     private int dayOfWeek;
 
+    @Column(name = "meal_type", nullable = false)
+    private String mealType;
+
     protected PlannedMealId() {
     }
 
-    PlannedMealId(UUID weekPlanId, int dayOfWeek) {
+    PlannedMealId(UUID weekPlanId, int dayOfWeek, String mealType) {
         this.weekPlanId = weekPlanId;
         this.dayOfWeek = dayOfWeek;
+        this.mealType = mealType;
     }
 
     UUID getWeekPlanId() {
@@ -28,6 +32,10 @@ public class PlannedMealId implements Serializable {
 
     int getDayOfWeek() {
         return dayOfWeek;
+    }
+
+    String getMealType() {
+        return mealType;
     }
 
     @Override
@@ -39,11 +47,13 @@ public class PlannedMealId implements Serializable {
             return false;
         }
         PlannedMealId that = (PlannedMealId) o;
-        return dayOfWeek == that.dayOfWeek && Objects.equals(weekPlanId, that.weekPlanId);
+        return dayOfWeek == that.dayOfWeek
+                && Objects.equals(weekPlanId, that.weekPlanId)
+                && Objects.equals(mealType, that.mealType);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(weekPlanId, dayOfWeek);
+        return Objects.hash(weekPlanId, dayOfWeek, mealType);
     }
 }

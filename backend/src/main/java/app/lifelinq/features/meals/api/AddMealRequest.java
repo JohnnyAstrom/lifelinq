@@ -5,6 +5,7 @@ import java.util.UUID;
 public final class AddMealRequest {
     private UUID recipeId;
     private String recipeTitle;
+    private String mealType;
     private UUID targetShoppingListId;
 
     public UUID getRecipeId() {
@@ -13,6 +14,10 @@ public final class AddMealRequest {
 
     public String getRecipeTitle() {
         return recipeTitle;
+    }
+
+    public String getMealType() {
+        return mealType;
     }
 
     public UUID getTargetShoppingListId() {

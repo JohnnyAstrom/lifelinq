@@ -29,7 +29,7 @@ class JpaWeekPlanRepositoryAdapterTest {
         Instant createdAt = Instant.now();
         WeekPlan plan = new WeekPlan(weekPlanId, householdId, 2025, 10, createdAt);
         UUID recipeId = UUID.randomUUID();
-        plan.addOrReplaceMeal(1, new RecipeRef(recipeId, "Pasta"));
+        plan.addOrReplaceMeal(1, app.lifelinq.features.meals.domain.MealType.DINNER, new RecipeRef(recipeId, "Pasta"));
 
         repository.save(plan);
 
@@ -53,12 +53,12 @@ class JpaWeekPlanRepositoryAdapterTest {
         UUID weekPlanId = UUID.randomUUID();
         Instant createdAt = Instant.now();
         WeekPlan plan = new WeekPlan(weekPlanId, householdId, 2025, 12, createdAt);
-        plan.addOrReplaceMeal(2, new RecipeRef(UUID.randomUUID(), "Soup"));
+        plan.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, new RecipeRef(UUID.randomUUID(), "Soup"));
         repository.save(plan);
 
         WeekPlan reloaded = repository.findByHouseholdAndWeek(householdId, 2025, 12).orElseThrow();
         UUID newRecipeId = UUID.randomUUID();
-        reloaded.addOrReplaceMeal(2, new RecipeRef(newRecipeId, "Tacos"));
+        reloaded.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, new RecipeRef(newRecipeId, "Tacos"));
         repository.save(reloaded);
 
         WeekPlan updated = repository.findByHouseholdAndWeek(householdId, 2025, 12).orElseThrow();
@@ -72,11 +72,11 @@ class JpaWeekPlanRepositoryAdapterTest {
         UUID householdId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();
         WeekPlan plan = new WeekPlan(weekPlanId, householdId, 2025, 15, Instant.now());
-        plan.addOrReplaceMeal(5, new RecipeRef(UUID.randomUUID(), "Salad"));
+        plan.addOrReplaceMeal(5, app.lifelinq.features.meals.domain.MealType.DINNER, new RecipeRef(UUID.randomUUID(), "Salad"));
         repository.save(plan);
 
         WeekPlan reloaded = repository.findByHouseholdAndWeek(householdId, 2025, 15).orElseThrow();
-        reloaded.removeMeal(5);
+        reloaded.removeMeal(5, app.lifelinq.features.meals.domain.MealType.DINNER);
         repository.save(reloaded);
 
         WeekPlan updated = repository.findByHouseholdAndWeek(householdId, 2025, 15).orElseThrow();

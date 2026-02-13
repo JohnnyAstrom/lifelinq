@@ -1,4 +1,4 @@
-package app.lifelinq.features.meals.integration;
+package app.lifelinq.test.integration;
 
 import app.lifelinq.features.household.application.EnsureHouseholdMemberUseCaseImpl;
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;

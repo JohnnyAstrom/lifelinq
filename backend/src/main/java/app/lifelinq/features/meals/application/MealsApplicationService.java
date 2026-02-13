@@ -4,6 +4,7 @@ import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
+import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.PlannedMeal;
 import app.lifelinq.features.meals.domain.RecipeRef;
 import app.lifelinq.features.meals.domain.WeekPlan;
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.dao.DataIntegrityViolationException;
 
 public class MealsApplicationService {
     private final WeekPlanRepository weekPlanRepository;
@@ -56,6 +56,7 @@ public class MealsApplicationService {
             int year,
             int isoWeek,
             int dayOfWeek,
+            MealType mealType,
             UUID recipeId,
             String recipeTitle,
             UUID targetShoppingListId
@@ -72,8 +73,8 @@ public class MealsApplicationService {
                 ));
 
         RecipeRef recipeRef = new RecipeRef(recipeId, recipeTitle);
-        weekPlan.addOrReplaceMeal(dayOfWeek, recipeRef);
-        WeekPlan saved = saveWithRetryOnWeekPlanConflict(weekPlan, householdId, year, isoWeek, dayOfWeek);
+        weekPlan.addOrReplaceMeal(dayOfWeek, mealType, recipeRef);
+        WeekPlan saved = weekPlanRepository.save(weekPlan);
 
         if (targetShoppingListId != null) {
             // ShoppingApplicationService will verify list ownership.
@@ -85,30 +86,14 @@ public class MealsApplicationService {
             );
         }
 
-        PlannedMeal savedMeal = saved.getMealOrThrow(dayOfWeek);
+        PlannedMeal savedMeal = saved.getMealOrThrow(dayOfWeek, mealType);
         PlannedMealView mealView = new PlannedMealView(
                 savedMeal.getDayOfWeek(),
+                savedMeal.getMealType().name(),
                 savedMeal.getRecipeRef().recipeId(),
                 savedMeal.getRecipeRef().title()
         );
         return new AddMealOutput(saved.getId(), saved.getYear(), saved.getIsoWeek(), mealView);
-    }
-
-    private WeekPlan saveWithRetryOnWeekPlanConflict(
-            WeekPlan weekPlan,
-            UUID householdId,
-            int year,
-            int isoWeek,
-            int dayOfWeek
-    ) {
-        try {
-            return weekPlanRepository.save(weekPlan);
-        } catch (DataIntegrityViolationException ex) {
-            WeekPlan existing = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
-                    .orElseThrow(() -> ex);
-            existing.addOrReplaceMeal(dayOfWeek, weekPlan.getMealOrThrow(dayOfWeek).getRecipeRef());
-            return weekPlanRepository.save(existing);
-        }
     }
 
     @Transactional
@@ -117,14 +102,15 @@ public class MealsApplicationService {
             UUID actorUserId,
             int year,
             int isoWeek,
-            int dayOfWeek
+            int dayOfWeek,
+            MealType mealType
     ) {
         ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
         validateIsoWeek(year, isoWeek);
         WeekPlan weekPlan = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
                 .orElseThrow(() -> new MealNotFoundException("Meal not found"));
         try {
-            weekPlan.removeMeal(dayOfWeek);
+            weekPlan.removeMeal(dayOfWeek, mealType);
         } catch (IllegalArgumentException ex) {
             throw new MealNotFoundException("Meal not found");
         }
@@ -150,6 +136,7 @@ public class MealsApplicationService {
         for (PlannedMeal meal : weekPlan.getMeals()) {
             meals.add(new PlannedMealView(
                     meal.getDayOfWeek(),
+                    meal.getMealType().name(),
                     meal.getRecipeRef().recipeId(),
                     meal.getRecipeRef().title()
             ));

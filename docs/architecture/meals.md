@@ -36,8 +36,9 @@ Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a li
   - `id`, `householdId`, `year`, `isoWeek`, `createdAt`, `meals`
 - `PlannedMeal`
   - `dayOfWeek` (1–7, ISO)
+  - `mealType` (BREAKFAST, LUNCH, DINNER)
   - `recipeRef`
-  - Identity within `WeekPlan` is `dayOfWeek` (no separate UUID in V0).
+  - Identity within `WeekPlan` is `(dayOfWeek, mealType)` (no separate UUID in V0).
   - Inherits household scope from `WeekPlan` (no householdId on `PlannedMeal`).
 - `RecipeRef`
   - `recipeId`, `title`
@@ -45,8 +46,8 @@ Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a li
 ### Invariants
 
 - `dayOfWeek` must be 1–7.
-- Max 1 planned meal per day within a week.
-- Adding a meal for an existing day replaces the current meal.
+- Max 1 planned meal per day + meal type within a week.
+- Adding a meal for an existing day + type replaces the current meal.
 - `WeekPlan` unique per household + ISO week.
 - `isoWeek` must be valid for the given year (validated in application layer).
 - No cross-week move in V0 (move = delete + re-add).
@@ -101,15 +102,15 @@ Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a li
 
 ## API (V0)
 
-Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}`  
-Purpose: Add or replace the meal for a specific day. Implicitly creates the week plan if missing.  
-Request body: `recipeId`, `recipeTitle`, `targetShoppingListId` (optional; null means no push).  
+Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}`  
+Purpose: Add or replace the meal for a specific day + type. Implicitly creates the week plan if missing.  
+Request body: `recipeId`, `recipeTitle`, `mealType`, `targetShoppingListId` (optional; null means no push).  
 Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
 Status: 200 OK.  
 Errors: 400 invalid input, 401 missing context, 403 not a household member or shopping list not owned.
 
-Endpoint: `DELETE /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}`  
-Purpose: Remove the meal for a specific day.  
+Endpoint: `DELETE /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}`  
+Purpose: Remove the meal for a specific day + type.  
 Response: none.  
 Status: 204 No Content.  
 Errors: 400 invalid input, 401 missing context, 403 not a household member, 404 meal not found.

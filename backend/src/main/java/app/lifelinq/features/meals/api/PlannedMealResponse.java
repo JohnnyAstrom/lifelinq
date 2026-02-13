@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public record PlannedMealResponse(
         int dayOfWeek,
+        String mealType,
         UUID recipeId,
         String recipeTitle
 ) {

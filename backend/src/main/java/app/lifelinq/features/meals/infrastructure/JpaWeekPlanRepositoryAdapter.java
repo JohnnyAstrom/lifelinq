@@ -5,6 +5,7 @@ import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 
 public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
     private final WeekPlanJpaRepository repository;
@@ -29,11 +30,15 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
         if (weekPlan == null) {
             throw new IllegalArgumentException("weekPlan must not be null");
         }
-        WeekPlanEntity entity = repository.findById(weekPlan.getId())
-                .map(existing -> updateEntity(existing, weekPlan))
-                .orElseGet(() -> mapper.toEntity(weekPlan));
-        WeekPlanEntity saved = repository.save(entity);
-        return mapper.toDomain(saved);
+        try {
+            WeekPlanEntity entity = repository.findById(weekPlan.getId())
+                    .map(existing -> updateEntity(existing, weekPlan))
+                    .orElseGet(() -> mapper.toEntity(weekPlan));
+            WeekPlanEntity saved = repository.save(entity);
+            return mapper.toDomain(saved);
+        } catch (DataIntegrityViolationException ex) {
+            return resolveUniqueConstraintConflict(weekPlan, ex);
+        }
     }
 
     @Override
@@ -71,5 +76,23 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
             entity.getMeals().add(mapper.toEntity(meal, entity));
         }
         return entity;
+    }
+
+    private WeekPlan resolveUniqueConstraintConflict(WeekPlan weekPlan, DataIntegrityViolationException ex) {
+        Optional<WeekPlanEntity> existingEntity = repository.findByHouseholdIdAndYearAndIsoWeek(
+                weekPlan.getHouseholdId(),
+                weekPlan.getYear(),
+                weekPlan.getIsoWeek()
+        );
+        if (existingEntity.isEmpty()) {
+            throw ex;
+        }
+        WeekPlan existing = mapper.toDomain(existingEntity.get());
+        for (PlannedMeal meal : weekPlan.getMeals()) {
+            existing.addOrReplaceMeal(meal.getDayOfWeek(), meal.getMealType(), meal.getRecipeRef());
+        }
+        WeekPlanEntity merged = updateEntity(existingEntity.get(), existing);
+        WeekPlanEntity saved = repository.save(merged);
+        return mapper.toDomain(saved);
     }
 }

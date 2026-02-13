@@ -8,12 +8,23 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class WeekPlan {
+    public record DaySlot(int dayOfWeek, MealType mealType) {
+        public DaySlot {
+            if (dayOfWeek < 1 || dayOfWeek > 7) {
+                throw new IllegalArgumentException("dayOfWeek must be between 1 and 7");
+            }
+            if (mealType == null) {
+                throw new IllegalArgumentException("mealType must not be null");
+            }
+        }
+    }
+
     private final UUID id;
     private final UUID householdId;
     private final int year;
     private final int isoWeek;
     private final Instant createdAt;
-    private final Map<Integer, PlannedMeal> mealsByDay;
+    private final Map<DaySlot, PlannedMeal> mealsBySlot;
 
     public WeekPlan(
             UUID id,
@@ -31,7 +42,7 @@ public final class WeekPlan {
             int year,
             int isoWeek,
             Instant createdAt,
-            Map<Integer, PlannedMeal> mealsByDay
+            Map<DaySlot, PlannedMeal> mealsByDay
     ) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
@@ -53,36 +64,38 @@ public final class WeekPlan {
         this.year = year;
         this.isoWeek = isoWeek;
         this.createdAt = createdAt;
-        this.mealsByDay = new HashMap<>();
-        for (Map.Entry<Integer, PlannedMeal> entry : mealsByDay.entrySet()) {
-            Integer key = entry.getKey();
+        this.mealsBySlot = new HashMap<>();
+        for (Map.Entry<DaySlot, PlannedMeal> entry : mealsByDay.entrySet()) {
+            DaySlot key = entry.getKey();
             PlannedMeal meal = entry.getValue();
             if (key == null || meal == null) {
                 throw new IllegalArgumentException("mealsByDay must not contain null keys or values");
             }
-            if (key < 1 || key > 7) {
-                throw new IllegalArgumentException("dayOfWeek must be between 1 and 7");
-            }
-            if (key != meal.getDayOfWeek()) {
+            if (key.dayOfWeek() != meal.getDayOfWeek()) {
                 throw new IllegalArgumentException("mealsByDay key must match meal dayOfWeek");
             }
-            this.mealsByDay.put(key, meal);
+            if (key.mealType() != meal.getMealType()) {
+                throw new IllegalArgumentException("mealsByDay key must match meal type");
+            }
+            this.mealsBySlot.put(key, meal);
         }
     }
 
-    public void addOrReplaceMeal(int dayOfWeek, RecipeRef recipeRef) {
-        PlannedMeal meal = new PlannedMeal(dayOfWeek, recipeRef);
-        // Replace is intentional: one meal per day.
-        mealsByDay.put(dayOfWeek, meal);
+    public void addOrReplaceMeal(int dayOfWeek, MealType mealType, RecipeRef recipeRef) {
+        PlannedMeal meal = new PlannedMeal(dayOfWeek, mealType, recipeRef);
+        mealsBySlot.put(new DaySlot(dayOfWeek, mealType), meal);
     }
 
-    public void removeMeal(int dayOfWeek) {
+    public void removeMeal(int dayOfWeek, MealType mealType) {
         if (dayOfWeek < 1 || dayOfWeek > 7) {
             throw new IllegalArgumentException("dayOfWeek must be between 1 and 7");
         }
-        PlannedMeal removed = mealsByDay.remove(dayOfWeek);
+        if (mealType == null) {
+            throw new IllegalArgumentException("mealType must not be null");
+        }
+        PlannedMeal removed = mealsBySlot.remove(new DaySlot(dayOfWeek, mealType));
         if (removed == null) {
-            throw new IllegalArgumentException("no meal planned for dayOfWeek: " + dayOfWeek);
+            throw new IllegalArgumentException("no meal planned for dayOfWeek: " + dayOfWeek + " and mealType: " + mealType);
         }
     }
 
@@ -107,18 +120,27 @@ public final class WeekPlan {
     }
 
     public List<PlannedMeal> getMeals() {
-        List<PlannedMeal> meals = new ArrayList<>(mealsByDay.values());
-        meals.sort((a, b) -> Integer.compare(a.getDayOfWeek(), b.getDayOfWeek()));
+        List<PlannedMeal> meals = new ArrayList<>(mealsBySlot.values());
+        meals.sort((a, b) -> {
+            int dayCompare = Integer.compare(a.getDayOfWeek(), b.getDayOfWeek());
+            if (dayCompare != 0) {
+                return dayCompare;
+            }
+            return Integer.compare(a.getMealType().ordinal(), b.getMealType().ordinal());
+        });
         return List.copyOf(meals);
     }
 
-    public PlannedMeal getMealOrThrow(int dayOfWeek) {
+    public PlannedMeal getMealOrThrow(int dayOfWeek, MealType mealType) {
         if (dayOfWeek < 1 || dayOfWeek > 7) {
             throw new IllegalArgumentException("dayOfWeek must be between 1 and 7");
         }
-        PlannedMeal meal = mealsByDay.get(dayOfWeek);
+        if (mealType == null) {
+            throw new IllegalArgumentException("mealType must not be null");
+        }
+        PlannedMeal meal = mealsBySlot.get(new DaySlot(dayOfWeek, mealType));
         if (meal == null) {
-            throw new IllegalArgumentException("no meal planned for dayOfWeek: " + dayOfWeek);
+            throw new IllegalArgumentException("no meal planned for dayOfWeek: " + dayOfWeek + " and mealType: " + mealType);
         }
         return meal;
     }

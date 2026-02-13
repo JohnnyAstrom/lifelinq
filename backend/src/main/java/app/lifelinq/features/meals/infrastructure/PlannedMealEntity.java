@@ -14,7 +14,7 @@ import java.util.UUID;
         name = "planned_meals",
         indexes = {
                 @jakarta.persistence.Index(name = "idx_planned_meals_week_plan_id", columnList = "week_plan_id"),
-                @jakarta.persistence.Index(name = "idx_planned_meals_week_plan_day", columnList = "week_plan_id,day_of_week")
+                @jakarta.persistence.Index(name = "idx_planned_meals_week_plan_day", columnList = "week_plan_id,day_of_week,meal_type")
         }
 )
 public class PlannedMealEntity {
@@ -58,6 +58,10 @@ public class PlannedMealEntity {
 
     int getDayOfWeek() {
         return id.getDayOfWeek();
+    }
+
+    String getMealType() {
+        return id.getMealType();
     }
 
     UUID getRecipeId() {
