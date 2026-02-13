@@ -35,7 +35,18 @@ export default function App() {
 }
 
 function SplashScreen() {
-  return null;
+  const strings = {
+    title: 'Loading app',
+    subtitle: 'Initializing your workspace...',
+  };
+  return (
+    <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
+      <AppCard>
+        <Text style={textStyles.h3}>{strings.title}</Text>
+        <Subtle>{strings.subtitle}</Subtle>
+      </AppCard>
+    </AppScreen>
+  );
 }
 
 function AppShell() {

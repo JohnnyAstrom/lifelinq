@@ -1,3 +1,3 @@
-import App from './src/app/App';
+import App from './src/bootstrap/App';
 
 export default App;
