@@ -98,3 +98,24 @@ Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a li
 - Keep the planning flow light and fast.
 - Meal planning must not feel like a project tool.
 - The value is in turning plans into shopping needs.
+
+## API (V0)
+
+Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}`  
+Purpose: Add or replace the meal for a specific day. Implicitly creates the week plan if missing.  
+Request body: `recipeId`, `recipeTitle`, `targetShoppingListId` (optional; null means no push).  
+Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
+Status: 200 OK.  
+Errors: 400 invalid input, 401 missing context, 403 not a household member or shopping list not owned.
+
+Endpoint: `DELETE /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}`  
+Purpose: Remove the meal for a specific day.  
+Response: none.  
+Status: 204 No Content.  
+Errors: 400 invalid input, 401 missing context, 403 not a household member, 404 meal not found.
+
+Endpoint: `GET /meals/weeks/{year}/{isoWeek}`  
+Purpose: Get the week plan.  
+Response: `weekPlanId` (nullable), `year`, `isoWeek`, `createdAt` (nullable), `meals`.  
+Status: 200 OK (returns an empty plan when missing).  
+Errors: 400 invalid input, 401 missing context, 403 not a household member.
