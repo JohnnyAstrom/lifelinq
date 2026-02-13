@@ -41,14 +41,14 @@ public final class Todo {
         return status;
     }
 
-    public boolean complete(Instant now) {
+    public void toggle(Instant now) {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
-        if (status != TodoStatus.OPEN) {
-            return false;
+        if (status == TodoStatus.OPEN) {
+            status = TodoStatus.COMPLETED;
+        } else {
+            status = TodoStatus.OPEN;
         }
-        status = TodoStatus.COMPLETED;
-        return true;
     }
 }

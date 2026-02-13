@@ -6,21 +6,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class InMemoryTodoRepository implements TodoRepository {
-    private final List<Todo> todos = new ArrayList<>();
+    private final ConcurrentMap<UUID, Todo> byId = new ConcurrentHashMap<>();
 
     @Override
     public Optional<Todo> findById(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        for (Todo todo : todos) {
-            if (id.equals(todo.getId())) {
-                return Optional.of(todo);
-            }
-        }
-        return Optional.empty();
+        return Optional.ofNullable(byId.get(id));
     }
 
     @Override
@@ -28,11 +25,11 @@ public final class InMemoryTodoRepository implements TodoRepository {
         if (todo == null) {
             throw new IllegalArgumentException("todo must not be null");
         }
-        todos.add(todo);
+        byId.put(todo.getId(), todo);
     }
 
     @Override
     public List<Todo> findAll() {
-        return new ArrayList<>(todos);
+        return new ArrayList<>(byId.values());
     }
 }

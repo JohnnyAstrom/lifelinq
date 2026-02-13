@@ -31,6 +31,22 @@ class CompleteTodoUseCaseTest {
     }
 
     @Test
+    void togglesBackToOpenWhenAlreadyCompleted() {
+        InMemoryTodoRepository repository = new InMemoryTodoRepository();
+        Todo todo = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Task");
+        repository.save(todo);
+        CompleteTodoUseCase useCase = new CompleteTodoUseCase(repository);
+
+        useCase.execute(new CompleteTodoCommand(todo.getId(), Instant.parse("2026-01-01T00:00:00Z")));
+        int saveCountAfterComplete = repository.saveCount;
+
+        CompleteTodoResult result = useCase.execute(new CompleteTodoCommand(todo.getId(), Instant.parse("2026-01-02T00:00:00Z")));
+
+        assertEquals(false, result.isCompleted());
+        assertEquals(saveCountAfterComplete + 1, repository.saveCount);
+    }
+
+    @Test
     void returnsFalseWhenNotFound() {
         CompleteTodoUseCase useCase = new CompleteTodoUseCase(new InMemoryTodoRepository());
         CompleteTodoCommand command = new CompleteTodoCommand(UUID.randomUUID(), Instant.parse("2026-01-01T00:00:00Z"));

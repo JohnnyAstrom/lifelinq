@@ -2,6 +2,7 @@ package app.lifelinq.features.todo.application;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
 
 final class CompleteTodoUseCase {
@@ -31,11 +32,13 @@ final class CompleteTodoUseCase {
             return new CompleteTodoResult(false);
         }
 
-        boolean completed = todo.complete(now);
-        if (completed) {
+        TodoStatus before = todo.getStatus();
+        todo.toggle(now);
+        boolean changed = before != todo.getStatus();
+        if (changed) {
             todoRepository.save(todo);
         }
-
-        return new CompleteTodoResult(completed);
+        boolean nowCompleted = todo.getStatus() == TodoStatus.COMPLETED;
+        return new CompleteTodoResult(nowCompleted);
     }
 }
