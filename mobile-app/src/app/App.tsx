@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { clearToken, getToken } from '../features/auth/utils/tokenStore';
+import { useEffect, useState } from 'react';
+import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -12,38 +12,38 @@ import { CreateShoppingItemScreen } from '../screens/CreateShoppingItemScreen';
 type Screen = 'login' | 'home' | 'create' | 'members' | 'shopping';
 
 export default function App() {
-  const [token, setTokenState] = useState<string | null>(null);
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
+
+function SplashScreen() {
+  return null;
+}
+
+function AppShell() {
+  const { token, isAuthenticated, isInitializing, login, logout } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
-  const [booting, setBooting] = useState(true);
   const me = useMe(token);
 
   useEffect(() => {
-    async function load() {
-      const stored = await getToken();
-      if (stored) {
-        setTokenState(stored);
-        setScreen('home');
-      }
-      setBooting(false);
+    if (isAuthenticated && screen === 'login') {
+      setScreen('home');
     }
+  }, [isAuthenticated, screen]);
 
-    load();
-  }, []);
-
-  if (booting) {
-    return (
-      <View>
-        <Text>Loading app...</Text>
-      </View>
-    );
+  if (isInitializing) {
+    return <SplashScreen />;
   }
 
-  if (!token) {
+  if (!isAuthenticated) {
     return (
       <View>
         <LoginScreen
-          onLoggedIn={(value) => {
-            setTokenState(value);
+          onLoggedIn={async (value) => {
+            await login(value);
             setScreen('home');
           }}
         />
@@ -135,8 +135,7 @@ export default function App() {
           setScreen('shopping');
         }}
         onLogout={async () => {
-          await clearToken();
-          setTokenState(null);
+          await logout();
           setScreen('login');
         }}
       />

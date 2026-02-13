@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
+import { useAuth } from '../../../shared/auth/AuthContext';
 import { fetchMe, MeResponse } from '../api/meApi';
 
 export function useMe(token: string | null) {
@@ -7,6 +8,7 @@ export function useMe(token: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const { handleApiError } = useAuth();
 
   useEffect(() => {
     let cancelled = false;
@@ -26,6 +28,7 @@ export function useMe(token: string | null) {
           setData(result);
         }
       } catch (err) {
+        await handleApiError(err);
         if (!cancelled) {
           setError(formatApiError(err));
         }

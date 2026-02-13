@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Text, TextInput, View } from 'react-native';
 import { formatApiError } from '../shared/api/client';
+import { useAuth } from '../shared/auth/AuthContext';
 import { createHousehold } from '../features/household/api/householdApi';
 
 type Props = {
@@ -12,6 +13,7 @@ export function CreateHouseholdScreen({ token, onCreated }: Props) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { handleApiError } = useAuth();
 
   async function handleCreate() {
     if (!name.trim() || loading) {
@@ -23,6 +25,7 @@ export function CreateHouseholdScreen({ token, onCreated }: Props) {
       await createHousehold(token, name.trim());
       onCreated();
     } catch (err) {
+      await handleApiError(err);
       setError(formatApiError(err));
     } finally {
       setLoading(false);

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
+import { useAuth } from '../../../shared/auth/AuthContext';
 import { completeTodo, createTodo, fetchTodos, TodoResponse } from '../api/todoApi';
 
 export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'ALL' = 'OPEN') {
   const [items, setItems] = useState<TodoResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { handleApiError } = useAuth();
 
   async function load() {
     if (!token) {
@@ -21,6 +23,7 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
       const result = await fetchTodos(token, queryStatus);
       setItems(result);
     } catch (err) {
+      await handleApiError(err);
       setError(formatApiError(err));
     } finally {
       setLoading(false);
@@ -36,6 +39,7 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
       await createTodo(token, text);
       await load();
     } catch (err) {
+      await handleApiError(err);
       setError(formatApiError(err));
     }
   }
@@ -49,6 +53,7 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
       await completeTodo(token, id);
       await load();
     } catch (err) {
+      await handleApiError(err);
       setError(formatApiError(err));
     }
   }

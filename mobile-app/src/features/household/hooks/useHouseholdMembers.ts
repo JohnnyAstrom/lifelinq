@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
+import { useAuth } from '../../../shared/auth/AuthContext';
 import { addMember, fetchMembers, MemberItemResponse, removeMember } from '../api/householdMembersApi';
 
 export function useHouseholdMembers(token: string | null) {
   const [items, setItems] = useState<MemberItemResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { handleApiError } = useAuth();
 
   async function load() {
     if (!token) {
@@ -18,6 +20,7 @@ export function useHouseholdMembers(token: string | null) {
       const result = await fetchMembers(token);
       setItems(result);
     } catch (err) {
+      await handleApiError(err);
       setError(formatApiError(err));
     } finally {
       setLoading(false);
@@ -33,6 +36,7 @@ export function useHouseholdMembers(token: string | null) {
       await addMember(token, userId);
       await load();
     } catch (err) {
+      await handleApiError(err);
       setError(formatApiError(err));
     }
   }
@@ -46,6 +50,7 @@ export function useHouseholdMembers(token: string | null) {
       await removeMember(token, userId);
       await load();
     } catch (err) {
+      await handleApiError(err);
       setError(formatApiError(err));
     }
   }
