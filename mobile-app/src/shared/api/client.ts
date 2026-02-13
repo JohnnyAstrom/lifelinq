@@ -1,3 +1,5 @@
+import { getToken } from './tokenStore';
+
 export type ApiClientOptions = {
   token?: string | null;
 };
@@ -15,11 +17,17 @@ export class ApiError extends Error {
   }
 }
 
+export class UnauthorizedError extends ApiError {
+  constructor(body = 'Unauthorized') {
+    super(401, body);
+  }
+}
+
 export function formatApiError(err: unknown): string {
+  if (err instanceof UnauthorizedError) {
+    return 'You must create a household first or log in again.';
+  }
   if (err instanceof ApiError) {
-    if (err.status === 401) {
-      return 'You must create a household first or log in again.';
-    }
     if (err.status === 403) {
       return 'Access denied.';
     }
@@ -49,14 +57,20 @@ export async function fetchJson<T>(
     headers['Content-Type'] = 'application/json';
   }
 
-  if (clientOptions.token) {
-    headers.Authorization = `Bearer ${clientOptions.token}`;
+  const token = clientOptions.token ?? (await getToken());
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers,
   });
+
+  if (response.status === 401) {
+    const text = await response.text();
+    throw new UnauthorizedError(text || 'Unauthorized');
+  }
 
   if (!response.ok) {
     const text = await response.text();
