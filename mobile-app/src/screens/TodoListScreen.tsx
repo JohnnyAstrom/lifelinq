@@ -1,14 +1,21 @@
 import { useState } from 'react';
 import {
-  Button,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useTodos } from '../features/todo/hooks/useTodos';
+import {
+  AppButton,
+  AppCard,
+  AppChip,
+  AppInput,
+  AppScreen,
+  SectionTitle,
+  Subtle,
+} from '../shared/ui/components';
+import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -19,6 +26,22 @@ export function TodoListScreen({ token, onDone }: Props) {
   const [status, setStatus] = useState<'OPEN' | 'COMPLETED' | 'ALL'>('OPEN');
   const [text, setText] = useState('');
   const todos = useTodos(token, status);
+  const strings = {
+    title: 'Todos',
+    subtitle: 'Keep the list moving.',
+    filterTitle: 'Filter',
+    open: 'Open',
+    completed: 'Completed',
+    all: 'All',
+    listTitle: 'List',
+    noTodos: 'No todos yet.',
+    complete: 'Complete',
+    reopen: 'Reopen',
+    addTodoTitle: 'Add todo',
+    addPlaceholder: 'What needs to be done?',
+    addAction: 'Add',
+    back: 'Back',
+  };
 
   async function handleAdd() {
     if (!text.trim() || todos.loading) {
@@ -29,144 +52,103 @@ export function TodoListScreen({ token, onDone }: Props) {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
+    <AppScreen
       refreshControl={
         <RefreshControl refreshing={todos.loading} onRefresh={todos.reload} />
       }
     >
-      <View style={styles.headerCard}>
-        <Text style={styles.header}>Todos</Text>
-        <Text style={styles.subtle}>Keep the list moving.</Text>
-      </View>
+      <AppCard style={styles.headerCard}>
+        <Text style={textStyles.h2}>{strings.title}</Text>
+        <Subtle>{strings.subtitle}</Subtle>
+      </AppCard>
 
-      <View style={styles.filtersCard}>
-        <Text style={styles.sectionTitle}>Filter</Text>
-        <View style={styles.filters}>
-          <Button title="OPEN" onPress={() => setStatus('OPEN')} />
-          <Button title="COMPLETED" onPress={() => setStatus('COMPLETED')} />
-          <Button title="ALL" onPress={() => setStatus('ALL')} />
-        </View>
-      </View>
-
-      {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
-
-      <View style={styles.listCard}>
-        {todos.items.length === 0 && !todos.loading ? (
-          <Text style={styles.subtle}>No todos yet.</Text>
-        ) : null}
-        {todos.items.map((item) => (
-          <View key={item.id} style={styles.itemRow}>
-            <Text style={styles.itemText}>
-              {item.text} ({item.status})
-            </Text>
-            <Button
-              title={item.status === 'OPEN' ? 'Complete' : 'Reopen'}
-              onPress={() => todos.complete(item.id)}
-            />
+        <AppCard>
+          <SectionTitle>{strings.filterTitle}</SectionTitle>
+          <View style={styles.filters}>
+            <AppChip label={strings.open} active={status === 'OPEN'} onPress={() => setStatus('OPEN')} />
+            <AppChip label={strings.completed} active={status === 'COMPLETED'} onPress={() => setStatus('COMPLETED')} />
+            <AppChip label={strings.all} active={status === 'ALL'} onPress={() => setStatus('ALL')} />
           </View>
-        ))}
-      </View>
+        </AppCard>
 
-      <View style={styles.editorCard}>
-        <Text style={styles.sectionTitle}>Add todo</Text>
-        <TextInput
-          style={styles.input}
-          value={text}
-          placeholder="What needs to be done?"
-          onChangeText={setText}
-        />
-        <Button title="Add" onPress={handleAdd} />
-      </View>
+        {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
 
-      <View style={styles.footerCard}>
-        <Button title="Back" onPress={onDone} />
-      </View>
-    </ScrollView>
+        <AppCard>
+          <SectionTitle>{strings.listTitle}</SectionTitle>
+          {todos.items.length === 0 && !todos.loading ? (
+            <Subtle>{strings.noTodos}</Subtle>
+          ) : null}
+          <View style={styles.list}>
+            {todos.items.map((item) => (
+              <View key={item.id} style={styles.itemRow}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemText}>{item.text}</Text>
+                  <Text style={styles.itemStatus}>{item.status}</Text>
+                </View>
+                <AppButton
+                  title={item.status === 'OPEN' ? strings.complete : strings.reopen}
+                  onPress={() => todos.complete(item.id)}
+                  variant="secondary"
+                />
+              </View>
+            ))}
+          </View>
+        </AppCard>
+
+        <AppCard>
+          <SectionTitle>{strings.addTodoTitle}</SectionTitle>
+          <AppInput
+            value={text}
+            placeholder={strings.addPlaceholder}
+            onChangeText={setText}
+          />
+          <AppButton title={strings.addAction} onPress={handleAdd} fullWidth />
+        </AppCard>
+
+      <AppCard>
+        <AppButton title={strings.back} onPress={onDone} variant="ghost" fullWidth />
+      </AppCard>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 12,
-    backgroundColor: '#f6f5f2',
-  },
   headerCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e7e1d7',
-    gap: 6,
-  },
-  header: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e1c16',
-  },
-  filtersCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e7e1d7',
-    gap: 8,
+    gap: theme.spacing.xs,
   },
   filters: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
   },
-  listCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e7e1d7',
-    gap: 8,
+  list: {
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
   },
   itemRow: {
     borderWidth: 1,
-    borderColor: '#efe7da',
-    borderRadius: 10,
-    padding: 10,
-    gap: 6,
-    backgroundColor: '#fffaf0',
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceAlt,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  itemInfo: {
+    flex: 1,
   },
   itemText: {
-    color: '#40372c',
+    ...textStyles.body,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e1c16',
-  },
-  editorCard: {
-    borderWidth: 1,
-    borderColor: '#e7e1d7',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-    backgroundColor: '#ffffff',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#c9bfae',
-    borderRadius: 8,
-    padding: 8,
-    backgroundColor: '#fffdf8',
-  },
-  subtle: {
-    color: '#6f675b',
+  itemStatus: {
+    ...textStyles.subtle,
+    marginTop: theme.spacing.xs,
   },
   error: {
-    color: '#b00020',
-  },
-  footerCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e7e1d7',
+    color: theme.colors.danger,
+    fontFamily: theme.typography.body,
   },
 });

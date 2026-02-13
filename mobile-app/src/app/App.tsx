@@ -8,9 +8,19 @@ import { CreateHouseholdScreen } from '../screens/CreateHouseholdScreen';
 import { HouseholdMembersScreen } from '../screens/HouseholdMembersScreen';
 import { TodoListScreen } from '../screens/TodoListScreen';
 import { MealsWeekScreen } from '../screens/MealsWeekScreen';
-import { ShoppingListScreen } from '../screens/ShoppingListScreen';
+import { ShoppingListsScreen } from '../screens/ShoppingListsScreen';
+import { ShoppingListDetailScreen } from '../screens/ShoppingListDetailScreen';
+import { AppCard, AppScreen, Subtle } from '../shared/ui/components';
+import { textStyles, theme } from '../shared/ui/theme';
 
-type Screen = 'login' | 'home' | 'todos' | 'members' | 'shopping' | 'meals';
+type Screen =
+  | 'login'
+  | 'home'
+  | 'todos'
+  | 'members'
+  | 'shopping'
+  | 'shopping-detail'
+  | 'meals';
 
 export default function App() {
   return (
@@ -27,7 +37,14 @@ function SplashScreen() {
 function AppShell() {
   const { token, isAuthenticated, isInitializing, login, logout } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
+  const [activeShoppingListId, setActiveShoppingListId] = useState<string | null>(null);
   const me = useMe(token);
+  const strings = {
+    loadingProfileTitle: 'Loading your profile',
+    loadingProfileSubtitle: 'Please wait a moment.',
+    genericErrorTitle: 'Something went wrong',
+    unknownScreen: 'Unknown screen',
+  };
 
   useEffect(() => {
     if (isAuthenticated && screen === 'login') {
@@ -54,25 +71,34 @@ function AppShell() {
 
   if (me.loading) {
     return (
-      <View>
-        <Text>Loading /me...</Text>
-      </View>
+      <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
+        <AppCard>
+          <Text style={textStyles.h3}>{strings.loadingProfileTitle}</Text>
+          <Subtle>{strings.loadingProfileSubtitle}</Subtle>
+        </AppCard>
+      </AppScreen>
     );
   }
 
   if (me.error) {
     return (
-      <View>
-        <Text>{me.error}</Text>
-      </View>
+      <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
+        <AppCard>
+          <Text style={textStyles.h3}>{strings.genericErrorTitle}</Text>
+          <Text style={{ color: theme.colors.danger }}>{me.error}</Text>
+        </AppCard>
+      </AppScreen>
     );
   }
 
   if (!me.data) {
     return (
-      <View>
-        <Text>Loading /me...</Text>
-      </View>
+      <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
+        <AppCard>
+          <Text style={textStyles.h3}>{strings.loadingProfileTitle}</Text>
+          <Subtle>{strings.loadingProfileSubtitle}</Subtle>
+        </AppCard>
+      </AppScreen>
     );
   }
 
@@ -112,10 +138,26 @@ function AppShell() {
 
   if (screen === 'shopping') {
     return (
-      <ShoppingListScreen
+      <ShoppingListsScreen
         token={token}
+        onSelectList={(listId) => {
+          setActiveShoppingListId(listId);
+          setScreen('shopping-detail');
+        }}
         onDone={() => {
           setScreen('home');
+        }}
+      />
+    );
+  }
+
+  if (screen === 'shopping-detail' && activeShoppingListId) {
+    return (
+      <ShoppingListDetailScreen
+        token={token}
+        listId={activeShoppingListId}
+        onBack={() => {
+          setScreen('shopping');
         }}
       />
     );
@@ -159,7 +201,7 @@ function AppShell() {
 
   return (
     <View>
-      <Text>Unknown screen</Text>
+      <Text>{strings.unknownScreen}</Text>
     </View>
   );
 }

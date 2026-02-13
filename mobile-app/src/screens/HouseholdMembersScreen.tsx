@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Button, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useHouseholdMembers } from '../features/household/hooks/useHouseholdMembers';
+import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle } from '../shared/ui/components';
+import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -10,6 +12,18 @@ type Props = {
 export function HouseholdMembersScreen({ token, onDone }: Props) {
   const members = useHouseholdMembers(token);
   const [userId, setUserId] = useState('');
+  const strings = {
+    title: 'Household members',
+    subtitle: 'Invite, view, and manage who can access this household.',
+    membersTitle: 'Members',
+    loadingMembers: 'Loading members...',
+    noMembers: 'No members yet.',
+    remove: 'Remove',
+    addMemberTitle: 'Add member',
+    userIdPlaceholder: 'User ID',
+    addMemberAction: 'Add member',
+    back: 'Back',
+  };
 
   async function handleAdd() {
     if (!userId.trim()) {
@@ -22,23 +36,79 @@ export function HouseholdMembersScreen({ token, onDone }: Props) {
   }
 
   return (
-    <View>
-      <Text>Household members</Text>
-      {members.loading ? <Text>Loading members...</Text> : null}
-      {members.error ? <Text>{members.error}</Text> : null}
+    <AppScreen>
+      <AppCard style={styles.headerCard}>
+        <Text style={textStyles.h2}>{strings.title}</Text>
+        <Subtle>{strings.subtitle}</Subtle>
+      </AppCard>
 
-      {members.items.map((member) => (
-        <View key={member.userId}>
-          <Text>{member.userId} ({member.role})</Text>
-          <Button title="Remove" onPress={() => members.remove(member.userId)} />
+      <AppCard>
+        <SectionTitle>{strings.membersTitle}</SectionTitle>
+        {members.loading ? <Subtle>{strings.loadingMembers}</Subtle> : null}
+        {members.error ? <Text style={styles.error}>{members.error}</Text> : null}
+        {members.items.length === 0 && !members.loading ? (
+          <Subtle>{strings.noMembers}</Subtle>
+        ) : null}
+        <View style={styles.list}>
+          {members.items.map((member) => (
+            <View key={member.userId} style={styles.memberRow}>
+              <View>
+                <Text style={styles.memberId}>{member.userId}</Text>
+                <Text style={styles.memberRole}>{member.role}</Text>
+              </View>
+              <AppButton
+                title={strings.remove}
+                onPress={() => members.remove(member.userId)}
+                variant="ghost"
+              />
+            </View>
+          ))}
         </View>
-      ))}
+      </AppCard>
 
-      <Text>Add member by userId</Text>
-      <TextInput value={userId} onChangeText={setUserId} />
-      <Button title="Add member" onPress={handleAdd} />
+      <AppCard>
+        <SectionTitle>{strings.addMemberTitle}</SectionTitle>
+        <AppInput
+          value={userId}
+          onChangeText={setUserId}
+          placeholder={strings.userIdPlaceholder}
+        />
+        <AppButton title={strings.addMemberAction} onPress={handleAdd} fullWidth />
+      </AppCard>
 
-      <Button title="Back" onPress={onDone} />
-    </View>
+      <AppCard>
+        <AppButton title={strings.back} onPress={onDone} variant="secondary" fullWidth />
+      </AppCard>
+    </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  headerCard: {
+    gap: theme.spacing.xs,
+  },
+  list: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  memberId: {
+    ...textStyles.body,
+  },
+  memberRole: {
+    ...textStyles.subtle,
+  },
+  error: {
+    color: theme.colors.danger,
+    fontFamily: theme.typography.body,
+  },
+});

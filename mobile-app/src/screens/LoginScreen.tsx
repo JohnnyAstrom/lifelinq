@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Button, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { devLogin } from '../features/auth/api/devLoginApi';
 import { formatApiError } from '../shared/api/client';
+import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
+import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
   onLoggedIn: (token: string) => void;
@@ -11,6 +13,14 @@ export function LoginScreen({ onLoggedIn }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const strings = {
+    title: 'Welcome back',
+    subtitle: 'Sign in with your dev email to continue.',
+    emailLabel: 'Email',
+    emailPlaceholder: 'you@lifelinq.dev',
+    login: 'Login',
+    loggingIn: 'Logging in...',
+  };
 
   async function handleLogin() {
     if (!email.trim() || loading) {
@@ -29,11 +39,48 @@ export function LoginScreen({ onLoggedIn }: Props) {
   }
 
   return (
-    <View>
-      <Text>Dev login email:</Text>
-      <TextInput value={email} onChangeText={setEmail} />
-      {error ? <Text>{error}</Text> : null}
-      <Button title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} />
-    </View>
+    <AppScreen scroll={false} contentStyle={styles.container}>
+      <AppCard style={styles.card}>
+        <Text style={textStyles.h1}>{strings.title}</Text>
+        <Subtle>{strings.subtitle}</Subtle>
+        <View style={styles.field}>
+          <Text style={styles.label}>{strings.emailLabel}</Text>
+          <AppInput
+            value={email}
+            placeholder={strings.emailPlaceholder}
+            onChangeText={setEmail}
+          />
+        </View>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <AppButton
+          title={loading ? strings.loggingIn : strings.login}
+          onPress={handleLogin}
+          fullWidth
+          disabled={loading}
+        />
+      </AppCard>
+    </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  card: {
+    gap: theme.spacing.md,
+  },
+  field: {
+    gap: theme.spacing.xs,
+  },
+  label: {
+    ...textStyles.subtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  error: {
+    color: theme.colors.danger,
+    fontFamily: theme.typography.body,
+  },
+});
