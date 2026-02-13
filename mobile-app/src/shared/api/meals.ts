@@ -2,6 +2,7 @@ import { fetchJson, type ApiClientOptions } from './client';
 
 export type PlannedMealResponse = {
   dayOfWeek: number;
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   recipeId: string;
   recipeTitle: string;
 };
@@ -17,6 +18,7 @@ export type WeekPlanResponse = {
 export type AddMealRequest = {
   recipeId: string;
   recipeTitle: string;
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   targetShoppingListId?: string | null;
 };
 
@@ -43,11 +45,12 @@ export async function addOrReplaceMeal(
   year: number,
   isoWeek: number,
   dayOfWeek: number,
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER',
   payload: AddMealRequest,
   clientOptions: ApiClientOptions = {}
 ): Promise<AddMealResponse> {
   return fetchJson<AddMealResponse>(
-    `/meals/weeks/${year}/${isoWeek}/days/${dayOfWeek}`,
+    `/meals/weeks/${year}/${isoWeek}/days/${dayOfWeek}/meals/${mealType}`,
     {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -60,10 +63,11 @@ export async function removeMeal(
   year: number,
   isoWeek: number,
   dayOfWeek: number,
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER',
   clientOptions: ApiClientOptions = {}
 ): Promise<void> {
   return fetchJson<void>(
-    `/meals/weeks/${year}/${isoWeek}/days/${dayOfWeek}`,
+    `/meals/weeks/${year}/${isoWeek}/days/${dayOfWeek}/meals/${mealType}`,
     {
       method: 'DELETE',
     },

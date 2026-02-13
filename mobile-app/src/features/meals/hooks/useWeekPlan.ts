@@ -46,13 +46,19 @@ export function useWeekPlan(
     load();
   }, [token, year, isoWeek]);
 
-  const addMeal = async (dayOfWeek: number, payload: AddMealRequest) => {
+  const addMeal = async (
+    dayOfWeek: number,
+    mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER',
+    payload: AddMealRequest
+  ) => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      await addOrReplaceMeal(year, isoWeek, dayOfWeek, payload, { token });
+      await addOrReplaceMeal(year, isoWeek, dayOfWeek, mealType, payload, {
+        token,
+      });
       await load();
     } catch (err) {
       await handleApiError(err);
@@ -64,13 +70,16 @@ export function useWeekPlan(
     }
   };
 
-  const remove = async (dayOfWeek: number) => {
+  const remove = async (
+    dayOfWeek: number,
+    mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER'
+  ) => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      await removeMeal(year, isoWeek, dayOfWeek, { token });
+      await removeMeal(year, isoWeek, dayOfWeek, mealType, { token });
       await load();
     } catch (err) {
       await handleApiError(err);
