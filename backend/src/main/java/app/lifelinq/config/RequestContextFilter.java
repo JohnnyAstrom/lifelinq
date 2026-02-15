@@ -11,15 +11,15 @@ import java.util.Collections;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
+import app.lifelinq.features.household.application.HouseholdApplicationService;
 
 public class RequestContextFilter extends OncePerRequestFilter {
     private final JwtVerifier jwtVerifier;
-    private final ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase;
+    private final HouseholdApplicationService householdApplicationService;
 
-    public RequestContextFilter(JwtVerifier jwtVerifier, ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase) {
+    public RequestContextFilter(JwtVerifier jwtVerifier, HouseholdApplicationService householdApplicationService) {
         this.jwtVerifier = jwtVerifier;
-        this.resolveHouseholdForUserUseCase = resolveHouseholdForUserUseCase;
+        this.householdApplicationService = householdApplicationService;
     }
 
     @Override
@@ -52,7 +52,7 @@ public class RequestContextFilter extends OncePerRequestFilter {
             UUID userId = claims.getUserId();
             Optional<UUID> householdId;
             try {
-                householdId = resolveHouseholdForUserUseCase.resolveForUser(userId);
+                householdId = householdApplicationService.resolveHouseholdForUser(userId);
             } catch (app.lifelinq.features.household.application.AmbiguousHouseholdException ex) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;

@@ -4,7 +4,7 @@ import app.lifelinq.features.household.domain.HouseholdRepository;
 import app.lifelinq.features.household.domain.InvitationRepository;
 import app.lifelinq.features.household.domain.MembershipRepository;
 
-public final class HouseholdUseCases {
+final class HouseholdUseCases {
     private final CreateHouseholdUseCase createHouseholdUseCase;
     private final AddMemberToHouseholdUseCase addMemberToHouseholdUseCase;
     private final ListHouseholdMembersUseCase listHouseholdMembersUseCase;

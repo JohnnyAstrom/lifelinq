@@ -87,6 +87,8 @@ class InvitationFlowIntegrationTest {
 
         Clock clock = Clock.fixed(Instant.parse("2026-02-12T00:00:00Z"), ZoneOffset.UTC);
 
+        ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase =
+                new ResolveHouseholdForUserUseCase(membershipRepository);
         householdApplicationService = new HouseholdApplicationService(
                 acceptInvitationUseCase,
                 createHouseholdUseCase,
@@ -97,6 +99,7 @@ class InvitationFlowIntegrationTest {
                 revokeInvitationUseCase,
                 membershipRepository,
                 userApplicationService,
+                resolveHouseholdForUserUseCase,
                 clock
         );
     }

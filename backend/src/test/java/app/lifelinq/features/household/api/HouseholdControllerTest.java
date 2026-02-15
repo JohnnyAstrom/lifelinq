@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
+import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
 import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.application.HouseholdApplicationService;
 import app.lifelinq.features.household.contract.CreateInvitationOutput;
@@ -51,7 +51,7 @@ class HouseholdControllerTest {
                 .setControllerAdvice(new HouseholdExceptionHandler())
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
-                        new ResolveHouseholdForUserUseCase(membershipRepository)
+                        HouseholdApplicationServiceTestFactory.createForContextResolution(membershipRepository)
                 ))
                 .build();
     }

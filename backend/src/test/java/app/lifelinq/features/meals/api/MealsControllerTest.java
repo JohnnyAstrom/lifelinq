@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
+import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.meals.application.MealNotFoundException;
@@ -50,7 +50,7 @@ class MealsControllerTest {
                 .setControllerAdvice(new MealsExceptionHandler())
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
-                        new ResolveHouseholdForUserUseCase(membershipRepository)
+                        HouseholdApplicationServiceTestFactory.createForContextResolution(membershipRepository)
                 ))
                 .build();
     }

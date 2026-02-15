@@ -5,6 +5,8 @@ import app.lifelinq.features.household.domain.MembershipId;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
+import app.lifelinq.features.household.domain.HouseholdRepository;
+import app.lifelinq.features.household.domain.InvitationRepository;
 import app.lifelinq.features.user.application.UserApplicationService;
 import java.time.Clock;
 import java.time.Duration;
@@ -26,6 +28,7 @@ public class HouseholdApplicationService {
     private final RevokeInvitationUseCase revokeInvitationUseCase;
     private final MembershipRepository membershipRepository;
     private final UserApplicationService userApplicationService;
+    private final ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase;
     private final Clock clock;
 
     public HouseholdApplicationService(
@@ -38,6 +41,7 @@ public class HouseholdApplicationService {
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             UserApplicationService userApplicationService,
+            ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase,
             Clock clock
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
@@ -49,6 +53,7 @@ public class HouseholdApplicationService {
         this.revokeInvitationUseCase = revokeInvitationUseCase;
         this.membershipRepository = membershipRepository;
         this.userApplicationService = userApplicationService;
+        this.resolveHouseholdForUserUseCase = resolveHouseholdForUserUseCase;
         this.clock = clock;
     }
 
@@ -65,7 +70,7 @@ public class HouseholdApplicationService {
             UUID householdId,
             UUID actorUserId,
             String inviteeEmail,
-        Duration ttl
+            Duration ttl
     ) {
         userApplicationService.ensureUserExists(actorUserId);
         ensureOwner(householdId, actorUserId);
@@ -128,6 +133,36 @@ public class HouseholdApplicationService {
                 new ListHouseholdMembersCommand(householdId)
         );
         return result.getMembers();
+    }
+
+    // Context resolution (scoping only, no business mutation).
+    public java.util.Optional<UUID> resolveHouseholdForUser(UUID userId) {
+        return resolveHouseholdForUserUseCase.resolveForUser(userId);
+    }
+
+    public static HouseholdApplicationService create(
+            HouseholdRepository householdRepository,
+            MembershipRepository membershipRepository,
+            InvitationRepository invitationRepository,
+            InvitationTokenGenerator tokenGenerator,
+            UserApplicationService userApplicationService,
+            Clock clock
+    ) {
+        ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase =
+                new ResolveHouseholdForUserUseCase(membershipRepository);
+        return new HouseholdApplicationService(
+                new AcceptInvitationUseCase(invitationRepository, membershipRepository),
+                new CreateHouseholdUseCase(householdRepository, membershipRepository),
+                new AddMemberToHouseholdUseCase(membershipRepository),
+                new ListHouseholdMembersUseCase(membershipRepository),
+                new RemoveMemberFromHouseholdUseCase(membershipRepository),
+                new CreateInvitationUseCase(invitationRepository, tokenGenerator),
+                new RevokeInvitationUseCase(invitationRepository),
+                membershipRepository,
+                userApplicationService,
+                resolveHouseholdForUserUseCase,
+                clock
+        );
     }
 
     private void ensureOwner(UUID householdId, UUID actorUserId) {

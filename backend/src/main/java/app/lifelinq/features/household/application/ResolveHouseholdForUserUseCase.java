@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public final class ResolveHouseholdForUserUseCase {
+final class ResolveHouseholdForUserUseCase {
     private final MembershipRepository membershipRepository;
 
     public ResolveHouseholdForUserUseCase(MembershipRepository membershipRepository) {

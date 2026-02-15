@@ -75,6 +75,7 @@ public class HouseholdApplicationConfig {
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             UserApplicationService userApplicationService,
+            ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase,
             Clock clock
     ) {
         return new HouseholdApplicationService(
@@ -87,6 +88,7 @@ public class HouseholdApplicationConfig {
                 revokeInvitationUseCase,
                 membershipRepository,
                 userApplicationService,
+                resolveHouseholdForUserUseCase,
                 clock
         );
     }

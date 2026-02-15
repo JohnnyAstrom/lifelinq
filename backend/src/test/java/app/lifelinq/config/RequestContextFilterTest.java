@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
+import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import jakarta.servlet.FilterChain;
@@ -35,8 +35,9 @@ class RequestContextFilterTest {
         UUID userId = UUID.randomUUID();
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository()
-                        .withMembership(userId, householdId))
+                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                        new FakeMembershipRepository().withMembership(userId, householdId)
+                )
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -61,8 +62,9 @@ class RequestContextFilterTest {
         UUID userId = UUID.randomUUID();
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository()
-                        .withMembership(userId, householdId))
+                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                        new FakeMembershipRepository().withMembership(userId, householdId)
+                )
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -83,7 +85,9 @@ class RequestContextFilterTest {
     void returnsUnauthorizedWhenTokenMissing() throws Exception {
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository())
+                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                        new FakeMembershipRepository()
+                )
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -101,7 +105,9 @@ class RequestContextFilterTest {
     void returnsUnauthorizedWhenTokenInvalid() throws Exception {
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository())
+                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                        new FakeMembershipRepository()
+                )
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -122,7 +128,9 @@ class RequestContextFilterTest {
         UUID userId = UUID.randomUUID();
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                new ResolveHouseholdForUserUseCase(new FakeMembershipRepository())
+                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                        new FakeMembershipRepository()
+                )
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -148,7 +156,7 @@ class RequestContextFilterTest {
                 .withMemberships(userId, List.of(UUID.randomUUID(), UUID.randomUUID()));
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                new ResolveHouseholdForUserUseCase(repository)
+                HouseholdApplicationServiceTestFactory.createForContextResolution(repository)
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
