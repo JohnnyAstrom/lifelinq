@@ -77,6 +77,17 @@ that can be used end-to-end without placeholder endpoints or cross-feature leaks
 - i18n (Swedish + English) across all user-facing text.
 - UX refinements and consistent navigation.
 
+## V0.5 (Planned, Tiered)
+
+### Tier A (low-risk extension)
+
+- Documents text search (title + notes only).
+- Todo calendar view (month or ISO-week oriented).
+
+### Tier B (domain-deep change)
+
+- Meals ingredient model + ingredient-driven shopping items (via ShoppingApplicationService).
+
 ## Phase 6 — Long-term Phase (Target)
 
 - Documents V1: cloud storage, compression, previews, household sharing.
