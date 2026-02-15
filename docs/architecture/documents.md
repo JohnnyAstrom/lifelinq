@@ -18,11 +18,16 @@ Documents is the household’s **retrieval-first archive** for:
 
 ### Implementation status (current)
 
-The backend currently implements a minimal placeholder model.
-Only `text` is stored in `DocumentItem`.
-No public API endpoints are exposed yet.
+The backend implements the metadata-first model.
 
-The metadata-first shape described above remains the intended V0 target and is not fully implemented.
+The following endpoints are available:
+- `POST /documents` to create a document record.
+- `GET /documents` to list documents for the current household.
+
+Household scoping, `createdByUserId`, and `createdAt` are enforced server-side.
+
+V0 is metadata-only by design.
+Search, filtering, and attachments are not implemented in V0.
 
 ## Decisions
 
