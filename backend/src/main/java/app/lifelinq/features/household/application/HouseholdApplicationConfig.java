@@ -4,7 +4,7 @@ import app.lifelinq.features.household.domain.HouseholdRepository;
 import app.lifelinq.features.household.domain.InvitationRepository;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import app.lifelinq.features.user.application.UserApplicationService;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -74,7 +74,7 @@ public class HouseholdApplicationConfig {
             CreateInvitationUseCase createInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
-            EnsureUserExistsUseCase ensureUserExistsUseCase,
+            UserApplicationService userApplicationService,
             Clock clock
     ) {
         return new HouseholdApplicationService(
@@ -86,7 +86,7 @@ public class HouseholdApplicationConfig {
                 createInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,
-                ensureUserExistsUseCase,
+                userApplicationService,
                 clock
         );
     }

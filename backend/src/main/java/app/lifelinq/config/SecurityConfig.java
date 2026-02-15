@@ -1,6 +1,6 @@
 package app.lifelinq.config;
 
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import app.lifelinq.features.user.application.UserApplicationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
@@ -49,11 +49,11 @@ public class SecurityConfig {
 
     @Bean
     public OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler(
-            EnsureUserExistsUseCase ensureUserExistsUseCase,
+            UserApplicationService userApplicationService,
             JwtSigner jwtSigner,
             ObjectMapper objectMapper
     ) {
-        return new OAuth2LoginSuccessHandler(ensureUserExistsUseCase, jwtSigner, objectMapper);
+        return new OAuth2LoginSuccessHandler(userApplicationService, jwtSigner, objectMapper);
     }
 
     @Bean

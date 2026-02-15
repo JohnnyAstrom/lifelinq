@@ -1,6 +1,6 @@
 package app.lifelinq.config;
 
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import app.lifelinq.features.user.application.UserApplicationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,16 +17,16 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
-    private final EnsureUserExistsUseCase ensureUserExistsUseCase;
+    private final UserApplicationService userApplicationService;
     private final JwtSigner jwtSigner;
     private final ObjectMapper objectMapper;
 
     public OAuth2LoginSuccessHandler(
-            EnsureUserExistsUseCase ensureUserExistsUseCase,
+            UserApplicationService userApplicationService,
             JwtSigner jwtSigner,
             ObjectMapper objectMapper
     ) {
-        this.ensureUserExistsUseCase = ensureUserExistsUseCase;
+        this.userApplicationService = userApplicationService;
         this.jwtSigner = jwtSigner;
         this.objectMapper = objectMapper;
     }
@@ -46,7 +46,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String subject = resolveSubject(user);
         UUID userId = deterministicUserId(provider, subject);
 
-        ensureUserExistsUseCase.execute(userId);
+        userApplicationService.ensureUserExists(userId);
 
         String jwt = jwtSigner.sign(userId);
         Map<String, String> payload = new HashMap<>();

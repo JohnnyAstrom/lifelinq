@@ -6,7 +6,7 @@ import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
 import java.util.Optional;
 
-public final class UpdateTodoUseCase {
+final class UpdateTodoUseCase {
     private final TodoRepository todoRepository;
 
     public UpdateTodoUseCase(TodoRepository todoRepository) {

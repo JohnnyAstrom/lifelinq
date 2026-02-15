@@ -4,7 +4,7 @@ import app.lifelinq.features.user.domain.User;
 import app.lifelinq.features.user.domain.UserRepository;
 import java.util.UUID;
 
-public final class EnsureUserExistsUseCase {
+final class EnsureUserExistsUseCase {
     private final UserRepository userRepository;
 
     public EnsureUserExistsUseCase(UserRepository userRepository) {
