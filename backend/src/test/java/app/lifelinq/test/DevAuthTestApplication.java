@@ -7,7 +7,7 @@ import app.lifelinq.features.auth.api.MeController;
 import app.lifelinq.features.household.application.ResolveHouseholdForUserUseCase;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.household.infrastructure.InMemoryMembershipRepository;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import app.lifelinq.features.user.application.UserApplicationConfig;
 import app.lifelinq.features.user.domain.User;
 import app.lifelinq.features.user.domain.UserRepository;
 import java.util.Map;
@@ -21,7 +21,13 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
-@Import({RequestContextConfig.class, SecurityConfig.class, DevTokenController.class, MeController.class})
+@Import({
+        RequestContextConfig.class,
+        SecurityConfig.class,
+        DevTokenController.class,
+        MeController.class,
+        UserApplicationConfig.class
+})
 public class DevAuthTestApplication {
 
     @Bean
@@ -53,8 +59,4 @@ public class DevAuthTestApplication {
         };
     }
 
-    @Bean
-    public EnsureUserExistsUseCase ensureUserExistsUseCase(UserRepository userRepository) {
-        return new EnsureUserExistsUseCase(userRepository);
-    }
 }

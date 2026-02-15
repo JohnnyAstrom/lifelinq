@@ -3,7 +3,8 @@ package app.lifelinq.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.user.application.UserApplicationServiceTestFactory;
 import app.lifelinq.features.user.domain.User;
 import app.lifelinq.features.user.domain.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -30,11 +31,11 @@ class OAuth2LoginSuccessHandlerTest {
     @Test
     void issuesTokenAndEnsuresUserExists() throws Exception {
         RecordingUserRepository userRepository = new RecordingUserRepository();
-        EnsureUserExistsUseCase ensureUserExistsUseCase = new EnsureUserExistsUseCase(userRepository);
+        UserApplicationService userApplicationService = UserApplicationServiceTestFactory.create(userRepository);
         JwtSigner signer = new JwtSigner(SECRET, 300, null, null, Clock.fixed(Instant.now(), ZoneOffset.UTC));
         ObjectMapper objectMapper = new ObjectMapper();
         OAuth2LoginSuccessHandler handler = new OAuth2LoginSuccessHandler(
-                ensureUserExistsUseCase,
+                userApplicationService,
                 signer,
                 objectMapper
         );

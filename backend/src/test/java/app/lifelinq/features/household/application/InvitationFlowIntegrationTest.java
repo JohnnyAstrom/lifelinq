@@ -20,7 +20,8 @@ import app.lifelinq.features.household.infrastructure.JpaInvitationRepositoryAda
 import app.lifelinq.features.household.infrastructure.JpaMembershipRepositoryAdapter;
 import app.lifelinq.features.household.infrastructure.InMemoryInvitationTokenGenerator;
 import app.lifelinq.features.household.infrastructure.InvitationFlowTestApplication;
-import app.lifelinq.features.user.application.EnsureUserExistsUseCase;
+import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.user.application.UserApplicationServiceTestFactory;
 import app.lifelinq.features.user.domain.User;
 import app.lifelinq.features.user.domain.UserRepository;
 import java.time.Clock;
@@ -65,7 +66,7 @@ class InvitationFlowIntegrationTest {
                 new InvitationMapper()
         );
         UserRepository userRepository = new FakeUserRepository();
-        EnsureUserExistsUseCase ensureUserExistsUseCase = new EnsureUserExistsUseCase(userRepository);
+        UserApplicationService userApplicationService = UserApplicationServiceTestFactory.create(userRepository);
 
         CreateHouseholdUseCase createHouseholdUseCase = new CreateHouseholdUseCase(
                 householdRepository,
@@ -95,7 +96,7 @@ class InvitationFlowIntegrationTest {
                 createInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,
-                ensureUserExistsUseCase,
+                userApplicationService,
                 clock
         );
     }
