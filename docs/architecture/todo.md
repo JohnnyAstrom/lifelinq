@@ -33,6 +33,10 @@ The system must be fast to capture and easy to recall.
 - **Complete** means the item was done and should remain visible in history.
 - **Delete** means the item was intentionally removed and not completed.
 - Completion and deletion are distinct actions with distinct meaning.
+- Delete is lifecycle-only and does not use a separate status value.
+- Deleted items must not allow further state mutations (complete/toggle).
+- Completing a todo must not affect `deletedAt`.
+- Default list queries exclude items where `deletedAt` is set.
 
 ## Decisions
 

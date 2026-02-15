@@ -14,7 +14,7 @@ Ambiguity in boundaries and lifecycle rules would create drift and future refact
 - Invitations are a sub-aggregate within Household (not a separate feature).
 - Shopping model is Household → ShoppingList → ShoppingItem.
 - ShoppingList is the aggregate root; toggling is a state mutation within the list.
-- Todo is historical; COMPLETED ≠ DELETED (soft delete with `deletedAt`).
+- Todo is historical; COMPLETED ≠ DELETED (soft delete with `deletedAt`; delete is idempotent and deleted items are immutable).
 - Meals integrates with Shopping via application-level command orchestration.
 - Documents are household-shared with createdBy attribution.
 - Documents V0 makes no storage decision; `externalLink` can point elsewhere.
@@ -24,4 +24,3 @@ Ambiguity in boundaries and lifecycle rules would create drift and future refact
 - Feature isolation is preserved.
 - Future refactors are minimized.
 - Integration points are explicit and testable.
-

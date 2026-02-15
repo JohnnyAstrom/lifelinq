@@ -14,7 +14,8 @@ Decision: Meals integrates with Shopping via application-level command orchestra
 Rationale: Preserves feature isolation and avoids cross-feature repository access.
 Consequences: Meals never accesses Shopping repositories; it calls a Shopping use case.
 Integration is one-way (Meals → Shopping).
-Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a list).
+Current implementation: Meals calls `ShoppingApplicationService.addShoppingItem(...)`
+when `targetShoppingListId` is provided (using the recipe title as the item name).
 
 ## Meals Model (Phase 1)
 
@@ -105,6 +106,13 @@ Command: `AddShoppingItemsFromMeals` (intention: add derived ingredients to a li
 Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}`  
 Purpose: Add or replace the meal for a specific day + type. Implicitly creates the week plan if missing.  
 Request body: `recipeId`, `recipeTitle`, `mealType`, `targetShoppingListId` (optional; null means no push).  
+Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
+Status: 200 OK.  
+Errors: 400 invalid input, 401 missing context, 403 not a household member or shopping list not owned.
+
+Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}`  
+Purpose: Add or replace a meal when `mealType` is provided in the request body.  
+Request body: `recipeId`, `recipeTitle`, `mealType` (required), `targetShoppingListId` (optional).  
 Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
 Status: 200 OK.  
 Errors: 400 invalid input, 401 missing context, 403 not a household member or shopping list not owned.

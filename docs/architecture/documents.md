@@ -16,6 +16,14 @@ Documents is the household’s **retrieval-first archive** for:
 - Optional: `notes`, `date`, `category`, `tags`, `externalLink`
 - All household members can see and search records.
 
+### Implementation status (current)
+
+The backend currently implements a minimal placeholder model.
+Only `text` is stored in `DocumentItem`.
+No public API endpoints are exposed yet.
+
+The metadata-first shape described above remains the intended V0 target and is not fully implemented.
+
 ## Decisions
 
 Decision: Documents are household-shared with createdBy attribution.
