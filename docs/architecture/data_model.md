@@ -161,7 +161,7 @@ It is a guiding target, not a strict implementation requirement.
 - `status` (core)
 - `createdAt` (core)
 - `completedAt` (later)
-- `deletedAt` (later)
+- `deletedAt` (core)
 - `dueDate` (core)
 - `dueTime` (core)
 - `recurrenceRule` (later)
@@ -246,7 +246,9 @@ This is a structural overview of tables and relations that are implemented today
 
 - `users`: `id`
 - `households`: `id`, `name`
-- `todos`: `id`, `household_id`, `text`, `status`, `due_date`, `due_time`
+- `todos`: `id`, `household_id`, `text`, `status`, `due_date`, `due_time`, `deleted_at`
+- `documents`: `id`, `household_id`, `created_by_user_id`, `title`, `notes`, `date`, `category`, `external_link`, `created_at`
+- `document_tags`: `document_id`, `tag`
 - `shopping_lists`: `id`, `household_id`, `name`, `created_at`
 - `shopping_items`: `id`, `list_id`, `name`, `status`, `quantity`, `unit`, `created_at`, `bought_at`
 - `memberships`: composite key (`household_id`, `user_id`), `role`
@@ -255,6 +257,8 @@ This is a structural overview of tables and relations that are implemented today
 ### Relations (ID‑based)
 
 - `todos.household_id` → `households.id`
+- `documents.household_id` → `households.id`
+- `document_tags.document_id` → `documents.id`
 - `shopping_lists.household_id` → `households.id`
 - `shopping_items.list_id` → `shopping_lists.id`
 - `memberships.household_id` → `households.id`
