@@ -12,6 +12,7 @@ public final class Todo {
     private TodoStatus status;
     private final LocalDate dueDate;
     private final LocalTime dueTime;
+    private Instant deletedAt;
 
     public Todo(UUID id, UUID householdId, String text) {
         this(id, householdId, text, null, null);
@@ -36,6 +37,25 @@ public final class Todo {
         this.dueDate = dueDate;
         this.dueTime = dueTime;
         this.status = TodoStatus.OPEN;
+        this.deletedAt = null;
+    }
+
+    public static Todo rehydrate(
+            UUID id,
+            UUID householdId,
+            String text,
+            TodoStatus status,
+            LocalDate dueDate,
+            LocalTime dueTime,
+            Instant deletedAt
+    ) {
+        if (status == null) {
+            throw new IllegalArgumentException("status must not be null");
+        }
+        Todo todo = new Todo(id, householdId, text, dueDate, dueTime);
+        todo.status = status;
+        todo.deletedAt = deletedAt;
+        return todo;
     }
 
     public UUID getId() {
@@ -62,14 +82,34 @@ public final class Todo {
         return status;
     }
 
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
     public void toggle(Instant now) {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
+        }
+        if (deletedAt != null) {
+            throw new IllegalStateException("todo is deleted");
         }
         if (status == TodoStatus.OPEN) {
             status = TodoStatus.COMPLETED;
         } else {
             status = TodoStatus.OPEN;
+        }
+    }
+
+    public void delete(Instant now) {
+        if (now == null) {
+            throw new IllegalArgumentException("now must not be null");
+        }
+        if (deletedAt == null) {
+            deletedAt = now;
         }
     }
 }

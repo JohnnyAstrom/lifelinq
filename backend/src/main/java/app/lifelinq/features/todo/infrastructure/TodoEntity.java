@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -31,6 +32,8 @@ public class TodoEntity {
 
     private LocalTime dueTime;
 
+    private Instant deletedAt;
+
     protected TodoEntity() {
     }
 
@@ -40,7 +43,8 @@ public class TodoEntity {
             String text,
             TodoStatus status,
             LocalDate dueDate,
-            LocalTime dueTime
+            LocalTime dueTime,
+            Instant deletedAt
     ) {
         this.id = id;
         this.householdId = householdId;
@@ -48,6 +52,7 @@ public class TodoEntity {
         this.status = status;
         this.dueDate = dueDate;
         this.dueTime = dueTime;
+        this.deletedAt = deletedAt;
     }
 
     public UUID getId() {
@@ -72,5 +77,9 @@ public class TodoEntity {
 
     public LocalTime getDueTime() {
         return dueTime;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
     }
 }

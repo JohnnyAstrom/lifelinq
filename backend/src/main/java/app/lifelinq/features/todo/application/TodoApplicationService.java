@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TodoApplicationService {
     private final CreateTodoUseCase createTodoUseCase;
     private final CompleteTodoUseCase completeTodoUseCase;
+    private final DeleteTodoUseCase deleteTodoUseCase;
     private final ListTodosUseCase listTodosUseCase;
     private final UpdateTodoUseCase updateTodoUseCase;
     private final UserApplicationService userApplicationService;
@@ -28,6 +29,7 @@ public class TodoApplicationService {
         }
         this.createTodoUseCase = new CreateTodoUseCase(todoRepository);
         this.completeTodoUseCase = new CompleteTodoUseCase(todoRepository);
+        this.deleteTodoUseCase = new DeleteTodoUseCase(todoRepository);
         this.listTodosUseCase = new ListTodosUseCase(todoRepository);
         this.updateTodoUseCase = new UpdateTodoUseCase(todoRepository);
         this.userApplicationService = userApplicationService;
@@ -66,6 +68,13 @@ public class TodoApplicationService {
         userApplicationService.ensureUserExists(actorUserId);
         UpdateTodoResult result = updateTodoUseCase.execute(new UpdateTodoCommand(todoId, text, dueDate, dueTime));
         return result.isUpdated();
+    }
+
+    @Transactional
+    public boolean deleteTodo(UUID todoId, UUID actorUserId, Instant now) {
+        userApplicationService.ensureUserExists(actorUserId);
+        DeleteTodoResult result = deleteTodoUseCase.execute(new DeleteTodoCommand(todoId, now));
+        return result.isDeleted();
     }
 
     @Transactional(readOnly = true)

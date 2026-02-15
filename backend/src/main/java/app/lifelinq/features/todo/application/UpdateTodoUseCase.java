@@ -25,16 +25,15 @@ final class UpdateTodoUseCase {
             return new UpdateTodoResult(false);
         }
         Todo current = existing.get();
-        Todo updated = new Todo(
+        Todo updated = Todo.rehydrate(
                 current.getId(),
                 current.getHouseholdId(),
                 command.getText(),
+                current.getStatus(),
                 command.getDueDate(),
-                command.getDueTime()
+                command.getDueTime(),
+                current.getDeletedAt()
         );
-        if (current.getStatus() == TodoStatus.COMPLETED) {
-            updated.toggle(Instant.EPOCH);
-        }
         todoRepository.save(updated);
         return new UpdateTodoResult(true);
     }

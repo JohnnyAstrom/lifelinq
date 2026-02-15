@@ -35,6 +35,9 @@ final class ListTodosUseCase {
             if (todo == null) {
                 continue;
             }
+            if (todo.isDeleted()) {
+                continue;
+            }
             if (householdId != null && !householdId.equals(todo.getHouseholdId())) {
                 continue;
             }

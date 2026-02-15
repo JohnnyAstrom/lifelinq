@@ -2,20 +2,20 @@ package app.lifelinq.features.todo.application;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
-import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
+import java.util.Optional;
 
-final class CompleteTodoUseCase {
+final class DeleteTodoUseCase {
     private final TodoRepository todoRepository;
 
-    public CompleteTodoUseCase(TodoRepository todoRepository) {
+    public DeleteTodoUseCase(TodoRepository todoRepository) {
         if (todoRepository == null) {
             throw new IllegalArgumentException("todoRepository must not be null");
         }
         this.todoRepository = todoRepository;
     }
 
-    public CompleteTodoResult execute(CompleteTodoCommand command) {
+    public DeleteTodoResult execute(DeleteTodoCommand command) {
         if (command == null) {
             throw new IllegalArgumentException("command must not be null");
         }
@@ -26,22 +26,16 @@ final class CompleteTodoUseCase {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
-
-        Todo todo = todoRepository.findById(command.getTodoId()).orElse(null);
-        if (todo == null) {
-            return new CompleteTodoResult(false);
+        Optional<Todo> existing = todoRepository.findById(command.getTodoId());
+        if (existing.isEmpty()) {
+            return new DeleteTodoResult(false);
         }
+        Todo todo = existing.get();
         if (todo.isDeleted()) {
-            return new CompleteTodoResult(false);
+            return new DeleteTodoResult(false);
         }
-
-        TodoStatus before = todo.getStatus();
-        todo.toggle(now);
-        boolean changed = before != todo.getStatus();
-        if (changed) {
-            todoRepository.save(todo);
-        }
-        boolean nowCompleted = todo.getStatus() == TodoStatus.COMPLETED;
-        return new CompleteTodoResult(nowCompleted);
+        todo.delete(now);
+        todoRepository.save(todo);
+        return new DeleteTodoResult(true);
     }
 }

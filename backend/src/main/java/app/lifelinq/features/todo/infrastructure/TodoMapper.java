@@ -1,8 +1,6 @@
 package app.lifelinq.features.todo.infrastructure;
 
 import app.lifelinq.features.todo.domain.Todo;
-import app.lifelinq.features.todo.domain.TodoStatus;
-import java.time.Instant;
 
 public final class TodoMapper {
 
@@ -16,7 +14,8 @@ public final class TodoMapper {
                 todo.getText(),
                 todo.getStatus(),
                 todo.getDueDate(),
-                todo.getDueTime()
+                todo.getDueTime(),
+                todo.getDeletedAt()
         );
     }
 
@@ -24,16 +23,14 @@ public final class TodoMapper {
         if (entity == null) {
             throw new IllegalArgumentException("entity must not be null");
         }
-        Todo todo = new Todo(
+        return Todo.rehydrate(
                 entity.getId(),
                 entity.getHouseholdId(),
                 entity.getText(),
+                entity.getStatus(),
                 entity.getDueDate(),
-                entity.getDueTime()
+                entity.getDueTime(),
+                entity.getDeletedAt()
         );
-        if (entity.getStatus() == TodoStatus.COMPLETED) {
-            todo.toggle(Instant.EPOCH);
-        }
-        return todo;
     }
 }
