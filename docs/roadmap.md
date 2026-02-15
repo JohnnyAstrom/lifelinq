@@ -14,7 +14,7 @@ Later phases are tentative and may shift as we learn.
 
 - Household creation and membership flows are stable.
 - Minimal auth scoping is consistent across all features.
-- Todos baseline (list + calendar, completion vs deletion).
+- Todos baseline (list, completion vs deletion).
 
 ### Locked decisions (Phase 1)
 
@@ -25,6 +25,34 @@ Later phases are tentative and may shift as we learn.
 - Meals → Shopping integration is application-level command orchestration. Why: avoids cross-feature repo access.
 - Documents are household-shared with createdBy attribution. Why: shared access with traceability.
 - Documents V0 has no storage decisions; externalLink points elsewhere. Why: defer storage without blocking value.
+
+## Product V0 Definition (Locked)
+
+Product V0 means each core feature has a minimal, coherent, household-scoped workflow
+that can be used end-to-end without placeholder endpoints or cross-feature leaks.
+
+### Included in V0
+
+- Auth + Household: minimal JWT scoping, `/me`, household creation + membership + invitations.
+- Todos: list view, create/update/complete, soft delete (`deletedAt`) with history preserved.
+- Shopping: multiple lists, add/edit/remove items, toggle bought/to-buy in-list.
+- Meals: week plan add/replace/remove + get week, optional push to shopping list via ApplicationService.
+- Documents: metadata-first records, create + list, `createdByUserId`/`createdAt` enforced server-side (no search/filter, no storage).
+
+### Explicitly not required for V0
+
+- Active household selection (multi-household).
+- Todo calendar view.
+- Documents search/filter.
+- Ingredients-level recipe modeling.
+- File storage / attachments.
+
+### Definition of “V0 done”
+
+- Included scope above is implemented per feature.
+- Household scoping is enforced server-side (no client authority).
+- All business entry points go through the feature’s ApplicationService boundary.
+- Documentation reflects current behavior and invariants (§11).
 
 ## Phase 2 — Meals (V0)
 
