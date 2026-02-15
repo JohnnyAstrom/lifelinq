@@ -1,22 +1,54 @@
-package app.lifelinq.features.documents.application;
+package app.lifelinq.features.documents.infrastructure;
 
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public final class CreateDocumentItemCommand {
-    private final UUID householdId;
-    private final UUID createdByUserId;
-    private final String title;
-    private final String notes;
-    private final LocalDate date;
-    private final String category;
-    private final List<String> tags;
-    private final String externalLink;
-    private final Instant createdAt;
+@Entity
+@Table(name = "documents")
+public class DocumentEntity {
+    @Id
+    private UUID id;
 
-    public CreateDocumentItemCommand(
+    @Column(nullable = false)
+    private UUID householdId;
+
+    @Column(nullable = false)
+    private UUID createdByUserId;
+
+    @Column(nullable = false)
+    private String title;
+
+    private String notes;
+
+    private LocalDate date;
+
+    private String category;
+
+    @ElementCollection
+    @CollectionTable(name = "document_tags", joinColumns = @JoinColumn(name = "document_id"))
+    @Column(name = "tag")
+    private List<String> tags = new ArrayList<>();
+
+    private String externalLink;
+
+    @Column(nullable = false)
+    private Instant createdAt;
+
+    protected DocumentEntity() {
+    }
+
+    public DocumentEntity(
+            UUID id,
             UUID householdId,
             UUID createdByUserId,
             String title,
@@ -27,15 +59,20 @@ public final class CreateDocumentItemCommand {
             String externalLink,
             Instant createdAt
     ) {
+        this.id = id;
         this.householdId = householdId;
         this.createdByUserId = createdByUserId;
         this.title = title;
         this.notes = notes;
         this.date = date;
         this.category = category;
-        this.tags = tags;
+        this.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
         this.externalLink = externalLink;
         this.createdAt = createdAt;
+    }
+
+    public UUID getId() {
+        return id;
     }
 
     public UUID getHouseholdId() {

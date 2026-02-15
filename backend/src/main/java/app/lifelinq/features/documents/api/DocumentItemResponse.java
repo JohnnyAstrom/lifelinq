@@ -1,11 +1,12 @@
-package app.lifelinq.features.documents.application;
+package app.lifelinq.features.documents.api;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-public final class CreateDocumentItemCommand {
+public final class DocumentItemResponse {
+    private final UUID id;
     private final UUID householdId;
     private final UUID createdByUserId;
     private final String title;
@@ -16,7 +17,8 @@ public final class CreateDocumentItemCommand {
     private final String externalLink;
     private final Instant createdAt;
 
-    public CreateDocumentItemCommand(
+    public DocumentItemResponse(
+            UUID id,
             UUID householdId,
             UUID createdByUserId,
             String title,
@@ -27,6 +29,7 @@ public final class CreateDocumentItemCommand {
             String externalLink,
             Instant createdAt
     ) {
+        this.id = id;
         this.householdId = householdId;
         this.createdByUserId = createdByUserId;
         this.title = title;
@@ -36,6 +39,10 @@ public final class CreateDocumentItemCommand {
         this.tags = tags;
         this.externalLink = externalLink;
         this.createdAt = createdAt;
+    }
+
+    public UUID getId() {
+        return id;
     }
 
     public UUID getHouseholdId() {

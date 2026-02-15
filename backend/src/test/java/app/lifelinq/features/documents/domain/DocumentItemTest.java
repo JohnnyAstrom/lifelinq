@@ -3,6 +3,8 @@ package app.lifelinq.features.documents.domain;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -12,28 +14,108 @@ class DocumentItemTest {
     void createsItemWhenValid() {
         UUID id = UUID.randomUUID();
         UUID householdId = UUID.randomUUID();
-        DocumentItem item = new DocumentItem(id, householdId, "Pay rent");
+        UUID createdByUserId = UUID.randomUUID();
+        DocumentItem item = new DocumentItem(
+                id,
+                householdId,
+                createdByUserId,
+                "Pay rent",
+                null,
+                null,
+                null,
+                List.of(),
+                null,
+                Instant.now()
+        );
 
         assertEquals(id, item.getId());
         assertEquals(householdId, item.getHouseholdId());
-        assertEquals("Pay rent", item.getText());
+        assertEquals(createdByUserId, item.getCreatedByUserId());
+        assertEquals("Pay rent", item.getTitle());
     }
 
     @Test
     void requiresId() {
         assertThrows(IllegalArgumentException.class,
-                () -> new DocumentItem(null, UUID.randomUUID(), "Pay rent"));
+                () -> new DocumentItem(
+                        null,
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "Pay rent",
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        null,
+                        Instant.now()
+                ));
     }
 
     @Test
     void requiresHouseholdId() {
         assertThrows(IllegalArgumentException.class,
-                () -> new DocumentItem(UUID.randomUUID(), null, "Pay rent"));
+                () -> new DocumentItem(
+                        UUID.randomUUID(),
+                        null,
+                        UUID.randomUUID(),
+                        "Pay rent",
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        null,
+                        Instant.now()
+                ));
     }
 
     @Test
-    void requiresText() {
+    void requiresCreatedByUserId() {
         assertThrows(IllegalArgumentException.class,
-                () -> new DocumentItem(UUID.randomUUID(), UUID.randomUUID(), " "));
+                () -> new DocumentItem(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        null,
+                        "Pay rent",
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        null,
+                        Instant.now()
+                ));
+    }
+
+    @Test
+    void requiresTitle() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new DocumentItem(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        " ",
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        null,
+                        Instant.now()
+                ));
+    }
+
+    @Test
+    void requiresCreatedAt() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new DocumentItem(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        "Pay rent",
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        null,
+                        null
+                ));
     }
 }
