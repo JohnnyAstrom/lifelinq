@@ -19,7 +19,7 @@ It focuses on four core domains:
 
 Everyday items that need to happen or be remembered, with a **dual view**:
 - a clear **all-items overview**
-- a simple, legible **calendar view** (planned)
+- a simple, legible **calendar view**
 
 Examples:
 - book a dentist appointment
@@ -108,7 +108,7 @@ This domain prioritizes **retrievability over structure**.
 ### User-facing navigation
 
 - **Today/Overview**: today's todos, meals, and shopping needs in one place.
-- **Todos**: list view now, calendar view planned.
+- **Todos**: list view and calendar view.
 - **Meals**: week view as primary, with day and month for detail/overview.
 - **Shopping**: simple lists with items toggled between "to buy" and "bought".
 - **Documents**: household archive for receipts, warranties, contracts, and bills.
