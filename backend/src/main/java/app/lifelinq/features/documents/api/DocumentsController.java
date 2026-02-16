@@ -5,10 +5,12 @@ import app.lifelinq.features.documents.application.DocumentsApplicationService;
 import app.lifelinq.features.documents.domain.DocumentItem;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -43,13 +45,13 @@ public class DocumentsController {
     }
 
     @GetMapping("/documents")
-    public ResponseEntity<?> list() {
+    public ResponseEntity<?> list(@RequestParam(name = "q", required = false) String q) {
         RequestContext context = ApiScoping.getContext();
         if (context == null || context.getHouseholdId() == null) {
             return ApiScoping.missingContext();
         }
         return ResponseEntity.ok(new ListDocumentsResponse(toResponseItems(
-                documentsApplicationService.listDocuments(context.getHouseholdId())
+                documentsApplicationService.listDocuments(context.getHouseholdId(), Optional.ofNullable(q))
         )));
     }
 

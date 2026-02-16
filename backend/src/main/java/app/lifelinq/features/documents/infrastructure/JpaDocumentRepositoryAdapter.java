@@ -4,6 +4,7 @@ import app.lifelinq.features.documents.domain.DocumentItem;
 import app.lifelinq.features.documents.domain.DocumentRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public final class JpaDocumentRepositoryAdapter implements DocumentRepository {
@@ -27,12 +28,18 @@ public final class JpaDocumentRepositoryAdapter implements DocumentRepository {
     }
 
     @Override
-    public List<DocumentItem> findByHouseholdId(UUID householdId) {
+    public List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q) {
         if (householdId == null) {
             throw new IllegalArgumentException("householdId must not be null");
         }
+        if (q == null) {
+            throw new IllegalArgumentException("q must not be null");
+        }
         List<DocumentItem> items = new ArrayList<>();
-        for (DocumentEntity entity : repository.findByHouseholdId(householdId)) {
+        List<DocumentEntity> entities = q.isPresent()
+                ? repository.searchByHouseholdIdAndText(householdId, q.get())
+                : repository.findByHouseholdIdOrderByCreatedAtDesc(householdId);
+        for (DocumentEntity entity : entities) {
             items.add(mapper.toDomain(entity));
         }
         return items;

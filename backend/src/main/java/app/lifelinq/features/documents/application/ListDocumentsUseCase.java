@@ -3,6 +3,7 @@ package app.lifelinq.features.documents.application;
 import app.lifelinq.features.documents.domain.DocumentItem;
 import app.lifelinq.features.documents.domain.DocumentRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 final class ListDocumentsUseCase {
@@ -15,10 +16,13 @@ final class ListDocumentsUseCase {
         this.documentRepository = documentRepository;
     }
 
-    public List<DocumentItem> execute(UUID householdId) {
+    public List<DocumentItem> execute(UUID householdId, Optional<String> q) {
         if (householdId == null) {
             throw new IllegalArgumentException("householdId must not be null");
         }
-        return documentRepository.findByHouseholdId(householdId);
+        Optional<String> normalizedQuery = q
+                .map(String::trim)
+                .filter(value -> !value.isEmpty());
+        return documentRepository.findByHouseholdId(householdId, normalizedQuery);
     }
 }

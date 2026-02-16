@@ -5,6 +5,7 @@ import app.lifelinq.features.documents.domain.DocumentRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public final class DocumentsApplicationService {
@@ -51,8 +52,8 @@ public final class DocumentsApplicationService {
         return result.getItemId();
     }
 
-    public List<DocumentItem> listDocuments(UUID householdId) {
-        return listDocumentsUseCase.execute(householdId);
+    public List<DocumentItem> listDocuments(UUID householdId, Optional<String> q) {
+        return listDocumentsUseCase.execute(householdId, q);
     }
 
     public static DocumentsApplicationService create(DocumentRepository documentRepository) {
