@@ -9,13 +9,18 @@ import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.contract.IngredientInput;
+import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.domain.ShoppingList;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
+import app.lifelinq.features.shopping.domain.ShoppingUnit;
+import app.lifelinq.test.integration.MealsShoppingIntegrationTestApplication;
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import app.lifelinq.test.integration.MealsShoppingIntegrationTestApplication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -40,7 +45,7 @@ class MealsShoppingIntegrationTest {
     private MealsApplicationService mealsApplicationService;
 
     @Test
-    void addMealPushesShoppingItemToList() {
+    void addMealPushesIngredientsToList() {
         UUID householdId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         householdRepository.save(new Household(householdId, "Home"));
@@ -52,7 +57,16 @@ class MealsShoppingIntegrationTest {
                 "Groceries"
         );
 
-        UUID recipeId = UUID.randomUUID();
+        RecipeView recipe = mealsApplicationService.createRecipe(
+                householdId,
+                userId,
+                "Pasta",
+                List.of(
+                        new IngredientInput("  Olive   Oil  ", new BigDecimal("2"), ShoppingUnit.DL, 1),
+                        new IngredientInput("Tomato", null, null, 2)
+                )
+        );
+
         mealsApplicationService.addOrReplaceMeal(
                 householdId,
                 userId,
@@ -60,13 +74,54 @@ class MealsShoppingIntegrationTest {
                 10,
                 1,
                 app.lifelinq.features.meals.domain.MealType.DINNER,
-                recipeId,
-                "Pasta",
+                recipe.recipeId(),
                 listOutput.listId()
         );
 
         ShoppingList list = shoppingListRepository.findById(listOutput.listId()).orElseThrow();
-        assertEquals(1, list.getItems().size());
-        assertTrue(list.getItems().get(0).getName().equals("pasta"));
+        assertEquals(2, list.getItems().size());
+        assertEquals("olive oil", list.getItems().get(0).getName());
+        assertEquals(0, list.getItems().get(0).getQuantity().compareTo(new BigDecimal("2")));
+        assertEquals(ShoppingUnit.DL, list.getItems().get(0).getUnit());
+        assertEquals("tomato", list.getItems().get(1).getName());
+    }
+
+    @Test
+    void duplicateIngredientNamesCreateSeparateItems() {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        householdRepository.save(new Household(householdId, "Home"));
+        membershipRepository.save(new Membership(householdId, userId, HouseholdRole.OWNER));
+
+        CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
+                householdId,
+                userId,
+                "Groceries"
+        );
+
+        RecipeView recipe = mealsApplicationService.createRecipe(
+                householdId,
+                userId,
+                "Salad",
+                List.of(
+                        new IngredientInput("Tomato", null, null, 1),
+                        new IngredientInput("tomato", null, null, 2)
+                )
+        );
+
+        mealsApplicationService.addOrReplaceMeal(
+                householdId,
+                userId,
+                2025,
+                10,
+                1,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                recipe.recipeId(),
+                listOutput.listId()
+        );
+
+        ShoppingList list = shoppingListRepository.findById(listOutput.listId()).orElseThrow();
+        assertEquals(2, list.getItems().size());
+        assertTrue(list.getItems().stream().allMatch(item -> item.getName().equals("tomato")));
     }
 }

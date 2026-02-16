@@ -89,7 +89,7 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
         }
         WeekPlan existing = mapper.toDomain(existingEntity.get());
         for (PlannedMeal meal : weekPlan.getMeals()) {
-            existing.addOrReplaceMeal(meal.getDayOfWeek(), meal.getMealType(), meal.getRecipeRef());
+            existing.addOrReplaceMeal(meal.getDayOfWeek(), meal.getMealType(), meal.getRecipeId());
         }
         WeekPlanEntity merged = updateEntity(existingEntity.get(), existing);
         WeekPlanEntity saved = repository.save(merged);

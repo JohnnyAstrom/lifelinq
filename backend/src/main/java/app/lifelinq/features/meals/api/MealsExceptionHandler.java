@@ -2,6 +2,7 @@ package app.lifelinq.features.meals.api;
 
 import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.meals.application.MealNotFoundException;
+import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import app.lifelinq.features.shopping.domain.DuplicateShoppingItemNameException;
 import app.lifelinq.features.shopping.domain.ShoppingListNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,11 @@ public final class MealsExceptionHandler {
 
     @ExceptionHandler(MealNotFoundException.class)
     public ResponseEntity<String> handleMealNotFound(MealNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(RecipeNotFoundException.class)
+    public ResponseEntity<String> handleRecipeNotFound(RecipeNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 

@@ -1,7 +1,6 @@
 package app.lifelinq.features.meals.infrastructure;
 
 import app.lifelinq.features.meals.domain.PlannedMeal;
-import app.lifelinq.features.meals.domain.RecipeRef;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.MealType;
 import java.util.HashMap;
@@ -32,7 +31,7 @@ final class WeekPlanMapper {
                     PlannedMeal.rehydrate(
                             meal.getDayOfWeek(),
                             mealType,
-                            new RecipeRef(meal.getRecipeId(), meal.getRecipeTitle())
+                            meal.getRecipeId()
                     )
             );
         }
@@ -50,8 +49,7 @@ final class WeekPlanMapper {
         return new PlannedMealEntity(
                 new PlannedMealId(weekPlan.getId(), meal.getDayOfWeek(), meal.getMealType().name()),
                 weekPlan,
-                meal.getRecipeRef().recipeId(),
-                meal.getRecipeRef().title()
+                meal.getRecipeId()
         );
     }
 }

@@ -1,5 +1,6 @@
 package app.lifelinq.features.meals.infrastructure;
 
+import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,5 +13,10 @@ public class MealsInMemoryConfig {
     @Bean
     public WeekPlanRepository weekPlanRepository() {
         return new InMemoryWeekPlanRepository();
+    }
+
+    @Bean
+    public RecipeRepository recipeRepository() {
+        return new InMemoryRecipeRepository();
     }
 }

@@ -48,4 +48,17 @@ public class MealsJpaTestApplication {
     ) {
         return new JpaWeekPlanRepositoryAdapter(repository, mapper);
     }
+
+    @Bean
+    public RecipeMapper recipeMapper() {
+        return new RecipeMapper();
+    }
+
+    @Bean
+    public JpaRecipeRepositoryAdapter recipeRepository(
+            RecipeJpaRepository repository,
+            RecipeMapper mapper
+    ) {
+        return new JpaRecipeRepositoryAdapter(repository, mapper);
+    }
 }

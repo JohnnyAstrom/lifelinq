@@ -2,6 +2,7 @@ package app.lifelinq.features.meals.infrastructure;
 
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import java.time.Clock;
@@ -14,12 +15,14 @@ public class MealsApplicationConfig {
     @Bean
     public MealsApplicationService mealsApplicationService(
             WeekPlanRepository weekPlanRepository,
+            RecipeRepository recipeRepository,
             EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase,
             ShoppingApplicationService shoppingApplicationService,
             Clock clock
     ) {
         return new MealsApplicationService(
                 weekPlanRepository,
+                recipeRepository,
                 ensureHouseholdMemberUseCase,
                 shoppingApplicationService,
                 clock

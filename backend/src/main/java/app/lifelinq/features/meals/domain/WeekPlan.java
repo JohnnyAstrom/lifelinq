@@ -81,8 +81,8 @@ public final class WeekPlan {
         }
     }
 
-    public void addOrReplaceMeal(int dayOfWeek, MealType mealType, RecipeRef recipeRef) {
-        PlannedMeal meal = new PlannedMeal(dayOfWeek, mealType, recipeRef);
+    public void addOrReplaceMeal(int dayOfWeek, MealType mealType, UUID recipeId) {
+        PlannedMeal meal = new PlannedMeal(dayOfWeek, mealType, recipeId);
         mealsBySlot.put(new DaySlot(dayOfWeek, mealType), meal);
     }
 
