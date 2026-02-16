@@ -5,6 +5,7 @@ import app.lifelinq.features.documents.domain.DocumentRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -31,22 +32,35 @@ class ListDocumentsUseCaseTest {
         ));
         ListDocumentsUseCase useCase = new ListDocumentsUseCase(repository);
 
-        List<DocumentItem> items = useCase.execute(householdId);
+        List<DocumentItem> items = useCase.execute(householdId, Optional.empty());
 
         assertThat(items).hasSize(1);
         assertThat(items.get(0).getHouseholdId()).isEqualTo(householdId);
+        assertThat(repository.lastQuery).isEmpty();
+    }
+
+    @Test
+    void treats_whitespace_query_as_absent() {
+        UUID householdId = UUID.randomUUID();
+        InMemoryDocumentRepository repository = new InMemoryDocumentRepository();
+        ListDocumentsUseCase useCase = new ListDocumentsUseCase(repository);
+
+        useCase.execute(householdId, Optional.of("   "));
+
+        assertThat(repository.lastQuery).isEmpty();
     }
 
     @Test
     void rejects_missing_household_id() {
         ListDocumentsUseCase useCase = new ListDocumentsUseCase(new InMemoryDocumentRepository());
 
-        assertThatThrownBy(() -> useCase.execute(null))
+        assertThatThrownBy(() -> useCase.execute(null, Optional.empty()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     private static final class InMemoryDocumentRepository implements DocumentRepository {
         private final List<DocumentItem> items = new ArrayList<>();
+        private Optional<String> lastQuery = Optional.empty();
 
         @Override
         public void save(DocumentItem item) {
@@ -54,7 +68,8 @@ class ListDocumentsUseCaseTest {
         }
 
         @Override
-        public List<DocumentItem> findByHouseholdId(UUID householdId) {
+        public List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q) {
+            this.lastQuery = q;
             return new ArrayList<>(items);
         }
     }

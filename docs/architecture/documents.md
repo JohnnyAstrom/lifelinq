@@ -23,11 +23,13 @@ The backend implements the metadata-first model.
 The following endpoints are available:
 - `POST /documents` to create a document record.
 - `GET /documents` to list documents for the current household.
+- `GET /documents?q=...` to search text in `title` and `notes` (case-insensitive partial match).
 
 Household scoping, `createdByUserId`, and `createdAt` are enforced server-side.
 
 V0 is metadata-only by design.
-Search, filtering, and attachments are not implemented in V0.
+In V0.5a, only text search (`title` + `notes`) is implemented.
+Category/date/tag filters and attachments are not implemented.
 
 ## Decisions
 
