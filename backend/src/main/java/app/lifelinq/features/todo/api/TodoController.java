@@ -87,6 +87,23 @@ public class TodoController {
         )));
     }
 
+    @GetMapping("/todos/calendar/{year}/{month}")
+    public ResponseEntity<?> listForMonth(
+            @PathVariable int year,
+            @PathVariable int month
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (month < 1 || month > 12) {
+            return ResponseEntity.badRequest().body("month must be between 1 and 12");
+        }
+        return ResponseEntity.ok(new ListTodosResponse(toResponseItems(
+                todoApplicationService.listTodosForMonth(context.getHouseholdId(), year, month)
+        )));
+    }
+
     private List<TodoItemResponse> toResponseItems(List<Todo> todos) {
         List<TodoItemResponse> items = new ArrayList<>();
         for (Todo todo : todos) {

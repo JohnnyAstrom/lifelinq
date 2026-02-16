@@ -14,6 +14,7 @@ public class TodoApplicationService {
     private final CompleteTodoUseCase completeTodoUseCase;
     private final DeleteTodoUseCase deleteTodoUseCase;
     private final ListTodosUseCase listTodosUseCase;
+    private final ListTodosForMonthUseCase listTodosForMonthUseCase;
     private final UpdateTodoUseCase updateTodoUseCase;
     private final UserApplicationService userApplicationService;
 
@@ -31,6 +32,7 @@ public class TodoApplicationService {
         this.completeTodoUseCase = new CompleteTodoUseCase(todoRepository);
         this.deleteTodoUseCase = new DeleteTodoUseCase(todoRepository);
         this.listTodosUseCase = new ListTodosUseCase(todoRepository);
+        this.listTodosForMonthUseCase = new ListTodosForMonthUseCase(todoRepository);
         this.updateTodoUseCase = new UpdateTodoUseCase(todoRepository);
         this.userApplicationService = userApplicationService;
     }
@@ -80,6 +82,12 @@ public class TodoApplicationService {
     @Transactional(readOnly = true)
     public List<Todo> listTodos(UUID householdId, TodoStatus status) {
         ListTodosResult result = listTodosUseCase.execute(new TodoQuery(householdId, status));
+        return result.getTodos();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Todo> listTodosForMonth(UUID householdId, int year, int month) {
+        ListTodosResult result = listTodosForMonthUseCase.execute(new TodoMonthQuery(householdId, year, month));
         return result.getTodos();
     }
 }

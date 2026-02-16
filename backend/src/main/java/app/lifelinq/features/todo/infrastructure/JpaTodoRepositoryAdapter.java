@@ -2,6 +2,7 @@ package app.lifelinq.features.todo.infrastructure;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,25 @@ public final class JpaTodoRepositoryAdapter implements TodoRepository {
     public List<Todo> findAll() {
         List<Todo> result = new ArrayList<>();
         for (TodoEntity entity : todoJpaRepository.findAll()) {
+            result.add(mapper.toDomain(entity));
+        }
+        return result;
+    }
+
+    @Override
+    public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+        if (householdId == null) {
+            throw new IllegalArgumentException("householdId must not be null");
+        }
+        if (startDate == null) {
+            throw new IllegalArgumentException("startDate must not be null");
+        }
+        if (endDate == null) {
+            throw new IllegalArgumentException("endDate must not be null");
+        }
+        List<Todo> result = new ArrayList<>();
+        for (TodoEntity entity : todoJpaRepository
+                .findByHouseholdIdAndDeletedAtIsNullAndDueDateBetweenOrderByDueDateAscIdAsc(householdId, startDate, endDate)) {
             result.add(mapper.toDomain(entity));
         }
         return result;

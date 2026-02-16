@@ -132,6 +132,58 @@ class TodoControllerTest {
     }
 
     @Test
+    void calendarReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(get("/todos/calendar/2026/2"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
+    void calendarReturns400ForInvalidMonth() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(get("/todos/calendar/2026/13")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
+    void calendarReturns400ForMonthZero() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(get("/todos/calendar/2026/0")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(todoApplicationService);
+    }
+
+    @Test
+    void calendarSucceedsWithValidToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(todoApplicationService.listTodosForMonth(householdId, 2026, 2)).thenReturn(List.of());
+
+        mockMvc.perform(get("/todos/calendar/2026/2")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        verify(todoApplicationService).listTodosForMonth(householdId, 2026, 2);
+    }
+
+    @Test
     void updateReturns401WhenContextMissing() throws Exception {
         mockMvc.perform(put("/todos/" + UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)

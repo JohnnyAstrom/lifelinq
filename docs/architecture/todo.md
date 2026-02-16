@@ -10,8 +10,15 @@ The system must be fast to capture and easy to recall.
 ## Core views
 
 - **List view**: the primary overview of all items.
-- **Calendar view** (planned): simple scheduling view for dated items.
+- **Calendar view**: simple scheduling view for dated items (month API implemented).
 - Target: switching between list and calendar must be frictionless.
+
+## Calendar API (V0.5b)
+
+- `GET /todos/calendar/{year}/{month}`
+- `month` uses ISO numbering `1..12`; invalid values return `400`.
+- Month boundaries are computed using `YearMonth` in UTC.
+- Filtering is based on `dueDate` (`LocalDate`) only, with no timezone conversion.
 
 ## Data shape (conceptual)
 

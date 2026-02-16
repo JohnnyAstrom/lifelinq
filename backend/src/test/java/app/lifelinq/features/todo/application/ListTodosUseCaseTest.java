@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
 import app.lifelinq.features.todo.domain.TodoStatus;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -81,6 +82,11 @@ class ListTodosUseCaseTest {
         @Override
         public List<Todo> findAll() {
             return new ArrayList<>(store);
+        }
+
+        @Override
+        public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+            return new ArrayList<>();
         }
     }
 }

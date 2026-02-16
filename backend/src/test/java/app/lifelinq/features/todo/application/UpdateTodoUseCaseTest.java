@@ -105,5 +105,10 @@ class UpdateTodoUseCaseTest {
         public List<Todo> findAll() {
             return new ArrayList<>(saved);
         }
+
+        @Override
+        public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+            return new ArrayList<>();
+        }
     }
 }
