@@ -4,17 +4,17 @@ import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import java.util.List;
 
-public final class ListHouseholdMembersUseCase {
+final class ListHouseholdMembersUseCase {
     private final MembershipRepository membershipRepository;
 
-    public ListHouseholdMembersUseCase(MembershipRepository membershipRepository) {
+    ListHouseholdMembersUseCase(MembershipRepository membershipRepository) {
         if (membershipRepository == null) {
             throw new IllegalArgumentException("membershipRepository must not be null");
         }
         this.membershipRepository = membershipRepository;
     }
 
-    public ListHouseholdMembersResult execute(ListHouseholdMembersCommand command) {
+    ListHouseholdMembersResult execute(ListHouseholdMembersCommand command) {
         if (command == null) {
             throw new IllegalArgumentException("command must not be null");
         }

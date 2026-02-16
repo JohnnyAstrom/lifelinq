@@ -1,6 +1,6 @@
 package app.lifelinq.test.integration;
 
-import app.lifelinq.features.household.application.EnsureHouseholdMemberUseCaseImpl;
+import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.household.infrastructure.HouseholdJpaRepository;
 import app.lifelinq.features.household.infrastructure.HouseholdPersistenceConfig;
@@ -67,7 +67,15 @@ public class MealsShoppingIntegrationTestApplication {
     public EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase(
             app.lifelinq.features.household.domain.MembershipRepository membershipRepository
     ) {
-        return new EnsureHouseholdMemberUseCaseImpl(membershipRepository);
+        return (householdId, actorUserId) -> {
+            var memberships = membershipRepository.findByHouseholdId(householdId);
+            for (var membership : memberships) {
+                if (membership.getUserId().equals(actorUserId)) {
+                    return;
+                }
+            }
+            throw new AccessDeniedException("Actor is not a member of the household");
+        };
     }
 
     @Bean

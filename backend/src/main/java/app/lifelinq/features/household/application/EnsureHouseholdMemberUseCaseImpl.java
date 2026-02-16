@@ -6,10 +6,10 @@ import app.lifelinq.features.household.domain.MembershipRepository;
 import java.util.List;
 import java.util.UUID;
 
-public final class EnsureHouseholdMemberUseCaseImpl implements EnsureHouseholdMemberUseCase {
+final class EnsureHouseholdMemberUseCaseImpl implements EnsureHouseholdMemberUseCase {
     private final MembershipRepository membershipRepository;
 
-    public EnsureHouseholdMemberUseCaseImpl(MembershipRepository membershipRepository) {
+    EnsureHouseholdMemberUseCaseImpl(MembershipRepository membershipRepository) {
         if (membershipRepository == null) {
             throw new IllegalArgumentException("membershipRepository must not be null");
         }
