@@ -77,6 +77,7 @@ All domain entities belong to a household.
 
 - named recipe with a list of ingredients
 - ingredients can be pushed to ShoppingList
+- In V0.5c, recipes serve primarily as a shopping-generator: ingredients listed on a recipe are used to push shopping items. Full culinary modeling (instructions, nutrition, comprehensive ingredient sets) is out of scope.
 
 ### Ingredient
 
@@ -249,6 +250,10 @@ This is a structural overview of tables and relations that are implemented today
 - `todos`: `id`, `household_id`, `text`, `status`, `due_date`, `due_time`, `deleted_at`
 - `documents`: `id`, `household_id`, `created_by_user_id`, `title`, `notes`, `date`, `category`, `external_link`, `created_at`
 - `document_tags`: `document_id`, `tag`
+- `week_plans`: `id`, `household_id`, `week_year`, `iso_week`, `created_at`
+- `planned_meals`: composite key (`week_plan_id`, `day_of_week`, `meal_type`), `recipe_id`
+- `recipes`: `id`, `household_id`, `name`, `created_at`
+- `recipe_ingredients`: `id`, `recipe_id`, `name`, `quantity`, `unit`, `position`
 - `shopping_lists`: `id`, `household_id`, `name`, `created_at`
 - `shopping_items`: `id`, `list_id`, `name`, `status`, `quantity`, `unit`, `created_at`, `bought_at`
 - `memberships`: composite key (`household_id`, `user_id`), `role`
@@ -259,6 +264,11 @@ This is a structural overview of tables and relations that are implemented today
 - `todos.household_id` → `households.id`
 - `documents.household_id` → `households.id`
 - `document_tags.document_id` → `documents.id`
+- `week_plans.household_id` → `households.id`
+- `planned_meals.week_plan_id` → `week_plans.id`
+- `planned_meals.recipe_id` → `recipes.id`
+- `recipes.household_id` → `households.id`
+- `recipe_ingredients.recipe_id` → `recipes.id`
 - `shopping_lists.household_id` → `households.id`
 - `shopping_items.list_id` → `shopping_lists.id`
 - `memberships.household_id` → `households.id`
@@ -268,10 +278,16 @@ This is a structural overview of tables and relations that are implemented today
 
 ```text
 households (id)
-  ↑            ↑            ↑
-  │            │            │
-todos          memberships  invitations
-(household_id) (household_id, user_id) (household_id)
+  ↑            ↑            ↑             ↑             ↑
+  │            │            │             │             │
+todos          memberships  invitations   week_plans    recipes
+(household_id) (household_id, user_id) (household_id) (household_id) (household_id)
+
+week_plans (id)            recipes (id)
+  ↑                         ↑
+  │                         │
+planned_meals               recipe_ingredients
+(week_plan_id, recipe_id)   (recipe_id)
 
 shopping_lists (id, household_id)
   ↑

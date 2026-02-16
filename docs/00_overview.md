@@ -54,9 +54,8 @@ Meal planning is a **core** use case:
 - day and month views exist for detail and overview
 - history and future planning are supported via the same views (at least 3 months back)
 
-Recipes can be attached to planned meals, and shopping list push is supported in V0
-using simplified items (recipe title as the shopping item). Ingredient‑level modeling
-and push are planned.
+Recipes can be attached to planned meals. In V0.5c, ingredient-level modeling and
+ingredient-driven shopping push are implemented.
 
 Calendar sync for meals is optional and export-only (read-only); it is less critical than todo sync.
 
