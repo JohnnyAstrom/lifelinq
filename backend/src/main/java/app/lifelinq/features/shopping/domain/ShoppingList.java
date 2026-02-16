@@ -60,7 +60,6 @@ public final class ShoppingList {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
-        ensureUniqueName(normalizedName);
         ShoppingItem item = new ShoppingItem(itemId, normalizedName, now, quantity, unit);
         items.add(item);
         return itemId;
@@ -76,9 +75,6 @@ public final class ShoppingList {
             throw new IllegalArgumentException("name must not be blank");
         }
         ShoppingItem item = findItemOrThrow(itemId);
-        if (!item.getName().equals(normalizedName)) {
-            ensureUniqueName(normalizedName);
-        }
         item.updateDetails(normalizedName, quantity, unit);
     }
 
@@ -126,11 +122,4 @@ public final class ShoppingList {
                 .orElseThrow(() -> new ShoppingItemNotFoundException(itemId));
     }
 
-    private void ensureUniqueName(String normalizedName) {
-        boolean exists = items.stream()
-                .anyMatch(item -> item.getName().equals(normalizedName));
-        if (exists) {
-            throw new DuplicateShoppingItemNameException(normalizedName);
-        }
-    }
 }

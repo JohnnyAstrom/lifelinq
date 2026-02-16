@@ -8,7 +8,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -16,7 +15,6 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "shopping_items",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"list_id", "name"}),
         indexes = {
                 @jakarta.persistence.Index(name = "idx_shopping_items_list_id", columnList = "list_id")
         }
