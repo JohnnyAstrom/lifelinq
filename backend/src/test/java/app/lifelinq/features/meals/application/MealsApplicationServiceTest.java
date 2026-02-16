@@ -196,6 +196,98 @@ class MealsApplicationServiceTest {
                 .hasMessageContaining("positions must be unique");
     }
 
+    @Test
+    void getWeekPlanUsesRuntimeRecipeNameLookup() {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(ShoppingApplicationService.class),
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                householdId,
+                "Old Name",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Tomato", null, null, 1))
+        ));
+
+        service.addOrReplaceMeal(
+                householdId, userId, 2026, 5, 1, MealType.DINNER, recipeId, null
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                householdId,
+                "New Name",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Tomato", null, null, 1))
+        ));
+
+        var weekPlan = service.getWeekPlan(householdId, userId, 2026, 5);
+        assertThat(weekPlan.meals()).hasSize(1);
+        assertThat(weekPlan.meals().get(0).recipeTitle()).isEqualTo("New Name");
+    }
+
+    @Test
+    void addMealPushUsesCurrentRecipeIngredientsForSameRecipeId() {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        ShoppingApplicationService shopping = mock(ShoppingApplicationService.class);
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                householdId,
+                "Recipe",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Tomato", null, null, 1))
+        ));
+
+        service.addOrReplaceMeal(
+                householdId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                householdId,
+                "Recipe",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Onion", null, null, 1))
+        ));
+
+        service.addOrReplaceMeal(
+                householdId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
+        );
+
+        InOrder order = inOrder(shopping);
+        order.verify(shopping).addShoppingItem(householdId, userId, listId, "tomato", null, null);
+        order.verify(shopping).addShoppingItem(householdId, userId, listId, "onion", null, null);
+    }
+
     private static final class InMemoryWeekPlanRepository implements WeekPlanRepository {
         private final Map<UUID, WeekPlan> byId = new HashMap<>();
 
