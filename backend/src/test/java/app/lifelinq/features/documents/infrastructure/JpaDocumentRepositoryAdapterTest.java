@@ -91,4 +91,44 @@ class JpaDocumentRepositoryAdapterTest {
         assertThat(listItems).extracting(DocumentItem::getTitle).containsExactly("Newer", "Older");
         assertThat(searchItems).extracting(DocumentItem::getTitle).containsExactly("Newer", "Older");
     }
+
+    @Test
+    void applies_id_asc_tie_breaker_when_created_at_is_identical() {
+        UUID householdId = UUID.randomUUID();
+        Instant sameCreatedAt = Instant.parse("2026-02-12T10:00:00Z");
+        UUID lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID higherId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+        repository.save(new DocumentEntity(
+                higherId,
+                householdId,
+                UUID.randomUUID(),
+                "Invoice B",
+                "invoice note",
+                null,
+                null,
+                List.of(),
+                null,
+                sameCreatedAt
+        ));
+        repository.save(new DocumentEntity(
+                lowerId,
+                householdId,
+                UUID.randomUUID(),
+                "Invoice A",
+                "invoice note",
+                null,
+                null,
+                List.of(),
+                null,
+                sameCreatedAt
+        ));
+
+        JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
+        List<DocumentItem> listItems = adapter.findByHouseholdId(householdId, Optional.empty());
+        List<DocumentItem> searchItems = adapter.findByHouseholdId(householdId, Optional.of("invoice"));
+
+        assertThat(listItems).extracting(DocumentItem::getId).containsExactly(lowerId, higherId);
+        assertThat(searchItems).extracting(DocumentItem::getId).containsExactly(lowerId, higherId);
+    }
 }

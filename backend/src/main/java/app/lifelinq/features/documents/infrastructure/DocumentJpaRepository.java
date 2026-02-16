@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface DocumentJpaRepository extends JpaRepository<DocumentEntity, UUID> {
     @EntityGraph(attributePaths = "tags")
-    List<DocumentEntity> findByHouseholdIdOrderByCreatedAtDesc(UUID householdId);
+    List<DocumentEntity> findByHouseholdIdOrderByCreatedAtDescIdAsc(UUID householdId);
 
     @EntityGraph(attributePaths = "tags")
     @Query("""
@@ -20,7 +20,7 @@ public interface DocumentJpaRepository extends JpaRepository<DocumentEntity, UUI
                   lower(d.title) like lower(concat('%', :query, '%'))
                   or lower(coalesce(d.notes, '')) like lower(concat('%', :query, '%'))
               )
-            order by d.createdAt desc
+            order by d.createdAt desc, d.id asc
             """)
     List<DocumentEntity> searchByHouseholdIdAndText(@Param("householdId") UUID householdId, @Param("query") String query);
 }

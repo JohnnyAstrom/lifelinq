@@ -38,7 +38,7 @@ public final class JpaDocumentRepositoryAdapter implements DocumentRepository {
         List<DocumentItem> items = new ArrayList<>();
         List<DocumentEntity> entities = q.isPresent()
                 ? repository.searchByHouseholdIdAndText(householdId, q.get())
-                : repository.findByHouseholdIdOrderByCreatedAtDesc(householdId);
+                : repository.findByHouseholdIdOrderByCreatedAtDescIdAsc(householdId);
         for (DocumentEntity entity : entities) {
             items.add(mapper.toDomain(entity));
         }

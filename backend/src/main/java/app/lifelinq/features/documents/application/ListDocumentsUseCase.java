@@ -20,7 +20,7 @@ final class ListDocumentsUseCase {
         if (householdId == null) {
             throw new IllegalArgumentException("householdId must not be null");
         }
-        Optional<String> normalizedQuery = q
+        Optional<String> normalizedQuery = (q == null ? Optional.<String>empty() : q)
                 .map(String::trim)
                 .filter(value -> !value.isEmpty());
         return documentRepository.findByHouseholdId(householdId, normalizedQuery);
