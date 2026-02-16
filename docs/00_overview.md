@@ -33,7 +33,7 @@ Characteristics:
 - incomplete data is allowed
 - recurring items are supported
 - items may be scheduled on dates/times
-- fast switching between list and calendar is core UX (planned)
+- fast switching between list and calendar is core UX (backend calendar API implemented in V0.5b; frontend UX polish continues)
 - optional calendar sync (e.g. Google Calendar) for scheduled items (planned)
 - assignment is coordination only; any household member may assign or clear it
 - completion is distinct from deletion (done vs intentionally removed)

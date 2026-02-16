@@ -77,14 +77,14 @@ that can be used end-to-end without placeholder endpoints or cross-feature leaks
 - i18n (Swedish + English) across all user-facing text.
 - UX refinements and consistent navigation.
 
-## V0.5 (Planned, Tiered)
+## V0.5 (Locked)
 
-### Tier A (low-risk extension)
+### Tier A (implemented)
 
 - Documents text search (title + notes only).
-- Todo calendar view (month or ISO-week oriented).
+- Todo calendar view (month-oriented endpoint: `GET /todos/calendar/{year}/{month}`).
 
-### Tier B (domain-deep change)
+### Tier B (implemented)
 
 - Meals ingredient model + ingredient-driven shopping items (via ShoppingApplicationService).
 
