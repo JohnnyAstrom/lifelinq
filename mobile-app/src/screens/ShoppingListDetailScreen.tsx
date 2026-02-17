@@ -26,6 +26,8 @@ type Props = {
 export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const shopping = useShoppingLists(token);
   const [newItemName, setNewItemName] = useState('');
+  const [quickAddName, setQuickAddName] = useState('');
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editQuantity, setEditQuantity] = useState('');
@@ -58,9 +60,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     swipeOpen: 'Open',
     noOpenItems: 'No open items.',
     noBoughtItems: 'No bought items yet.',
-    addPlaceholder: 'Add item… (long-press Add for details)',
+    addPlaceholder: 'Add item…',
     addPlaceholderExtended: 'Add item…',
-    addAction: 'Add ⋯',
+    addAction: 'Details',
+    quickAddTitle: 'Add item',
+    closeSymbol: '×',
     loadingItems: 'Loading items...',
     clearBought: 'Clear bought',
     clearBoughtTitle: 'Clear bought items?',
@@ -70,7 +74,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
     addDetailsTitle: 'Add details',
     addItemTitle: 'Add item',
-    saveDetails: 'Save details',
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
     editQuantityPlaceholder: 'Quantity (optional)',
@@ -98,11 +101,22 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       setAddError(strings.addErrorQuantityUnit);
       return;
     }
-    await shopping.addItem(selected.id, newItemName.trim(), parsedQuantity, addUnit);
+    const effectiveUnit = parsedQuantity === null ? null : addUnit;
+    await shopping.addItem(selected.id, newItemName.trim(), parsedQuantity, effectiveUnit);
     setNewItemName('');
     setAddQuantity('');
     setAddUnit('ST');
     setAddError(null);
+  }
+
+  async function handleQuickAdd() {
+    if (!selected || !quickAddName.trim()) {
+      return;
+    }
+    await shopping.addItem(selected.id, quickAddName.trim(), null, null);
+    setQuickAddName('');
+    setShowQuickAdd(false);
+    Keyboard.dismiss();
   }
 
   function closeAddDetails() {
@@ -158,12 +172,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       setEditError(strings.quantityUnitMismatch);
       return;
     }
+    const effectiveUnit = parsedQuantity === null ? null : editUnit;
     await shopping.updateItem(
       selected.id,
       editItemId,
       editName.trim(),
       parsedQuantity,
-      editUnit
+      effectiveUnit
     );
     closeEdit();
   }
@@ -331,22 +346,19 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 
       <View style={styles.bottomContainer}>
         <View style={styles.bottomBar}>
-          <AppInput
-            placeholder={strings.addPlaceholder}
-            value={newItemName}
-            onChangeText={setNewItemName}
-            onSubmitEditing={() => {
-              if (newItemName.trim()) {
-                void handleAddItem();
-              }
+          <Pressable
+            style={styles.bottomInputPressable}
+            onPress={() => {
+              Keyboard.dismiss();
+              setQuickAddName('');
+              setShowQuickAdd(true);
             }}
-            returnKeyType="done"
-            style={styles.bottomInput}
-          />
+          >
+            <Text style={styles.bottomInputPlaceholder}>{strings.addPlaceholder}</Text>
+          </Pressable>
           <AppButton
             title={strings.addAction}
-            onPress={handleAddItem}
-            onLongPress={() => {
+            onPress={() => {
               Keyboard.dismiss();
               setShowAddDetails(true);
             }}
@@ -422,6 +434,58 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           </KeyboardAvoidingView>
         </Pressable>
       ) : null}
+
+      <Modal
+        visible={showQuickAdd}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowQuickAdd(false);
+          Keyboard.dismiss();
+        }}
+      >
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => {
+            setShowQuickAdd(false);
+            Keyboard.dismiss();
+          }}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalContent}
+            behavior="padding"
+            enabled={Platform.OS === 'ios'}
+          >
+            <Pressable style={styles.sheet} onPress={() => null}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.quickAddHeader}>
+                <Text style={textStyles.h3}>{strings.quickAddTitle}</Text>
+                <Pressable
+                  style={styles.quickAddClose}
+                  onPress={() => {
+                    setShowQuickAdd(false);
+                    Keyboard.dismiss();
+                  }}
+                >
+                  <Text style={styles.quickAddCloseText}>{strings.closeSymbol}</Text>
+                </Pressable>
+              </View>
+              <AppInput
+                placeholder={strings.addPlaceholder}
+                value={quickAddName}
+                onChangeText={setQuickAddName}
+                autoFocus
+                onSubmitEditing={async () => {
+                  if (quickAddName.trim()) {
+                    await handleQuickAdd();
+                  }
+                }}
+                returnKeyType="done"
+              />
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={showAddDetails}
@@ -516,7 +580,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                   disabled={newItemName.trim().length === 0}
                   fullWidth
                 />
-                <AppButton title={strings.saveDetails} onPress={closeAddDetails} variant="secondary" fullWidth />
                 <AppButton title={strings.close} onPress={closeAddDetails} variant="ghost" fullWidth />
               </View>
             </Pressable>
@@ -736,6 +799,40 @@ const styles = StyleSheet.create({
   },
   bottomInput: {
     flex: 1,
+  },
+  bottomInputPressable: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: theme.colors.surfaceAlt,
+    justifyContent: 'center',
+  },
+  bottomInputPlaceholder: {
+    fontFamily: theme.typography.body,
+    fontSize: 15,
+    color: theme.colors.subtle,
+  },
+  quickAddHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quickAddClose: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  quickAddCloseText: {
+    ...textStyles.h3,
+    lineHeight: 20,
   },
   error: {
     color: theme.colors.danger,

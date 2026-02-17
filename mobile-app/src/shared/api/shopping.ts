@@ -55,6 +55,10 @@ export type ToggleShoppingItemResponse = {
   boughtAt: string | null;
 };
 
+export type ReorderShoppingItemRequest = {
+  direction: 'UP' | 'DOWN';
+};
+
 export type UpdateShoppingItemRequest = {
   name: string;
   quantity?: number | null;
@@ -152,6 +156,22 @@ export async function toggleShoppingItem(
     `/shopping-lists/${listId}/items/${itemId}/toggle`,
     {
       method: 'PATCH',
+    },
+    clientOptions
+  );
+}
+
+export async function reorderShoppingItem(
+  listId: string,
+  itemId: string,
+  payload: ReorderShoppingItemRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<void> {
+  return fetchJson<void>(
+    `/shopping-lists/${listId}/items/${itemId}/order`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     },
     clientOptions
   );

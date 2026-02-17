@@ -7,6 +7,7 @@ import {
   deleteShoppingItem,
   deleteShoppingList,
   listShoppingLists,
+  reorderShoppingItem,
   reorderShoppingList,
   toggleShoppingItem,
   updateShoppingList,
@@ -212,6 +213,32 @@ export function useShoppingLists(token: string | null) {
     }
   };
 
+  const reorderItem = async (
+    listId: string,
+    itemId: string,
+    direction: 'UP' | 'DOWN',
+    steps = 1
+  ) => {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const moveCount = Math.max(1, Math.floor(steps));
+      for (let index = 0; index < moveCount; index += 1) {
+        await reorderShoppingItem(listId, itemId, { direction }, { token });
+      }
+      await load();
+    } catch (err) {
+      await handleApiError(err);
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: formatApiError(err),
+      }));
+    }
+  };
+
   return {
     ...state,
     reload: load,
@@ -223,5 +250,6 @@ export function useShoppingLists(token: string | null) {
     toggleItem,
     removeItem,
     updateItem,
+    reorderItem,
   };
 }
