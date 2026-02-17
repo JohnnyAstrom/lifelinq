@@ -39,9 +39,9 @@ export function LoginScreen({ onLoggedIn }: Props) {
   }
 
   return (
-    <AppScreen contentStyle={styles.container}>
+    <AppScreen scroll={false} contentStyle={styles.container}>
       <AppCard style={styles.card}>
-        <Text style={textStyles.h1}>{strings.title}</Text>
+        <Text style={textStyles.h2}>{strings.title}</Text>
         <Subtle>{strings.subtitle}</Subtle>
         <View style={styles.field}>
           <Text style={styles.label}>{strings.emailLabel}</Text>
@@ -49,14 +49,15 @@ export function LoginScreen({ onLoggedIn }: Props) {
             value={email}
             placeholder={strings.emailPlaceholder}
             onChangeText={setEmail}
+            autoFocus
           />
         </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <AppButton
           title={loading ? strings.loggingIn : strings.login}
           onPress={handleLogin}
+          disabled={!email.trim() || loading}
           fullWidth
-          disabled={loading}
         />
       </AppCard>
     </AppScreen>
@@ -65,7 +66,6 @@ export function LoginScreen({ onLoggedIn }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
     justifyContent: 'center',
   },
   card: {

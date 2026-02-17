@@ -28,9 +28,11 @@ type Screen =
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <View style={{ flex: 1 }}>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </View>
   );
 }
 
@@ -68,19 +70,20 @@ function AppShell() {
   }, [isAuthenticated, screen]);
 
   if (isInitializing) {
-    return <SplashScreen />;
+    return (
+      <SplashScreen />
+    );
   }
 
   if (!isAuthenticated) {
+    // Keep LoginScreen as the top-level screen to avoid flex layout collapse.
     return (
-      <View>
-        <LoginScreen
-          onLoggedIn={async (value) => {
-            await login(value);
-            setScreen('home');
-          }}
-        />
-      </View>
+      <LoginScreen
+        onLoggedIn={async (value) => {
+          await login(value);
+          setScreen('home');
+        }}
+      />
     );
   }
 
