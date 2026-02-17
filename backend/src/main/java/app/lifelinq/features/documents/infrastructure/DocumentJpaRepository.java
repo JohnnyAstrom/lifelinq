@@ -3,9 +3,11 @@ package app.lifelinq.features.documents.infrastructure;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface DocumentJpaRepository extends JpaRepository<DocumentEntity, UUID> {
     @EntityGraph(attributePaths = "tags")
@@ -23,4 +25,8 @@ public interface DocumentJpaRepository extends JpaRepository<DocumentEntity, UUI
             order by d.createdAt desc, d.id asc
             """)
     List<DocumentEntity> searchByHouseholdIdAndText(@Param("householdId") UUID householdId, @Param("query") String query);
+
+    @Modifying
+    @Transactional
+    long deleteByIdAndHouseholdId(UUID id, UUID householdId);
 }

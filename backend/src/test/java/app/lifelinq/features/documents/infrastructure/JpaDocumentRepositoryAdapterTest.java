@@ -131,4 +131,72 @@ class JpaDocumentRepositoryAdapterTest {
         assertThat(listItems).extracting(DocumentItem::getId).containsExactly(lowerId, higherId);
         assertThat(searchItems).extracting(DocumentItem::getId).containsExactly(lowerId, higherId);
     }
+
+    @Test
+    void deletes_document_only_within_same_household() {
+        UUID householdId = UUID.randomUUID();
+        UUID otherHouseholdId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        UUID otherId = UUID.randomUUID();
+
+        repository.save(new DocumentEntity(
+                targetId,
+                householdId,
+                UUID.randomUUID(),
+                "Target",
+                null,
+                null,
+                null,
+                List.of(),
+                null,
+                Instant.parse("2026-02-10T10:00:00Z")
+        ));
+        repository.save(new DocumentEntity(
+                otherId,
+                otherHouseholdId,
+                UUID.randomUUID(),
+                "Other",
+                null,
+                null,
+                null,
+                List.of(),
+                null,
+                Instant.parse("2026-02-11T10:00:00Z")
+        ));
+
+        JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
+
+        boolean deleted = adapter.deleteByIdAndHouseholdId(targetId, householdId);
+
+        assertThat(deleted).isTrue();
+        assertThat(repository.findById(targetId)).isEmpty();
+        assertThat(repository.findById(otherId)).isPresent();
+    }
+
+    @Test
+    void does_not_delete_document_from_other_household() {
+        UUID householdId = UUID.randomUUID();
+        UUID otherHouseholdId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+
+        repository.save(new DocumentEntity(
+                targetId,
+                otherHouseholdId,
+                UUID.randomUUID(),
+                "Other household",
+                null,
+                null,
+                null,
+                List.of(),
+                null,
+                Instant.parse("2026-02-10T10:00:00Z")
+        ));
+
+        JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
+
+        boolean deleted = adapter.deleteByIdAndHouseholdId(targetId, householdId);
+
+        assertThat(deleted).isFalse();
+        assertThat(repository.findById(targetId)).isPresent();
+    }
 }

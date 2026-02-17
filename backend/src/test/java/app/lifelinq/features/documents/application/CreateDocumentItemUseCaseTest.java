@@ -76,5 +76,10 @@ class CreateDocumentItemUseCaseTest {
         public List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q) {
             throw new UnsupportedOperationException("Not needed for this test");
         }
+
+        @Override
+        public boolean deleteByIdAndHouseholdId(UUID id, UUID householdId) {
+            throw new UnsupportedOperationException("Not needed for this test");
+        }
     }
 }

@@ -44,4 +44,15 @@ public final class JpaDocumentRepositoryAdapter implements DocumentRepository {
         }
         return items;
     }
+
+    @Override
+    public boolean deleteByIdAndHouseholdId(UUID id, UUID householdId) {
+        if (id == null) {
+            throw new IllegalArgumentException("id must not be null");
+        }
+        if (householdId == null) {
+            throw new IllegalArgumentException("householdId must not be null");
+        }
+        return repository.deleteByIdAndHouseholdId(id, householdId) > 0;
+    }
 }

@@ -72,5 +72,10 @@ class ListDocumentsUseCaseTest {
             this.lastQuery = q;
             return new ArrayList<>(items);
         }
+
+        @Override
+        public boolean deleteByIdAndHouseholdId(UUID id, UUID householdId) {
+            throw new UnsupportedOperationException("Not needed for this test");
+        }
     }
 }
