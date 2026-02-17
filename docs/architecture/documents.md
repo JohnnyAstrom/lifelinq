@@ -24,6 +24,7 @@ The following endpoints are available:
 - `POST /documents` to create a document record.
 - `GET /documents` to list documents for the current household.
 - `GET /documents?q=...` to search text in `title` and `notes` (case-insensitive partial match).
+- `DELETE /documents/{id}` to remove a document in the current household.
 
 Household scoping, `createdByUserId`, and `createdAt` are enforced server-side.
 
