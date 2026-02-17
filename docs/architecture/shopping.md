@@ -11,6 +11,7 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 ## Core behavior
 
 - Multiple shopping lists are supported.
+- Shopping lists have an explicit household-level display order.
 - Lists can be removed entirely.
 - Manual add must be fast and low-friction.
 - Items can be marked as acquired.
@@ -110,3 +111,5 @@ Consequences: Endpoints accept `listId` for list and item mutations.
 - Returns `404` when the list does not exist in the current household scope.
 - `PATCH /shopping-lists/{listId}` updates the list name.
 - Returns `200` with the updated list payload.
+- `PATCH /shopping-lists/{listId}/order` moves a list one step (`UP` or `DOWN`) within household order.
+- Returns `204` on success (including boundary no-op when already first/last).
