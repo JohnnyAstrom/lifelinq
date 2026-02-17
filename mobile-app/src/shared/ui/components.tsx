@@ -142,6 +142,8 @@ type InputProps = {
   autoFocus?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  onSubmitEditing?: () => void;
+  returnKeyType?: 'done' | 'next' | 'search' | 'send';
 };
 
 export function AppInput({
@@ -153,6 +155,8 @@ export function AppInput({
   autoFocus,
   onFocus,
   onBlur,
+  onSubmitEditing,
+  returnKeyType,
 }: InputProps) {
   return (
     <TextInput
@@ -163,6 +167,8 @@ export function AppInput({
       autoFocus={autoFocus}
       onFocus={onFocus}
       onBlur={onBlur}
+      onSubmitEditing={onSubmitEditing}
+      returnKeyType={returnKeyType}
       style={[styles.input, style]}
       placeholderTextColor={theme.colors.subtle}
     />
