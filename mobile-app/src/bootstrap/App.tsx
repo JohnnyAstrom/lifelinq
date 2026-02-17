@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -28,11 +29,13 @@ type Screen =
 
 export default function App() {
   return (
-    <View style={{ flex: 1 }}>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
-    </View>
+    <SafeAreaProvider>
+      <View style={{ flex: 1 }}>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </View>
+    </SafeAreaProvider>
   );
 }
 
