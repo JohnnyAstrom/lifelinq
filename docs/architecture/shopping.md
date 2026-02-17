@@ -17,6 +17,7 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 - Items can be marked as acquired.
 - Items can be generated from Meals/Recipes.
 - Items can be edited (name, optional quantity/unit).
+- Open items can be reordered manually within a list.
 - Marking acquired moves the item to a "bought" section within the same list.
 - Items can be toggled back to "to buy" with a single action.
 
@@ -113,3 +114,5 @@ Consequences: Endpoints accept `listId` for list and item mutations.
 - Returns `200` with the updated list payload.
 - `PATCH /shopping-lists/{listId}/order` moves a list one step (`UP` or `DOWN`) within household order.
 - Returns `204` on success (including boundary no-op when already first/last).
+- `PATCH /shopping-lists/{listId}/items/{itemId}/order` moves one open item one step (`UP` or `DOWN`) within that list.
+- Returns `204` on success (including boundary no-op when already first/last among open items).
