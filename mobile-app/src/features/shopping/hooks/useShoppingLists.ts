@@ -127,13 +127,20 @@ export function useShoppingLists(token: string | null) {
     }
   };
 
-  const reorderList = async (listId: string, direction: 'UP' | 'DOWN') => {
+  const reorderList = async (
+    listId: string,
+    direction: 'UP' | 'DOWN',
+    steps = 1
+  ) => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      await reorderShoppingList(listId, { direction }, { token });
+      const moveCount = Math.max(1, Math.floor(steps));
+      for (let index = 0; index < moveCount; index += 1) {
+        await reorderShoppingList(listId, { direction }, { token });
+      }
       await load();
     } catch (err) {
       await handleApiError(err);

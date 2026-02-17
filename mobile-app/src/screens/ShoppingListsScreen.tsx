@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  GestureResponderEvent,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -30,11 +31,23 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [renameListId, setRenameListId] = useState<string | null>(null);
   const [renameListName, setRenameListName] = useState('');
+  const [orderedListIds, setOrderedListIds] = useState<string[]>([]);
+  const [draggingListId, setDraggingListId] = useState<string | null>(null);
+  const orderedListIdsRef = useRef<string[]>([]);
+  const draggingListIdRef = useRef<string | null>(null);
+  const dragStartIndexRef = useRef<number | null>(null);
+  const dragMovedRef = useRef(false);
+  const dragStartPageYRef = useRef<number | null>(null);
+  const lastTouchPageYRef = useRef<number | null>(null);
+  const listContainerTopRef = useRef(0);
+  const rowHeightRef = useRef(92);
+  const finishingDragRef = useRef(false);
   const strings = {
     title: 'Shopping lists',
     subtitle: 'Choose a list to see items and start shopping.',
     loading: 'Loading lists...',
     yourLists: 'Your lists',
+    reorderHint: 'Hold and drag a list to reorder',
     noLists: 'No lists yet.',
     createListTitle: 'Create list',
     createListSubtitle: 'Give your list a name so everyone can add items.',
@@ -50,13 +63,34 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     removeConfirm: 'Remove',
     actionsTitle: 'List actions',
     actionShare: 'Share',
-    actionMoveUp: 'Move up',
-    actionMoveDown: 'Move down',
     actionEditName: 'Edit name',
     actionDelete: 'Delete',
     renameTitle: 'Edit list name',
     renameSave: 'Save',
   };
+
+  useEffect(() => {
+    if (draggingListId) {
+      return;
+    }
+    const next = shopping.lists.map((list) => list.id);
+    orderedListIdsRef.current = next;
+    setOrderedListIds(next);
+  }, [shopping.lists, draggingListId]);
+
+  const orderedLists = useMemo(() => {
+    if (orderedListIds.length === 0) {
+      return shopping.lists;
+    }
+    const byId = new Map(shopping.lists.map((list) => [list.id, list]));
+    const result = orderedListIds
+      .map((id) => byId.get(id))
+      .filter((list): list is NonNullable<typeof list> => !!list);
+    if (result.length === shopping.lists.length) {
+      return result;
+    }
+    return shopping.lists;
+  }, [orderedListIds, shopping.lists]);
 
   async function handleCreateList() {
     if (!newListName.trim()) {
@@ -103,14 +137,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     if (!activeListId) {
       return null;
     }
-    return shopping.lists.find((list) => list.id === activeListId) ?? null;
-  }
-
-  function selectedActionIndex() {
-    if (!activeListId) {
-      return -1;
-    }
-    return shopping.lists.findIndex((list) => list.id === activeListId);
+    return orderedLists.find((list) => list.id === activeListId) ?? null;
   }
 
   async function handleShareList() {
@@ -143,13 +170,94 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     closeRename();
   }
 
-  async function handleMoveList(direction: 'UP' | 'DOWN') {
-    const list = selectedActionList();
-    if (!list) {
+  function moveId(ids: string[], from: number, to: number) {
+    if (from === to) {
+      return ids;
+    }
+    const next = [...ids];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    return next;
+  }
+
+  function startDrag(listId: string) {
+    const currentIds = orderedListIds.length > 0 ? orderedListIds : orderedLists.map((list) => list.id);
+    if (orderedListIds.length === 0) {
+      orderedListIdsRef.current = currentIds;
+      setOrderedListIds(currentIds);
+    }
+    const index = currentIds.indexOf(listId);
+    if (index < 0) {
       return;
     }
-    closeActions();
-    await shopping.reorderList(list.id, direction);
+    setDraggingListId(listId);
+    draggingListIdRef.current = listId;
+    dragStartIndexRef.current = index;
+    dragMovedRef.current = false;
+    dragStartPageYRef.current = lastTouchPageYRef.current;
+  }
+
+  function handleListTouchMove(event: GestureResponderEvent) {
+    if (!draggingListIdRef.current) {
+      return;
+    }
+    const pageY = event?.nativeEvent?.pageY;
+    if (typeof pageY !== 'number') {
+      return;
+    }
+    const dragStartY = dragStartPageYRef.current;
+    if (dragStartY !== null && Math.abs(pageY - dragStartY) < 12) {
+      return;
+    }
+    const relativeY = pageY - listContainerTopRef.current;
+    const currentIds = orderedListIdsRef.current;
+    if (currentIds.length === 0) {
+      return;
+    }
+    const rowHeight = rowHeightRef.current;
+    const target = Math.max(
+      0,
+      Math.min(currentIds.length - 1, Math.floor(relativeY / rowHeight))
+    );
+    const currentIndex = currentIds.indexOf(draggingListIdRef.current);
+    if (currentIndex < 0 || target === currentIndex) {
+      return;
+    }
+    dragMovedRef.current = true;
+    const next = moveId(currentIds, currentIndex, target);
+    orderedListIdsRef.current = next;
+    setOrderedListIds(next);
+  }
+
+  async function finishDrag() {
+    if (finishingDragRef.current) {
+      return;
+    }
+    finishingDragRef.current = true;
+    const draggingId = draggingListIdRef.current;
+    const startIndex = dragStartIndexRef.current;
+    if (!draggingId || startIndex === null) {
+      finishingDragRef.current = false;
+      return;
+    }
+    const moved = dragMovedRef.current;
+    const finalIndex = orderedListIdsRef.current.indexOf(draggingId);
+    setDraggingListId(null);
+    draggingListIdRef.current = null;
+    dragStartIndexRef.current = null;
+    dragMovedRef.current = false;
+    dragStartPageYRef.current = null;
+    if (!moved || finalIndex < 0 || finalIndex === startIndex) {
+      finishingDragRef.current = false;
+      return;
+    }
+    const direction = finalIndex > startIndex ? 'DOWN' : 'UP';
+    const steps = Math.abs(finalIndex - startIndex);
+    try {
+      await shopping.reorderList(draggingId, direction, steps);
+    } finally {
+      finishingDragRef.current = false;
+    }
   }
 
   return (
@@ -170,14 +278,40 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             <Subtle>{strings.noLists}</Subtle>
           ) : (
             <View style={styles.listGrid}>
-              {shopping.lists.map((list) => {
+              <Subtle>{strings.reorderHint}</Subtle>
+              <View
+                onTouchStart={(event: GestureResponderEvent) => {
+                  const pageY = event.nativeEvent.pageY;
+                  const locationY = event.nativeEvent.locationY;
+                  lastTouchPageYRef.current = pageY;
+                  listContainerTopRef.current = pageY - locationY;
+                }}
+                onTouchMove={handleListTouchMove}
+                onTouchEnd={() => {
+                  void finishDrag();
+                }}
+                onTouchCancel={() => {
+                  void finishDrag();
+                }}
+                style={styles.listGrid}
+              >
+              {orderedLists.map((list) => {
                 const openCount = list.items.filter((item) => item.status !== 'BOUGHT').length;
                 const totalCount = list.items.length;
+                const isDragging = draggingListId === list.id;
                 return (
-                  <View key={list.id} style={styles.listCard}>
+                  <View key={list.id} style={[styles.listCard, isDragging ? styles.listCardDragging : null]}>
                     <Pressable
                       style={({ pressed }) => [styles.listMainPressable, pressed ? styles.listCardPressed : null]}
-                      onPress={() => onSelectList(list.id)}
+                      onPress={() => {
+                        if (!draggingListIdRef.current) {
+                          onSelectList(list.id);
+                        }
+                      }}
+                      onLongPress={() => {
+                        startDrag(list.id);
+                      }}
+                      delayLongPress={180}
                     >
                       <View style={styles.listMain}>
                         <Text style={styles.listTitle} numberOfLines={1} ellipsizeMode="tail">
@@ -190,13 +324,18 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                     </Pressable>
                     <Pressable
                       style={({ pressed }) => [styles.listMenuButton, pressed ? styles.listMenuButtonPressed : null]}
-                      onPress={() => setActiveListId(list.id)}
+                      onPress={() => {
+                        if (!draggingListId) {
+                          setActiveListId(list.id);
+                        }
+                      }}
                     >
                       <Text style={styles.listMenuText}>⋮</Text>
                     </Pressable>
                   </View>
                 );
               })}
+              </View>
             </View>
           )}
         </AppCard>
@@ -268,27 +407,8 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.actionsTitle}</Text>
-              {(() => {
-                const selectedIndex = selectedActionIndex();
-                const canMoveUp = selectedIndex > 0;
-                const canMoveDown = selectedIndex >= 0 && selectedIndex < shopping.lists.length - 1;
-                return (
               <View style={styles.sheetActions}>
                 <AppButton title={strings.actionShare} onPress={() => void handleShareList()} fullWidth />
-                <AppButton
-                  title={strings.actionMoveUp}
-                  onPress={() => void handleMoveList('UP')}
-                  variant="secondary"
-                  disabled={!canMoveUp}
-                  fullWidth
-                />
-                <AppButton
-                  title={strings.actionMoveDown}
-                  onPress={() => void handleMoveList('DOWN')}
-                  variant="secondary"
-                  disabled={!canMoveDown}
-                  fullWidth
-                />
                 <AppButton title={strings.actionEditName} onPress={openRename} variant="secondary" fullWidth />
                 <AppButton
                   title={strings.actionDelete}
@@ -304,8 +424,6 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                 />
                 <AppButton title={strings.close} onPress={closeActions} variant="ghost" fullWidth />
               </View>
-                );
-              })()}
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>
@@ -357,6 +475,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   listCard: {
+    minHeight: 84,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
@@ -366,6 +485,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.sm,
+  },
+  listCardDragging: {
+    opacity: 0.85,
+    borderColor: theme.colors.primary,
   },
   listMainPressable: {
     flex: 1,
