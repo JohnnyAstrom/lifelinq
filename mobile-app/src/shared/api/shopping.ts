@@ -16,6 +16,10 @@ export type ShoppingListResponse = {
   items: ShoppingItemResponse[];
 };
 
+export type UpdateShoppingListRequest = {
+  name: string;
+};
+
 export type CreateShoppingListRequest = {
   name: string;
 };
@@ -75,6 +79,34 @@ export async function listShoppingLists(
   clientOptions: ApiClientOptions = {}
 ): Promise<ShoppingListResponse[]> {
   return fetchJson<ShoppingListResponse[]>('/shopping-lists', {}, clientOptions);
+}
+
+export async function deleteShoppingList(
+  listId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<void> {
+  return fetchJson<void>(
+    `/shopping-lists/${listId}`,
+    {
+      method: 'DELETE',
+    },
+    clientOptions
+  );
+}
+
+export async function updateShoppingList(
+  listId: string,
+  payload: UpdateShoppingListRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<ShoppingListResponse> {
+  return fetchJson<ShoppingListResponse>(
+    `/shopping-lists/${listId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
 }
 
 export async function addShoppingItem(

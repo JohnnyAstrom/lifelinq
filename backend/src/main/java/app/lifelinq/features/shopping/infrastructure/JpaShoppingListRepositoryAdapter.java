@@ -53,4 +53,12 @@ public final class JpaShoppingListRepositoryAdapter implements ShoppingListRepos
         }
         return result;
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id must not be null");
+        }
+        repository.deleteById(id);
+    }
 }

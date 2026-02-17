@@ -1,5 +1,17 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
 import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
@@ -12,8 +24,12 @@ type Props = {
 
 export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   const shopping = useShoppingLists(token);
+  const insets = useSafeAreaInsets();
   const [newListName, setNewListName] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [activeListId, setActiveListId] = useState<string | null>(null);
+  const [renameListId, setRenameListId] = useState<string | null>(null);
+  const [renameListName, setRenameListName] = useState('');
   const strings = {
     title: 'Shopping lists',
     subtitle: 'Choose a list to see items and start shopping.',
@@ -29,6 +45,15 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     total: 'total',
     newList: 'New list',
     close: 'Close',
+    removeListTitle: 'Remove list?',
+    removeListBody: 'This will delete the list and all items.',
+    removeConfirm: 'Remove',
+    actionsTitle: 'List actions',
+    actionShare: 'Share',
+    actionEditName: 'Edit name',
+    actionDelete: 'Delete',
+    renameTitle: 'Edit list name',
+    renameSave: 'Save',
   };
 
   async function handleCreateList() {
@@ -38,10 +63,76 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     await shopping.createList(newListName.trim());
     setNewListName('');
     setShowCreate(false);
+    Keyboard.dismiss();
+  }
+
+  function closeCreate() {
+    setShowCreate(false);
+    Keyboard.dismiss();
+  }
+
+  function requestRemoveList(listId: string) {
+    Alert.alert(strings.removeListTitle, strings.removeListBody, [
+      { text: strings.close, style: 'cancel' },
+      {
+        text: strings.removeConfirm,
+        style: 'destructive',
+        onPress: () => {
+          void shopping.removeList(listId);
+        },
+      },
+    ]);
+  }
+
+  function closeActions() {
+    setActiveListId(null);
+  }
+
+  function closeRename() {
+    setRenameListId(null);
+    setRenameListName('');
+    Keyboard.dismiss();
+  }
+
+  function selectedActionList() {
+    if (!activeListId) {
+      return null;
+    }
+    return shopping.lists.find((list) => list.id === activeListId) ?? null;
+  }
+
+  async function handleShareList() {
+    const list = selectedActionList();
+    if (!list) {
+      return;
+    }
+    closeActions();
+    await Share.share({
+      message: `Shopping list: ${list.name}`,
+      title: list.name,
+    });
+  }
+
+  function openRename() {
+    const list = selectedActionList();
+    if (!list) {
+      return;
+    }
+    setRenameListId(list.id);
+    setRenameListName(list.name);
+    closeActions();
+  }
+
+  async function handleRenameList() {
+    if (!renameListId || !renameListName.trim()) {
+      return;
+    }
+    await shopping.renameList(renameListId, renameListName.trim());
+    closeRename();
   }
 
   return (
-    <AppScreen>
+    <AppScreen scroll={false} contentStyle={styles.screenContent}>
       <TopBar
         title={strings.title}
         subtitle={strings.subtitle}
@@ -62,19 +153,25 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                 const openCount = list.items.filter((item) => item.status !== 'BOUGHT').length;
                 const totalCount = list.items.length;
                 return (
-                  <Pressable
-                    key={list.id}
-                    style={({ pressed }) => [styles.listCard, pressed ? styles.listCardPressed : null]}
-                    onPress={() => onSelectList(list.id)}
-                  >
-                    <View>
-                      <Text style={styles.listTitle}>{list.name}</Text>
-                      <Subtle>
-                        {openCount} {strings.open} · {totalCount} {strings.total}
-                      </Subtle>
-                    </View>
-                    <Text style={styles.listChevron}>›</Text>
-                  </Pressable>
+                  <View key={list.id} style={styles.listCard}>
+                    <Pressable
+                      style={({ pressed }) => [styles.listMainPressable, pressed ? styles.listCardPressed : null]}
+                      onPress={() => onSelectList(list.id)}
+                    >
+                      <View style={styles.listMain}>
+                        <Text style={styles.listTitle}>{list.name}</Text>
+                        <Subtle>
+                          {openCount} {strings.open} · {totalCount} {strings.total}
+                        </Subtle>
+                      </View>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.listMenuButton, pressed ? styles.listMenuButtonPressed : null]}
+                      onPress={() => setActiveListId(list.id)}
+                    >
+                      <Text style={styles.listMenuText}>⋮</Text>
+                    </Pressable>
+                  </View>
                 );
               })}
             </View>
@@ -82,34 +179,120 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
         </AppCard>
       </View>
 
-      <Pressable style={styles.fab} onPress={() => setShowCreate(true)}>
+      <Pressable
+        style={[styles.fab, { bottom: Math.max(insets.bottom + 8, 12) }]}
+        onPress={() => {
+          setShowCreate(true);
+        }}
+      >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
-      {showCreate ? (
-        <Pressable style={styles.backdrop} onPress={() => setShowCreate(false)}>
-          <Pressable style={styles.sheet} onPress={() => null}>
-            <View style={styles.sheetHandle} />
-            <Text style={textStyles.h3}>{strings.createListTitle}</Text>
-            <Subtle>{strings.createListSubtitle}</Subtle>
-            <AppInput
-              placeholder={strings.listNamePlaceholder}
-              value={newListName}
-              onChangeText={setNewListName}
-              autoFocus
-            />
-            <View style={styles.sheetActions}>
-              <AppButton title={strings.createListAction} onPress={handleCreateList} fullWidth />
-              <AppButton title={strings.close} onPress={() => setShowCreate(false)} variant="ghost" fullWidth />
-            </View>
-          </Pressable>
+      <Modal
+        visible={showCreate}
+        transparent
+        animationType="slide"
+        onRequestClose={closeCreate}
+      >
+        <Pressable style={styles.backdrop} onPress={closeCreate}>
+          <KeyboardAvoidingView
+            style={styles.modalContent}
+            behavior="padding"
+            enabled={Platform.OS === 'ios'}
+          >
+            <Pressable style={styles.sheet} onPress={() => null}>
+              <View style={styles.sheetHandle} />
+              <Text style={textStyles.h3}>{strings.createListTitle}</Text>
+              <Subtle>{strings.createListSubtitle}</Subtle>
+              <AppInput
+                placeholder={strings.listNamePlaceholder}
+                value={newListName}
+                onChangeText={setNewListName}
+                autoFocus
+              />
+              <View style={styles.sheetActions}>
+                <AppButton title={strings.createListAction} onPress={handleCreateList} fullWidth />
+                <AppButton title={strings.close} onPress={closeCreate} variant="ghost" fullWidth />
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
-      ) : null}
+      </Modal>
+
+      <Modal
+        visible={!!activeListId}
+        transparent
+        animationType="fade"
+        onRequestClose={closeActions}
+      >
+        <Pressable style={styles.backdrop} onPress={closeActions}>
+          <KeyboardAvoidingView
+            style={styles.modalContent}
+            behavior="padding"
+            enabled={Platform.OS === 'ios'}
+          >
+            <Pressable style={styles.sheet} onPress={() => null}>
+              <View style={styles.sheetHandle} />
+              <Text style={textStyles.h3}>{strings.actionsTitle}</Text>
+              <View style={styles.sheetActions}>
+                <AppButton title={strings.actionShare} onPress={() => void handleShareList()} fullWidth />
+                <AppButton title={strings.actionEditName} onPress={openRename} variant="secondary" fullWidth />
+                <AppButton
+                  title={strings.actionDelete}
+                  onPress={() => {
+                    const list = selectedActionList();
+                    closeActions();
+                    if (list) {
+                      requestRemoveList(list.id);
+                    }
+                  }}
+                  variant="ghost"
+                  fullWidth
+                />
+                <AppButton title={strings.close} onPress={closeActions} variant="ghost" fullWidth />
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={!!renameListId}
+        transparent
+        animationType="slide"
+        onRequestClose={closeRename}
+      >
+        <Pressable style={styles.backdrop} onPress={closeRename}>
+          <KeyboardAvoidingView
+            style={styles.modalContent}
+            behavior="padding"
+            enabled={Platform.OS === 'ios'}
+          >
+            <Pressable style={styles.sheet} onPress={() => null}>
+              <View style={styles.sheetHandle} />
+              <Text style={textStyles.h3}>{strings.renameTitle}</Text>
+              <AppInput
+                placeholder={strings.listNamePlaceholder}
+                value={renameListName}
+                onChangeText={setRenameListName}
+                autoFocus
+              />
+              <View style={styles.sheetActions}>
+                <AppButton title={strings.renameSave} onPress={() => void handleRenameList()} fullWidth />
+                <AppButton title={strings.close} onPress={closeRename} variant="ghost" fullWidth />
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    flex: 1,
+  },
   contentOffset: {
     paddingTop: 90,
     gap: theme.spacing.md,
@@ -122,11 +305,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     backgroundColor: theme.colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  listMainPressable: {
+    flex: 1,
+    minHeight: 56,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    justifyContent: 'center',
+  },
+  listMain: {
+    flex: 1,
+    gap: 2,
   },
   listCardPressed: {
     opacity: 0.9,
@@ -134,11 +330,24 @@ const styles = StyleSheet.create({
   },
   listTitle: {
     ...textStyles.h3,
+    lineHeight: 26,
   },
-  listChevron: {
-    ...textStyles.subtle,
-    fontSize: 20,
-    lineHeight: 20,
+  listMenuButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  listMenuButtonPressed: {
+    opacity: 0.85,
+  },
+  listMenuText: {
+    ...textStyles.h3,
+    lineHeight: 22,
   },
   fab: {
     position: 'absolute',
@@ -169,6 +378,10 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    flex: 1,
     justifyContent: 'flex-end',
   },
   sheet: {

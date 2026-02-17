@@ -5,8 +5,10 @@ import {
   addShoppingItem,
   createShoppingList,
   deleteShoppingItem,
+  deleteShoppingList,
   listShoppingLists,
   toggleShoppingItem,
+  updateShoppingList,
   updateShoppingItem,
   type ShoppingUnit,
   type AddShoppingItemResponse,
@@ -88,6 +90,42 @@ export function useShoppingLists(token: string | null) {
     }
   };
 
+  const removeList = async (listId: string) => {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      await deleteShoppingList(listId, { token });
+      await load();
+    } catch (err) {
+      await handleApiError(err);
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: formatApiError(err),
+      }));
+    }
+  };
+
+  const renameList = async (listId: string, name: string) => {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      await updateShoppingList(listId, { name }, { token });
+      await load();
+    } catch (err) {
+      await handleApiError(err);
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: formatApiError(err),
+      }));
+    }
+  };
+
   const toggleItem = async (listId: string, itemId: string) => {
     if (!token) {
       throw new Error('Missing token');
@@ -152,6 +190,8 @@ export function useShoppingLists(token: string | null) {
     ...state,
     reload: load,
     createList,
+    removeList,
+    renameList,
     addItem,
     toggleItem,
     removeItem,

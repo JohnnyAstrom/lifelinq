@@ -9,7 +9,7 @@ import java.util.UUID;
 public final class ShoppingList {
     private final UUID id;
     private final UUID householdId;
-    private final String name;
+    private String name;
     private final Instant createdAt;
     private final List<ShoppingItem> items;
 
@@ -86,6 +86,13 @@ public final class ShoppingList {
         if (!removed) {
             throw new ShoppingItemNotFoundException(itemId);
         }
+    }
+
+    public void rename(String normalizedName) {
+        if (normalizedName == null || normalizedName.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        this.name = normalizedName;
     }
 
     public UUID getId() {

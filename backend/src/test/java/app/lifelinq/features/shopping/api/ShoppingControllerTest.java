@@ -3,6 +3,8 @@ package app.lifelinq.features.shopping.api;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,6 +15,7 @@ import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
+import app.lifelinq.features.shopping.contract.ShoppingListView;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -102,6 +105,49 @@ class ShoppingControllerTest {
                 .andExpect(status().isCreated());
 
         verify(shoppingApplicationService).createShoppingList(householdId, userId, "Groceries");
+    }
+
+    @Test
+    void removeListReturns401WhenTokenMissing() throws Exception {
+        mockMvc.perform(delete("/shopping-lists/{listId}", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(shoppingApplicationService);
+    }
+
+    @Test
+    void removeListSucceedsWithValidToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(delete("/shopping-lists/{listId}", listId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        verify(shoppingApplicationService).removeShoppingList(householdId, userId, listId);
+    }
+
+    @Test
+    void updateListSucceedsWithValidToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(shoppingApplicationService.updateShoppingListName(householdId, userId, listId, "Renamed"))
+                .thenReturn(new ShoppingListView(listId, "Renamed", List.of()));
+
+        mockMvc.perform(patch("/shopping-lists/{listId}", listId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Renamed\"}"))
+                .andExpect(status().isOk());
+
+        verify(shoppingApplicationService).updateShoppingListName(householdId, userId, listId, "Renamed");
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {

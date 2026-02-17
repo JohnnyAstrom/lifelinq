@@ -67,6 +67,27 @@ public class ShoppingController {
         return ResponseEntity.ok(responses);
     }
 
+    @PatchMapping("/shopping-lists/{listId}")
+    public ResponseEntity<?> updateList(
+            @PathVariable UUID listId,
+            @RequestBody UpdateShoppingListRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        ShoppingListView list = shoppingApplicationService.updateShoppingListName(
+                context.getHouseholdId(),
+                context.getUserId(),
+                listId,
+                request.getName()
+        );
+        return ResponseEntity.ok(toResponse(list));
+    }
+
     @PostMapping("/shopping-lists/{listId}/items")
     public ResponseEntity<?> addItem(
             @PathVariable UUID listId,
@@ -174,6 +195,23 @@ public class ShoppingController {
                 context.getUserId(),
                 listId,
                 itemId
+        );
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/shopping-lists/{listId}")
+    public ResponseEntity<?> removeList(@PathVariable UUID listId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        shoppingApplicationService.removeShoppingList(
+                context.getHouseholdId(),
+                context.getUserId(),
+                listId
         );
         return ResponseEntity.noContent().build();
     }

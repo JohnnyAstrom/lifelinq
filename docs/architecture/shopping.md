@@ -11,6 +11,7 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 ## Core behavior
 
 - Multiple shopping lists are supported.
+- Lists can be removed entirely.
 - Manual add must be fast and low-friction.
 - Items can be marked as acquired.
 - Items can be generated from Meals/Recipes.
@@ -101,3 +102,11 @@ Consequences: Endpoints accept `listId` for list and item mutations.
 - Shared by default (household list, not personal).
 - Avoid duplication where possible.
 - Optimize for quick in-store use.
+
+## API (Current)
+
+- `DELETE /shopping-lists/{listId}` removes one household-scoped shopping list.
+- Returns `204` on successful delete.
+- Returns `404` when the list does not exist in the current household scope.
+- `PATCH /shopping-lists/{listId}` updates the list name.
+- Returns `200` with the updated list payload.

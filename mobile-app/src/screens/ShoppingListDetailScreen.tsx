@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
 import { type ShoppingUnit } from '../shared/api/shopping';
@@ -178,207 +186,215 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         left={<AppButton title={strings.back} onPress={onBack} variant="ghost" />}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
-        {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
+      <View style={styles.mainLayout}>
+        <ScrollView style={styles.listScroll} contentContainerStyle={styles.scrollContent}>
+          {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
+          {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-        <AppCard>
-          <View style={styles.sectionHeader}>
-            <SectionTitle>{strings.openLabel}</SectionTitle>
-            <Subtle>{openItems.length} {strings.openCountSuffix}</Subtle>
-          </View>
-          {openItems.length === 0 ? (
-            <Subtle>{strings.noOpenItems}</Subtle>
-          ) : (
-            <View style={styles.items}>
-              {openItems.map((item) => (
-                <Swipeable
-                  key={item.id}
-                  renderRightActions={() => (
-                    <View style={[styles.swipeAction, styles.swipeActionBought]}>
-                      <Text style={styles.swipeActionText}>{strings.swipeBought}</Text>
+          <AppCard>
+            <View style={styles.sectionHeader}>
+              <SectionTitle>{strings.openLabel}</SectionTitle>
+              <Subtle>{openItems.length} {strings.openCountSuffix}</Subtle>
+            </View>
+            {openItems.length === 0 ? (
+              <Subtle>{strings.noOpenItems}</Subtle>
+            ) : (
+              <View style={styles.items}>
+                {openItems.map((item) => (
+                  <Swipeable
+                    key={item.id}
+                    renderRightActions={() => (
+                      <View style={[styles.swipeAction, styles.swipeActionBought]}>
+                        <Text style={styles.swipeActionText}>{strings.swipeBought}</Text>
+                      </View>
+                    )}
+                    onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
+                  >
+                    <View style={styles.itemRow}>
+                      <Pressable
+                        style={styles.toggleZone}
+                        onPress={() => {
+                          if (selected) {
+                            shopping.toggleItem(selected.id, item.id);
+                          }
+                        }}
+                      >
+                        <View style={styles.checkbox} />
+                        <View style={styles.itemContent}>
+                          <Text style={styles.itemText}>{formatItemTitle(item)}</Text>
+                        </View>
+                      </Pressable>
+                      <Pressable style={styles.detailZone} onPress={() => openEdit(item)}>
+                        <Text style={styles.itemHintText}>{strings.details}</Text>
+                        <Text style={styles.itemHintChevron}>›</Text>
+                      </Pressable>
                     </View>
-                  )}
-                  onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
-                >
-                  <View style={styles.itemRow}>
-                    <Pressable
-                      style={styles.toggleZone}
-                      onPress={() => {
-                        if (selected) {
-                          shopping.toggleItem(selected.id, item.id);
-                        }
-                      }}
-                    >
-                      <View style={styles.checkbox} />
-                      <View style={styles.itemContent}>
-                        <Text style={styles.itemText}>{formatItemTitle(item)}</Text>
-                      </View>
-                    </Pressable>
-                    <Pressable style={styles.detailZone} onPress={() => openEdit(item)}>
-                      <Text style={styles.itemHintText}>{strings.details}</Text>
-                      <Text style={styles.itemHintChevron}>›</Text>
-                    </Pressable>
-                  </View>
-                </Swipeable>
-              ))}
-            </View>
-          )}
-        </AppCard>
+                  </Swipeable>
+                ))}
+              </View>
+            )}
+          </AppCard>
 
-        <AppCard>
-          <View style={styles.sectionHeader}>
-            <SectionTitle>{strings.boughtLabel}</SectionTitle>
-            <View style={styles.sectionHeaderRight}>
-              <Subtle>{boughtItems.length} {strings.boughtCountSuffix}</Subtle>
-              {boughtItems.length > 0 ? (
-                <AppButton
-                  title={strings.clearBought}
-                  onPress={handleClearBought}
-                  variant="ghost"
-                />
-              ) : null}
+          <AppCard>
+            <View style={styles.sectionHeader}>
+              <SectionTitle>{strings.boughtLabel}</SectionTitle>
+              <View style={styles.sectionHeaderRight}>
+                <Subtle>{boughtItems.length} {strings.boughtCountSuffix}</Subtle>
+                {boughtItems.length > 0 ? (
+                  <AppButton
+                    title={strings.clearBought}
+                    onPress={handleClearBought}
+                    variant="ghost"
+                  />
+                ) : null}
+              </View>
             </View>
-          </View>
-          {boughtItems.length === 0 ? (
-            <Subtle>{strings.noBoughtItems}</Subtle>
-          ) : (
-            <View style={styles.items}>
-              {boughtItems.map((item) => (
-                <Swipeable
-                  key={item.id}
-                  renderRightActions={() => (
-                    <View style={[styles.swipeAction, styles.swipeActionOpen]}>
-                      <Text style={styles.swipeActionText}>{strings.swipeOpen}</Text>
+            {boughtItems.length === 0 ? (
+              <Subtle>{strings.noBoughtItems}</Subtle>
+            ) : (
+              <View style={styles.items}>
+                {boughtItems.map((item) => (
+                  <Swipeable
+                    key={item.id}
+                    renderRightActions={() => (
+                      <View style={[styles.swipeAction, styles.swipeActionOpen]}>
+                        <Text style={styles.swipeActionText}>{strings.swipeOpen}</Text>
+                      </View>
+                    )}
+                    onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
+                  >
+                    <View style={styles.itemRow}>
+                      <Pressable
+                        style={styles.toggleZone}
+                        onPress={() => {
+                          if (selected) {
+                            shopping.toggleItem(selected.id, item.id);
+                          }
+                        }}
+                      >
+                        <View style={[styles.checkbox, styles.checkboxChecked]}>
+                          <Text style={[styles.checkboxMark, styles.checkboxMarkChecked]}>✓</Text>
+                        </View>
+                        <View style={styles.itemContent}>
+                          <Text style={[styles.itemText, styles.itemTextDone]}>{formatItemTitle(item)}</Text>
+                        </View>
+                      </Pressable>
+                      <Pressable style={styles.detailZone} onPress={() => openEdit(item)}>
+                        <Text style={[styles.itemHintText, styles.itemTextDone]}>{strings.details}</Text>
+                        <Text style={[styles.itemHintChevron, styles.itemTextDone]}>›</Text>
+                      </Pressable>
                     </View>
-                  )}
-                  onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
-                >
-                  <View style={styles.itemRow}>
-                    <Pressable
-                      style={styles.toggleZone}
-                      onPress={() => {
-                        if (selected) {
-                          shopping.toggleItem(selected.id, item.id);
-                        }
-                      }}
-                    >
-                      <View style={[styles.checkbox, styles.checkboxChecked]}>
-                        <Text style={[styles.checkboxMark, styles.checkboxMarkChecked]}>✓</Text>
-                      </View>
-                      <View style={styles.itemContent}>
-                        <Text style={[styles.itemText, styles.itemTextDone]}>{formatItemTitle(item)}</Text>
-                      </View>
-                    </Pressable>
-                    <Pressable style={styles.detailZone} onPress={() => openEdit(item)}>
-                      <Text style={[styles.itemHintText, styles.itemTextDone]}>{strings.details}</Text>
-                      <Text style={[styles.itemHintChevron, styles.itemTextDone]}>›</Text>
-                    </Pressable>
-                  </View>
-                </Swipeable>
-              ))}
-            </View>
-          )}
-        </AppCard>
-      </ScrollView>
+                  </Swipeable>
+                ))}
+              </View>
+            )}
+          </AppCard>
+        </ScrollView>
 
-      <View style={styles.bottomContainer}>
-        <View style={styles.bottomBar}>
-          <AppInput
-            placeholder={strings.addPlaceholder}
-            value={newItemName}
-            onChangeText={setNewItemName}
-            style={styles.bottomInput}
-          />
-          <AppButton
-            title={strings.addAction}
-            onPress={handleAddItem}
-            onLongPress={() => setShowAddDetails((prev) => !prev)}
-          />
-        </View>
-
-        {showAddDetails ? (
-          <View style={styles.addDetailsBar}>
+        <View style={styles.bottomContainer}>
+          <View style={styles.bottomBar}>
             <AppInput
-              value={addQuantity}
-              onChangeText={(value) => {
-                setAddQuantity(value);
-                setAddError(null);
-              }}
-              placeholder={strings.addQuantityPlaceholder}
-              keyboardType="decimal-pad"
-              style={styles.addQuantityInput}
+              placeholder={strings.addPlaceholder}
+              value={newItemName}
+              onChangeText={setNewItemName}
+              style={styles.bottomInput}
             />
-            <View style={styles.addUnitRow}>
-              {UNIT_OPTIONS.map((unit) => (
+            <AppButton
+              title={strings.addAction}
+              onPress={handleAddItem}
+              onLongPress={() => setShowAddDetails((prev) => !prev)}
+            />
+          </View>
+
+          {showAddDetails ? (
+            <View style={styles.addDetailsBar}>
+              <AppInput
+                value={addQuantity}
+                onChangeText={(value) => {
+                  setAddQuantity(value);
+                  setAddError(null);
+                }}
+                placeholder={strings.addQuantityPlaceholder}
+                keyboardType="decimal-pad"
+                style={styles.addQuantityInput}
+              />
+              <View style={styles.addUnitRow}>
+                {UNIT_OPTIONS.map((unit) => (
+                  <AppChip
+                    key={unit.value}
+                    label={unit.label}
+                    active={addUnit === unit.value}
+                    onPress={() => {
+                      setAddUnit(unit.value);
+                      setAddError(null);
+                    }}
+                  />
+                ))}
                 <AppChip
-                  key={unit.value}
-                  label={unit.label}
-                  active={addUnit === unit.value}
+                  label={strings.unitNone}
+                  active={!addUnit}
                   onPress={() => {
-                    setAddUnit(unit.value);
+                    setAddUnit(null);
+                    setAddQuantity('');
                     setAddError(null);
                   }}
                 />
-              ))}
-              <AppChip
-                label={strings.unitNone}
-                active={!addUnit}
-                onPress={() => {
-                  setAddUnit(null);
-                  setAddQuantity('');
-                  setAddError(null);
-                }}
-              />
+              </View>
+              {addError ? <Text style={styles.error}>{addError}</Text> : null}
             </View>
-            {addError ? <Text style={styles.error}>{addError}</Text> : null}
-          </View>
-        ) : null}
+          ) : null}
+        </View>
       </View>
 
 
       {editItemId ? (
         <Pressable style={styles.backdrop} onPress={closeEdit}>
-          <Pressable style={styles.sheet} onPress={() => null}>
-            <View style={styles.sheetHandle} />
-            <Text style={textStyles.h3}>{strings.editTitle}</Text>
-            <AppInput
-              placeholder={strings.editNamePlaceholder}
-              value={editName}
-              onChangeText={setEditName}
-              autoFocus
-            />
-            <AppInput
-              placeholder={strings.editQuantityPlaceholder}
-              value={editQuantity}
-              onChangeText={setEditQuantity}
-              keyboardType="decimal-pad"
-            />
-            <View style={styles.unitRow}>
-              {UNIT_OPTIONS.map((unit) => (
-                <AppChip
-                  key={unit.value}
-                  label={unit.label}
-                  active={editUnit === unit.value}
-                  onPress={() => setEditUnit(unit.value)}
-                />
-              ))}
-              <AppChip
-                label={strings.unitNone}
-                active={!editUnit}
-                onPress={() => {
-                  setEditUnit(null);
-                  setEditQuantity('');
-                }}
+          <KeyboardAvoidingView
+            style={styles.modalContent}
+            behavior="padding"
+            enabled={Platform.OS === 'ios'}
+          >
+            <Pressable style={styles.sheet} onPress={() => null}>
+              <View style={styles.sheetHandle} />
+              <Text style={textStyles.h3}>{strings.editTitle}</Text>
+              <AppInput
+                placeholder={strings.editNamePlaceholder}
+                value={editName}
+                onChangeText={setEditName}
+                autoFocus
               />
-            </View>
-            {editError ? <Text style={styles.error}>{editError}</Text> : null}
-            <View style={styles.editorActions}>
-              <AppButton title={strings.saveChanges} onPress={handleSaveEdit} fullWidth />
-              <AppButton title={strings.removeItem} onPress={handleRemoveEdit} variant="ghost" fullWidth />
-              <AppButton title={strings.close} onPress={closeEdit} variant="secondary" fullWidth />
-            </View>
-          </Pressable>
+              <AppInput
+                placeholder={strings.editQuantityPlaceholder}
+                value={editQuantity}
+                onChangeText={setEditQuantity}
+                keyboardType="decimal-pad"
+              />
+              <View style={styles.unitRow}>
+                {UNIT_OPTIONS.map((unit) => (
+                  <AppChip
+                    key={unit.value}
+                    label={unit.label}
+                    active={editUnit === unit.value}
+                    onPress={() => setEditUnit(unit.value)}
+                  />
+                ))}
+                <AppChip
+                  label={strings.unitNone}
+                  active={!editUnit}
+                  onPress={() => {
+                    setEditUnit(null);
+                    setEditQuantity('');
+                  }}
+                />
+              </View>
+              {editError ? <Text style={styles.error}>{editError}</Text> : null}
+              <View style={styles.editorActions}>
+                <AppButton title={strings.saveChanges} onPress={handleSaveEdit} fullWidth />
+                <AppButton title={strings.removeItem} onPress={handleRemoveEdit} variant="ghost" fullWidth />
+                <AppButton title={strings.close} onPress={closeEdit} variant="secondary" fullWidth />
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       ) : null}
     </AppScreen>
@@ -410,11 +426,18 @@ const UNIT_LABELS: Record<ShoppingUnit, string> = {
 const styles = StyleSheet.create({
   screenContent: {
     padding: 0,
+    flex: 1,
+  },
+  mainLayout: {
+    flex: 1,
+  },
+  listScroll: {
+    flex: 1,
   },
   scrollContent: {
     padding: theme.spacing.lg,
     paddingTop: 90,
-    paddingBottom: 220,
+    paddingBottom: theme.spacing.lg,
     gap: theme.spacing.md,
   },
   sectionHeader: {
@@ -551,10 +574,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   bottomContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
@@ -597,6 +616,10 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    flex: 1,
     justifyContent: 'flex-end',
   },
   sheet: {

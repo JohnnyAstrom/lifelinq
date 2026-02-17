@@ -43,6 +43,14 @@ public final class InMemoryShoppingListRepository implements ShoppingListReposit
         return result;
     }
 
+    @Override
+    public void deleteById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id must not be null");
+        }
+        lists.remove(id);
+    }
+
     int size() {
         return lists.size();
     }

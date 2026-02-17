@@ -133,6 +133,17 @@ public class ShoppingApplicationService {
     }
 
     @Transactional
+    public void removeShoppingList(
+            UUID householdId,
+            UUID actorUserId,
+            UUID listId
+    ) {
+        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        getListForHousehold(householdId, listId);
+        shoppingListRepository.deleteById(listId);
+    }
+
+    @Transactional
     public ShoppingItemView updateShoppingItem(
             UUID householdId,
             UUID actorUserId,
@@ -159,6 +170,21 @@ public class ShoppingApplicationService {
             result.add(toView(list));
         }
         return result;
+    }
+
+    @Transactional
+    public ShoppingListView updateShoppingListName(
+            UUID householdId,
+            UUID actorUserId,
+            UUID listId,
+            String name
+    ) {
+        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ShoppingList list = getListForHousehold(householdId, listId);
+        String normalizedName = normalizeListName(name);
+        list.rename(normalizedName);
+        shoppingListRepository.save(list);
+        return toView(list);
     }
 
     private ShoppingList getListForHousehold(UUID householdId, UUID listId) {
