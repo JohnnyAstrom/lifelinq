@@ -150,6 +150,23 @@ class ShoppingControllerTest {
         verify(shoppingApplicationService).updateShoppingListName(householdId, userId, listId, "Renamed");
     }
 
+    @Test
+    void reorderListSucceedsWithValidToken() throws Exception {
+        UUID householdId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, householdId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(patch("/shopping-lists/{listId}/order", listId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"direction\":\"UP\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(shoppingApplicationService).reorderShoppingList(householdId, userId, listId, "UP");
+    }
+
     private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(

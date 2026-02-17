@@ -14,6 +14,7 @@ final class ShoppingListMapper {
                 list.getId(),
                 list.getHouseholdId(),
                 list.getName(),
+                list.getOrderIndex(),
                 list.getCreatedAt()
         );
         for (ShoppingItem item : list.getItems()) {
@@ -31,6 +32,7 @@ final class ShoppingListMapper {
                 entity.getId(),
                 entity.getHouseholdId(),
                 entity.getName(),
+                entity.getOrderIndex(),
                 entity.getCreatedAt(),
                 items
         );

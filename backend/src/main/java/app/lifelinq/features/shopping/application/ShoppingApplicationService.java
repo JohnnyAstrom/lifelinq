@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +56,10 @@ public class ShoppingApplicationService {
         ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
         String normalizedName = normalizeListName(name);
         UUID listId = UUID.randomUUID();
-        ShoppingList list = new ShoppingList(listId, householdId, normalizedName, clock.instant());
+        List<ShoppingList> existingLists = loadOrderedLists(householdId);
+        normalizeOrderAndPersist(existingLists);
+        int nextOrderIndex = existingLists.size();
+        ShoppingList list = new ShoppingList(listId, householdId, normalizedName, nextOrderIndex, clock.instant());
         shoppingListRepository.save(list);
         return new CreateShoppingListOutput(listId, normalizedName);
     }
@@ -141,6 +145,7 @@ public class ShoppingApplicationService {
         ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
         getListForHousehold(householdId, listId);
         shoppingListRepository.deleteById(listId);
+        normalizeOrderAndPersist(loadOrderedLists(householdId));
     }
 
     @Transactional
@@ -164,12 +169,42 @@ public class ShoppingApplicationService {
     @Transactional(readOnly = true)
     public List<ShoppingListView> listShoppingLists(UUID householdId, UUID actorUserId) {
         ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        List<ShoppingList> lists = shoppingListRepository.findByHouseholdId(householdId);
+        List<ShoppingList> lists = loadOrderedLists(householdId);
         List<ShoppingListView> result = new ArrayList<>();
         for (ShoppingList list : lists) {
             result.add(toView(list));
         }
         return result;
+    }
+
+    @Transactional
+    public void reorderShoppingList(
+            UUID householdId,
+            UUID actorUserId,
+            UUID listId,
+            String direction
+    ) {
+        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        List<ShoppingList> lists = loadOrderedLists(householdId);
+        normalizeOrderAndPersist(lists);
+        int currentIndex = findIndexById(lists, listId);
+        int targetIndex;
+        String normalizedDirection = normalizeDirection(direction);
+        if ("UP".equals(normalizedDirection)) {
+            targetIndex = currentIndex - 1;
+        } else {
+            targetIndex = currentIndex + 1;
+        }
+        if (targetIndex < 0 || targetIndex >= lists.size()) {
+            return;
+        }
+        ShoppingList current = lists.get(currentIndex);
+        ShoppingList target = lists.get(targetIndex);
+        int currentOrder = current.getOrderIndex();
+        current.setOrderIndex(target.getOrderIndex());
+        target.setOrderIndex(currentOrder);
+        shoppingListRepository.save(current);
+        shoppingListRepository.save(target);
     }
 
     @Transactional
@@ -197,6 +232,48 @@ public class ShoppingApplicationService {
             throw new AccessDeniedException("List does not belong to household");
         }
         return list;
+    }
+
+    private List<ShoppingList> loadOrderedLists(UUID householdId) {
+        List<ShoppingList> lists = new ArrayList<>(shoppingListRepository.findByHouseholdId(householdId));
+        lists.sort(Comparator
+                .comparingInt(ShoppingList::getOrderIndex)
+                .thenComparing(ShoppingList::getCreatedAt)
+                .thenComparing(ShoppingList::getId));
+        return lists;
+    }
+
+    private void normalizeOrderAndPersist(List<ShoppingList> lists) {
+        for (int index = 0; index < lists.size(); index++) {
+            ShoppingList list = lists.get(index);
+            if (list.getOrderIndex() != index) {
+                list.setOrderIndex(index);
+                shoppingListRepository.save(list);
+            }
+        }
+    }
+
+    private int findIndexById(List<ShoppingList> lists, UUID listId) {
+        if (listId == null) {
+            throw new IllegalArgumentException("listId must not be null");
+        }
+        for (int i = 0; i < lists.size(); i++) {
+            if (lists.get(i).getId().equals(listId)) {
+                return i;
+            }
+        }
+        throw new ShoppingListNotFoundException(listId);
+    }
+
+    private String normalizeDirection(String direction) {
+        if (direction == null || direction.isBlank()) {
+            throw new IllegalArgumentException("direction must not be blank");
+        }
+        String normalized = direction.trim().toUpperCase();
+        if (!"UP".equals(normalized) && !"DOWN".equals(normalized)) {
+            throw new IllegalArgumentException("direction must be UP or DOWN");
+        }
+        return normalized;
     }
 
     private ShoppingListView toView(ShoppingList list) {

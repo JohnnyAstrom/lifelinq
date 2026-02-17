@@ -88,6 +88,27 @@ public class ShoppingController {
         return ResponseEntity.ok(toResponse(list));
     }
 
+    @PatchMapping("/shopping-lists/{listId}/order")
+    public ResponseEntity<?> reorderList(
+            @PathVariable UUID listId,
+            @RequestBody ReorderShoppingListRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        shoppingApplicationService.reorderShoppingList(
+                context.getHouseholdId(),
+                context.getUserId(),
+                listId,
+                request.getDirection()
+        );
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/shopping-lists/{listId}/items")
     public ResponseEntity<?> addItem(
             @PathVariable UUID listId,

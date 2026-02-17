@@ -31,7 +31,7 @@ class JpaShoppingListRepositoryAdapterTest {
         UUID householdId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
         Instant createdAt = Instant.now();
-        ShoppingList list = new ShoppingList(listId, householdId, "Groceries", createdAt);
+        ShoppingList list = new ShoppingList(listId, householdId, "Groceries", 3, createdAt);
         UUID itemId = UUID.randomUUID();
         Instant itemCreatedAt = createdAt.plusSeconds(5);
         list.addItem(itemId, "milk", new BigDecimal("2"), ShoppingUnit.DL, itemCreatedAt);
@@ -46,6 +46,7 @@ class JpaShoppingListRepositoryAdapterTest {
         assertEquals(listId, loadedList.getId());
         assertEquals(householdId, loadedList.getHouseholdId());
         assertEquals("Groceries", loadedList.getName());
+        assertEquals(3, loadedList.getOrderIndex());
         long diffNanos = Math.abs(Duration.between(createdAt, loadedList.getCreatedAt()).toNanos());
         assertTrue(diffNanos <= 1_000);
         assertEquals(1, loadedList.getItems().size());
