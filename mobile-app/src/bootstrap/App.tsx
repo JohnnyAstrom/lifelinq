@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { useMe } from '../features/auth/hooks/useMe';
@@ -29,13 +30,15 @@ type Screen =
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <View style={{ flex: 1 }}>
-        <AuthProvider>
-          <AppShell />
-        </AuthProvider>
-      </View>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <View style={{ flex: 1 }}>
+          <AuthProvider>
+            <AppShell />
+          </AuthProvider>
+        </View>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

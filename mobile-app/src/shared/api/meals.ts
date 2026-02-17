@@ -17,7 +17,6 @@ export type WeekPlanResponse = {
 
 export type AddMealRequest = {
   recipeId: string;
-  recipeTitle: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   targetShoppingListId?: string | null;
 };
@@ -70,6 +69,63 @@ export async function removeMeal(
     `/meals/weeks/${year}/${isoWeek}/days/${dayOfWeek}/meals/${mealType}`,
     {
       method: 'DELETE',
+    },
+    clientOptions
+  );
+}
+
+export type IngredientRequest = {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  position: number;
+};
+
+export type CreateOrUpdateRecipeRequest = {
+  name: string;
+  ingredients: IngredientRequest[];
+};
+
+export type IngredientResponse = {
+  id: string;
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  position: number;
+};
+
+export type RecipeResponse = {
+  recipeId: string;
+  householdId: string;
+  name: string;
+  createdAt: string;
+  ingredients: IngredientResponse[];
+};
+
+export async function createRecipe(
+  payload: CreateOrUpdateRecipeRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse> {
+  return fetchJson<RecipeResponse>(
+    '/meals/recipes',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function updateRecipe(
+  recipeId: string,
+  payload: CreateOrUpdateRecipeRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse> {
+  return fetchJson<RecipeResponse>(
+    `/meals/recipes/${recipeId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     },
     clientOptions
   );

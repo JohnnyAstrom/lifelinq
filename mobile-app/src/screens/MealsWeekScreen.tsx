@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -19,8 +24,8 @@ import {
   TopBar,
 } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
-import { addShoppingItem } from '../shared/api/shopping';
 import { formatApiError } from '../shared/api/client';
+import { createRecipe, updateRecipe } from '../shared/api/meals';
 import { useAuth } from '../shared/auth/AuthContext';
 
 type Props = {
@@ -33,6 +38,7 @@ type ViewMode = 'daily' | 'weekly' | 'monthly';
 type MealEntry = {
   dayOfWeek: number;
   mealType: (typeof MEAL_TYPES)[number];
+  recipeId: string;
   recipeTitle: string;
 };
 
@@ -59,14 +65,6 @@ const MONTH_LABELS = [
 ];
 
 const MEAL_ORDER = new Map(MEAL_TYPES.map((type, index) => [type, index]));
-
-function uuidv4() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 function addDays(date: Date, days: number) {
   const next = new Date(date.getTime());
@@ -174,6 +172,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<(typeof MEAL_TYPES)[number] | null>('DINNER');
+  const [selectedMealRecipeId, setSelectedMealRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
   const [ingredientsText, setIngredientsText] = useState('');
   const [pushToShopping, setPushToShopping] = useState(true);
@@ -187,6 +186,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         const entry: MealEntry = {
           dayOfWeek: meal.dayOfWeek,
           mealType: meal.mealType as (typeof MEAL_TYPES)[number],
+          recipeId: meal.recipeId,
           recipeTitle: meal.recipeTitle,
         };
         const list = map.get(meal.dayOfWeek) ?? [];
@@ -204,20 +204,21 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const effectiveListId =
     selectedListId ?? (lists.length > 0 ? lists[0].id : null);
 
-  const selectedMealTitle = useMemo(() => {
+  const selectedMeal = useMemo(() => {
     if (!selectedDay || !selectedMealType) {
-      return '';
+      return null;
     }
     const list = mealsByDay.get(selectedDay) ?? [];
-    return list.find((meal) => meal.mealType === selectedMealType)?.recipeTitle ?? '';
+    return list.find((meal) => meal.mealType === selectedMealType) ?? null;
   }, [selectedDay, selectedMealType, mealsByDay]);
 
   function openEditor(day: number, mealType: (typeof MEAL_TYPES)[number]) {
     setSelectedDay(day);
     setSelectedMealType(mealType);
     const list = mealsByDay.get(day) ?? [];
-    const existing = list.find((meal) => meal.mealType === mealType)?.recipeTitle ?? '';
-    setRecipeTitle(existing);
+    const existing = list.find((meal) => meal.mealType === mealType);
+    setRecipeTitle(existing?.recipeTitle ?? '');
+    setSelectedMealRecipeId(existing?.recipeId ?? null);
     setIngredientsText('');
     setShoppingSyncError(null);
   }
@@ -230,49 +231,73 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       return;
     }
 
-    await plan.addMeal(selectedDay, selectedMealType, {
-      recipeId: uuidv4(),
-      recipeTitle: recipeTitle.trim(),
-      mealType: selectedMealType,
-      targetShoppingListId: null,
-    });
+    const ingredients = toIngredientsList(ingredientsText).map((name, index) => ({
+      name,
+      quantity: null,
+      unit: null,
+      position: index + 1,
+    }));
 
-    const ingredients = toIngredientsList(ingredientsText);
-    if (pushToShopping && ingredients.length > 0 && effectiveListId) {
-      let syncFailed = false;
-      for (const ingredient of ingredients) {
-        try {
-          await addShoppingItem(effectiveListId, { name: ingredient }, { token });
-        } catch (err) {
-          syncFailed = true;
-          await handleApiError(err);
-          setShoppingSyncError(formatApiError(err));
-        }
-      }
-      if (!syncFailed) {
-        await shopping.reload();
+    try {
+      let recipeId = selectedMealRecipeId;
+      if (recipeId) {
+        await updateRecipe(
+          recipeId,
+          {
+            name: recipeTitle.trim(),
+            ingredients,
+          },
+          { token }
+        );
       } else {
-        return;
+        const created = await createRecipe(
+          {
+            name: recipeTitle.trim(),
+            ingredients,
+          },
+          { token }
+        );
+        recipeId = created.recipeId;
       }
-    }
 
-    setRecipeTitle('');
-    setIngredientsText('');
-    setSelectedDay(null);
-    setSelectedMealType('DINNER');
-    setShoppingSyncError(null);
+      await plan.addMeal(selectedDay, selectedMealType, {
+        recipeId,
+        mealType: selectedMealType,
+        targetShoppingListId: pushToShopping && effectiveListId ? effectiveListId : null,
+      });
+
+      if (pushToShopping && ingredients.length > 0 && effectiveListId) {
+        await shopping.reload();
+      }
+
+      setRecipeTitle('');
+      setSelectedMealRecipeId(null);
+      setIngredientsText('');
+      closeEditor();
+      setSelectedMealType('DINNER');
+      setShoppingSyncError(null);
+    } catch (err) {
+      await handleApiError(err);
+      setShoppingSyncError(formatApiError(err));
+    }
   }
 
   async function handleRemove() {
     if (!selectedDay || !selectedMealType) {
       return;
     }
-    await plan.removeMeal(selectedDay, selectedMealType);
-    setSelectedDay(null);
-    setSelectedMealType('DINNER');
-    setRecipeTitle('');
-    setIngredientsText('');
-    setShoppingSyncError(null);
+    try {
+      await plan.removeMeal(selectedDay, selectedMealType);
+      closeEditor();
+      setSelectedMealType('DINNER');
+      setSelectedMealRecipeId(null);
+      setRecipeTitle('');
+      setIngredientsText('');
+      setShoppingSyncError(null);
+    } catch (err) {
+      await handleApiError(err);
+      setShoppingSyncError(formatApiError(err));
+    }
   }
 
   const weekEnd = useMemo(() => {
@@ -296,6 +321,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     }
     return count;
   }, [mealsByDay]);
+
+  function closeEditor() {
+    setSelectedDay(null);
+    setSelectedMealRecipeId(null);
+    Keyboard.dismiss();
+  }
 
   return (
     <View style={styles.root}>
@@ -502,90 +533,116 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         </View>
       </AppScreen>
 
-      {selectedDay && selectedMealType ? (
-        <Pressable style={styles.backdrop} onPress={() => setSelectedDay(null)}>
-          <Pressable style={styles.sheet} onPress={() => null}>
-            <View style={styles.sheetHandle} />
-            <Text style={textStyles.h3}>{strings.planMealTitle}</Text>
-            <Subtle>
-              {`${strings.selectedDayPrefix} ${formatDayLabel(
-                new Date(weekStart.getTime() + (selectedDay - 1) * 86400000),
-                selectedDay - 1
-              )}`}
-            </Subtle>
-            <View style={styles.mealTypeRow}>
-              {MEAL_TYPES.map((mealType) => {
-                const active = mealType === selectedMealType;
-                return (
-                  <AppChip
-                    key={mealType}
-                    label={MEAL_TYPE_LABELS[mealType]}
-                    active={active}
-                    onPress={() => {
-                      setSelectedMealType(mealType);
-                      const list = mealsByDay.get(selectedDay) ?? [];
-                      const existing = list.find((meal) => meal.mealType === mealType)?.recipeTitle ?? '';
-                      setRecipeTitle(existing);
-                      setIngredientsText('');
-                    }}
-                  />
-                );
-              })}
-            </View>
-            <AppInput
-              placeholder={strings.mealTitlePlaceholder}
-              value={recipeTitle}
-              onChangeText={setRecipeTitle}
-              autoFocus
-            />
-            <AppInput
-              placeholder={strings.ingredientsPlaceholder}
-              value={ingredientsText}
-              onChangeText={setIngredientsText}
-              multiline
-              style={styles.ingredientsInput}
-            />
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>{strings.addIngredientsToShopping}</Text>
-              <Switch value={pushToShopping} onValueChange={setPushToShopping} />
-            </View>
-            <View style={styles.lists}>
-              {lists.length === 0 ? (
-                <Subtle>{strings.noShoppingLists}</Subtle>
-              ) : (
-                <View style={styles.chipRow}>
-                  {lists.map((list) => {
-                    const active = list.id === effectiveListId;
+      <Modal
+        visible={!!selectedDay && !!selectedMealType}
+        transparent
+        animationType="slide"
+        onRequestClose={closeEditor}
+      >
+        {selectedDay && selectedMealType ? (
+          <Pressable style={styles.backdrop} onPress={closeEditor}>
+            <KeyboardAvoidingView
+              style={styles.modalContent}
+              behavior="padding"
+              enabled={Platform.OS === 'ios'}
+            >
+              <Pressable style={styles.sheet} onPress={() => null}>
+                <View style={styles.sheetHandle} />
+                <ScrollView
+                  style={styles.sheetScroll}
+                  contentContainerStyle={styles.sheetScrollContent}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                <Text style={textStyles.h3}>{strings.planMealTitle}</Text>
+                <Subtle>
+                  {`${strings.selectedDayPrefix} ${formatDayLabel(
+                    new Date(weekStart.getTime() + (selectedDay - 1) * 86400000),
+                    selectedDay - 1
+                  )}`}
+                </Subtle>
+                <View style={styles.mealTypeRow}>
+                  {MEAL_TYPES.map((mealType) => {
+                    const active = mealType === selectedMealType;
                     return (
                       <AppChip
-                        key={list.id}
-                        label={list.name}
+                        key={mealType}
+                        label={MEAL_TYPE_LABELS[mealType]}
                         active={active}
-                        onPress={() => setSelectedListId(list.id)}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setSelectedMealType(mealType);
+                          const list = mealsByDay.get(selectedDay) ?? [];
+                          const existing = list.find((meal) => meal.mealType === mealType);
+                          setRecipeTitle(existing?.recipeTitle ?? '');
+                          setSelectedMealRecipeId(existing?.recipeId ?? null);
+                          setIngredientsText('');
+                        }}
                       />
                     );
                   })}
                 </View>
-              )}
-            </View>
-            {shoppingSyncError ? (
-              <Text style={styles.error}>{strings.shoppingSyncFailed} {shoppingSyncError}</Text>
-            ) : null}
-            <View style={styles.editorActions}>
-              <AppButton title={strings.saveMeal} onPress={handleSave} fullWidth />
-              {selectedMealTitle ? (
-                <AppButton
-                  title={strings.removeMeal}
-                  onPress={handleRemove}
-                  variant="ghost"
-                  fullWidth
+                <AppInput
+                  placeholder={strings.mealTitlePlaceholder}
+                  value={recipeTitle}
+                  onChangeText={setRecipeTitle}
                 />
-              ) : null}
-              <AppButton title={strings.close} onPress={() => setSelectedDay(null)} variant="secondary" fullWidth />
-            </View>
+                <AppInput
+                  placeholder={strings.ingredientsPlaceholder}
+                  value={ingredientsText}
+                  onChangeText={setIngredientsText}
+                  multiline
+                  style={styles.ingredientsInput}
+                />
+                <View style={styles.toggleRow}>
+                  <Text style={styles.toggleLabel}>{strings.addIngredientsToShopping}</Text>
+                  <Switch value={pushToShopping} onValueChange={setPushToShopping} />
+                </View>
+                <View style={styles.lists}>
+                  {lists.length === 0 ? (
+                    <Subtle>{strings.noShoppingLists}</Subtle>
+                  ) : (
+                    <View style={styles.chipRow}>
+                      {lists.map((list) => {
+                        const active = list.id === effectiveListId;
+                        return (
+                          <AppChip
+                            key={list.id}
+                            label={list.name}
+                            active={active}
+                            onPress={() => setSelectedListId(list.id)}
+                          />
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+                {shoppingSyncError ? (
+                  <Text style={styles.error}>{strings.shoppingSyncFailed} {shoppingSyncError}</Text>
+                ) : null}
+                <View style={styles.editorActions}>
+                  <AppButton title={strings.saveMeal} onPress={handleSave} fullWidth />
+                  {selectedMeal?.recipeTitle ? (
+                    <AppButton
+                      title={strings.removeMeal}
+                      onPress={handleRemove}
+                      variant="ghost"
+                      fullWidth
+                    />
+                  ) : null}
+                  <AppButton
+                    title={strings.close}
+                    onPress={closeEditor}
+                    variant="secondary"
+                    fullWidth
+                  />
+                </View>
+                </ScrollView>
+              </Pressable>
+            </KeyboardAvoidingView>
           </Pressable>
-        </Pressable>
-      ) : null}
+        ) : null}
+      </Modal>
     </View>
   );
 }
@@ -718,14 +775,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
+  modalContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   sheet: {
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    maxHeight: '85%',
+    paddingTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  sheetScroll: {
+    flexGrow: 0,
+  },
+  sheetScrollContent: {
+    paddingBottom: theme.spacing.lg,
+    gap: theme.spacing.sm,
   },
   sheetHandle: {
     alignSelf: 'center',

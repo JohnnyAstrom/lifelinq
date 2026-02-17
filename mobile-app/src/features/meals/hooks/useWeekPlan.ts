@@ -67,6 +67,7 @@ export function useWeekPlan(
         loading: false,
         error: formatApiError(err),
       }));
+      throw err;
     }
   };
 
@@ -88,6 +89,7 @@ export function useWeekPlan(
         loading: false,
         error: formatApiError(err),
       }));
+      throw err;
     }
   };
 
