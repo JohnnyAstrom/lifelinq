@@ -50,6 +50,8 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     removeConfirm: 'Remove',
     actionsTitle: 'List actions',
     actionShare: 'Share',
+    actionMoveUp: 'Move up',
+    actionMoveDown: 'Move down',
     actionEditName: 'Edit name',
     actionDelete: 'Delete',
     renameTitle: 'Edit list name',
@@ -104,6 +106,13 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     return shopping.lists.find((list) => list.id === activeListId) ?? null;
   }
 
+  function selectedActionIndex() {
+    if (!activeListId) {
+      return -1;
+    }
+    return shopping.lists.findIndex((list) => list.id === activeListId);
+  }
+
   async function handleShareList() {
     const list = selectedActionList();
     if (!list) {
@@ -132,6 +141,15 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     }
     await shopping.renameList(renameListId, renameListName.trim());
     closeRename();
+  }
+
+  async function handleMoveList(direction: 'UP' | 'DOWN') {
+    const list = selectedActionList();
+    if (!list) {
+      return;
+    }
+    closeActions();
+    await shopping.reorderList(list.id, direction);
   }
 
   return (
@@ -250,8 +268,27 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.actionsTitle}</Text>
+              {(() => {
+                const selectedIndex = selectedActionIndex();
+                const canMoveUp = selectedIndex > 0;
+                const canMoveDown = selectedIndex >= 0 && selectedIndex < shopping.lists.length - 1;
+                return (
               <View style={styles.sheetActions}>
                 <AppButton title={strings.actionShare} onPress={() => void handleShareList()} fullWidth />
+                <AppButton
+                  title={strings.actionMoveUp}
+                  onPress={() => void handleMoveList('UP')}
+                  variant="secondary"
+                  disabled={!canMoveUp}
+                  fullWidth
+                />
+                <AppButton
+                  title={strings.actionMoveDown}
+                  onPress={() => void handleMoveList('DOWN')}
+                  variant="secondary"
+                  disabled={!canMoveDown}
+                  fullWidth
+                />
                 <AppButton title={strings.actionEditName} onPress={openRename} variant="secondary" fullWidth />
                 <AppButton
                   title={strings.actionDelete}
@@ -267,6 +304,8 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                 />
                 <AppButton title={strings.close} onPress={closeActions} variant="ghost" fullWidth />
               </View>
+                );
+              })()}
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>

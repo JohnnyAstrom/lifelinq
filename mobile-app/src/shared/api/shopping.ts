@@ -20,6 +20,10 @@ export type UpdateShoppingListRequest = {
   name: string;
 };
 
+export type ReorderShoppingListRequest = {
+  direction: 'UP' | 'DOWN';
+};
+
 export type CreateShoppingListRequest = {
   name: string;
 };
@@ -101,6 +105,21 @@ export async function updateShoppingList(
 ): Promise<ShoppingListResponse> {
   return fetchJson<ShoppingListResponse>(
     `/shopping-lists/${listId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function reorderShoppingList(
+  listId: string,
+  payload: ReorderShoppingListRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<void> {
+  return fetchJson<void>(
+    `/shopping-lists/${listId}/order`,
     {
       method: 'PATCH',
       body: JSON.stringify(payload),
