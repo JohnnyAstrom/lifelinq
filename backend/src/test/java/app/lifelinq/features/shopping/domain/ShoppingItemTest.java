@@ -69,6 +69,7 @@ class ShoppingItemTest {
         ShoppingItem bought = ShoppingItem.rehydrate(
                 UUID.randomUUID(),
                 "Milk",
+                0,
                 createdAt,
                 ShoppingItemStatus.BOUGHT,
                 boughtAt,
@@ -84,6 +85,7 @@ class ShoppingItemTest {
                 ShoppingItem.rehydrate(
                         UUID.randomUUID(),
                         "Milk",
+                        0,
                         createdAt,
                         ShoppingItemStatus.BOUGHT,
                         null,
@@ -95,6 +97,7 @@ class ShoppingItemTest {
                 ShoppingItem.rehydrate(
                         UUID.randomUUID(),
                         "Milk",
+                        0,
                         createdAt,
                         ShoppingItemStatus.TO_BUY,
                         Instant.now(),

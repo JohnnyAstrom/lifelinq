@@ -7,6 +7,7 @@ import java.util.UUID;
 public final class ShoppingItem {
     private final UUID id;
     private String name;
+    private int orderIndex;
     private final Instant createdAt;
     private ShoppingItemStatus status;
     private Instant boughtAt;
@@ -14,15 +15,29 @@ public final class ShoppingItem {
     private ShoppingUnit unit;
 
     public ShoppingItem(UUID id, String name, Instant createdAt) {
-        this(id, name, createdAt, null, null);
+        this(id, name, 0, createdAt, null, null);
     }
 
     public ShoppingItem(UUID id, String name, Instant createdAt, BigDecimal quantity, ShoppingUnit unit) {
+        this(id, name, 0, createdAt, quantity, unit);
+    }
+
+    public ShoppingItem(
+            UUID id,
+            String name,
+            int orderIndex,
+            Instant createdAt,
+            BigDecimal quantity,
+            ShoppingUnit unit
+    ) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
+        }
+        if (orderIndex < 0) {
+            throw new IllegalArgumentException("orderIndex must be >= 0");
         }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
@@ -30,6 +45,7 @@ public final class ShoppingItem {
         validateQuantityAndUnit(quantity, unit);
         this.id = id;
         this.name = name;
+        this.orderIndex = orderIndex;
         this.createdAt = createdAt;
         this.status = ShoppingItemStatus.TO_BUY;
         this.boughtAt = null;
@@ -40,6 +56,7 @@ public final class ShoppingItem {
     public static ShoppingItem rehydrate(
             UUID id,
             String name,
+            int orderIndex,
             Instant createdAt,
             ShoppingItemStatus status,
             Instant boughtAt,
@@ -55,7 +72,7 @@ public final class ShoppingItem {
         if (status == ShoppingItemStatus.BOUGHT && boughtAt == null) {
             throw new IllegalArgumentException("boughtAt must not be null when status is BOUGHT");
         }
-        ShoppingItem item = new ShoppingItem(id, name, createdAt, quantity, unit);
+        ShoppingItem item = new ShoppingItem(id, name, orderIndex, createdAt, quantity, unit);
         item.status = status;
         item.boughtAt = boughtAt;
         return item;
@@ -90,6 +107,17 @@ public final class ShoppingItem {
 
     public String getName() {
         return name;
+    }
+
+    public int getOrderIndex() {
+        return orderIndex;
+    }
+
+    public void setOrderIndex(int orderIndex) {
+        if (orderIndex < 0) {
+            throw new IllegalArgumentException("orderIndex must be >= 0");
+        }
+        this.orderIndex = orderIndex;
     }
 
     public ShoppingItemStatus getStatus() {

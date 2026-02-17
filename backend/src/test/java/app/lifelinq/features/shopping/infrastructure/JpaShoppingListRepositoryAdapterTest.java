@@ -53,6 +53,7 @@ class JpaShoppingListRepositoryAdapterTest {
         ShoppingItem loadedItem = loadedList.getItems().get(0);
         assertEquals(itemId, loadedItem.getId());
         assertEquals("milk", loadedItem.getName());
+        assertEquals(0, loadedItem.getOrderIndex());
         assertEquals(ShoppingItemStatus.BOUGHT, loadedItem.getStatus());
         assertEquals(0, loadedItem.getQuantity().compareTo(new BigDecimal("2")));
         assertEquals(ShoppingUnit.DL, loadedItem.getUnit());

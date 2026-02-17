@@ -137,6 +137,20 @@ public class ShoppingApplicationService {
     }
 
     @Transactional
+    public void reorderShoppingItem(
+            UUID householdId,
+            UUID actorUserId,
+            UUID listId,
+            UUID itemId,
+            String direction
+    ) {
+        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ShoppingList list = getListForHousehold(householdId, listId);
+        list.reorderOpenItem(itemId, direction);
+        shoppingListRepository.save(list);
+    }
+
+    @Transactional
     public void removeShoppingList(
             UUID householdId,
             UUID actorUserId,

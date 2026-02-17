@@ -43,6 +43,7 @@ final class ShoppingListMapper {
                 item.getId(),
                 list,
                 item.getName(),
+                item.getOrderIndex(),
                 toEntityStatus(item.getStatus()),
                 item.getQuantity(),
                 toEntityUnit(item.getUnit()),
@@ -55,6 +56,7 @@ final class ShoppingListMapper {
         return ShoppingItem.rehydrate(
                 entity.getId(),
                 entity.getName(),
+                entity.getOrderIndex() != null ? entity.getOrderIndex() : 0,
                 entity.getCreatedAt(),
                 toDomainStatus(entity.getStatus()),
                 entity.getBoughtAt(),

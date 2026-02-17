@@ -3,6 +3,7 @@ package app.lifelinq.features.shopping.domain;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -80,7 +81,8 @@ public final class ShoppingList {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
-        ShoppingItem item = new ShoppingItem(itemId, normalizedName, now, quantity, unit);
+        int orderIndex = nextItemOrderIndex();
+        ShoppingItem item = new ShoppingItem(itemId, normalizedName, orderIndex, now, quantity, unit);
         items.add(item);
         return itemId;
     }
@@ -106,6 +108,46 @@ public final class ShoppingList {
         if (!removed) {
             throw new ShoppingItemNotFoundException(itemId);
         }
+        normalizeItemOrderIndexes();
+    }
+
+    public void reorderOpenItem(UUID itemId, String direction) {
+        if (itemId == null) {
+            throw new IllegalArgumentException("itemId must not be null");
+        }
+        if (direction == null || direction.isBlank()) {
+            throw new IllegalArgumentException("direction must not be blank");
+        }
+        String normalizedDirection = direction.trim().toUpperCase();
+        if (!"UP".equals(normalizedDirection) && !"DOWN".equals(normalizedDirection)) {
+            throw new IllegalArgumentException("direction must be UP or DOWN");
+        }
+
+        normalizeItemOrderIndexes();
+        List<ShoppingItem> openItems = items.stream()
+                .filter(item -> item.getStatus() == ShoppingItemStatus.TO_BUY)
+                .sorted(Comparator.comparingInt(ShoppingItem::getOrderIndex))
+                .toList();
+        int currentOpenIndex = -1;
+        for (int i = 0; i < openItems.size(); i++) {
+            if (openItems.get(i).getId().equals(itemId)) {
+                currentOpenIndex = i;
+                break;
+            }
+        }
+        if (currentOpenIndex < 0) {
+            throw new ShoppingItemNotFoundException(itemId);
+        }
+        int targetOpenIndex = "UP".equals(normalizedDirection) ? currentOpenIndex - 1 : currentOpenIndex + 1;
+        if (targetOpenIndex < 0 || targetOpenIndex >= openItems.size()) {
+            return;
+        }
+        ShoppingItem current = openItems.get(currentOpenIndex);
+        ShoppingItem target = openItems.get(targetOpenIndex);
+        int currentOrder = current.getOrderIndex();
+        current.setOrderIndex(target.getOrderIndex());
+        target.setOrderIndex(currentOrder);
+        normalizeItemOrderIndexes();
     }
 
     public void rename(String normalizedName) {
@@ -143,7 +185,12 @@ public final class ShoppingList {
     }
 
     public List<ShoppingItem> getItems() {
-        return List.copyOf(items);
+        List<ShoppingItem> sorted = new ArrayList<>(items);
+        sorted.sort(Comparator
+                .comparingInt(ShoppingItem::getOrderIndex)
+                .thenComparing(ShoppingItem::getCreatedAt)
+                .thenComparing(ShoppingItem::getId));
+        return List.copyOf(sorted);
     }
 
     public ShoppingItem getItemOrThrow(UUID itemId) {
@@ -158,6 +205,27 @@ public final class ShoppingList {
                 .filter(item -> item.getId().equals(itemId))
                 .findFirst()
                 .orElseThrow(() -> new ShoppingItemNotFoundException(itemId));
+    }
+
+    private int nextItemOrderIndex() {
+        int max = -1;
+        for (ShoppingItem item : items) {
+            if (item.getOrderIndex() > max) {
+                max = item.getOrderIndex();
+            }
+        }
+        return max + 1;
+    }
+
+    private void normalizeItemOrderIndexes() {
+        List<ShoppingItem> sorted = new ArrayList<>(items);
+        sorted.sort(Comparator
+                .comparingInt(ShoppingItem::getOrderIndex)
+                .thenComparing(ShoppingItem::getCreatedAt)
+                .thenComparing(ShoppingItem::getId));
+        for (int index = 0; index < sorted.size(); index++) {
+            sorted.get(index).setOrderIndex(index);
+        }
     }
 
 }

@@ -31,6 +31,9 @@ public class ShoppingItemEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "order_index")
+    private Integer orderIndex;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private ShoppingItemStatusEntity status;
@@ -55,6 +58,7 @@ public class ShoppingItemEntity {
             UUID id,
             ShoppingListEntity list,
             String name,
+            Integer orderIndex,
             ShoppingItemStatusEntity status,
             BigDecimal quantity,
             ShoppingUnitEntity unit,
@@ -64,6 +68,7 @@ public class ShoppingItemEntity {
         this.id = id;
         this.list = list;
         this.name = name;
+        this.orderIndex = orderIndex;
         this.status = status;
         this.quantity = quantity;
         this.unit = unit;
@@ -81,6 +86,10 @@ public class ShoppingItemEntity {
 
     String getName() {
         return name;
+    }
+
+    Integer getOrderIndex() {
+        return orderIndex;
     }
 
     ShoppingItemStatusEntity getStatus() {

@@ -199,6 +199,29 @@ public class ShoppingController {
         ));
     }
 
+    @PatchMapping("/shopping-lists/{listId}/items/{itemId}/order")
+    public ResponseEntity<?> reorderItem(
+            @PathVariable UUID listId,
+            @PathVariable UUID itemId,
+            @RequestBody ReorderShoppingItemRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getHouseholdId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        shoppingApplicationService.reorderShoppingItem(
+                context.getHouseholdId(),
+                context.getUserId(),
+                listId,
+                itemId,
+                request.getDirection()
+        );
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/shopping-lists/{listId}/items/{itemId}")
     public ResponseEntity<?> removeItem(
             @PathVariable UUID listId,
