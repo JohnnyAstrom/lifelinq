@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
-import { completeTodo, createTodo, fetchTodos, TodoResponse, updateTodo } from '../api/todoApi';
+import { completeTodo, createTodo, fetchTodos, fetchTodosForMonth, TodoResponse, updateTodo } from '../api/todoApi';
 
-export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'ALL' = 'OPEN') {
+type CalendarMonthQuery = {
+  enabled: boolean;
+  year: number;
+  month: number;
+};
+
+export function useTodos(
+  token: string | null,
+  status: 'OPEN' | 'COMPLETED' | 'ALL' = 'OPEN',
+  calendarMonthQuery?: CalendarMonthQuery
+) {
   const [items, setItems] = useState<TodoResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,9 +29,17 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
     setError(null);
 
     try {
-      const queryStatus = status === 'ALL' ? undefined : status;
-      const result = await fetchTodos(token, queryStatus);
-      setItems(result);
+      if (calendarMonthQuery?.enabled) {
+        const result = await fetchTodosForMonth(token, calendarMonthQuery.year, calendarMonthQuery.month);
+        const filtered = status === 'ALL'
+          ? result
+          : result.filter((item) => item.status === status);
+        setItems(filtered);
+      } else {
+        const queryStatus = status === 'ALL' ? undefined : status;
+        const result = await fetchTodos(token, queryStatus);
+        setItems(result);
+      }
     } catch (err) {
       await handleApiError(err);
       setError(formatApiError(err));
@@ -87,7 +105,7 @@ export function useTodos(token: string | null, status: 'OPEN' | 'COMPLETED' | 'A
 
   useEffect(() => {
     load();
-  }, [token, status]);
+  }, [token, status, calendarMonthQuery?.enabled, calendarMonthQuery?.year, calendarMonthQuery?.month]);
 
   return { items, error, loading, reload: load, add, complete, update };
 }

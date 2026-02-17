@@ -33,6 +33,10 @@ export function TodoListScreen({ token, onDone }: Props) {
   const { width: viewportWidth } = useWindowDimensions();
   const [status, setStatus] = useState<'OPEN' | 'COMPLETED' | 'ALL'>('OPEN');
   const [view, setView] = useState<'ALL' | 'TODAY' | 'SCHEDULED' | 'DONE'>('ALL');
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [text, setText] = useState('');
   const [isAddComposerExpanded, setIsAddComposerExpanded] = useState(false);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
@@ -46,7 +50,17 @@ export function TodoListScreen({ token, onDone }: Props) {
   const [showDetailDatePicker, setShowDetailDatePicker] = useState(false);
   const [showDetailTimePicker, setShowDetailTimePicker] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
-  const todos = useTodos(token, status);
+  const todos = useTodos(
+    token,
+    status,
+    view === 'SCHEDULED'
+      ? {
+          enabled: true,
+          year: calendarMonth.getFullYear(),
+          month: calendarMonth.getMonth() + 1,
+        }
+      : undefined
+  );
   const strings = {
     title: 'Todos',
     subtitle: 'Keep the list moving.',
@@ -76,6 +90,8 @@ export function TodoListScreen({ token, onDone }: Props) {
     timeNone: 'Any',
     pendingDatePrefix: 'Scheduled:',
     dateFiltersInfo: 'Filtered by date.',
+    monthBack: 'Prev month',
+    monthNext: 'Next month',
     details: 'Details',
     editTitle: 'Edit todo',
     editSubtitle: 'Update details and scheduling.',
@@ -228,6 +244,14 @@ export function TodoListScreen({ token, onDone }: Props) {
     }
   }
 
+  function shiftCalendarMonth(delta: number) {
+    setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+  }
+
+  function formatCalendarMonth(value: Date) {
+    return value.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }
+
   const visibleItems = todos.items.filter((item) => {
     if (view === 'TODAY') {
       const due = parseApiDate(item.dueDate);
@@ -262,6 +286,16 @@ export function TodoListScreen({ token, onDone }: Props) {
             <AppChip label={strings.done} active={view === 'DONE'} onPress={() => setFilter('DONE')} />
           </View>
         </AppCard>
+
+        {view === 'SCHEDULED' ? (
+          <AppCard>
+            <View style={styles.calendarMonthRow}>
+              <AppButton title={strings.monthBack} onPress={() => shiftCalendarMonth(-1)} variant="ghost" />
+              <Text style={styles.calendarMonthText}>{formatCalendarMonth(calendarMonth)}</Text>
+              <AppButton title={strings.monthNext} onPress={() => shiftCalendarMonth(1)} variant="ghost" />
+            </View>
+          </AppCard>
+        ) : null}
 
         {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
 
@@ -686,6 +720,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
     marginTop: theme.spacing.sm,
+  },
+  calendarMonthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  calendarMonthText: {
+    ...textStyles.h3,
+    textTransform: 'capitalize',
   },
   quickDateRow: {
     marginTop: theme.spacing.sm,

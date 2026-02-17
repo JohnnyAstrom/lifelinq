@@ -19,6 +19,19 @@ export async function fetchTodos(token: string, status?: string): Promise<TodoRe
   return response.todos;
 }
 
+export async function fetchTodosForMonth(
+  token: string,
+  year: number,
+  month: number
+): Promise<TodoResponse[]> {
+  const response = await fetchJson<ListTodosResponse>(
+    `/todos/calendar/${year}/${month}`,
+    {},
+    { token }
+  );
+  return response.todos;
+}
+
 export async function createTodo(
   token: string,
   text: string,
