@@ -1,4 +1,4 @@
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { useAuth } from '../shared/auth/AuthContext';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
@@ -80,7 +80,7 @@ export function DocumentsScreen({ onDone }: Props) {
       externalLink: externalLink.trim() || null,
     });
     if (created) {
-      setShowCreate(false);
+      closeCreate();
       setTitle('');
       setNotes('');
       setDate('');
@@ -119,6 +119,11 @@ export function DocumentsScreen({ onDone }: Props) {
     } finally {
       setRemovingId(null);
     }
+  }
+
+  function closeCreate() {
+    setShowCreate(false);
+    Keyboard.dismiss();
   }
 
   return (
@@ -207,9 +212,9 @@ export function DocumentsScreen({ onDone }: Props) {
         visible={showCreate}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowCreate(false)}
+        onRequestClose={closeCreate}
       >
-        <Pressable style={styles.backdrop} onPress={() => setShowCreate(false)}>
+        <Pressable style={styles.backdrop} onPress={closeCreate}>
           <KeyboardAvoidingView
             style={styles.modalContent}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -255,7 +260,7 @@ export function DocumentsScreen({ onDone }: Props) {
                     fullWidth
                     disabled={!canSave || documents.loading}
                   />
-                  <AppButton title={strings.cancel} onPress={() => setShowCreate(false)} variant="ghost" fullWidth />
+                  <AppButton title={strings.cancel} onPress={closeCreate} variant="ghost" fullWidth />
                 </View>
               </ScrollView>
             </Pressable>

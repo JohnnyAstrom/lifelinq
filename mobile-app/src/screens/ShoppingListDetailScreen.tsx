@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
+  Alert,
+  Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -28,10 +31,12 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const [editQuantity, setEditQuantity] = useState('');
   const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('ST');
   const [editError, setEditError] = useState<string | null>(null);
+  const [showMoreEditUnits, setShowMoreEditUnits] = useState(false);
   const [showAddDetails, setShowAddDetails] = useState(false);
   const [addQuantity, setAddQuantity] = useState('');
   const [addUnit, setAddUnit] = useState<ShoppingUnit | null>('ST');
   const [addError, setAddError] = useState<string | null>(null);
+  const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);
 
   const selected = useMemo(() => {
     return shopping.lists.find((list) => list.id === listId) ?? null;
@@ -54,12 +59,18 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     noOpenItems: 'No open items.',
     noBoughtItems: 'No bought items yet.',
     addPlaceholder: 'Add item… (long-press Add for details)',
+    addPlaceholderExtended: 'Add item…',
     addAction: 'Add ⋯',
     loadingItems: 'Loading items...',
     clearBought: 'Clear bought',
+    clearBoughtTitle: 'Clear bought items?',
+    clearBoughtBody: 'This will remove all bought items from the list.',
     addQuantityPlaceholder: 'Quantity (optional)',
     addErrorQuantity: 'Quantity must be a positive number.',
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
+    addDetailsTitle: 'Add details',
+    addItemTitle: 'Add item',
+    saveDetails: 'Save details',
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
     editQuantityPlaceholder: 'Quantity (optional)',
@@ -70,6 +81,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     quantityInvalid: 'Quantity must be a positive number.',
     quantityUnitMismatch: 'Quantity and unit must be set together.',
     unitNone: 'None',
+    unitMore: 'Show more',
+    unitLess: 'Show less',
   };
 
   async function handleAddItem() {
@@ -92,12 +105,19 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     setAddError(null);
   }
 
+  function closeAddDetails() {
+    setShowAddDetails(false);
+    setShowMoreAddUnits(false);
+    Keyboard.dismiss();
+  }
+
   function openEdit(item: typeof items[number]) {
     setEditItemId(item.id);
     setEditName(item.name);
     setEditQuantity(item.quantity ? String(item.quantity) : '');
     setEditUnit(item.unit ?? 'ST');
     setEditError(null);
+    setShowMoreEditUnits(false);
   }
 
   function closeEdit() {
@@ -106,6 +126,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     setEditQuantity('');
     setEditUnit('ST');
     setEditError(null);
+    setShowMoreEditUnits(false);
+    Keyboard.dismiss();
   }
 
   function parseQuantity(value: string): number | null {
@@ -161,6 +183,22 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     for (const item of boughtItems) {
       await shopping.removeItem(selected.id, item.id);
     }
+  }
+
+  function requestClearBought() {
+    if (!selected || boughtItems.length === 0) {
+      return;
+    }
+    Alert.alert(strings.clearBoughtTitle, strings.clearBoughtBody, [
+      { text: strings.close, style: 'cancel' },
+      {
+        text: strings.clearBought,
+        style: 'destructive',
+        onPress: () => {
+          void handleClearBought();
+        },
+      },
+    ]);
   }
 
   function formatItemMeta(item: typeof items[number]) {
@@ -243,7 +281,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 {boughtItems.length > 0 ? (
                   <AppButton
                     title={strings.clearBought}
-                    onPress={handleClearBought}
+                    onPress={requestClearBought}
                     variant="ghost"
                   />
                 ) : null}
@@ -291,59 +329,30 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           </AppCard>
         </ScrollView>
 
-        <View style={styles.bottomContainer}>
-          <View style={styles.bottomBar}>
-            <AppInput
-              placeholder={strings.addPlaceholder}
-              value={newItemName}
-              onChangeText={setNewItemName}
-              style={styles.bottomInput}
-            />
-            <AppButton
-              title={strings.addAction}
-              onPress={handleAddItem}
-              onLongPress={() => setShowAddDetails((prev) => !prev)}
-            />
-          </View>
-
-          {showAddDetails ? (
-            <View style={styles.addDetailsBar}>
-              <AppInput
-                value={addQuantity}
-                onChangeText={(value) => {
-                  setAddQuantity(value);
-                  setAddError(null);
-                }}
-                placeholder={strings.addQuantityPlaceholder}
-                keyboardType="decimal-pad"
-                style={styles.addQuantityInput}
-              />
-              <View style={styles.addUnitRow}>
-                {UNIT_OPTIONS.map((unit) => (
-                  <AppChip
-                    key={unit.value}
-                    label={unit.label}
-                    active={addUnit === unit.value}
-                    onPress={() => {
-                      setAddUnit(unit.value);
-                      setAddError(null);
-                    }}
-                  />
-                ))}
-                <AppChip
-                  label={strings.unitNone}
-                  active={!addUnit}
-                  onPress={() => {
-                    setAddUnit(null);
-                    setAddQuantity('');
-                    setAddError(null);
-                  }}
-                />
-              </View>
-              {addError ? <Text style={styles.error}>{addError}</Text> : null}
-            </View>
-          ) : null}
+      <View style={styles.bottomContainer}>
+        <View style={styles.bottomBar}>
+          <AppInput
+            placeholder={strings.addPlaceholder}
+            value={newItemName}
+            onChangeText={setNewItemName}
+            onSubmitEditing={() => {
+              if (newItemName.trim()) {
+                void handleAddItem();
+              }
+            }}
+            returnKeyType="done"
+            style={styles.bottomInput}
+          />
+          <AppButton
+            title={strings.addAction}
+            onPress={handleAddItem}
+            onLongPress={() => {
+              Keyboard.dismiss();
+              setShowAddDetails(true);
+            }}
+          />
         </View>
+      </View>
       </View>
 
 
@@ -361,7 +370,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 placeholder={strings.editNamePlaceholder}
                 value={editName}
                 onChangeText={setEditName}
-                autoFocus
               />
               <AppInput
                 placeholder={strings.editQuantityPlaceholder}
@@ -370,7 +378,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 keyboardType="decimal-pad"
               />
               <View style={styles.unitRow}>
-                {UNIT_OPTIONS.map((unit) => (
+                {PRIMARY_UNIT_OPTIONS.map((unit) => (
                   <AppChip
                     key={unit.value}
                     label={unit.label}
@@ -386,7 +394,24 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     setEditQuantity('');
                   }}
                 />
+                <AppChip
+                  label={showMoreEditUnits ? strings.unitLess : strings.unitMore}
+                  active={showMoreEditUnits}
+                  onPress={() => setShowMoreEditUnits((prev) => !prev)}
+                />
               </View>
+              {showMoreEditUnits ? (
+                <View style={styles.addUnitRow}>
+                  {MORE_UNIT_OPTIONS.map((unit) => (
+                    <AppChip
+                      key={unit.value}
+                      label={unit.label}
+                      active={editUnit === unit.value}
+                      onPress={() => setEditUnit(unit.value)}
+                    />
+                  ))}
+                </View>
+              ) : null}
               {editError ? <Text style={styles.error}>{editError}</Text> : null}
               <View style={styles.editorActions}>
                 <AppButton title={strings.saveChanges} onPress={handleSaveEdit} fullWidth />
@@ -397,14 +422,118 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           </KeyboardAvoidingView>
         </Pressable>
       ) : null}
+
+      <Modal
+        visible={showAddDetails}
+        transparent
+        animationType="slide"
+        onRequestClose={closeAddDetails}
+      >
+        <Pressable style={styles.backdrop} onPress={closeAddDetails}>
+          <KeyboardAvoidingView
+            style={styles.modalContent}
+            behavior="padding"
+            enabled={Platform.OS === 'ios'}
+          >
+            <Pressable style={styles.sheet} onPress={() => null}>
+              <View style={styles.sheetHandle} />
+              <Text style={textStyles.h3}>{strings.addDetailsTitle}</Text>
+              <AppInput
+                placeholder={strings.addPlaceholderExtended}
+                value={newItemName}
+                onChangeText={setNewItemName}
+                onSubmitEditing={async () => {
+                  if (newItemName.trim()) {
+                    await handleAddItem();
+                    closeAddDetails();
+                  }
+                }}
+                returnKeyType="done"
+              />
+              <AppInput
+                value={addQuantity}
+                onChangeText={(value) => {
+                  setAddQuantity(value);
+                  setAddError(null);
+                }}
+                placeholder={strings.addQuantityPlaceholder}
+                keyboardType="decimal-pad"
+                style={styles.addQuantityInput}
+              />
+              <View style={styles.addUnitRow}>
+                {PRIMARY_UNIT_OPTIONS.map((unit) => (
+                  <AppChip
+                    key={unit.value}
+                    label={unit.label}
+                    active={addUnit === unit.value}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setAddUnit(unit.value);
+                      setAddError(null);
+                    }}
+                  />
+                ))}
+                <AppChip
+                  label={strings.unitNone}
+                  active={!addUnit}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setAddUnit(null);
+                    setAddQuantity('');
+                    setAddError(null);
+                  }}
+                />
+                <AppChip
+                  label={showMoreAddUnits ? strings.unitLess : strings.unitMore}
+                  active={showMoreAddUnits}
+                  onPress={() => setShowMoreAddUnits((prev) => !prev)}
+                />
+              </View>
+              {showMoreAddUnits ? (
+                <View style={styles.addUnitRow}>
+                  {MORE_UNIT_OPTIONS.map((unit) => (
+                    <AppChip
+                      key={unit.value}
+                      label={unit.label}
+                      active={addUnit === unit.value}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setAddUnit(unit.value);
+                        setAddError(null);
+                      }}
+                    />
+                  ))}
+                </View>
+              ) : null}
+              {addError ? <Text style={styles.error}>{addError}</Text> : null}
+              <View style={styles.sheetActions}>
+                <AppButton
+                  title={strings.addItemTitle}
+                  onPress={async () => {
+                    await handleAddItem();
+                    closeAddDetails();
+                  }}
+                  disabled={newItemName.trim().length === 0}
+                  fullWidth
+                />
+                <AppButton title={strings.saveDetails} onPress={closeAddDetails} variant="secondary" fullWidth />
+                <AppButton title={strings.close} onPress={closeAddDetails} variant="ghost" fullWidth />
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </AppScreen>
   );
 }
 
-const UNIT_OPTIONS: Array<{ label: string; value: ShoppingUnit }> = [
-  { label: 'pc', value: 'ST' },
+const PRIMARY_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
+  { label: 'pcs', value: 'ST' },
   { label: 'pack', value: 'FORP' },
   { label: 'kg', value: 'KG' },
+];
+
+const MORE_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
   { label: 'hg', value: 'HG' },
   { label: 'g', value: 'G' },
   { label: 'l', value: 'L' },
@@ -600,6 +729,9 @@ const styles = StyleSheet.create({
   addUnitRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  sheetActions: {
     gap: theme.spacing.sm,
   },
   bottomInput: {

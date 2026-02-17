@@ -66,6 +66,8 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     Keyboard.dismiss();
   }
 
+  const canCreateList = newListName.trim().length > 0;
+
   function closeCreate() {
     setShowCreate(false);
     Keyboard.dismiss();
@@ -86,6 +88,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
 
   function closeActions() {
     setActiveListId(null);
+    Keyboard.dismiss();
   }
 
   function closeRename() {
@@ -159,7 +162,9 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                       onPress={() => onSelectList(list.id)}
                     >
                       <View style={styles.listMain}>
-                        <Text style={styles.listTitle}>{list.name}</Text>
+                        <Text style={styles.listTitle} numberOfLines={1} ellipsizeMode="tail">
+                          {list.name}
+                        </Text>
                         <Subtle>
                           {openCount} {strings.open} · {totalCount} {strings.total}
                         </Subtle>
@@ -208,10 +213,21 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                 placeholder={strings.listNamePlaceholder}
                 value={newListName}
                 onChangeText={setNewListName}
+                onSubmitEditing={async () => {
+                  if (canCreateList) {
+                    await handleCreateList();
+                  }
+                }}
+                returnKeyType="done"
                 autoFocus
               />
               <View style={styles.sheetActions}>
-                <AppButton title={strings.createListAction} onPress={handleCreateList} fullWidth />
+                <AppButton
+                  title={strings.createListAction}
+                  onPress={handleCreateList}
+                  disabled={!canCreateList}
+                  fullWidth
+                />
                 <AppButton title={strings.close} onPress={closeCreate} variant="ghost" fullWidth />
               </View>
             </Pressable>
