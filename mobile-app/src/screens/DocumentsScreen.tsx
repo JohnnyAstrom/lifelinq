@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { useAuth } from '../shared/auth/AuthContext';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
+import { ApiError } from '../shared/api/client';
 import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -19,6 +20,8 @@ export function DocumentsScreen({ onDone }: Props) {
   const [category, setCategory] = useState('');
   const [tags, setTags] = useState('');
   const [externalLink, setExternalLink] = useState('');
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const strings = {
     title: 'Documents',
     subtitle: 'Receipts, warranties, and important records.',
@@ -48,6 +51,11 @@ export function DocumentsScreen({ onDone }: Props) {
     untitled: 'Untitled document',
     back: 'Back',
     create: 'New document',
+    remove: 'Remove',
+    confirmRemoveTitle: 'Remove document?',
+    confirmRemoveBody: 'This action cannot be undone.',
+    removeConfirm: 'Remove',
+    neutralMissing: 'Document no longer exists. The list was refreshed.',
   };
 
   const hasQuery = documents.query.trim().length > 0;
@@ -79,6 +87,37 @@ export function DocumentsScreen({ onDone }: Props) {
       setCategory('');
       setTags('');
       setExternalLink('');
+    }
+  }
+
+  function requestRemove(id: string) {
+    Alert.alert(
+      strings.confirmRemoveTitle,
+      strings.confirmRemoveBody,
+      [
+        { text: strings.cancel, style: 'cancel' },
+        {
+          text: strings.removeConfirm,
+          style: 'destructive',
+          onPress: () => {
+            void handleRemove(id);
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleRemove(id: string) {
+    setRemovingId(id);
+    setInfoMessage(null);
+    try {
+      await documents.remove(id);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setInfoMessage(strings.neutralMissing);
+      }
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -119,6 +158,7 @@ export function DocumentsScreen({ onDone }: Props) {
         </AppCard>
 
         {documents.loading ? <Subtle>{strings.loading}</Subtle> : null}
+        {infoMessage ? <Subtle>{infoMessage}</Subtle> : null}
         {documents.error ? <Text style={styles.error}>{documents.error}</Text> : null}
 
         {documents.items.length === 0 && !documents.loading ? (
@@ -143,7 +183,15 @@ export function DocumentsScreen({ onDone }: Props) {
               return (
                 <Pressable key={item.id} style={({ pressed }) => [styles.row, pressed ? styles.rowPressed : null]}>
                   <View style={styles.rowBody}>
-                    <Text style={styles.rowTitle}>{item.title?.trim() || strings.untitled}</Text>
+                    <View style={styles.rowHeader}>
+                      <Text style={styles.rowTitle}>{item.title?.trim() || strings.untitled}</Text>
+                      <AppButton
+                        title={strings.remove}
+                        onPress={() => requestRemove(item.id)}
+                        variant="ghost"
+                        disabled={removingId === item.id}
+                      />
+                    </View>
                     {item.notes ? <Subtle>{item.notes}</Subtle> : null}
                     {meta ? <Subtle>{meta}</Subtle> : null}
                     {item.externalLink ? <Subtle>{item.externalLink}</Subtle> : null}
@@ -155,48 +203,65 @@ export function DocumentsScreen({ onDone }: Props) {
         )}
       </View>
 
-      {showCreate ? (
+      <Modal
+        visible={showCreate}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCreate(false)}
+      >
         <Pressable style={styles.backdrop} onPress={() => setShowCreate(false)}>
-          <Pressable style={styles.sheet} onPress={() => null}>
-            <View style={styles.sheetHandle} />
-            <Text style={textStyles.h3}>{strings.createTitle}</Text>
-            <Subtle>{strings.createSubtitle}</Subtle>
-            <View style={styles.formField}>
-              <Text style={styles.label}>{strings.titleLabel}</Text>
-              <AppInput value={title} placeholder={strings.titlePlaceholder} onChangeText={setTitle} autoFocus />
-            </View>
-            <View style={styles.formField}>
-              <Text style={styles.label}>{strings.notesLabel}</Text>
-              <AppInput value={notes} placeholder={strings.notesPlaceholder} onChangeText={setNotes} multiline />
-            </View>
-            <View style={styles.formField}>
-              <Text style={styles.label}>{strings.dateLabel}</Text>
-              <AppInput value={date} placeholder={strings.datePlaceholder} onChangeText={setDate} />
-            </View>
-            <View style={styles.formField}>
-              <Text style={styles.label}>{strings.categoryLabel}</Text>
-              <AppInput value={category} placeholder={strings.categoryPlaceholder} onChangeText={setCategory} />
-            </View>
-            <View style={styles.formField}>
-              <Text style={styles.label}>{strings.tagsLabel}</Text>
-              <AppInput value={tags} placeholder={strings.tagsPlaceholder} onChangeText={setTags} />
-            </View>
-            <View style={styles.formField}>
-              <Text style={styles.label}>{strings.linkLabel}</Text>
-              <AppInput value={externalLink} placeholder={strings.linkPlaceholder} onChangeText={setExternalLink} />
-            </View>
-            <View style={styles.sheetActions}>
-              <AppButton
-                title={strings.save}
-                onPress={handleCreate}
-                fullWidth
-                disabled={!canSave || documents.loading}
-              />
-              <AppButton title={strings.cancel} onPress={() => setShowCreate(false)} variant="ghost" fullWidth />
-            </View>
-          </Pressable>
+          <KeyboardAvoidingView
+            style={styles.modalContent}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <Pressable style={styles.sheet} onPress={() => null}>
+              <View style={styles.sheetHandle} />
+              <ScrollView
+                style={styles.sheetScroll}
+                contentContainerStyle={styles.sheetScrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={textStyles.h3}>{strings.createTitle}</Text>
+                <Subtle>{strings.createSubtitle}</Subtle>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>{strings.titleLabel}</Text>
+                  <AppInput value={title} placeholder={strings.titlePlaceholder} onChangeText={setTitle} autoFocus />
+                </View>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>{strings.notesLabel}</Text>
+                  <AppInput value={notes} placeholder={strings.notesPlaceholder} onChangeText={setNotes} multiline />
+                </View>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>{strings.dateLabel}</Text>
+                  <AppInput value={date} placeholder={strings.datePlaceholder} onChangeText={setDate} />
+                </View>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>{strings.categoryLabel}</Text>
+                  <AppInput value={category} placeholder={strings.categoryPlaceholder} onChangeText={setCategory} />
+                </View>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>{strings.tagsLabel}</Text>
+                  <AppInput value={tags} placeholder={strings.tagsPlaceholder} onChangeText={setTags} />
+                </View>
+                <View style={styles.formField}>
+                  <Text style={styles.label}>{strings.linkLabel}</Text>
+                  <AppInput value={externalLink} placeholder={strings.linkPlaceholder} onChangeText={setExternalLink} />
+                </View>
+                <View style={styles.sheetActions}>
+                  <AppButton
+                    title={strings.save}
+                    onPress={handleCreate}
+                    fullWidth
+                    disabled={!canSave || documents.loading}
+                  />
+                  <AppButton title={strings.cancel} onPress={() => setShowCreate(false)} variant="ghost" fullWidth />
+                </View>
+              </ScrollView>
+            </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
-      ) : null}
+      </Modal>
     </AppScreen>
   );
 }
@@ -239,8 +304,15 @@ const styles = StyleSheet.create({
   rowBody: {
     gap: theme.spacing.xs,
   },
+  rowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
   rowTitle: {
     ...textStyles.h3,
+    flex: 1,
   },
   error: {
     color: theme.colors.danger,
@@ -255,14 +327,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
+  modalContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   sheet: {
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    maxHeight: '85%',
+    paddingTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  sheetScroll: {
+    flexGrow: 0,
+  },
+  sheetScrollContent: {
+    paddingBottom: theme.spacing.lg,
+    gap: theme.spacing.sm,
   },
   sheetHandle: {
     alignSelf: 'center',

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { formatApiError } from '../../../shared/api/client';
+import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
-import { createDocument, listDocuments, type CreateDocumentRequest, type DocumentItemResponse } from '../api/documentsApi';
+import { createDocument, deleteDocument, listDocuments, type CreateDocumentRequest, type DocumentItemResponse } from '../api/documentsApi';
 
 export function useDocuments(token: string | null) {
   const [items, setItems] = useState<DocumentItemResponse[]>([]);
@@ -48,6 +48,26 @@ export function useDocuments(token: string | null) {
     }
   }
 
+  async function remove(id: string): Promise<void> {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    const previousItems = items;
+    setError(null);
+    setItems((current) => current.filter((item) => item.id !== id));
+    try {
+      await deleteDocument(token, id);
+    } catch (err) {
+      setItems(previousItems);
+      await handleApiError(err);
+      if (err instanceof ApiError && err.status === 404) {
+        await load(trimmedQuery);
+      }
+      setError(formatApiError(err));
+      throw err;
+    }
+  }
+
   useEffect(() => {
     load(trimmedQuery);
   }, [token, trimmedQuery]);
@@ -60,5 +80,6 @@ export function useDocuments(token: string | null) {
     loading,
     reload: () => load(trimmedQuery),
     create,
+    remove,
   };
 }

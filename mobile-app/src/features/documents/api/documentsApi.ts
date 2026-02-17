@@ -54,3 +54,14 @@ export async function listDocuments(
   const response = await fetchJson<ListDocumentsResponse>(`/documents${query}`, {}, { token });
   return response.items;
 }
+
+export async function deleteDocument(
+  token: string,
+  documentId: string
+): Promise<void> {
+  await fetchJson<void>(
+    `/documents/${encodeURIComponent(documentId)}`,
+    { method: 'DELETE' },
+    { token }
+  );
+}
