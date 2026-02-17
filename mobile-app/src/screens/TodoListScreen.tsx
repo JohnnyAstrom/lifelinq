@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -119,12 +120,14 @@ export function TodoListScreen({ token, onDone }: Props) {
   }
 
   function setDateToToday() {
+    Keyboard.dismiss();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setPendingDate(today);
   }
 
   function setDateToTomorrow() {
+    Keyboard.dismiss();
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
@@ -370,7 +373,10 @@ export function TodoListScreen({ token, onDone }: Props) {
                 <AppChip
                   label={strings.quickPick}
                   active={showDatePicker}
-                  onPress={() => setShowDatePicker(true)}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowDatePicker(true);
+                  }}
                 />
               </View>
               {pendingDate ? (
