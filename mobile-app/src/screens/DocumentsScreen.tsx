@@ -43,7 +43,7 @@ export function DocumentsScreen({ onDone }: Props) {
     cancel: 'Cancel',
     loading: 'Loading documents...',
     emptyTitle: 'No documents yet.',
-    emptyBody: 'Create a document in the backend to see it here.',
+    emptyBody: 'Create a document to see it here.',
     results: 'results',
     untitled: 'Untitled document',
     back: 'Back',
@@ -186,7 +186,12 @@ export function DocumentsScreen({ onDone }: Props) {
               <AppInput value={externalLink} placeholder={strings.linkPlaceholder} onChangeText={setExternalLink} />
             </View>
             <View style={styles.sheetActions}>
-              <AppButton title={strings.save} onPress={handleCreate} fullWidth disabled={!canSave} />
+              <AppButton
+                title={strings.save}
+                onPress={handleCreate}
+                fullWidth
+                disabled={!canSave || documents.loading}
+              />
               <AppButton title={strings.cancel} onPress={() => setShowCreate(false)} variant="ghost" fullWidth />
             </View>
           </Pressable>
