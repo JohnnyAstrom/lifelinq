@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  GestureResponderEvent,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -39,13 +38,34 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const [addUnit, setAddUnit] = useState<ShoppingUnit | null>('ST');
   const [addError, setAddError] = useState<string | null>(null);
   const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);
+  const [orderedOpenItemIds, setOrderedOpenItemIds] = useState<string[]>([]);
+  const [draggingOpenItemId, setDraggingOpenItemId] = useState<string | null>(null);
+  const orderedOpenItemIdsRef = useRef<string[]>([]);
+  const draggingOpenItemIdRef = useRef<string | null>(null);
+  const dragStartIndexRef = useRef<number | null>(null);
+  const dragMovedRef = useRef(false);
+  const dragStartPageYRef = useRef<number | null>(null);
+  const rowHeightRef = useRef(92);
+  const finishingDragRef = useRef(false);
+  const ignoreNextOpenPressRef = useRef(false);
+  const pendingOpenReorderSyncRef = useRef(false);
 
   const selected = useMemo(() => {
     return shopping.lists.find((list) => list.id === listId) ?? null;
   }, [shopping.lists, listId]);
 
   const items = selected ? selected.items : [];
-  const openItems = items.filter((item) => item.status !== 'BOUGHT');
+  const openItemsBase = useMemo(() => items.filter((item) => item.status !== 'BOUGHT'), [items]);
+  const openItems = useMemo(() => {
+    if (orderedOpenItemIds.length === 0) {
+      return openItemsBase;
+    }
+    const byId = new Map(openItemsBase.map((item) => [item.id, item]));
+    const ordered = orderedOpenItemIds
+      .map((id) => byId.get(id))
+      .filter((item): item is NonNullable<typeof item> => !!item);
+    return ordered.length === openItemsBase.length ? ordered : openItemsBase;
+  }, [openItemsBase, orderedOpenItemIds]);
   const boughtItems = items.filter((item) => item.status === 'BOUGHT');
 
   const strings = {
@@ -64,7 +84,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addPlaceholderExtended: 'Add item…',
     addAction: 'Details',
     quickAddTitle: 'Add item',
-    closeSymbol: '×',
     loadingItems: 'Loading items...',
     clearBought: 'Clear bought',
     clearBoughtTitle: 'Clear bought items?',
@@ -86,7 +105,22 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     unitNone: 'None',
     unitMore: 'Show more',
     unitLess: 'Show less',
+    reorderHint: 'Hold and drag to reorder open items',
   };
+
+  useEffect(() => {
+    if (draggingOpenItemId || pendingOpenReorderSyncRef.current) {
+      return;
+    }
+    const next = openItemsBase.map((item) => item.id);
+    const current = orderedOpenItemIdsRef.current;
+    const same = current.length === next.length && current.every((value, index) => value === next[index]);
+    if (same) {
+      return;
+    }
+    orderedOpenItemIdsRef.current = next;
+    setOrderedOpenItemIds(next);
+  }, [draggingOpenItemId, openItemsBase]);
 
   async function handleAddItem() {
     if (!selected || !newItemName.trim()) {
@@ -232,6 +266,100 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     return item.name;
   }
 
+  function moveIds(ids: string[], from: number, to: number) {
+    if (from === to) {
+      return ids;
+    }
+    const next = [...ids];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    return next;
+  }
+
+  function startOpenDrag(itemId: string, pageY: number) {
+    const currentIds = orderedOpenItemIdsRef.current.length > 0
+      ? orderedOpenItemIdsRef.current
+      : openItemsBase.map((item) => item.id);
+    const index = currentIds.indexOf(itemId);
+    if (index < 0) {
+      return;
+    }
+    orderedOpenItemIdsRef.current = currentIds;
+    setOrderedOpenItemIds(currentIds);
+    setDraggingOpenItemId(itemId);
+    draggingOpenItemIdRef.current = itemId;
+    dragStartIndexRef.current = index;
+    dragMovedRef.current = false;
+    dragStartPageYRef.current = pageY;
+    ignoreNextOpenPressRef.current = true;
+  }
+
+  function handleOpenTouchMove(event: GestureResponderEvent) {
+    if (!draggingOpenItemIdRef.current) {
+      return;
+    }
+    const pageY = event.nativeEvent.pageY;
+    const startY = dragStartPageYRef.current;
+    if (startY !== null && Math.abs(pageY - startY) < 12) {
+      return;
+    }
+    const currentIds = orderedOpenItemIdsRef.current;
+    if (currentIds.length === 0) {
+      return;
+    }
+    const startIndex = dragStartIndexRef.current;
+    if (startIndex === null) {
+      return;
+    }
+    const deltaY = pageY - startY;
+    const offsetRows = Math.round(deltaY / rowHeightRef.current);
+    const targetIndex = Math.max(0, Math.min(currentIds.length - 1, startIndex + offsetRows));
+    const currentIndex = currentIds.indexOf(draggingOpenItemIdRef.current);
+    if (currentIndex < 0 || targetIndex === currentIndex) {
+      return;
+    }
+    dragMovedRef.current = true;
+    const next = moveIds(currentIds, currentIndex, targetIndex);
+    orderedOpenItemIdsRef.current = next;
+    setOrderedOpenItemIds(next);
+  }
+
+  async function finishOpenDrag() {
+    if (finishingDragRef.current) {
+      return;
+    }
+    finishingDragRef.current = true;
+    const draggedId = draggingOpenItemIdRef.current;
+    const startIndex = dragStartIndexRef.current;
+    if (!selected || !draggedId || startIndex === null) {
+      finishingDragRef.current = false;
+      return;
+    }
+    const moved = dragMovedRef.current;
+    const finalIndex = orderedOpenItemIdsRef.current.indexOf(draggedId);
+    setDraggingOpenItemId(null);
+    draggingOpenItemIdRef.current = null;
+    dragStartIndexRef.current = null;
+    dragMovedRef.current = false;
+    dragStartPageYRef.current = null;
+    setTimeout(() => {
+      ignoreNextOpenPressRef.current = false;
+    }, 0);
+    if (!moved || finalIndex < 0 || finalIndex === startIndex) {
+      finishingDragRef.current = false;
+      return;
+    }
+    const direction = finalIndex > startIndex ? 'DOWN' : 'UP';
+    const steps = Math.abs(finalIndex - startIndex);
+    try {
+      pendingOpenReorderSyncRef.current = true;
+      await shopping.reorderItem(selected.id, draggedId, direction, steps);
+    } finally {
+      pendingOpenReorderSyncRef.current = false;
+      finishingDragRef.current = false;
+    }
+  }
+
   return (
     <AppScreen scroll={false} contentStyle={styles.screenContent}>
       <TopBar
@@ -240,7 +368,12 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       />
 
       <View style={styles.mainLayout}>
-        <ScrollView style={styles.listScroll} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.listScroll}
+          contentContainerStyle={styles.scrollContent}
+          scrollEnabled={!draggingOpenItemId}
+          keyboardShouldPersistTaps="handled"
+        >
           {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
@@ -253,9 +386,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
               <Subtle>{strings.noOpenItems}</Subtle>
             ) : (
               <View style={styles.items}>
+                <Subtle>{strings.reorderHint}</Subtle>
                 {openItems.map((item) => (
                   <Swipeable
                     key={item.id}
+                    enabled={!draggingOpenItemId}
                     renderRightActions={() => (
                       <View style={[styles.swipeAction, styles.swipeActionBought]}>
                         <Text style={styles.swipeActionText}>{strings.swipeBought}</Text>
@@ -263,11 +398,24 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     )}
                     onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
                   >
-                    <View style={styles.itemRow}>
+                    <View style={[styles.itemRow, draggingOpenItemId === item.id ? styles.itemRowDragging : null]}>
                       <Pressable
                         style={styles.toggleZone}
+                        onLongPress={(event) => startOpenDrag(item.id, event.nativeEvent.pageY)}
+                        delayLongPress={180}
+                        onTouchMove={handleOpenTouchMove}
+                        onTouchEnd={() => {
+                          void finishOpenDrag();
+                        }}
+                        onTouchCancel={() => {
+                          void finishOpenDrag();
+                        }}
                         onPress={() => {
-                          if (selected) {
+                          if (ignoreNextOpenPressRef.current) {
+                            ignoreNextOpenPressRef.current = false;
+                            return;
+                          }
+                          if (selected && !draggingOpenItemIdRef.current) {
                             shopping.toggleItem(selected.id, item.id);
                           }
                         }}
@@ -277,7 +425,14 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                           <Text style={styles.itemText}>{formatItemTitle(item)}</Text>
                         </View>
                       </Pressable>
-                      <Pressable style={styles.detailZone} onPress={() => openEdit(item)}>
+                      <Pressable
+                        style={styles.detailZone}
+                        onPress={() => {
+                          if (!draggingOpenItemIdRef.current) {
+                            openEdit(item);
+                          }
+                        }}
+                      >
                         <Text style={styles.itemHintText}>{strings.details}</Text>
                         <Text style={styles.itemHintChevron}>›</Text>
                       </Pressable>
@@ -348,8 +503,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         <View style={styles.bottomBar}>
           <Pressable
             style={styles.bottomInputPressable}
-            onPress={() => {
-              Keyboard.dismiss();
+            onPressOut={() => {
               setQuickAddName('');
               setShowQuickAdd(true);
             }}
@@ -370,11 +524,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 
       {editItemId ? (
         <Pressable style={styles.backdrop} onPress={closeEdit}>
-          <KeyboardAvoidingView
-            style={styles.modalContent}
-            behavior="padding"
-            enabled={Platform.OS === 'ios'}
-          >
+          <View style={styles.modalContent}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.editTitle}</Text>
@@ -431,61 +581,51 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 <AppButton title={strings.close} onPress={closeEdit} variant="secondary" fullWidth />
               </View>
             </Pressable>
-          </KeyboardAvoidingView>
+          </View>
         </Pressable>
       ) : null}
 
-      <Modal
-        visible={showQuickAdd}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setShowQuickAdd(false);
-          Keyboard.dismiss();
-        }}
-      >
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => {
+      {showQuickAdd ? (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
             setShowQuickAdd(false);
             Keyboard.dismiss();
           }}
         >
-          <KeyboardAvoidingView
-            style={styles.modalContent}
-            behavior="padding"
-            enabled={Platform.OS === 'ios'}
-          >
-            <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
+          <View style={styles.modalLayer}>
+            <Pressable
+              style={styles.backdropPressable}
+              onPress={() => {
+                setShowQuickAdd(false);
+                Keyboard.dismiss();
+              }}
+            />
+            <View style={styles.modalContent} pointerEvents="box-none">
+              <View style={styles.sheet}>
+                <View style={styles.sheetHandle} />
               <View style={styles.quickAddHeader}>
                 <Text style={textStyles.h3}>{strings.quickAddTitle}</Text>
-                <Pressable
-                  style={styles.quickAddClose}
-                  onPress={() => {
-                    setShowQuickAdd(false);
-                    Keyboard.dismiss();
-                  }}
-                >
-                  <Text style={styles.quickAddCloseText}>{strings.closeSymbol}</Text>
-                </Pressable>
               </View>
-              <AppInput
-                placeholder={strings.addPlaceholder}
-                value={quickAddName}
-                onChangeText={setQuickAddName}
-                autoFocus
-                onSubmitEditing={async () => {
-                  if (quickAddName.trim()) {
-                    await handleQuickAdd();
-                  }
-                }}
-                returnKeyType="done"
-              />
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+                <AppInput
+                  placeholder={strings.addPlaceholder}
+                  value={quickAddName}
+                  onChangeText={setQuickAddName}
+                  autoFocus
+                  onSubmitEditing={async () => {
+                    if (quickAddName.trim()) {
+                      await handleQuickAdd();
+                    }
+                  }}
+                  returnKeyType="done"
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
 
       <Modal
         visible={showAddDetails}
@@ -494,11 +634,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         onRequestClose={closeAddDetails}
       >
         <Pressable style={styles.backdrop} onPress={closeAddDetails}>
-          <KeyboardAvoidingView
-            style={styles.modalContent}
-            behavior="padding"
-            enabled={Platform.OS === 'ios'}
-          >
+          <View style={styles.modalContent}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.addDetailsTitle}</Text>
@@ -583,7 +719,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 <AppButton title={strings.close} onPress={closeAddDetails} variant="ghost" fullWidth />
               </View>
             </Pressable>
-          </KeyboardAvoidingView>
+          </View>
         </Pressable>
       </Modal>
     </AppScreen>
@@ -629,7 +765,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: theme.spacing.lg,
     paddingTop: 90,
-    paddingBottom: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
     gap: theme.spacing.md,
   },
   sectionHeader: {
@@ -800,6 +936,10 @@ const styles = StyleSheet.create({
   bottomInput: {
     flex: 1,
   },
+  itemRowDragging: {
+    borderColor: theme.colors.primary,
+    opacity: 0.85,
+  },
   bottomInputPressable: {
     flex: 1,
     borderWidth: 1,
@@ -846,6 +986,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
+  },
+  modalLayer: {
+    flex: 1,
+  },
+  backdropPressable: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   modalContent: {
     flex: 1,

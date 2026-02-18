@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  LayoutChangeEvent,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -144,9 +145,11 @@ type InputProps = {
   onBlur?: () => void;
   onSubmitEditing?: () => void;
   returnKeyType?: 'done' | 'next' | 'search' | 'send';
+  showSoftInputOnFocus?: boolean;
+  onLayout?: (event: LayoutChangeEvent) => void;
 };
 
-export function AppInput({
+export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInput({
   value,
   placeholder,
   onChangeText,
@@ -157,9 +160,12 @@ export function AppInput({
   onBlur,
   onSubmitEditing,
   returnKeyType,
-}: InputProps) {
+  showSoftInputOnFocus,
+  onLayout,
+}, ref) {
   return (
     <TextInput
+      ref={ref}
       value={value}
       placeholder={placeholder}
       onChangeText={onChangeText}
@@ -169,11 +175,13 @@ export function AppInput({
       onBlur={onBlur}
       onSubmitEditing={onSubmitEditing}
       returnKeyType={returnKeyType}
+      showSoftInputOnFocus={showSoftInputOnFocus}
+      onLayout={onLayout}
       style={[styles.input, style]}
       placeholderTextColor={theme.colors.subtle}
     />
   );
-}
+});
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return <Text style={textStyles.h3}>{children}</Text>;

@@ -42,6 +42,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   const listContainerTopRef = useRef(0);
   const rowHeightRef = useRef(92);
   const finishingDragRef = useRef(false);
+  const pendingListReorderSyncRef = useRef(false);
   const strings = {
     title: 'Shopping lists',
     subtitle: 'Choose a list to see items and start shopping.',
@@ -70,10 +71,15 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   };
 
   useEffect(() => {
-    if (draggingListId) {
+    if (draggingListId || pendingListReorderSyncRef.current) {
       return;
     }
     const next = shopping.lists.map((list) => list.id);
+    const current = orderedListIdsRef.current;
+    const same = current.length === next.length && current.every((value, index) => value === next[index]);
+    if (same) {
+      return;
+    }
     orderedListIdsRef.current = next;
     setOrderedListIds(next);
   }, [shopping.lists, draggingListId]);
@@ -180,7 +186,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     return next;
   }
 
-  function startDrag(listId: string) {
+  function startDrag(listId: string, pageY: number) {
     const currentIds = orderedListIds.length > 0 ? orderedListIds : orderedLists.map((list) => list.id);
     if (orderedListIds.length === 0) {
       orderedListIdsRef.current = currentIds;
@@ -194,7 +200,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     draggingListIdRef.current = listId;
     dragStartIndexRef.current = index;
     dragMovedRef.current = false;
-    dragStartPageYRef.current = lastTouchPageYRef.current;
+    dragStartPageYRef.current = pageY;
   }
 
   function handleListTouchMove(event: GestureResponderEvent) {
@@ -254,8 +260,10 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     const direction = finalIndex > startIndex ? 'DOWN' : 'UP';
     const steps = Math.abs(finalIndex - startIndex);
     try {
+      pendingListReorderSyncRef.current = true;
       await shopping.reorderList(draggingId, direction, steps);
     } finally {
+      pendingListReorderSyncRef.current = false;
       finishingDragRef.current = false;
     }
   }
@@ -308,8 +316,8 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                           onSelectList(list.id);
                         }
                       }}
-                      onLongPress={() => {
-                        startDrag(list.id);
+                      onLongPress={(event) => {
+                        startDrag(list.id, event.nativeEvent.pageY);
                       }}
                       delayLongPress={180}
                     >

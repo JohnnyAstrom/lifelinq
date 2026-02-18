@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { devLogin } from '../features/auth/api/devLoginApi';
 import { formatApiError } from '../shared/api/client';
 import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
@@ -40,26 +40,32 @@ export function LoginScreen({ onLoggedIn }: Props) {
 
   return (
     <AppScreen scroll={false} contentStyle={styles.container}>
-      <AppCard style={styles.card}>
-        <Text style={textStyles.h2}>{strings.title}</Text>
-        <Subtle>{strings.subtitle}</Subtle>
-        <View style={styles.field}>
-          <Text style={styles.label}>{strings.emailLabel}</Text>
-          <AppInput
-            value={email}
-            placeholder={strings.emailPlaceholder}
-            onChangeText={setEmail}
-            autoFocus
+      <KeyboardAvoidingView
+        style={styles.keyboardArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 24 : 0}
+      >
+        <AppCard style={styles.card}>
+          <Text style={textStyles.h2}>{strings.title}</Text>
+          <Subtle>{strings.subtitle}</Subtle>
+          <View style={styles.field}>
+            <Text style={styles.label}>{strings.emailLabel}</Text>
+            <AppInput
+              value={email}
+              placeholder={strings.emailPlaceholder}
+              onChangeText={setEmail}
+              autoFocus
+            />
+          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <AppButton
+            title={loading ? strings.loggingIn : strings.login}
+            onPress={handleLogin}
+            disabled={!email.trim() || loading}
+            fullWidth
           />
-        </View>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <AppButton
-          title={loading ? strings.loggingIn : strings.login}
-          onPress={handleLogin}
-          disabled={!email.trim() || loading}
-          fullWidth
-        />
-      </AppCard>
+        </AppCard>
+      </KeyboardAvoidingView>
     </AppScreen>
   );
 }
@@ -67,6 +73,9 @@ export function LoginScreen({ onLoggedIn }: Props) {
 const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
+  },
+  keyboardArea: {
+    width: '100%',
   },
   card: {
     gap: theme.spacing.md,

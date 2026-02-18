@@ -31,15 +31,22 @@ export function useShoppingLists(token: string | null) {
     lists: [],
   });
 
-  const load = async () => {
+  const load = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
     if (!token) {
       setState({ loading: false, error: 'Missing token', lists: [] });
       return;
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    if (!silent) {
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+    }
     try {
       const lists = await listShoppingLists({ token });
-      setState({ loading: false, error: null, lists });
+      if (silent) {
+        setState((prev) => ({ ...prev, error: null, lists }));
+      } else {
+        setState({ loading: false, error: null, lists });
+      }
     } catch (err) {
       await handleApiError(err);
       setState({ loading: false, error: formatApiError(err), lists: [] });
@@ -136,13 +143,12 @@ export function useShoppingLists(token: string | null) {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const moveCount = Math.max(1, Math.floor(steps));
       for (let index = 0; index < moveCount; index += 1) {
         await reorderShoppingList(listId, { direction }, { token });
       }
-      await load();
+      await load({ silent: true });
     } catch (err) {
       await handleApiError(err);
       setState((prev) => ({
@@ -222,13 +228,12 @@ export function useShoppingLists(token: string | null) {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const moveCount = Math.max(1, Math.floor(steps));
       for (let index = 0; index < moveCount; index += 1) {
         await reorderShoppingItem(listId, itemId, { direction }, { token });
       }
-      await load();
+      await load({ silent: true });
     } catch (err) {
       await handleApiError(err);
       setState((prev) => ({
