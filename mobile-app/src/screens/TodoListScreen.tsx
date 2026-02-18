@@ -827,7 +827,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.xl,
+    borderRadius: 0,
     padding: theme.spacing.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
