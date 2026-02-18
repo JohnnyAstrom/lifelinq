@@ -81,8 +81,8 @@ public final class ShoppingList {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
-        int orderIndex = nextItemOrderIndex();
-        ShoppingItem item = new ShoppingItem(itemId, normalizedName, orderIndex, now, quantity, unit);
+        shiftItemOrderIndexesForInsertAtTop();
+        ShoppingItem item = new ShoppingItem(itemId, normalizedName, 0, now, quantity, unit);
         items.add(item);
         return itemId;
     }
@@ -207,14 +207,10 @@ public final class ShoppingList {
                 .orElseThrow(() -> new ShoppingItemNotFoundException(itemId));
     }
 
-    private int nextItemOrderIndex() {
-        int max = -1;
+    private void shiftItemOrderIndexesForInsertAtTop() {
         for (ShoppingItem item : items) {
-            if (item.getOrderIndex() > max) {
-                max = item.getOrderIndex();
-            }
+            item.setOrderIndex(item.getOrderIndex() + 1);
         }
-        return max + 1;
     }
 
     private void normalizeItemOrderIndexes() {

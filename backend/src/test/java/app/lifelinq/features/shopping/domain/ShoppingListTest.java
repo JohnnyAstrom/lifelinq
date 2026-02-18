@@ -11,6 +11,22 @@ import org.junit.jupiter.api.Test;
 class ShoppingListTest {
 
     @Test
+    void addItemPlacesNewestItemAtTop() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        UUID third = UUID.randomUUID();
+        list.addItem(first, "milk", Instant.now());
+        list.addItem(second, "bread", Instant.now());
+        list.addItem(third, "eggs", Instant.now());
+
+        List<ShoppingItem> items = list.getItems();
+        assertEquals(third, items.get(0).getId());
+        assertEquals(second, items.get(1).getId());
+        assertEquals(first, items.get(2).getId());
+    }
+
+    @Test
     void reorderOpenItemSwapsWithNeighbor() {
         ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
         UUID first = UUID.randomUUID();
@@ -24,8 +40,8 @@ class ShoppingListTest {
 
         List<ShoppingItem> items = list.getItems();
         assertEquals(second, items.get(0).getId());
-        assertEquals(first, items.get(1).getId());
-        assertEquals(third, items.get(2).getId());
+        assertEquals(third, items.get(1).getId());
+        assertEquals(first, items.get(2).getId());
     }
 
     @Test

@@ -14,6 +14,7 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 - Shopping lists have an explicit household-level display order.
 - Lists can be removed entirely.
 - Manual add must be fast and low-friction.
+- New manual items are inserted at the top of the open list (newest first by default).
 - Items can be marked as acquired.
 - Items can be generated from Meals/Recipes.
 - Items can be edited (name, optional quantity/unit).
