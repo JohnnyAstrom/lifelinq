@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  type KeyboardTypeOptions,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -142,6 +143,7 @@ type InputProps = {
   style?: StyleProp<TextStyle>;
   autoFocus?: boolean;
   blurOnSubmit?: boolean;
+  keyboardType?: KeyboardTypeOptions;
   onFocus?: () => void;
   onBlur?: () => void;
   onSubmitEditing?: () => void;
@@ -158,6 +160,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
   style,
   autoFocus,
   blurOnSubmit,
+  keyboardType,
   onFocus,
   onBlur,
   onSubmitEditing,
@@ -174,6 +177,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
       multiline={multiline}
       autoFocus={autoFocus}
       blurOnSubmit={blurOnSubmit}
+      keyboardType={keyboardType}
       onFocus={onFocus}
       onBlur={onBlur}
       onSubmitEditing={onSubmitEditing}

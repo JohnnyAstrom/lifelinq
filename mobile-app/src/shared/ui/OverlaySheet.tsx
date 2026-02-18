@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   Animated,
   Easing,
@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  type ReactNode,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -29,13 +28,13 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 1,
-        duration: 140,
+        duration: 70,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
       Animated.timing(sheetTranslateY, {
         toValue: 0,
-        duration: 180,
+        duration: 85,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
@@ -49,7 +48,7 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
     const showSub = Keyboard.addListener(showEvent, (event) => {
       Animated.timing(keyboardInset, {
         toValue: event.endCoordinates?.height ?? 0,
-        duration: 120,
+        duration: 50,
         easing: Easing.linear,
         useNativeDriver: false,
       }).start();
@@ -58,7 +57,7 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
     const hideSub = Keyboard.addListener(hideEvent, () => {
       Animated.timing(keyboardInset, {
         toValue: 0,
-        duration: 120,
+        duration: 50,
         easing: Easing.linear,
         useNativeDriver: false,
       }).start();

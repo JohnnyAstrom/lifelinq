@@ -62,7 +62,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     return shopping.lists.find((list) => list.id === listId) ?? null;
   }, [shopping.lists, listId]);
 
-  const items = selected ? selected.items : [];
+  const items = useMemo(() => selected?.items ?? [], [selected]);
   const openItemsBase = useMemo(() => items.filter((item) => item.status !== 'BOUGHT'), [items]);
   const openItems = useMemo(() => {
     if (orderedOpenItemIds.length === 0) {
@@ -392,7 +392,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     }
     const pageY = event.nativeEvent.pageY;
     const startY = dragStartPageYRef.current;
-    if (startY !== null && Math.abs(pageY - startY) < 12) {
+    if (startY === null) {
+      return;
+    }
+    if (Math.abs(pageY - startY) < 12) {
       return;
     }
     const currentIds = orderedOpenItemIdsRef.current;
