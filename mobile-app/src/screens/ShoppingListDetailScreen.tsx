@@ -8,12 +8,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
 import { type ShoppingUnit } from '../shared/api/shopping';
 import { AppButton, AppCard, AppChip, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
+import { OverlaySheet } from '../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
@@ -26,6 +28,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const shopping = useShoppingLists(token);
   const [newItemName, setNewItemName] = useState('');
   const [quickAddName, setQuickAddName] = useState('');
+  const [quickAddFeedback, setQuickAddFeedback] = useState<string | null>(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -37,6 +40,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const [addQuantity, setAddQuantity] = useState('');
   const [addUnit, setAddUnit] = useState<ShoppingUnit | null>('ST');
   const [addError, setAddError] = useState<string | null>(null);
+  const [addDetailsFeedback, setAddDetailsFeedback] = useState<string | null>(null);
   const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);
   const [orderedOpenItemIds, setOrderedOpenItemIds] = useState<string[]>([]);
   const [draggingOpenItemId, setDraggingOpenItemId] = useState<string | null>(null);
@@ -49,6 +53,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const finishingDragRef = useRef(false);
   const ignoreNextOpenPressRef = useRef(false);
   const pendingOpenReorderSyncRef = useRef(false);
+  const quickAddFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addDetailsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quickAddInputRef = useRef<TextInput | null>(null);
+  const addDetailsInputRef = useRef<TextInput | null>(null);
 
   const selected = useMemo(() => {
     return shopping.lists.find((list) => list.id === listId) ?? null;
@@ -75,7 +83,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     boughtLabel: 'Bought',
     openCountSuffix: 'open',
     boughtCountSuffix: 'bought',
-    details: 'Edit details',
+    details: 'Edit',
     swipeBought: 'Bought',
     swipeOpen: 'Open',
     noOpenItems: 'No open items.',
@@ -84,6 +92,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addPlaceholderExtended: 'Add item…',
     addAction: 'Details',
     quickAddTitle: 'Add item',
+    quickAddAddedSuffix: 'added to shopping list.',
     loadingItems: 'Loading items...',
     clearBought: 'Clear bought',
     clearBoughtTitle: 'Clear bought items?',
@@ -92,6 +101,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addErrorQuantity: 'Quantity must be a positive number.',
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
     addDetailsTitle: 'Add details',
+    addDetailsAddedSuffix: 'added to shopping list.',
     addItemTitle: 'Add item',
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
@@ -122,10 +132,24 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     setOrderedOpenItemIds(next);
   }, [draggingOpenItemId, openItemsBase]);
 
+  useEffect(() => {
+    return () => {
+      if (quickAddFeedbackTimerRef.current) {
+        clearTimeout(quickAddFeedbackTimerRef.current);
+        quickAddFeedbackTimerRef.current = null;
+      }
+      if (addDetailsFeedbackTimerRef.current) {
+        clearTimeout(addDetailsFeedbackTimerRef.current);
+        addDetailsFeedbackTimerRef.current = null;
+      }
+    };
+  }, []);
+
   async function handleAddItem() {
     if (!selected || !newItemName.trim()) {
       return;
     }
+    const addedName = newItemName.trim();
     const parsedQuantity = parseQuantity(addQuantity);
     if (Number.isNaN(parsedQuantity)) {
       setAddError(strings.addErrorQuantity);
@@ -136,19 +160,82 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       return;
     }
     const effectiveUnit = parsedQuantity === null ? null : addUnit;
-    await shopping.addItem(selected.id, newItemName.trim(), parsedQuantity, effectiveUnit);
+    await shopping.addItem(selected.id, addedName, parsedQuantity, effectiveUnit);
     setNewItemName('');
     setAddQuantity('');
     setAddUnit('ST');
     setAddError(null);
+    const quantityPrefix =
+      parsedQuantity !== null && effectiveUnit
+        ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} - `
+        : '';
+    setAddDetailsFeedback(`${quantityPrefix}${addedName} ${strings.addDetailsAddedSuffix}`);
+    if (addDetailsFeedbackTimerRef.current) {
+      clearTimeout(addDetailsFeedbackTimerRef.current);
+    }
+    addDetailsFeedbackTimerRef.current = setTimeout(() => {
+      setAddDetailsFeedback(null);
+      addDetailsFeedbackTimerRef.current = null;
+    }, 3200);
+    requestAnimationFrame(() => {
+      addDetailsInputRef.current?.focus();
+    });
+  }
+
+  function formatQuantityForFeedback(value: number): string {
+    return Number.isInteger(value) ? String(value) : String(value);
+  }
+
+  function formatUnitForFeedback(unit: ShoppingUnit): string {
+    switch (unit) {
+      case 'ST':
+        return 'pcs';
+      case 'FORP':
+        return 'pack';
+      case 'KG':
+        return 'kg';
+      case 'HG':
+        return 'hg';
+      case 'G':
+        return 'g';
+      case 'L':
+        return 'l';
+      case 'DL':
+        return 'dl';
+      case 'ML':
+        return 'ml';
+      default:
+        return '';
+    }
   }
 
   async function handleQuickAdd() {
     if (!selected || !quickAddName.trim()) {
       return;
     }
-    await shopping.addItem(selected.id, quickAddName.trim(), null, null);
+    const addedName = quickAddName.trim();
+    await shopping.addItem(selected.id, addedName, null, null);
     setQuickAddName('');
+    setQuickAddFeedback(`${addedName} ${strings.quickAddAddedSuffix}`);
+    if (quickAddFeedbackTimerRef.current) {
+      clearTimeout(quickAddFeedbackTimerRef.current);
+    }
+    quickAddFeedbackTimerRef.current = setTimeout(() => {
+      setQuickAddFeedback(null);
+      quickAddFeedbackTimerRef.current = null;
+    }, 3200);
+    requestAnimationFrame(() => {
+      quickAddInputRef.current?.focus();
+    });
+  }
+
+  function closeQuickAdd() {
+    setQuickAddName('');
+    setQuickAddFeedback(null);
+    if (quickAddFeedbackTimerRef.current) {
+      clearTimeout(quickAddFeedbackTimerRef.current);
+      quickAddFeedbackTimerRef.current = null;
+    }
     setShowQuickAdd(false);
     Keyboard.dismiss();
   }
@@ -156,6 +243,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   function closeAddDetails() {
     setShowAddDetails(false);
     setShowMoreAddUnits(false);
+    setAddDetailsFeedback(null);
+    if (addDetailsFeedbackTimerRef.current) {
+      clearTimeout(addDetailsFeedbackTimerRef.current);
+      addDetailsFeedbackTimerRef.current = null;
+    }
     Keyboard.dismiss();
   }
 
@@ -503,7 +595,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         <View style={styles.bottomBar}>
           <Pressable
             style={styles.bottomInputPressable}
-            onPressOut={() => {
+            onPress={() => {
               setQuickAddName('');
               setShowQuickAdd(true);
             }}
@@ -523,24 +615,54 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 
 
       {editItemId ? (
-        <Pressable style={styles.backdrop} onPress={closeEdit}>
-          <View style={styles.modalContent}>
-            <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
+        <OverlaySheet onClose={closeEdit} sheetStyle={styles.quickAddSheet}>
+          <View style={styles.sheetHandle} />
+          <ScrollView
+            style={styles.editorScroll}
+            contentContainerStyle={styles.editorScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.quickAddHeader}>
               <Text style={textStyles.h3}>{strings.editTitle}</Text>
-              <AppInput
-                placeholder={strings.editNamePlaceholder}
-                value={editName}
-                onChangeText={setEditName}
+            </View>
+            <AppInput
+              placeholder={strings.editNamePlaceholder}
+              value={editName}
+              onChangeText={setEditName}
+            />
+            <AppInput
+              placeholder={strings.editQuantityPlaceholder}
+              value={editQuantity}
+              onChangeText={setEditQuantity}
+              keyboardType="decimal-pad"
+            />
+            <View style={styles.unitRow}>
+              {PRIMARY_UNIT_OPTIONS.map((unit) => (
+                <AppChip
+                  key={unit.value}
+                  label={unit.label}
+                  active={editUnit === unit.value}
+                  onPress={() => setEditUnit(unit.value)}
+                />
+              ))}
+              <AppChip
+                label={strings.unitNone}
+                active={!editUnit}
+                onPress={() => {
+                  setEditUnit(null);
+                  setEditQuantity('');
+                }}
               />
-              <AppInput
-                placeholder={strings.editQuantityPlaceholder}
-                value={editQuantity}
-                onChangeText={setEditQuantity}
-                keyboardType="decimal-pad"
+              <AppChip
+                label={showMoreEditUnits ? strings.unitLess : strings.unitMore}
+                active={showMoreEditUnits}
+                onPress={() => setShowMoreEditUnits((prev) => !prev)}
               />
-              <View style={styles.unitRow}>
-                {PRIMARY_UNIT_OPTIONS.map((unit) => (
+            </View>
+            {showMoreEditUnits ? (
+              <View style={styles.addUnitRow}>
+                {MORE_UNIT_OPTIONS.map((unit) => (
                   <AppChip
                     key={unit.value}
                     label={unit.label}
@@ -548,83 +670,51 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     onPress={() => setEditUnit(unit.value)}
                   />
                 ))}
-                <AppChip
-                  label={strings.unitNone}
-                  active={!editUnit}
-                  onPress={() => {
-                    setEditUnit(null);
-                    setEditQuantity('');
-                  }}
-                />
-                <AppChip
-                  label={showMoreEditUnits ? strings.unitLess : strings.unitMore}
-                  active={showMoreEditUnits}
-                  onPress={() => setShowMoreEditUnits((prev) => !prev)}
-                />
               </View>
-              {showMoreEditUnits ? (
-                <View style={styles.addUnitRow}>
-                  {MORE_UNIT_OPTIONS.map((unit) => (
-                    <AppChip
-                      key={unit.value}
-                      label={unit.label}
-                      active={editUnit === unit.value}
-                      onPress={() => setEditUnit(unit.value)}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              {editError ? <Text style={styles.error}>{editError}</Text> : null}
-              <View style={styles.editorActions}>
-                <AppButton title={strings.saveChanges} onPress={handleSaveEdit} fullWidth />
-                <AppButton title={strings.removeItem} onPress={handleRemoveEdit} variant="ghost" fullWidth />
-                <AppButton title={strings.close} onPress={closeEdit} variant="secondary" fullWidth />
-              </View>
-            </Pressable>
-          </View>
-        </Pressable>
+            ) : null}
+            {editError ? <Text style={styles.error}>{editError}</Text> : null}
+            <View style={styles.editorActions}>
+              <AppButton title={strings.saveChanges} onPress={handleSaveEdit} fullWidth />
+              <AppButton title={strings.removeItem} onPress={handleRemoveEdit} variant="ghost" fullWidth />
+              <AppButton title={strings.close} onPress={closeEdit} variant="secondary" fullWidth />
+            </View>
+          </ScrollView>
+        </OverlaySheet>
       ) : null}
 
       {showQuickAdd ? (
-        <Modal
-          visible
-          transparent
-          animationType="fade"
-          onRequestClose={() => {
-            setShowQuickAdd(false);
-            Keyboard.dismiss();
-          }}
+        <OverlaySheet
+          onClose={closeQuickAdd}
+          sheetStyle={styles.quickAddSheet}
+          aboveSheet={
+            quickAddFeedback ? (
+              <View style={styles.quickAddFeedback}>
+                <Text style={styles.quickAddFeedbackText}>{quickAddFeedback}</Text>
+              </View>
+            ) : null
+          }
         >
-          <View style={styles.modalLayer}>
-            <Pressable
-              style={styles.backdropPressable}
-              onPress={() => {
-                setShowQuickAdd(false);
-                Keyboard.dismiss();
-              }}
-            />
-            <View style={styles.modalContent} pointerEvents="box-none">
-              <View style={styles.sheet}>
-                <View style={styles.sheetHandle} />
-              <View style={styles.quickAddHeader}>
-                <Text style={textStyles.h3}>{strings.quickAddTitle}</Text>
-              </View>
-                <AppInput
-                  placeholder={strings.addPlaceholder}
-                  value={quickAddName}
-                  onChangeText={setQuickAddName}
-                  autoFocus
-                  onSubmitEditing={async () => {
-                    if (quickAddName.trim()) {
-                      await handleQuickAdd();
-                    }
-                  }}
-                  returnKeyType="done"
-                />
-              </View>
-            </View>
+          <View style={styles.sheetHandle} />
+          <View style={styles.quickAddHeader}>
+            <Text style={textStyles.h3}>{strings.quickAddTitle}</Text>
           </View>
-        </Modal>
+          <AppInput
+            ref={quickAddInputRef}
+            placeholder={strings.addPlaceholder}
+            value={quickAddName}
+            onChangeText={setQuickAddName}
+            autoFocus
+            blurOnSubmit={false}
+            onSubmitEditing={async () => {
+              if (quickAddName.trim()) {
+                await handleQuickAdd();
+                return;
+              }
+              closeQuickAdd();
+            }}
+            returnKeyType="done"
+          />
+        </OverlaySheet>
       ) : null}
 
       <Modal
@@ -635,17 +725,26 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       >
         <Pressable style={styles.backdrop} onPress={closeAddDetails}>
           <View style={styles.modalContent}>
-            <Pressable style={styles.sheet} onPress={() => null}>
+            {addDetailsFeedback ? (
+              <View style={styles.aboveSheetFeedback}>
+                <View style={styles.quickAddFeedback}>
+                  <Text style={styles.quickAddFeedbackText}>{addDetailsFeedback}</Text>
+                </View>
+              </View>
+            ) : null}
+            <Pressable style={styles.quickAddSheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
-              <Text style={textStyles.h3}>{strings.addDetailsTitle}</Text>
+              <View style={styles.quickAddHeader}>
+                <Text style={textStyles.h3}>{strings.addDetailsTitle}</Text>
+              </View>
               <AppInput
+                ref={addDetailsInputRef}
                 placeholder={strings.addPlaceholderExtended}
                 value={newItemName}
                 onChangeText={setNewItemName}
                 onSubmitEditing={async () => {
                   if (newItemName.trim()) {
                     await handleAddItem();
-                    closeAddDetails();
                   }
                 }}
                 returnKeyType="done"
@@ -711,7 +810,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                   title={strings.addItemTitle}
                   onPress={async () => {
                     await handleAddItem();
-                    closeAddDetails();
                   }}
                   disabled={newItemName.trim().length === 0}
                   fullWidth
@@ -741,7 +839,7 @@ const MORE_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
 ];
 
 const UNIT_LABELS: Record<ShoppingUnit, string> = {
-  ST: 'pc',
+  ST: 'pcs',
   FORP: 'pack',
   KG: 'kg',
   HG: 'hg',
@@ -933,6 +1031,17 @@ const styles = StyleSheet.create({
   sheetActions: {
     gap: theme.spacing.sm,
   },
+  quickAddSheet: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
   bottomInput: {
     flex: 1,
   },
@@ -956,23 +1065,20 @@ const styles = StyleSheet.create({
     color: theme.colors.subtle,
   },
   quickAddHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  quickAddClose: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceAlt,
   },
-  quickAddCloseText: {
-    ...textStyles.h3,
-    lineHeight: 20,
+  quickAddFeedback: {
+    alignSelf: 'center',
+    maxWidth: '100%',
+    backgroundColor: theme.colors.success,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  quickAddFeedbackText: {
+    color: '#ffffff',
+    fontFamily: theme.typography.body,
+    fontSize: 13,
   },
   error: {
     color: theme.colors.danger,
@@ -987,16 +1093,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
-  modalLayer: {
-    flex: 1,
-  },
-  backdropPressable: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
   modalContent: {
     flex: 1,
     justifyContent: 'flex-end',
+  },
+  aboveSheetFeedback: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
+    alignItems: 'center',
   },
   sheet: {
     backgroundColor: theme.colors.surface,
@@ -1022,5 +1126,12 @@ const styles = StyleSheet.create({
   },
   editorActions: {
     gap: theme.spacing.sm,
+  },
+  editorScroll: {
+    maxHeight: '100%',
+  },
+  editorScrollContent: {
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
   },
 });

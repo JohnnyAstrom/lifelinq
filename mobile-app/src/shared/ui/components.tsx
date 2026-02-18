@@ -141,6 +141,7 @@ type InputProps = {
   multiline?: boolean;
   style?: StyleProp<TextStyle>;
   autoFocus?: boolean;
+  blurOnSubmit?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
   onSubmitEditing?: () => void;
@@ -156,6 +157,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
   multiline,
   style,
   autoFocus,
+  blurOnSubmit,
   onFocus,
   onBlur,
   onSubmitEditing,
@@ -171,6 +173,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
       onChangeText={onChangeText}
       multiline={multiline}
       autoFocus={autoFocus}
+      blurOnSubmit={blurOnSubmit}
       onFocus={onFocus}
       onBlur={onBlur}
       onSubmitEditing={onSubmitEditing}
