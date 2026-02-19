@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useHouseholdMembers } from '../features/household/hooks/useHouseholdMembers';
+import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
 import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -24,6 +25,11 @@ export function HouseholdMembersScreen({ token, onDone }: Props) {
     addMemberAction: 'Add member',
     back: 'Back',
   };
+
+  useAppBackHandler({
+    canGoBack: true,
+    onGoBack: onDone,
+  });
 
   async function handleAdd() {
     if (!userId.trim()) {

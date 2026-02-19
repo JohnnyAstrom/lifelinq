@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
+import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
 import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -138,6 +139,25 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     setRenameListName('');
     Keyboard.dismiss();
   }
+
+  useAppBackHandler({
+    canGoBack: true,
+    onGoBack: onDone,
+    isOverlayOpen: showCreate || !!activeListId || !!renameListId,
+    onCloseOverlay: () => {
+      if (renameListId) {
+        closeRename();
+        return;
+      }
+      if (activeListId) {
+        closeActions();
+        return;
+      }
+      if (showCreate) {
+        closeCreate();
+      }
+    },
+  });
 
   function selectedActionList() {
     if (!activeListId) {

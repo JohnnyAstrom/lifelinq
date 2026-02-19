@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
+import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../shared/api/shopping';
 import { AppButton, AppCard, AppChip, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { OverlaySheet } from '../shared/ui/OverlaySheet';
@@ -454,6 +455,25 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       finishingDragRef.current = false;
     }
   }
+
+  useAppBackHandler({
+    canGoBack: true,
+    onGoBack: onBack,
+    isOverlayOpen: showQuickAdd || !!editItemId || showAddDetails,
+    onCloseOverlay: () => {
+      if (showQuickAdd) {
+        closeQuickAdd();
+        return;
+      }
+      if (editItemId) {
+        closeEdit();
+        return;
+      }
+      if (showAddDetails) {
+        closeAddDetails();
+      }
+    },
+  });
 
   return (
     <AppScreen scroll={false} contentStyle={styles.screenContent}>

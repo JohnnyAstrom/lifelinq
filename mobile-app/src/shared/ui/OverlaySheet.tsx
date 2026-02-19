@@ -95,15 +95,22 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
 const styles = StyleSheet.create({
   root: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 20,
+    zIndex: 9999,
+    elevation: 9999,
+    position: 'absolute',
+    overflow: 'visible',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 1,
   },
   sheetContainer: {
     flex: 1,
     justifyContent: 'flex-end',
+    zIndex: 2,
+    elevation: 2,
+    overflow: 'visible',
   },
   aboveSheet: {
     paddingHorizontal: theme.spacing.lg,
@@ -113,5 +120,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
+    width: '100%',
+    alignSelf: 'stretch',
   },
 });

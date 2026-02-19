@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useTodos } from '../features/todo/hooks/useTodos';
+import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
 import {
   AppButton,
   AppCard,
@@ -103,6 +104,38 @@ export function TodoListScreen({ token, onDone }: Props) {
     pickDateTitle: 'Pick a date',
     pickTimeTitle: 'Pick a time',
   };
+
+  useAppBackHandler({
+    canGoBack: true,
+    onGoBack: onDone,
+    isOverlayOpen:
+      showDetailTimePicker ||
+      showDetailDatePicker ||
+      showTimePicker ||
+      showDatePicker ||
+      !!detailsTodoId,
+    onCloseOverlay: () => {
+      if (showDetailTimePicker) {
+        setShowDetailTimePicker(false);
+        return;
+      }
+      if (showDetailDatePicker) {
+        setShowDetailDatePicker(false);
+        return;
+      }
+      if (showTimePicker) {
+        setShowTimePicker(false);
+        return;
+      }
+      if (showDatePicker) {
+        setShowDatePicker(false);
+        return;
+      }
+      if (detailsTodoId) {
+        setDetailsTodoId(null);
+      }
+    },
+  });
 
   async function handleAdd() {
     if (!text.trim() || todos.loading) {

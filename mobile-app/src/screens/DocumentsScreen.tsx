@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '../shared/auth/AuthContext';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { ApiError } from '../shared/api/client';
+import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
 import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -125,6 +126,13 @@ export function DocumentsScreen({ onDone }: Props) {
     setShowCreate(false);
     Keyboard.dismiss();
   }
+
+  useAppBackHandler({
+    canGoBack: true,
+    onGoBack: onDone,
+    isOverlayOpen: showCreate,
+    onCloseOverlay: closeCreate,
+  });
 
   return (
     <AppScreen>

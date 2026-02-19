@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useWeekPlan } from '../features/meals/hooks/useWeekPlan';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
+import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
 import {
   AppButton,
   AppCard,
@@ -327,6 +328,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     setSelectedMealRecipeId(null);
     Keyboard.dismiss();
   }
+
+  useAppBackHandler({
+    canGoBack: true,
+    onGoBack: onDone,
+    isOverlayOpen: !!selectedDay && !!selectedMealType,
+    onCloseOverlay: closeEditor,
+  });
 
   return (
     <View style={styles.root}>

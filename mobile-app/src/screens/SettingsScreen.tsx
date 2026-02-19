@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
 import { AppButton, AppCard, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { theme } from '../shared/ui/theme';
 
@@ -19,6 +20,11 @@ export function SettingsScreen({ onDone, onManageMembers, onLogout }: Props) {
     logout: 'Log out',
     back: 'Back',
   };
+
+  useAppBackHandler({
+    canGoBack: true,
+    onGoBack: onDone,
+  });
 
   return (
     <AppScreen>
