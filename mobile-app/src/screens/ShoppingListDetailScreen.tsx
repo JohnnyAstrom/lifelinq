@@ -3,7 +3,6 @@ import {
   Alert,
   GestureResponderEvent,
   Keyboard,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -58,6 +57,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const addDetailsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quickAddInputRef = useRef<TextInput | null>(null);
   const addDetailsInputRef = useRef<TextInput | null>(null);
+  const quantityRef = useRef<TextInput | null>(null);
 
   const selected = useMemo(() => {
     return shopping.lists.find((list) => list.id === listId) ?? null;
@@ -740,109 +740,104 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         </OverlaySheet>
       ) : null}
 
-      <Modal
-        visible={showAddDetails}
-        transparent
-        animationType="slide"
-        onRequestClose={closeAddDetails}
-      >
-        <Pressable style={styles.backdrop} onPress={closeAddDetails}>
-          <View style={styles.modalContent}>
-            {addDetailsFeedback ? (
-              <View style={styles.aboveSheetFeedback}>
-                <View style={styles.quickAddFeedback}>
-                  <Text style={styles.quickAddFeedbackText}>{addDetailsFeedback}</Text>
-                </View>
+      {showAddDetails ? (
+        <OverlaySheet
+          onClose={closeAddDetails}
+          sheetStyle={styles.quickAddSheet}
+          aboveSheet={
+            addDetailsFeedback ? (
+              <View style={styles.quickAddFeedback}>
+                <Text style={styles.quickAddFeedbackText}>{addDetailsFeedback}</Text>
               </View>
-            ) : null}
-            <Pressable style={styles.quickAddSheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
-              <View style={styles.quickAddHeader}>
-                <Text style={textStyles.h3}>{strings.addDetailsTitle}</Text>
-              </View>
-              <AppInput
-                ref={addDetailsInputRef}
-                placeholder={strings.addPlaceholderExtended}
-                value={newItemName}
-                onChangeText={setNewItemName}
-                onSubmitEditing={async () => {
-                  if (newItemName.trim()) {
-                    await handleAddItem();
-                  }
-                }}
-                returnKeyType="done"
-              />
-              <AppInput
-                value={addQuantity}
-                onChangeText={(value) => {
-                  setAddQuantity(value);
+            ) : null
+          }
+        >
+          <View style={styles.sheetHandle} />
+          <View style={styles.quickAddHeader}>
+            <Text style={textStyles.h3}>{strings.addDetailsTitle}</Text>
+          </View>
+          <AppInput
+            ref={addDetailsInputRef}
+            placeholder={strings.addPlaceholderExtended}
+            value={newItemName}
+            onChangeText={setNewItemName}
+            onSubmitEditing={async () => {
+              if (newItemName.trim()) {
+                await handleAddItem();
+              }
+            }}
+            returnKeyType="done"
+          />
+          <AppInput
+            ref={quantityRef}
+            value={addQuantity}
+            onChangeText={(value) => {
+              setAddQuantity(value);
+              setAddError(null);
+            }}
+            placeholder={strings.addQuantityPlaceholder}
+            keyboardType="decimal-pad"
+            style={styles.addQuantityInput}
+          />
+          <View style={styles.addUnitRow}>
+            {PRIMARY_UNIT_OPTIONS.map((unit) => (
+              <AppChip
+                key={unit.value}
+                label={unit.label}
+                active={addUnit === unit.value}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setAddUnit(unit.value);
                   setAddError(null);
                 }}
-                placeholder={strings.addQuantityPlaceholder}
-                keyboardType="decimal-pad"
-                style={styles.addQuantityInput}
               />
-              <View style={styles.addUnitRow}>
-                {PRIMARY_UNIT_OPTIONS.map((unit) => (
-                  <AppChip
-                    key={unit.value}
-                    label={unit.label}
-                    active={addUnit === unit.value}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setAddUnit(unit.value);
-                      setAddError(null);
-                    }}
-                  />
-                ))}
+            ))}
+            <AppChip
+              label={strings.unitNone}
+              active={!addUnit}
+              onPress={() => {
+                Keyboard.dismiss();
+                setAddUnit(null);
+                setAddQuantity('');
+                setAddError(null);
+              }}
+            />
+            <AppChip
+              label={showMoreAddUnits ? strings.unitLess : strings.unitMore}
+              active={showMoreAddUnits}
+              onPress={() => setShowMoreAddUnits((prev) => !prev)}
+            />
+          </View>
+          {showMoreAddUnits ? (
+            <View style={styles.addUnitRow}>
+              {MORE_UNIT_OPTIONS.map((unit) => (
                 <AppChip
-                  label={strings.unitNone}
-                  active={!addUnit}
+                  key={unit.value}
+                  label={unit.label}
+                  active={addUnit === unit.value}
                   onPress={() => {
                     Keyboard.dismiss();
-                    setAddUnit(null);
-                    setAddQuantity('');
+                    setAddUnit(unit.value);
                     setAddError(null);
                   }}
                 />
-                <AppChip
-                  label={showMoreAddUnits ? strings.unitLess : strings.unitMore}
-                  active={showMoreAddUnits}
-                  onPress={() => setShowMoreAddUnits((prev) => !prev)}
-                />
-              </View>
-              {showMoreAddUnits ? (
-                <View style={styles.addUnitRow}>
-                  {MORE_UNIT_OPTIONS.map((unit) => (
-                    <AppChip
-                      key={unit.value}
-                      label={unit.label}
-                      active={addUnit === unit.value}
-                      onPress={() => {
-                        Keyboard.dismiss();
-                        setAddUnit(unit.value);
-                        setAddError(null);
-                      }}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              {addError ? <Text style={styles.error}>{addError}</Text> : null}
-              <View style={styles.sheetActions}>
-                <AppButton
-                  title={strings.addItemTitle}
-                  onPress={async () => {
-                    await handleAddItem();
-                  }}
-                  disabled={newItemName.trim().length === 0}
-                  fullWidth
-                />
-                <AppButton title={strings.close} onPress={closeAddDetails} variant="ghost" fullWidth />
-              </View>
-            </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {addError ? <Text style={styles.error}>{addError}</Text> : null}
+          <View style={styles.sheetActions}>
+            <AppButton
+              title={strings.addItemTitle}
+              onPress={async () => {
+                await handleAddItem();
+              }}
+              disabled={newItemName.trim().length === 0}
+              fullWidth
+            />
+            <AppButton title={strings.close} onPress={closeAddDetails} variant="ghost" fullWidth />
           </View>
-        </Pressable>
-      </Modal>
+        </OverlaySheet>
+      ) : null}
     </AppScreen>
   );
 }
@@ -1106,24 +1101,6 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
-  },
-  backdrop: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  aboveSheetFeedback: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.sm,
-    alignItems: 'center',
   },
   sheet: {
     backgroundColor: theme.colors.surface,

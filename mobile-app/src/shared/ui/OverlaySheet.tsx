@@ -1,15 +1,17 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import {
-  Animated,
+  Animated as RNAnimated,
+  Dimensions,
   Easing,
-  Keyboard,
-  Platform,
+  LayoutChangeEvent,
   Pressable,
   StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useDerivedValue } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { theme } from './theme';
 
 type OverlaySheetProps = {
@@ -20,19 +22,61 @@ type OverlaySheetProps = {
 };
 
 export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: OverlaySheetProps) {
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(28)).current;
-  const keyboardInset = useRef(new Animated.Value(0)).current;
+  const backdropOpacity = useRef(new RNAnimated.Value(0)).current;
+  const sheetTranslateY = useRef(new RNAnimated.Value(28)).current;
+  const { height } = useReanimatedKeyboardAnimation();
+  const lastKeyboardHeightRef = useRef<number | null>(null);
+  const lastTranslateYRef = useRef<number | null>(null);
+
+  const logKeyboardHeight = (value: number) => {
+    if (lastKeyboardHeightRef.current === value) {
+      return;
+    }
+    lastKeyboardHeightRef.current = value;
+    console.log(`[OverlaySheet][diag][keyboard] height=${value} ts=${Date.now()}`);
+  };
+
+  const logTranslateY = (value: number) => {
+    if (lastTranslateYRef.current === value) {
+      return;
+    }
+    lastTranslateYRef.current = value;
+    console.log(`[OverlaySheet][diag][translateY] value=${value} ts=${Date.now()}`);
+  };
+
+  const onRootLayout = (event: LayoutChangeEvent) => {
+    console.log(
+      `[OverlaySheet][diag][layout] rootHeight=${event.nativeEvent.layout.height} ts=${Date.now()}`
+    );
+  };
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateY: height.value,
+        },
+      ],
+    };
+  });
+
+  useDerivedValue(() => {
+    runOnJS(logKeyboardHeight)(height.value);
+  }, [height]);
+
+  useDerivedValue(() => {
+    runOnJS(logTranslateY)(height.value);
+  }, [height]);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(backdropOpacity, {
+    RNAnimated.parallel([
+      RNAnimated.timing(backdropOpacity, {
         toValue: 1,
         duration: 70,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
-      Animated.timing(sheetTranslateY, {
+      RNAnimated.timing(sheetTranslateY, {
         toValue: 0,
         duration: 85,
         easing: Easing.out(Easing.quad),
@@ -42,52 +86,36 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
   }, [backdropOpacity, sheetTranslateY]);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      Animated.timing(keyboardInset, {
-        toValue: event.endCoordinates?.height ?? 0,
-        duration: 250,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: false,
-      }).start();
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      console.log(
+        `[OverlaySheet][diag][dimensions] windowHeight=${window.height} ts=${Date.now()}`
+      );
     });
-
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      Animated.timing(keyboardInset, {
-        toValue: 0,
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: false,
-      }).start();
-    });
-
     return () => {
-      showSub.remove();
-      hideSub.remove();
+      subscription.remove();
     };
-  }, [keyboardInset]);
+  }, []);
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
-      <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+    <View style={styles.root} pointerEvents="box-none" onLayout={onRootLayout}>
+      <RNAnimated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-      </Animated.View>
+      </RNAnimated.View>
 
-      <Animated.View
+      <RNAnimated.View
         style={[
-          styles.sheetContainer,
           {
-            paddingBottom: keyboardInset,
             transform: [{ translateY: sheetTranslateY }],
           },
+          styles.overlaySheet,
         ]}
         pointerEvents="box-none"
       >
-        {aboveSheet ? <View style={styles.aboveSheet}>{aboveSheet}</View> : null}
-        <View style={[styles.sheet, sheetStyle]}>{children}</View>
-      </Animated.View>
+        <Animated.View style={[styles.overlaySheet, animatedStyle]} pointerEvents="box-none">
+          {aboveSheet ? <View style={styles.aboveSheet}>{aboveSheet}</View> : null}
+          <View style={[styles.sheet, sheetStyle]}>{children}</View>
+        </Animated.View>
+      </RNAnimated.View>
     </View>
   );
 }
@@ -105,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     zIndex: 1,
   },
-  sheetContainer: {
+  overlaySheet: {
     flex: 1,
     justifyContent: 'flex-end',
     zIndex: 2,

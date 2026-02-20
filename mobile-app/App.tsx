@@ -1,3 +1,5 @@
-import App from './src/bootstrap/App';
+import BootstrapApp from './src/bootstrap/App';
 
-export default App;
+export default function App() {
+  return <BootstrapApp />;
+}
