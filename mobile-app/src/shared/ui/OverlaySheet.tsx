@@ -48,8 +48,8 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
     const showSub = Keyboard.addListener(showEvent, (event) => {
       Animated.timing(keyboardInset, {
         toValue: event.endCoordinates?.height ?? 0,
-        duration: 50,
-        easing: Easing.linear,
+        duration: 250,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: false,
       }).start();
     });
@@ -57,8 +57,8 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
     const hideSub = Keyboard.addListener(hideEvent, () => {
       Animated.timing(keyboardInset, {
         toValue: 0,
-        duration: 50,
-        easing: Easing.linear,
+        duration: 200,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: false,
       }).start();
     });
