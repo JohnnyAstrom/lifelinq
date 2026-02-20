@@ -1,17 +1,16 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import {
   Animated as RNAnimated,
-  Dimensions,
   Easing,
-  LayoutChangeEvent,
   Pressable,
   StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { runOnJS, useAnimatedStyle, useDerivedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from './theme';
 
 type OverlaySheetProps = {
@@ -25,48 +24,13 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
   const backdropOpacity = useRef(new RNAnimated.Value(0)).current;
   const sheetTranslateY = useRef(new RNAnimated.Value(28)).current;
   const { height } = useReanimatedKeyboardAnimation();
-  const lastKeyboardHeightRef = useRef<number | null>(null);
-  const lastTranslateYRef = useRef<number | null>(null);
-
-  const logKeyboardHeight = (value: number) => {
-    if (lastKeyboardHeightRef.current === value) {
-      return;
-    }
-    lastKeyboardHeightRef.current = value;
-    console.log(`[OverlaySheet][diag][keyboard] height=${value} ts=${Date.now()}`);
-  };
-
-  const logTranslateY = (value: number) => {
-    if (lastTranslateYRef.current === value) {
-      return;
-    }
-    lastTranslateYRef.current = value;
-    console.log(`[OverlaySheet][diag][translateY] value=${value} ts=${Date.now()}`);
-  };
-
-  const onRootLayout = (event: LayoutChangeEvent) => {
-    console.log(
-      `[OverlaySheet][diag][layout] rootHeight=${event.nativeEvent.layout.height} ts=${Date.now()}`
-    );
-  };
+  const insets = useSafeAreaInsets();
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [
-        {
-          translateY: height.value,
-        },
-      ],
+      bottom: -height.value - insets.bottom,
     };
   });
-
-  useDerivedValue(() => {
-    runOnJS(logKeyboardHeight)(height.value);
-  }, [height]);
-
-  useDerivedValue(() => {
-    runOnJS(logTranslateY)(height.value);
-  }, [height]);
 
   useEffect(() => {
     RNAnimated.parallel([
@@ -85,19 +49,8 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
     ]).start();
   }, [backdropOpacity, sheetTranslateY]);
 
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      console.log(
-        `[OverlaySheet][diag][dimensions] windowHeight=${window.height} ts=${Date.now()}`
-      );
-    });
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
   return (
-    <View style={styles.root} pointerEvents="box-none" onLayout={onRootLayout}>
+    <View style={styles.root} pointerEvents="box-none">
       <RNAnimated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </RNAnimated.View>
@@ -111,9 +64,9 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
         ]}
         pointerEvents="box-none"
       >
-        <Animated.View style={[styles.overlaySheet, animatedStyle]} pointerEvents="box-none">
+        <Animated.View style={styles.overlaySheet} pointerEvents="box-none">
           {aboveSheet ? <View style={styles.aboveSheet}>{aboveSheet}</View> : null}
-          <View style={[styles.sheet, sheetStyle]}>{children}</View>
+          <Animated.View style={[styles.sheet, sheetStyle, animatedStyle]}>{children}</Animated.View>
         </Animated.View>
       </RNAnimated.View>
     </View>
@@ -135,7 +88,6 @@ const styles = StyleSheet.create({
   },
   overlaySheet: {
     flex: 1,
-    justifyContent: 'flex-end',
     zIndex: 2,
     elevation: 2,
     overflow: 'visible',
@@ -148,6 +100,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     alignSelf: 'stretch',
   },
