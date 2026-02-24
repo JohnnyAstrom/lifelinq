@@ -3,9 +3,7 @@ package app.lifelinq.features.todo.application;
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
 import app.lifelinq.features.todo.domain.TodoStatus;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 final class ListTodosUseCase {
     private final TodoRepository todoRepository;
@@ -24,28 +22,11 @@ final class ListTodosUseCase {
         if (query.getStatusFilter() == null) {
             throw new IllegalArgumentException("statusFilter must not be null");
         }
-
-        List<Todo> all = todoRepository.findAll();
-        return new ListTodosResult(filter(all, query.getHouseholdId(), query.getStatusFilter()));
-    }
-
-    private List<Todo> filter(List<Todo> todos, UUID householdId, TodoStatus statusFilter) {
-        List<Todo> result = new ArrayList<>();
-        for (Todo todo : todos) {
-            if (todo == null) {
-                continue;
-            }
-            if (todo.isDeleted()) {
-                continue;
-            }
-            if (householdId != null && !householdId.equals(todo.getHouseholdId())) {
-                continue;
-            }
-            if (statusFilter != TodoStatus.ALL && todo.getStatus() != statusFilter) {
-                continue;
-            }
-            result.add(todo);
+        if (query.getHouseholdId() == null) {
+            throw new IllegalArgumentException("householdId must not be null");
         }
-        return result;
+
+        List<Todo> items = todoRepository.listByHousehold(query.getHouseholdId(), query.getStatusFilter());
+        return new ListTodosResult(items);
     }
 }

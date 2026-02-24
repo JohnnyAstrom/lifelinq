@@ -2,6 +2,7 @@ package app.lifelinq.features.todo.application;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import java.time.Instant;
 import java.util.UUID;
 
 final class CreateTodoUseCase {
@@ -29,8 +30,13 @@ final class CreateTodoUseCase {
                 UUID.randomUUID(),
                 command.getHouseholdId(),
                 command.getText(),
+                command.getScope(),
                 command.getDueDate(),
-                command.getDueTime()
+                command.getDueTime(),
+                command.getScopeYear(),
+                command.getScopeWeek(),
+                command.getScopeMonth(),
+                Instant.now()
         );
         todoRepository.save(todo);
         return new CreateTodoResult(todo.getId());

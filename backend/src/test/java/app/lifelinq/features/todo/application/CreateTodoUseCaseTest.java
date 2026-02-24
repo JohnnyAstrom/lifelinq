@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoScope;
+import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +49,30 @@ class CreateTodoUseCaseTest {
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
     }
 
+    @Test
+    void createsWeekScopedTodo() {
+        InMemoryTodoRepository todoRepository = new InMemoryTodoRepository();
+        CreateTodoUseCase useCase = new CreateTodoUseCase(todoRepository);
+        UUID householdId = UUID.randomUUID();
+
+        CreateTodoResult result = useCase.execute(new CreateTodoCommand(
+                householdId,
+                "Week goal",
+                TodoScope.WEEK,
+                null,
+                null,
+                2026,
+                9,
+                null
+        ));
+
+        assertNotNull(result.getTodoId());
+        Todo saved = todoRepository.findById(result.getTodoId()).orElseThrow();
+        assertEquals(TodoScope.WEEK, saved.getScope());
+        assertEquals(2026, saved.getScopeYear());
+        assertEquals(9, saved.getScopeWeek());
+    }
+
     private static final class InMemoryTodoRepository implements TodoRepository {
         private final List<Todo> saved = new ArrayList<>();
 
@@ -66,12 +92,12 @@ class CreateTodoUseCaseTest {
         }
 
         @Override
-        public List<Todo> findAll() {
+        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
             return new ArrayList<>(saved);
         }
 
         @Override
-        public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new ArrayList<>();
         }
     }

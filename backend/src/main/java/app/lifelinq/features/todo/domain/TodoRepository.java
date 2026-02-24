@@ -1,6 +1,7 @@
 package app.lifelinq.features.todo.domain;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -9,7 +10,7 @@ public interface TodoRepository {
 
     void save(Todo todo);
 
-    java.util.List<Todo> findAll();
+    List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter);
 
-    java.util.List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate);
+    List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate);
 }

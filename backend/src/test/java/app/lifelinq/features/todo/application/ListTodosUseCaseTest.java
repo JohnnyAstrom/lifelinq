@@ -18,17 +18,18 @@ class ListTodosUseCaseTest {
     @Test
     void filtersByStatus() {
         InMemoryTodoRepository repository = new InMemoryTodoRepository();
-        Todo open = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Open");
-        Todo completed = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Done");
+        UUID householdId = UUID.randomUUID();
+        Todo open = new Todo(UUID.randomUUID(), householdId, "Open");
+        Todo completed = new Todo(UUID.randomUUID(), householdId, "Done");
         completed.toggle(java.time.Instant.parse("2026-01-01T00:00:00Z"));
         repository.save(open);
         repository.save(completed);
 
         ListTodosUseCase useCase = new ListTodosUseCase(repository);
 
-        ListTodosResult openResult = useCase.execute(new TodoQuery(null, TodoStatus.OPEN));
-        ListTodosResult completedResult = useCase.execute(new TodoQuery(null, TodoStatus.COMPLETED));
-        ListTodosResult allResult = useCase.execute(new TodoQuery(null, TodoStatus.ALL));
+        ListTodosResult openResult = useCase.execute(new TodoQuery(householdId, TodoStatus.OPEN));
+        ListTodosResult completedResult = useCase.execute(new TodoQuery(householdId, TodoStatus.COMPLETED));
+        ListTodosResult allResult = useCase.execute(new TodoQuery(householdId, TodoStatus.ALL));
 
         assertEquals(1, openResult.getTodos().size());
         assertEquals(1, completedResult.getTodos().size());
@@ -61,6 +62,12 @@ class ListTodosUseCaseTest {
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(new TodoQuery(null, null)));
     }
 
+    @Test
+    void requiresHouseholdId() {
+        ListTodosUseCase useCase = new ListTodosUseCase(new InMemoryTodoRepository());
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(new TodoQuery(null, TodoStatus.ALL)));
+    }
+
     private static final class InMemoryTodoRepository implements TodoRepository {
         private final List<Todo> store = new ArrayList<>();
 
@@ -80,12 +87,25 @@ class ListTodosUseCaseTest {
         }
 
         @Override
-        public List<Todo> findAll() {
-            return new ArrayList<>(store);
+        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+            List<Todo> result = new ArrayList<>();
+            for (Todo todo : store) {
+                if (householdId != null && !householdId.equals(todo.getHouseholdId())) {
+                    continue;
+                }
+                if (statusFilter != TodoStatus.ALL && todo.getStatus() != statusFilter) {
+                    continue;
+                }
+                if (todo.isDeleted()) {
+                    continue;
+                }
+                result.add(todo);
+            }
+            return result;
         }
 
         @Override
-        public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new ArrayList<>();
         }
     }

@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoScope;
+import app.lifelinq.features.todo.domain.TodoStatus;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,11 +27,24 @@ class ListTodosForMonthUseCaseTest {
         Todo febEarlierHigherId = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000003"), householdId, "C", LocalDate.of(2026, 2, 10), null);
         Todo febEarlierLowerId = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000001"), householdId, "A", LocalDate.of(2026, 2, 10), null);
         Todo noDueDate = new Todo(UUID.randomUUID(), householdId, "No due", null, null);
+        Todo monthGoal = new Todo(
+                UUID.randomUUID(),
+                householdId,
+                "Month goal",
+                TodoScope.MONTH,
+                null,
+                null,
+                2026,
+                null,
+                2,
+                Instant.parse("2026-02-01T00:00:00Z")
+        );
         repository.save(outOfMonth);
         repository.save(febLater);
         repository.save(febEarlierHigherId);
         repository.save(febEarlierLowerId);
         repository.save(noDueDate);
+        repository.save(monthGoal);
 
         ListTodosForMonthUseCase useCase = new ListTodosForMonthUseCase(repository);
         List<Todo> items = useCase.execute(new TodoMonthQuery(householdId, 2026, 2)).getTodos();
@@ -36,7 +52,8 @@ class ListTodosForMonthUseCaseTest {
         assertThat(items).extracting(Todo::getId).containsExactly(
                 febEarlierLowerId.getId(),
                 febEarlierHigherId.getId(),
-                febLater.getId()
+                febLater.getId(),
+                monthGoal.getId()
         );
     }
 
@@ -62,23 +79,32 @@ class ListTodosForMonthUseCaseTest {
         }
 
         @Override
-        public List<Todo> findAll() {
+        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
             return new ArrayList<>(store);
         }
 
         @Override
-        public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
             List<Todo> result = new ArrayList<>();
             for (Todo todo : store) {
-                if (!householdId.equals(todo.getHouseholdId()) || todo.getDueDate() == null) {
+                if (!householdId.equals(todo.getHouseholdId())) {
                     continue;
                 }
-                if ((todo.getDueDate().isEqual(startDate) || todo.getDueDate().isAfter(startDate))
+                if (todo.getScope() == TodoScope.DAY && todo.getDueDate() != null
+                        && (todo.getDueDate().isEqual(startDate) || todo.getDueDate().isAfter(startDate))
                         && (todo.getDueDate().isEqual(endDate) || todo.getDueDate().isBefore(endDate))) {
                     result.add(todo);
                 }
+                if (todo.getScope() == TodoScope.MONTH
+                        && Integer.valueOf(year).equals(todo.getScopeYear())
+                        && Integer.valueOf(month).equals(todo.getScopeMonth())) {
+                    result.add(todo);
+                }
             }
-            result.sort(Comparator.comparing(Todo::getDueDate).thenComparing(Todo::getId));
+            result.sort(Comparator
+                    .comparingInt((Todo todo) -> todo.getScope() == TodoScope.DAY ? 0 : 1)
+                    .thenComparing(Todo::getDueDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparing(Todo::getId));
             return result;
         }
     }

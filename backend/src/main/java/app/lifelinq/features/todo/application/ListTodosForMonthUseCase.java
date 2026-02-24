@@ -28,11 +28,12 @@ final class ListTodosForMonthUseCase {
         YearMonth yearMonth = YearMonth.of(query.getYear(), query.getMonth());
         LocalDate startDate = toUtcDate(yearMonth.atDay(1));
         LocalDate endDate = toUtcDate(yearMonth.atEndOfMonth());
-        List<Todo> todos = todoRepository.findByHouseholdIdAndDueDateBetween(
+        List<Todo> todos = todoRepository.listForMonth(
                 query.getHouseholdId(),
+                query.getYear(),
+                query.getMonth(),
                 startDate,
-                endDate
-        );
+                endDate);
         return new ListTodosResult(todos);
     }
 

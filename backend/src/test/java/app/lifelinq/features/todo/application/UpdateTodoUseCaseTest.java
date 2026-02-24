@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -69,6 +70,32 @@ class UpdateTodoUseCaseTest {
     }
 
     @Test
+    void canChangeScopeFromLaterToWeek() {
+        InMemoryTodoRepository todoRepository = new InMemoryTodoRepository();
+        Todo original = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Plan grocery prep");
+        todoRepository.save(original);
+        UpdateTodoUseCase useCase = new UpdateTodoUseCase(todoRepository);
+
+        UpdateTodoResult result = useCase.execute(new UpdateTodoCommand(
+                original.getId(),
+                "Plan grocery prep",
+                TodoScope.WEEK,
+                null,
+                null,
+                2026,
+                10,
+                null
+        ));
+
+        assertTrue(result.isUpdated());
+        Todo updated = todoRepository.findById(original.getId()).orElseThrow();
+        assertEquals(TodoScope.WEEK, updated.getScope());
+        assertEquals(2026, updated.getScopeYear());
+        assertEquals(10, updated.getScopeWeek());
+        assertEquals(null, updated.getDueDate());
+    }
+
+    @Test
     void requiresCommand() {
         UpdateTodoUseCase useCase = new UpdateTodoUseCase(new InMemoryTodoRepository());
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
@@ -76,10 +103,21 @@ class UpdateTodoUseCaseTest {
 
     @Test
     void rejectsDueTimeWithoutDueDate() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new UpdateTodoCommand(UUID.randomUUID(), "Task", null, LocalTime.of(9, 0))
+        InMemoryTodoRepository todoRepository = new InMemoryTodoRepository();
+        Todo original = new Todo(UUID.randomUUID(), UUID.randomUUID(), "Task");
+        todoRepository.save(original);
+        UpdateTodoUseCase useCase = new UpdateTodoUseCase(todoRepository);
+        UpdateTodoCommand command = new UpdateTodoCommand(
+                original.getId(),
+                "Task",
+                TodoScope.DAY,
+                null,
+                LocalTime.of(9, 0),
+                null,
+                null,
+                null
         );
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
     }
 
     private static final class InMemoryTodoRepository implements TodoRepository {
@@ -102,12 +140,12 @@ class UpdateTodoUseCaseTest {
         }
 
         @Override
-        public List<Todo> findAll() {
+        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
             return new ArrayList<>(saved);
         }
 
         @Override
-        public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new ArrayList<>();
         }
     }

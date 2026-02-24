@@ -2,8 +2,6 @@ package app.lifelinq.features.todo.application;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
-import app.lifelinq.features.todo.domain.TodoStatus;
-import java.time.Instant;
 import java.util.Optional;
 
 final class UpdateTodoUseCase {
@@ -30,8 +28,14 @@ final class UpdateTodoUseCase {
                 current.getHouseholdId(),
                 command.getText(),
                 current.getStatus(),
+                command.getScope(),
                 command.getDueDate(),
                 command.getDueTime(),
+                command.getScopeYear(),
+                command.getScopeWeek(),
+                command.getScopeMonth(),
+                current.getCompletedAt(),
+                current.getCreatedAt(),
                 current.getDeletedAt()
         );
         todoRepository.save(updated);

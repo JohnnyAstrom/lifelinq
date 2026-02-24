@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -29,6 +30,7 @@ class CompleteTodoUseCaseTest {
 
         assertEquals(true, result.isCompleted());
         assertEquals(initialSaveCount + 1, repository.saveCount);
+        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), repository.findById(todo.getId()).orElseThrow().getCompletedAt());
     }
 
     @Test
@@ -45,6 +47,7 @@ class CompleteTodoUseCaseTest {
 
         assertEquals(false, result.isCompleted());
         assertEquals(saveCountAfterComplete + 1, repository.saveCount);
+        assertEquals(null, repository.findById(todo.getId()).orElseThrow().getCompletedAt());
     }
 
     @Test
@@ -86,12 +89,12 @@ class CompleteTodoUseCaseTest {
         }
 
         @Override
-        public java.util.List<Todo> findAll() {
+        public java.util.List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
             return new java.util.ArrayList<>(store.values());
         }
 
         @Override
-        public java.util.List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+        public java.util.List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new java.util.ArrayList<>();
         }
     }

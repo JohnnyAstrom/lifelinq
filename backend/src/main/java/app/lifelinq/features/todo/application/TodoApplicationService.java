@@ -2,9 +2,12 @@ package app.lifelinq.features.todo.application;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
 import app.lifelinq.features.user.application.UserApplicationService;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,12 +45,16 @@ public class TodoApplicationService {
             UUID householdId,
             UUID actorUserId,
             String text,
-            java.time.LocalDate dueDate,
-            java.time.LocalTime dueTime
+            TodoScope scope,
+            LocalDate dueDate,
+            LocalTime dueTime,
+            Integer scopeYear,
+            Integer scopeWeek,
+            Integer scopeMonth
     ) {
         userApplicationService.ensureUserExists(actorUserId);
         CreateTodoResult result = createTodoUseCase.execute(
-                new CreateTodoCommand(householdId, text, dueDate, dueTime)
+                new CreateTodoCommand(householdId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
         );
         return result.getTodoId();
     }
@@ -64,11 +71,17 @@ public class TodoApplicationService {
             UUID todoId,
             UUID actorUserId,
             String text,
-            java.time.LocalDate dueDate,
-            java.time.LocalTime dueTime
+            TodoScope scope,
+            LocalDate dueDate,
+            LocalTime dueTime,
+            Integer scopeYear,
+            Integer scopeWeek,
+            Integer scopeMonth
     ) {
         userApplicationService.ensureUserExists(actorUserId);
-        UpdateTodoResult result = updateTodoUseCase.execute(new UpdateTodoCommand(todoId, text, dueDate, dueTime));
+        UpdateTodoResult result = updateTodoUseCase.execute(
+                new UpdateTodoCommand(todoId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
+        );
         return result.isUpdated();
     }
 
