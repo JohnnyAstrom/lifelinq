@@ -3,9 +3,6 @@ import {
   Alert,
   GestureResponderEvent,
   Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   Share,
   StyleSheet,
@@ -15,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
 import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
+import { OverlaySheet } from '../shared/ui/OverlaySheet';
 import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -378,114 +376,75 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
-      <Modal
-        visible={showCreate}
-        transparent
-        animationType="slide"
-        onRequestClose={closeCreate}
-      >
-        <Pressable style={styles.backdrop} onPress={closeCreate}>
-          <KeyboardAvoidingView
-            style={styles.modalContent}
-            behavior="padding"
-            enabled={Platform.OS === 'ios'}
-          >
-            <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
-              <Text style={textStyles.h3}>{strings.createListTitle}</Text>
-              <Subtle>{strings.createListSubtitle}</Subtle>
-              <AppInput
-                placeholder={strings.listNamePlaceholder}
-                value={newListName}
-                onChangeText={setNewListName}
-                onSubmitEditing={async () => {
-                  if (canCreateList) {
-                    await handleCreateList();
-                  }
-                }}
-                returnKeyType="done"
-                autoFocus
-              />
-              <View style={styles.sheetActions}>
-                <AppButton
-                  title={strings.createListAction}
-                  onPress={handleCreateList}
-                  disabled={!canCreateList}
-                  fullWidth
-                />
-                <AppButton title={strings.close} onPress={closeCreate} variant="ghost" fullWidth />
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+      {showCreate ? (
+        <OverlaySheet onClose={closeCreate} sheetStyle={styles.sheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={textStyles.h3}>{strings.createListTitle}</Text>
+          <Subtle>{strings.createListSubtitle}</Subtle>
+          <AppInput
+            placeholder={strings.listNamePlaceholder}
+            value={newListName}
+            onChangeText={setNewListName}
+            onSubmitEditing={async () => {
+              if (canCreateList) {
+                await handleCreateList();
+              }
+            }}
+            returnKeyType="done"
+            autoFocus
+          />
+          <View style={styles.sheetActions}>
+            <AppButton
+              title={strings.createListAction}
+              onPress={handleCreateList}
+              disabled={!canCreateList}
+              fullWidth
+            />
+            <AppButton title={strings.close} onPress={closeCreate} variant="ghost" fullWidth />
+          </View>
+        </OverlaySheet>
+      ) : null}
 
-      <Modal
-        visible={!!activeListId}
-        transparent
-        animationType="fade"
-        onRequestClose={closeActions}
-      >
-        <Pressable style={styles.backdrop} onPress={closeActions}>
-          <KeyboardAvoidingView
-            style={styles.modalContent}
-            behavior="padding"
-            enabled={Platform.OS === 'ios'}
-          >
-            <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
-              <Text style={textStyles.h3}>{strings.actionsTitle}</Text>
-              <View style={styles.sheetActions}>
-                <AppButton title={strings.actionShare} onPress={() => void handleShareList()} fullWidth />
-                <AppButton title={strings.actionEditName} onPress={openRename} variant="secondary" fullWidth />
-                <AppButton
-                  title={strings.actionDelete}
-                  onPress={() => {
-                    const list = selectedActionList();
-                    closeActions();
-                    if (list) {
-                      requestRemoveList(list.id);
-                    }
-                  }}
-                  variant="ghost"
-                  fullWidth
-                />
-                <AppButton title={strings.close} onPress={closeActions} variant="ghost" fullWidth />
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+      {activeListId ? (
+        <OverlaySheet onClose={closeActions} sheetStyle={styles.sheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={textStyles.h3}>{strings.actionsTitle}</Text>
+          <View style={styles.sheetActions}>
+            <AppButton title={strings.actionShare} onPress={() => void handleShareList()} fullWidth />
+            <AppButton title={strings.actionEditName} onPress={openRename} variant="secondary" fullWidth />
+            <AppButton
+              title={strings.actionDelete}
+              onPress={() => {
+                const list = selectedActionList();
+                closeActions();
+                if (list) {
+                  requestRemoveList(list.id);
+                }
+              }}
+              variant="ghost"
+              fullWidth
+            />
+            <AppButton title={strings.close} onPress={closeActions} variant="ghost" fullWidth />
+          </View>
+        </OverlaySheet>
+      ) : null}
 
-      <Modal
-        visible={!!renameListId}
-        transparent
-        animationType="slide"
-        onRequestClose={closeRename}
-      >
-        <Pressable style={styles.backdrop} onPress={closeRename}>
-          <KeyboardAvoidingView
-            style={styles.modalContent}
-            behavior="padding"
-            enabled={Platform.OS === 'ios'}
-          >
-            <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
-              <Text style={textStyles.h3}>{strings.renameTitle}</Text>
-              <AppInput
-                placeholder={strings.listNamePlaceholder}
-                value={renameListName}
-                onChangeText={setRenameListName}
-                autoFocus
-              />
-              <View style={styles.sheetActions}>
-                <AppButton title={strings.renameSave} onPress={() => void handleRenameList()} fullWidth />
-                <AppButton title={strings.close} onPress={closeRename} variant="ghost" fullWidth />
-              </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+      {renameListId ? (
+        <OverlaySheet onClose={closeRename} sheetStyle={styles.sheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={textStyles.h3}>{strings.renameTitle}</Text>
+          <AppInput
+            placeholder={strings.listNamePlaceholder}
+            value={renameListName}
+            onChangeText={setRenameListName}
+            autoFocus
+          />
+          <View style={styles.sheetActions}>
+            <AppButton title={strings.renameSave} onPress={() => void handleRenameList()} fullWidth />
+            <AppButton title={strings.close} onPress={closeRename} variant="ghost" fullWidth />
+          </View>
+        </OverlaySheet>
+      ) : null}
     </AppScreen>
   );
 }
@@ -576,19 +535,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 28,
     fontFamily: theme.typography.heading,
-  },
-  backdrop: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: theme.colors.surface,

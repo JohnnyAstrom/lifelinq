@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Animated as RNAnimated,
   Easing,
@@ -20,15 +20,27 @@ type OverlaySheetProps = {
   aboveSheet?: ReactNode;
 };
 
-export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: OverlaySheetProps) {
+export function OverlaySheet({
+  children,
+  onClose,
+  sheetStyle,
+  aboveSheet,
+}: OverlaySheetProps) {
   const backdropOpacity = useRef(new RNAnimated.Value(0)).current;
   const sheetTranslateY = useRef(new RNAnimated.Value(28)).current;
   const { height } = useReanimatedKeyboardAnimation();
   const insets = useSafeAreaInsets();
+  const [sheetHeight, setSheetHeight] = useState(0);
 
-  const animatedStyle = useAnimatedStyle(() => {
+  const sheetAnimatedStyle = useAnimatedStyle(() => {
     return {
       bottom: -height.value - insets.bottom,
+    };
+  });
+
+  const aboveSheetAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      bottom: sheetHeight + theme.spacing.sm - height.value - insets.bottom,
     };
   });
 
@@ -65,8 +77,17 @@ export function OverlaySheet({ children, onClose, sheetStyle, aboveSheet }: Over
         pointerEvents="box-none"
       >
         <Animated.View style={styles.overlaySheet} pointerEvents="box-none">
-          {aboveSheet ? <View style={styles.aboveSheet}>{aboveSheet}</View> : null}
-          <Animated.View style={[styles.sheet, sheetStyle, animatedStyle]}>{children}</Animated.View>
+          {aboveSheet ? (
+            <Animated.View style={[styles.aboveSheetFloating, aboveSheetAnimatedStyle]} pointerEvents="box-none">
+              <View style={styles.aboveSheet}>{aboveSheet}</View>
+            </Animated.View>
+          ) : null}
+          <Animated.View
+            style={[styles.sheet, sheetStyle, sheetAnimatedStyle]}
+            onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
+          >
+            {children}
+          </Animated.View>
         </Animated.View>
       </RNAnimated.View>
     </View>
@@ -88,6 +109,7 @@ const styles = StyleSheet.create({
   },
   overlaySheet: {
     flex: 1,
+    justifyContent: 'flex-end',
     zIndex: 2,
     elevation: 2,
     overflow: 'visible',
@@ -95,6 +117,13 @@ const styles = StyleSheet.create({
   aboveSheet: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
+  },
+  aboveSheetFloating: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 3,
+    elevation: 3,
   },
   sheet: {
     backgroundColor: theme.colors.surface,
