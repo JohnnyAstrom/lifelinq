@@ -308,7 +308,10 @@ public class MealsApplicationService {
             UUID targetShoppingListId,
             List<Ingredient> ingredients
     ) {
-        for (Ingredient ingredient : ingredients) {
+        // Shopping inserts new items at the top. Reverse recipe order here so the
+        // final list preserves the original ingredient order for users.
+        for (int index = ingredients.size() - 1; index >= 0; index--) {
+            Ingredient ingredient = ingredients.get(index);
             shoppingApplicationService.addShoppingItem(
                     householdId,
                     actorUserId,

@@ -92,17 +92,17 @@ class MealsApplicationServiceTest {
                 eq(householdId),
                 eq(userId),
                 eq(listId),
-                eq("tomato"),
-                eq(null),
-                eq(null)
+                eq("olive oil"),
+                eq(new BigDecimal("2")),
+                eq(ShoppingUnit.DL)
         );
         order.verify(shopping).addShoppingItem(
                 eq(householdId),
                 eq(userId),
                 eq(listId),
-                eq("olive oil"),
-                eq(new BigDecimal("2")),
-                eq(ShoppingUnit.DL)
+                eq("tomato"),
+                eq(null),
+                eq(null)
         );
     }
 
