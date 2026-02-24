@@ -50,14 +50,21 @@ export function useTodos(
 
   async function add(
     text: string,
-    options?: { dueDate?: string | null; dueTime?: string | null }
+    options?: {
+      scope: 'DAY' | 'WEEK' | 'MONTH' | 'LATER';
+      dueDate?: string | null;
+      dueTime?: string | null;
+      scopeYear?: number | null;
+      scopeWeek?: number | null;
+      scopeMonth?: number | null;
+    }
   ): Promise<boolean> {
     if (!token) {
       throw new Error('Missing token');
     }
     setError(null);
     try {
-      await createTodo(token, text, options?.dueDate, options?.dueTime);
+      await createTodo(token, text, options);
       await load();
       return true;
     } catch (err) {
@@ -86,14 +93,21 @@ export function useTodos(
   async function update(
     id: string,
     text: string,
-    options?: { dueDate?: string | null; dueTime?: string | null }
+    options?: {
+      scope: 'DAY' | 'WEEK' | 'MONTH' | 'LATER';
+      dueDate?: string | null;
+      dueTime?: string | null;
+      scopeYear?: number | null;
+      scopeWeek?: number | null;
+      scopeMonth?: number | null;
+    }
   ): Promise<boolean> {
     if (!token) {
       throw new Error('Missing token');
     }
     setError(null);
     try {
-      await updateTodo(token, id, text, options?.dueDate, options?.dueTime);
+      await updateTodo(token, id, text, options);
       await load();
       return true;
     } catch (err) {

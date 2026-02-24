@@ -57,7 +57,11 @@ export function CreateTodoScreen({ token, onDone }: Props) {
     }
     const dueDate = pendingDate ? toApiDate(pendingDate) : undefined;
     const dueTime = pendingDate && pendingTime ? pendingTime : undefined;
-    const created = await todos.add(text.trim(), { dueDate, dueTime });
+    const created = await todos.add(text.trim(), {
+      scope: dueDate ? 'DAY' : 'LATER',
+      dueDate,
+      dueTime,
+    });
     if (created) {
       setText('');
       setPendingDate(null);

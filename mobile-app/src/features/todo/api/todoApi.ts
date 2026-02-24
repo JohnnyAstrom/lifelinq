@@ -5,8 +5,14 @@ export type TodoResponse = {
   householdId: string;
   text: string;
   status: 'OPEN' | 'COMPLETED';
+  scope?: 'DAY' | 'WEEK' | 'MONTH' | 'LATER' | null;
+  scopeYear?: number | null;
+  scopeWeek?: number | null;
+  scopeMonth?: number | null;
   dueDate?: string | null;
   dueTime?: string | null;
+  createdAt?: string | null;
+  completedAt?: string | null;
 };
 
 type ListTodosResponse = {
@@ -35,15 +41,41 @@ export async function fetchTodosForMonth(
 export async function createTodo(
   token: string,
   text: string,
-  dueDate?: string | null,
-  dueTime?: string | null
-): Promise<void> {
-  const payload: { text: string; dueDate?: string | null; dueTime?: string | null } = { text };
-  if (dueDate) {
-    payload.dueDate = dueDate;
+  scheduling?: {
+    scope: 'DAY' | 'WEEK' | 'MONTH' | 'LATER';
+    dueDate?: string | null;
+    dueTime?: string | null;
+    scopeYear?: number | null;
+    scopeWeek?: number | null;
+    scopeMonth?: number | null;
   }
-  if (dueTime) {
-    payload.dueTime = dueTime;
+): Promise<void> {
+  const payload: {
+    text: string;
+    scope?: 'DAY' | 'WEEK' | 'MONTH' | 'LATER';
+    dueDate?: string | null;
+    dueTime?: string | null;
+    scopeYear?: number | null;
+    scopeWeek?: number | null;
+    scopeMonth?: number | null;
+  } = { text };
+  if (scheduling) {
+    payload.scope = scheduling.scope;
+    if (scheduling.dueDate !== undefined) {
+      payload.dueDate = scheduling.dueDate;
+    }
+    if (scheduling.dueTime !== undefined) {
+      payload.dueTime = scheduling.dueTime;
+    }
+    if (scheduling.scopeYear !== undefined) {
+      payload.scopeYear = scheduling.scopeYear;
+    }
+    if (scheduling.scopeWeek !== undefined) {
+      payload.scopeWeek = scheduling.scopeWeek;
+    }
+    if (scheduling.scopeMonth !== undefined) {
+      payload.scopeMonth = scheduling.scopeMonth;
+    }
   }
   await fetchJson<void>(
     '/todos',
@@ -69,15 +101,41 @@ export async function updateTodo(
   token: string,
   id: string,
   text: string,
-  dueDate?: string | null,
-  dueTime?: string | null
-): Promise<void> {
-  const payload: { text: string; dueDate?: string | null; dueTime?: string | null } = { text };
-  if (dueDate !== undefined) {
-    payload.dueDate = dueDate;
+  scheduling?: {
+    scope: 'DAY' | 'WEEK' | 'MONTH' | 'LATER';
+    dueDate?: string | null;
+    dueTime?: string | null;
+    scopeYear?: number | null;
+    scopeWeek?: number | null;
+    scopeMonth?: number | null;
   }
-  if (dueTime !== undefined) {
-    payload.dueTime = dueTime;
+): Promise<void> {
+  const payload: {
+    text: string;
+    scope?: 'DAY' | 'WEEK' | 'MONTH' | 'LATER';
+    dueDate?: string | null;
+    dueTime?: string | null;
+    scopeYear?: number | null;
+    scopeWeek?: number | null;
+    scopeMonth?: number | null;
+  } = { text };
+  if (scheduling) {
+    payload.scope = scheduling.scope;
+    if (scheduling.dueDate !== undefined) {
+      payload.dueDate = scheduling.dueDate;
+    }
+    if (scheduling.dueTime !== undefined) {
+      payload.dueTime = scheduling.dueTime;
+    }
+    if (scheduling.scopeYear !== undefined) {
+      payload.scopeYear = scheduling.scopeYear;
+    }
+    if (scheduling.scopeWeek !== undefined) {
+      payload.scopeWeek = scheduling.scopeWeek;
+    }
+    if (scheduling.scopeMonth !== undefined) {
+      payload.scopeMonth = scheduling.scopeMonth;
+    }
   }
   await fetchJson<void>(
     `/todos/${encodeURIComponent(id)}`,
