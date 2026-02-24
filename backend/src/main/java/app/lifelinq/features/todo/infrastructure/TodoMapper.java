@@ -13,8 +13,14 @@ public final class TodoMapper {
                 todo.getHouseholdId(),
                 todo.getText(),
                 todo.getStatus(),
+                todo.getScope(),
                 todo.getDueDate(),
                 todo.getDueTime(),
+                todo.getScopeYear(),
+                todo.getScopeWeek(),
+                todo.getScopeMonth(),
+                todo.getCompletedAt(),
+                todo.getCreatedAt(),
                 todo.getDeletedAt()
         );
     }
@@ -28,8 +34,14 @@ public final class TodoMapper {
                 entity.getHouseholdId(),
                 entity.getText(),
                 entity.getStatus(),
+                entity.getScope(),
                 entity.getDueDate(),
                 entity.getDueTime(),
+                entity.getScopeYear(),
+                entity.getScopeWeek(),
+                entity.getScopeMonth(),
+                entity.getCompletedAt(),
+                entity.getCreatedAt(),
                 entity.getDeletedAt()
         );
     }

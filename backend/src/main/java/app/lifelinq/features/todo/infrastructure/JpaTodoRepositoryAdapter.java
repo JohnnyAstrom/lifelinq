@@ -2,6 +2,7 @@ package app.lifelinq.features.todo.infrastructure;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,16 +39,23 @@ public final class JpaTodoRepositoryAdapter implements TodoRepository {
     }
 
     @Override
-    public List<Todo> findAll() {
+    public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+        if (householdId == null) {
+            throw new IllegalArgumentException("householdId must not be null");
+        }
+        if (statusFilter == null) {
+            throw new IllegalArgumentException("statusFilter must not be null");
+        }
         List<Todo> result = new ArrayList<>();
-        for (TodoEntity entity : todoJpaRepository.findAll()) {
+        TodoStatus dbFilter = statusFilter == TodoStatus.ALL ? null : statusFilter;
+        for (TodoEntity entity : todoJpaRepository.listForHousehold(householdId, dbFilter)) {
             result.add(mapper.toDomain(entity));
         }
         return result;
     }
 
     @Override
-    public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+    public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
         if (householdId == null) {
             throw new IllegalArgumentException("householdId must not be null");
         }
@@ -58,8 +66,7 @@ public final class JpaTodoRepositoryAdapter implements TodoRepository {
             throw new IllegalArgumentException("endDate must not be null");
         }
         List<Todo> result = new ArrayList<>();
-        for (TodoEntity entity : todoJpaRepository
-                .findByHouseholdIdAndDeletedAtIsNullAndDueDateBetweenOrderByDueDateAscIdAsc(householdId, startDate, endDate)) {
+        for (TodoEntity entity : todoJpaRepository.listForMonth(householdId, year, month, startDate, endDate)) {
             result.add(mapper.toDomain(entity));
         }
         return result;

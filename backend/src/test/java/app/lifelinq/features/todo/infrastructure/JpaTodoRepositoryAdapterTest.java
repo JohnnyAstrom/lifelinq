@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.todo.domain.Todo;
+import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -100,6 +101,21 @@ class JpaTodoRepositoryAdapterTest {
                 null,
                 null
         );
+        Todo monthGoal = Todo.rehydrate(
+                UUID.randomUUID(),
+                householdId,
+                "Month goal",
+                TodoStatus.OPEN,
+                TodoScope.MONTH,
+                null,
+                null,
+                2026,
+                null,
+                2,
+                null,
+                Instant.parse("2026-02-01T00:00:00Z"),
+                null
+        );
         Todo deleted = Todo.rehydrate(
                 UUID.randomUUID(),
                 householdId,
@@ -117,16 +133,99 @@ class JpaTodoRepositoryAdapterTest {
         adapter.save(otherHouseholdTodo);
         adapter.save(withoutDueDate);
         adapter.save(deleted);
+        adapter.save(monthGoal);
 
-        List<Todo> result = adapter.findByHouseholdIdAndDueDateBetween(
+        List<Todo> result = adapter.listForMonth(
                 householdId,
+                2026,
+                2,
                 LocalDate.of(2026, 2, 1),
                 LocalDate.of(2026, 2, 28)
         );
 
-        assertEquals(3, result.size());
+        assertEquals(4, result.size());
         assertEquals(febEarlierLowerId.getId(), result.get(0).getId());
         assertEquals(febEarlierHigherId.getId(), result.get(1).getId());
         assertEquals(febLater.getId(), result.get(2).getId());
+        assertEquals(monthGoal.getId(), result.get(3).getId());
+    }
+
+    @Test
+    void listByHouseholdFiltersDeletedAndSortsStably() {
+        JpaTodoRepositoryAdapter adapter = new JpaTodoRepositoryAdapter(todoJpaRepository, new TodoMapper());
+        UUID householdId = UUID.randomUUID();
+
+        Todo later = Todo.rehydrate(
+                UUID.fromString("00000000-0000-0000-0000-000000000021"),
+                householdId,
+                "Later",
+                TodoStatus.OPEN,
+                TodoScope.LATER,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-02-05T00:00:00Z"),
+                null
+        );
+        Todo dayWithTime = Todo.rehydrate(
+                UUID.fromString("00000000-0000-0000-0000-000000000022"),
+                householdId,
+                "Day with time",
+                TodoStatus.OPEN,
+                TodoScope.DAY,
+                LocalDate.of(2026, 2, 10),
+                java.time.LocalTime.of(8, 0),
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-02-01T00:00:00Z"),
+                null
+        );
+        Todo dayWithoutTime = Todo.rehydrate(
+                UUID.fromString("00000000-0000-0000-0000-000000000023"),
+                householdId,
+                "Day no time",
+                TodoStatus.OPEN,
+                TodoScope.DAY,
+                LocalDate.of(2026, 2, 10),
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-02-01T00:00:00Z"),
+                null
+        );
+        Todo deleted = Todo.rehydrate(
+                UUID.randomUUID(),
+                householdId,
+                "Deleted",
+                TodoStatus.OPEN,
+                TodoScope.LATER,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-02-01T00:00:00Z"),
+                Instant.parse("2026-02-10T00:00:00Z")
+        );
+
+        adapter.save(later);
+        adapter.save(dayWithoutTime);
+        adapter.save(dayWithTime);
+        adapter.save(deleted);
+
+        List<Todo> result = adapter.listByHousehold(householdId, TodoStatus.ALL);
+
+        assertEquals(3, result.size());
+        assertEquals(dayWithTime.getId(), result.get(0).getId());
+        assertEquals(dayWithoutTime.getId(), result.get(1).getId());
+        assertEquals(later.getId(), result.get(2).getId());
     }
 }

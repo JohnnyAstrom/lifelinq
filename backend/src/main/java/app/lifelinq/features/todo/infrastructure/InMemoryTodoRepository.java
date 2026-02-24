@@ -2,6 +2,8 @@ package app.lifelinq.features.todo.infrastructure;
 
 import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
+import app.lifelinq.features.todo.domain.TodoScope;
+import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,12 +33,32 @@ public final class InMemoryTodoRepository implements TodoRepository {
     }
 
     @Override
-    public List<Todo> findAll() {
-        return new ArrayList<>(byId.values());
+    public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+        if (householdId == null) {
+            throw new IllegalArgumentException("householdId must not be null");
+        }
+        if (statusFilter == null) {
+            throw new IllegalArgumentException("statusFilter must not be null");
+        }
+        List<Todo> result = new ArrayList<>();
+        for (Todo todo : byId.values()) {
+            if (!householdId.equals(todo.getHouseholdId())) {
+                continue;
+            }
+            if (todo.isDeleted()) {
+                continue;
+            }
+            if (statusFilter != TodoStatus.ALL && todo.getStatus() != statusFilter) {
+                continue;
+            }
+            result.add(todo);
+        }
+        result.sort(defaultComparator());
+        return result;
     }
 
     @Override
-    public List<Todo> findByHouseholdIdAndDueDateBetween(UUID householdId, LocalDate startDate, LocalDate endDate) {
+    public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
         if (householdId == null) {
             throw new IllegalArgumentException("householdId must not be null");
         }
@@ -48,19 +70,42 @@ public final class InMemoryTodoRepository implements TodoRepository {
         }
         List<Todo> result = new ArrayList<>();
         for (Todo todo : byId.values()) {
-            LocalDate dueDate = todo.getDueDate();
             if (!householdId.equals(todo.getHouseholdId())) {
                 continue;
             }
-            if (todo.isDeleted() || dueDate == null) {
+            if (todo.isDeleted()) {
                 continue;
             }
-            if ((dueDate.isEqual(startDate) || dueDate.isAfter(startDate))
-                    && (dueDate.isEqual(endDate) || dueDate.isBefore(endDate))) {
+            if (todo.getScope() == TodoScope.DAY && todo.getDueDate() != null) {
+                LocalDate dueDate = todo.getDueDate();
+                if ((dueDate.isEqual(startDate) || dueDate.isAfter(startDate))
+                        && (dueDate.isEqual(endDate) || dueDate.isBefore(endDate))) {
+                    result.add(todo);
+                }
+                continue;
+            }
+            if (todo.getScope() == TodoScope.MONTH
+                    && Integer.valueOf(year).equals(todo.getScopeYear())
+                    && Integer.valueOf(month).equals(todo.getScopeMonth())) {
                 result.add(todo);
             }
         }
-        result.sort(Comparator.comparing(Todo::getDueDate).thenComparing(Todo::getId));
+        result.sort(defaultComparator());
         return result;
+    }
+
+    private Comparator<Todo> defaultComparator() {
+        return Comparator
+                .comparingInt((Todo todo) -> switch (todo.getScope()) {
+                    case DAY -> 0;
+                    case WEEK -> 1;
+                    case MONTH -> 2;
+                    case LATER -> 3;
+                })
+                .thenComparing(Todo::getDueDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(todo -> todo.getDueTime() == null ? 1 : 0)
+                .thenComparing(Todo::getDueTime, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Todo::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Todo::getId);
     }
 }
