@@ -18,14 +18,21 @@ The system must be fast to capture and easy to recall.
 - `GET /todos/calendar/{year}/{month}`
 - `month` uses ISO numbering `1..12`; invalid values return `400`.
 - Month boundaries are computed using `YearMonth` in UTC.
-- Filtering is based on `dueDate` (`LocalDate`) only, with no timezone conversion.
+- Monthly calendar responses include:
+  - `DAY`-scoped todos whose `dueDate` falls within the month range
+  - `MONTH`-scoped todos for the requested year/month
+- `LATER` and `WEEK` todos are excluded from the month grid API.
 
 ## Data shape (conceptual)
 
 - `text` (required)
 - `status` (OPEN, COMPLETED)
-- `dueDate` (optional)
-- `dueTime` (optional)
+- `scope` (DAY, WEEK, MONTH, LATER)
+- `dueDate` / `dueTime` (DAY only)
+- `scopeYear` + `scopeWeek` (WEEK only)
+- `scopeYear` + `scopeMonth` (MONTH only)
+- `createdAt` (required)
+- `completedAt` (optional)
 - `recurrence` (optional)
 - `assignedTo` (optional userId)
 - `createdBy` (userId)
@@ -43,6 +50,7 @@ The system must be fast to capture and easy to recall.
 - Delete is lifecycle-only and does not use a separate status value.
 - Deleted items must not allow further state mutations (complete/toggle).
 - Completing a todo must not affect `deletedAt`.
+- Completing a todo sets `completedAt`; reopening clears `completedAt`.
 - Default list queries exclude items where `deletedAt` is set.
 
 ## Decisions

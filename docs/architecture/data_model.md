@@ -46,12 +46,16 @@ All domain entities belong to a household.
 ### TodoItem
 
 - simple, flat item
-- optional due date
+- explicit planning scope (`DAY`, `WEEK`, `MONTH`, `LATER`)
+- optional due date/time (DAY scope only)
+- optional week target (scopeYear + ISO week)
+- optional month target (scopeYear + month)
 - optional recurrence
 - optional assignee
 - assignment is coordination only, not ownership
 - any household member may reassign or clear assignment
-- optional due time (scheduled items)
+- `createdAt` (required)
+- `completedAt` (optional)
 - optional calendar sync reference (external event id + provider)
 
 ---
@@ -161,10 +165,14 @@ It is a guiding target, not a strict implementation requirement.
 - `text` (core)
 - `status` (core)
 - `createdAt` (core)
-- `completedAt` (later)
+- `completedAt` (core)
 - `deletedAt` (core)
-- `dueDate` (core)
-- `dueTime` (core)
+- `scope` (core)
+- `dueDate` (core for DAY)
+- `dueTime` (core for DAY)
+- `scopeYear` (core for WEEK/MONTH)
+- `scopeWeek` (core for WEEK)
+- `scopeMonth` (core for MONTH)
 - `recurrenceRule` (later)
 - `assignedToUserId` (later)
 - `createdByUserId` (later)
@@ -247,7 +255,7 @@ This is a structural overview of tables and relations that are implemented today
 
 - `users`: `id`
 - `households`: `id`, `name`
-- `todos`: `id`, `household_id`, `text`, `status`, `due_date`, `due_time`, `deleted_at`
+- `todos`: `id`, `household_id`, `text`, `status`, `scope`, `due_date`, `due_time`, `scope_year`, `scope_week`, `scope_month`, `created_at`, `completed_at`, `deleted_at`
 - `documents`: `id`, `household_id`, `created_by_user_id`, `title`, `notes`, `date`, `category`, `external_link`, `created_at`
 - `document_tags`: `document_id`, `tag`
 - `week_plans`: `id`, `household_id`, `week_year`, `iso_week`, `created_at`

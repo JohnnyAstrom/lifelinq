@@ -3,6 +3,7 @@ package app.lifelinq.features.todo.api;
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.Todo;
+import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,8 +42,12 @@ public class TodoController {
                         context.getHouseholdId(),
                         context.getUserId(),
                         request.getText(),
+                        resolveScope(request.getScope(), request.getDueDate()),
                         request.getDueDate(),
-                        request.getDueTime()
+                        request.getDueTime(),
+                        request.getScopeYear(),
+                        request.getScopeWeek(),
+                        request.getScopeMonth()
                 )
         ));
     }
@@ -67,8 +72,12 @@ public class TodoController {
                 id,
                 context.getUserId(),
                 request.getText(),
+                resolveScope(request.getScope(), request.getDueDate()),
                 request.getDueDate(),
-                request.getDueTime()
+                request.getDueTime(),
+                request.getScopeYear(),
+                request.getScopeWeek(),
+                request.getScopeMonth()
         );
         return ResponseEntity.ok(new UpdateTodoResponse(updated));
     }
@@ -112,10 +121,23 @@ public class TodoController {
                     todo.getHouseholdId(),
                     todo.getText(),
                     todo.getStatus(),
+                    todo.getScope(),
                     todo.getDueDate(),
-                    todo.getDueTime()
+                    todo.getDueTime(),
+                    todo.getScopeYear(),
+                    todo.getScopeWeek(),
+                    todo.getScopeMonth(),
+                    todo.getCompletedAt(),
+                    todo.getCreatedAt()
             ));
         }
         return items;
+    }
+
+    private TodoScope resolveScope(TodoScope requestedScope, java.time.LocalDate dueDate) {
+        if (requestedScope != null) {
+            return requestedScope;
+        }
+        return dueDate != null ? TodoScope.DAY : TodoScope.LATER;
     }
 }

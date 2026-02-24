@@ -14,6 +14,7 @@ import app.lifelinq.features.household.application.HouseholdApplicationServiceTe
 import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.todo.application.TodoApplicationService;
+import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -103,7 +104,8 @@ class TodoControllerTest {
         membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(todoApplicationService.createTodo(householdId, userId, "Buy milk", null, null)).thenReturn(todoId);
+        when(todoApplicationService.createTodo(householdId, userId, "Buy milk", TodoScope.LATER, null, null, null, null, null))
+                .thenReturn(todoId);
 
         mockMvc.perform(post("/todos")
                         .header("Authorization", "Bearer " + token)
@@ -111,7 +113,7 @@ class TodoControllerTest {
                         .content("{\"text\":\"Buy milk\"}"))
                 .andExpect(status().isOk());
 
-        verify(todoApplicationService).createTodo(householdId, userId, "Buy milk", null, null);
+        verify(todoApplicationService).createTodo(householdId, userId, "Buy milk", TodoScope.LATER, null, null, null, null, null);
     }
 
     @Test
@@ -201,7 +203,16 @@ class TodoControllerTest {
         membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(todoApplicationService.updateTodo(todoId, userId, "Buy oat milk", java.time.LocalDate.of(2026, 2, 14), java.time.LocalTime.of(9, 30)))
+        when(todoApplicationService.updateTodo(
+                todoId,
+                userId,
+                "Buy oat milk",
+                TodoScope.DAY,
+                java.time.LocalDate.of(2026, 2, 14),
+                java.time.LocalTime.of(9, 30),
+                null,
+                null,
+                null))
                 .thenReturn(true);
 
         mockMvc.perform(put("/todos/" + todoId)
@@ -214,8 +225,12 @@ class TodoControllerTest {
                 todoId,
                 userId,
                 "Buy oat milk",
+                TodoScope.DAY,
                 java.time.LocalDate.of(2026, 2, 14),
-                java.time.LocalTime.of(9, 30)
+                java.time.LocalTime.of(9, 30),
+                null,
+                null,
+                null
         );
     }
 
