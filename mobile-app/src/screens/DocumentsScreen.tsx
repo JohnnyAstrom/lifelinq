@@ -1,5 +1,6 @@
-import { Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Keyboard, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useAuth } from '../shared/auth/AuthContext';
 import { useDocuments } from '../features/documents/hooks/useDocuments';
 import { ApiError } from '../shared/api/client';
@@ -223,13 +224,10 @@ export function DocumentsScreen({ onDone }: Props) {
         onRequestClose={closeCreate}
       >
         <Pressable style={styles.backdrop} onPress={closeCreate}>
-          <KeyboardAvoidingView
-            style={styles.modalContent}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
+          <View style={styles.modalContent}>
             <Pressable style={styles.sheet} onPress={() => null}>
               <View style={styles.sheetHandle} />
-              <ScrollView
+              <KeyboardAwareScrollView
                 style={styles.sheetScroll}
                 contentContainerStyle={styles.sheetScrollContent}
                 keyboardShouldPersistTaps="handled"
@@ -270,9 +268,9 @@ export function DocumentsScreen({ onDone }: Props) {
                   />
                   <AppButton title={strings.cancel} onPress={closeCreate} variant="ghost" fullWidth />
                 </View>
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </Pressable>
-          </KeyboardAvoidingView>
+          </View>
         </Pressable>
       </Modal>
     </AppScreen>
@@ -348,7 +346,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
-    maxHeight: '85%',
+    maxHeight: '95%',
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
     borderWidth: 1,

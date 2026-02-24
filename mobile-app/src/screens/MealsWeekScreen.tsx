@@ -1,16 +1,14 @@
-import { useMemo, useState } from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+  import {
+    Keyboard,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Switch,
+    Text,
+    View,
+  } from 'react-native';
+  import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useWeekPlan } from '../features/meals/hooks/useWeekPlan';
 import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
 import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
@@ -179,6 +177,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const [pushToShopping, setPushToShopping] = useState(true);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const mealsByDay = useMemo(() => {
     const map = new Map<number, MealEntry[]>();
@@ -212,6 +211,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     const list = mealsByDay.get(selectedDay) ?? [];
     return list.find((meal) => meal.mealType === selectedMealType) ?? null;
   }, [selectedDay, selectedMealType, mealsByDay]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   function openEditor(day: number, mealType: (typeof MEAL_TYPES)[number]) {
     setSelectedDay(day);
@@ -548,48 +556,48 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         onRequestClose={closeEditor}
       >
         {selectedDay && selectedMealType ? (
-          <Pressable style={styles.backdrop} onPress={closeEditor}>
-            <KeyboardAvoidingView
-              style={styles.modalContent}
-              behavior="padding"
-              enabled={Platform.OS === 'ios'}
-            >
-              <Pressable style={styles.sheet} onPress={() => null}>
-                <View style={styles.sheetHandle} />
-                <ScrollView
-                  style={styles.sheetScroll}
-                  contentContainerStyle={styles.sheetScrollContent}
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator={false}
-                >
-                <Text style={textStyles.h3}>{strings.planMealTitle}</Text>
-                <Subtle>
-                  {`${strings.selectedDayPrefix} ${formatDayLabel(
-                    new Date(weekStart.getTime() + (selectedDay - 1) * 86400000),
-                    selectedDay - 1
-                  )}`}
-                </Subtle>
-                <View style={styles.mealTypeRow}>
-                  {MEAL_TYPES.map((mealType) => {
-                    const active = mealType === selectedMealType;
-                    return (
-                      <AppChip
-                        key={mealType}
-                        label={MEAL_TYPE_LABELS[mealType]}
-                        active={active}
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          setSelectedMealType(mealType);
-                          const list = mealsByDay.get(selectedDay) ?? [];
-                          const existing = list.find((meal) => meal.mealType === mealType);
-                          setRecipeTitle(existing?.recipeTitle ?? '');
-                          setSelectedMealRecipeId(existing?.recipeId ?? null);
-                          setIngredientsText('');
-                        }}
-                      />
-                    );
-                  })}
-                </View>
+            <Pressable style={styles.backdrop} onPress={closeEditor}>
+              <View style={styles.modalContent}>
+                <Pressable style={styles.sheet} onPress={() => null}>
+                  <View style={styles.sheetHandle} />
+                  <View style={styles.sheetStickyHeader}>
+                    <Text style={textStyles.h3}>{strings.planMealTitle}</Text>
+                    <Subtle>
+                      {`${strings.selectedDayPrefix} ${formatDayLabel(
+                        new Date(weekStart.getTime() + (selectedDay - 1) * 86400000),
+                        selectedDay - 1
+                      )}`}
+                    </Subtle>
+                    <View style={styles.mealTypeRow}>
+                      {MEAL_TYPES.map((mealType) => {
+                        const active = mealType === selectedMealType;
+                        return (
+                          <AppChip
+                            key={mealType}
+                            label={MEAL_TYPE_LABELS[mealType]}
+                            active={active}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setSelectedMealType(mealType);
+                              const list = mealsByDay.get(selectedDay) ?? [];
+                              const existing = list.find((meal) => meal.mealType === mealType);
+                              setRecipeTitle(existing?.recipeTitle ?? '');
+                              setSelectedMealRecipeId(existing?.recipeId ?? null);
+                              setIngredientsText('');
+                            }}
+                          />
+                        );
+                      })}
+                    </View>
+                  </View>
+                  <KeyboardAwareScrollView
+                    style={styles.sheetScroll}
+                    contentContainerStyle={styles.sheetScrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    extraKeyboardSpace={-24}
+                    bottomOffset={0}
+                    showsVerticalScrollIndicator={false}
+                  >
                 <AppInput
                   placeholder={strings.mealTitlePlaceholder}
                   value={recipeTitle}
@@ -638,17 +646,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                       fullWidth
                     />
                   ) : null}
-                  <AppButton
-                    title={strings.close}
-                    onPress={closeEditor}
-                    variant="secondary"
-                    fullWidth
-                  />
+                  {!isKeyboardVisible ? (
+                    <AppButton
+                      title={strings.close}
+                      onPress={closeEditor}
+                      variant="secondary"
+                      fullWidth
+                    />
+                  ) : null}
                 </View>
-                </ScrollView>
-              </Pressable>
-            </KeyboardAvoidingView>
-          </Pressable>
+                  </KeyboardAwareScrollView>
+                </Pressable>
+              </View>
+            </Pressable>
         ) : null}
       </Modal>
     </View>
@@ -746,7 +756,7 @@ const styles = StyleSheet.create({
     ...textStyles.subtle,
   },
   ingredientsInput: {
-    minHeight: 90,
+    minHeight: 72,
     textAlignVertical: 'top',
   },
   toggleRow: {
@@ -791,7 +801,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
-    maxHeight: '85%',
+    maxHeight: '95%',
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
     borderWidth: 1,
@@ -801,8 +811,15 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   sheetScrollContent: {
+    paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.lg,
     gap: theme.spacing.sm,
+  },
+  sheetStickyHeader: {
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   sheetHandle: {
     alignSelf: 'center',
