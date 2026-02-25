@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -80,6 +81,16 @@ public class TodoController {
                 request.getScopeMonth()
         );
         return ResponseEntity.ok(new UpdateTodoResponse(updated));
+    }
+
+    @DeleteMapping("/todos/{id}")
+    public ResponseEntity<?> delete(@PathVariable("id") UUID id) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        boolean deleted = todoApplicationService.deleteTodo(id, context.getUserId(), Instant.now());
+        return ResponseEntity.ok(new UpdateTodoResponse(deleted));
     }
 
     @GetMapping("/todos")
