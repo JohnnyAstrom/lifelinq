@@ -8,7 +8,7 @@ Groups are the **primary organizational unit** of the system.
 
 ## Group
 
-A group represents a shared living context.
+A group represents a shared context for coordination.
 
 Examples:
 - a household
