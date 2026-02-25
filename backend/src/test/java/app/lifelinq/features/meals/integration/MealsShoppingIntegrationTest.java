@@ -11,6 +11,7 @@ import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.RecipeView;
+import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.domain.ShoppingList;
@@ -62,7 +63,7 @@ class MealsShoppingIntegrationTest {
                 userId,
                 "Pasta",
                 List.of(
-                        new IngredientInput("  Olive   Oil  ", new BigDecimal("2"), ShoppingUnit.DL, 1),
+                        new IngredientInput("  Olive   Oil  ", new BigDecimal("2"), IngredientUnit.DL, 1),
                         new IngredientInput("Tomato", null, null, 2)
                 )
         );

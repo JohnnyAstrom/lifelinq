@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.meals.contract.IngredientInput;
+import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.Recipe;
 import app.lifelinq.features.meals.domain.RecipeRepository;
@@ -63,7 +64,7 @@ class MealsApplicationServiceTest {
                                 UUID.fromString("00000000-0000-0000-0000-000000000002"),
                                 "  Olive   Oil ",
                                 new BigDecimal("2"),
-                                ShoppingUnit.DL,
+                                IngredientUnit.DL,
                                 2
                         ),
                         new app.lifelinq.features.meals.domain.Ingredient(

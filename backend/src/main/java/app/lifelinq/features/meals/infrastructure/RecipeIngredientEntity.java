@@ -1,6 +1,6 @@
 package app.lifelinq.features.meals.infrastructure;
 
-import app.lifelinq.features.shopping.domain.ShoppingUnit;
+import app.lifelinq.features.meals.domain.IngredientUnit;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -41,7 +41,7 @@ public class RecipeIngredientEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "unit")
-    private ShoppingUnit unit;
+    private IngredientUnit unit;
 
     @Column(name = "position", nullable = false)
     private int position;
@@ -54,7 +54,7 @@ public class RecipeIngredientEntity {
             RecipeEntity recipe,
             String name,
             BigDecimal quantity,
-            ShoppingUnit unit,
+            IngredientUnit unit,
             int position
     ) {
         this.id = id;
@@ -81,7 +81,7 @@ public class RecipeIngredientEntity {
         return quantity;
     }
 
-    ShoppingUnit getUnit() {
+    IngredientUnit getUnit() {
         return unit;
     }
 

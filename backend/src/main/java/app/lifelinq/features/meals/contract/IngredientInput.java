@@ -1,11 +1,11 @@
 package app.lifelinq.features.meals.contract;
 
-import app.lifelinq.features.shopping.domain.ShoppingUnit;
+import app.lifelinq.features.meals.domain.IngredientUnit;
 import java.math.BigDecimal;
 
 public record IngredientInput(
         String name,
         BigDecimal quantity,
-        ShoppingUnit unit,
+        IngredientUnit unit,
         Integer position
 ) {}

@@ -1,12 +1,12 @@
 package app.lifelinq.features.meals.api;
 
-import app.lifelinq.features.shopping.domain.ShoppingUnit;
+import app.lifelinq.features.meals.domain.IngredientUnit;
 import java.math.BigDecimal;
 
 public final class IngredientRequest {
     private String name;
     private BigDecimal quantity;
-    private ShoppingUnit unit;
+    private IngredientUnit unit;
     private Integer position;
 
     public String getName() {
@@ -17,7 +17,7 @@ public final class IngredientRequest {
         return quantity;
     }
 
-    public ShoppingUnit getUnit() {
+    public IngredientUnit getUnit() {
         return unit;
     }
 

@@ -1,6 +1,5 @@
 package app.lifelinq.features.meals.domain;
 
-import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -8,10 +7,10 @@ public final class Ingredient {
     private final UUID id;
     private final String name;
     private final BigDecimal quantity;
-    private final ShoppingUnit unit;
+    private final IngredientUnit unit;
     private final int position;
 
-    public Ingredient(UUID id, String name, BigDecimal quantity, ShoppingUnit unit, int position) {
+    public Ingredient(UUID id, String name, BigDecimal quantity, IngredientUnit unit, int position) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
@@ -46,7 +45,7 @@ public final class Ingredient {
         return quantity;
     }
 
-    public ShoppingUnit getUnit() {
+    public IngredientUnit getUnit() {
         return unit;
     }
 

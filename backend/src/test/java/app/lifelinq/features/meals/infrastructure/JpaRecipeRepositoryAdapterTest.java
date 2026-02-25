@@ -3,8 +3,8 @@ package app.lifelinq.features.meals.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import app.lifelinq.features.meals.domain.Ingredient;
+import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.Recipe;
-import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -44,7 +44,7 @@ class JpaRecipeRepositoryAdapterTest {
                                 UUID.fromString("00000000-0000-0000-0000-000000000001"),
                                 "Olive Oil",
                                 new BigDecimal("1.5"),
-                                ShoppingUnit.DL,
+                                IngredientUnit.DL,
                                 1
                         )
                 )
@@ -58,7 +58,7 @@ class JpaRecipeRepositoryAdapterTest {
                 .extracting(Ingredient::getName)
                 .containsExactly("Olive Oil", "Tomato");
         assertThat(loaded.get().getIngredients().get(0).getQuantity()).isEqualByComparingTo(new BigDecimal("1.5"));
-        assertThat(loaded.get().getIngredients().get(0).getUnit()).isEqualTo(ShoppingUnit.DL);
+        assertThat(loaded.get().getIngredients().get(0).getUnit()).isEqualTo(IngredientUnit.DL);
     }
 
     @Test

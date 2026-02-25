@@ -3,11 +3,13 @@ package app.lifelinq.features.meals.application;
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
+import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import app.lifelinq.features.meals.domain.Ingredient;
+import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.PlannedMeal;
 import app.lifelinq.features.meals.domain.Recipe;
@@ -15,7 +17,6 @@ import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
-import app.lifelinq.features.shopping.contract.ShoppingUnitView;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.time.Clock;
 import java.time.Instant;
@@ -295,11 +296,11 @@ public class MealsApplicationService {
         );
     }
 
-    private ShoppingUnitView toViewUnit(ShoppingUnit unit) {
+    private IngredientUnitView toViewUnit(IngredientUnit unit) {
         if (unit == null) {
             return null;
         }
-        return ShoppingUnitView.valueOf(unit.name());
+        return IngredientUnitView.valueOf(unit.name());
     }
 
     private void pushIngredientsToShopping(
@@ -318,9 +319,16 @@ public class MealsApplicationService {
                     targetShoppingListId,
                     normalizeIngredientName(ingredient.getName()),
                     ingredient.getQuantity(),
-                    ingredient.getUnit()
+                    toShoppingUnit(ingredient.getUnit())
             );
         }
+    }
+
+    private ShoppingUnit toShoppingUnit(IngredientUnit unit) {
+        if (unit == null) {
+            return null;
+        }
+        return ShoppingUnit.valueOf(unit.name());
     }
 
     private String normalizeIngredientName(String name) {
