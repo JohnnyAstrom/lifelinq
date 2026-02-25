@@ -146,3 +146,13 @@ export async function updateTodo(
     { token }
   );
 }
+
+export async function deleteTodo(token: string, id: string): Promise<void> {
+  await fetchJson<void>(
+    `/todos/${encodeURIComponent(id)}`,
+    {
+      method: 'DELETE',
+    },
+    { token }
+  );
+}

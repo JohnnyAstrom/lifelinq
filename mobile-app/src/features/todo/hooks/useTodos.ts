@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
-import { completeTodo, createTodo, fetchTodos, fetchTodosForMonth, TodoResponse, updateTodo } from '../api/todoApi';
+import { completeTodo, createTodo, deleteTodo, fetchTodos, fetchTodosForMonth, TodoResponse, updateTodo } from '../api/todoApi';
 
 type CalendarMonthQuery = {
   enabled: boolean;
@@ -117,9 +117,25 @@ export function useTodos(
     }
   }
 
+  async function remove(id: string): Promise<boolean> {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    setError(null);
+    try {
+      await deleteTodo(token, id);
+      await load();
+      return true;
+    } catch (err) {
+      await handleApiError(err);
+      setError(formatApiError(err));
+      return false;
+    }
+  }
+
   useEffect(() => {
     load();
   }, [token, status, calendarMonthQuery?.enabled, calendarMonthQuery?.year, calendarMonthQuery?.month]);
 
-  return { items, error, loading, reload: load, add, complete, update };
+  return { items, error, loading, reload: load, add, complete, update, remove };
 }

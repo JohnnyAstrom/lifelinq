@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
+  Alert,
   Keyboard,
   Modal,
   Platform,
@@ -12,20 +13,49 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useTodos } from '../features/todo/hooks/useTodos';
-import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { OverlaySheet } from '../shared/ui/OverlaySheet';
+import { CollapsibleSectionHeader } from '../components/CollapsibleSectionHeader';
+import { MonthGrid } from '../components/MonthGrid';
+import { ProgressBar } from '../components/ProgressBar';
+import { SectionShortcutRow } from '../components/SectionShortcutRow';
+import { TodoRow } from '../components/TodoRow';
+import { WeekDayOverviewRow } from '../components/WeekDayOverviewRow';
+import { useTodoGrouping } from '../hooks/useTodoGrouping';
+import { useTodoProgress } from '../hooks/useTodoProgress';
+import { useScopedTodos, type FrontendScopeState, type FrontendTodoScope } from '../hooks/useScopedTodos';
+import { useTodos } from '../hooks/useTodos';
+import {
+  formatCalendarMonth,
+  formatDate,
+  formatDueLabel,
+  formatForValue,
+  formatSelectedDailyDate,
+  formatTimeValue,
+  formatWeekRangeLabel,
+  formatWeekScopeLabel,
+} from '../utils/todoFormatting';
+import {
+  getIsoWeekInfoFromDate,
+  getMondayOfIsoWeek,
+  getStartOfWeekMonday,
+  getTomorrowDate,
+  isSameDay,
+  isToday,
+  parseApiDate,
+  toApiDate,
+  toDateKey,
+} from '../utils/todoDates';
+import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
+import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import {
   AppButton,
   AppCard,
   AppChip,
   AppInput,
   AppScreen,
-  SectionTitle,
   Subtle,
   TopBar,
-} from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+} from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -33,13 +63,7 @@ type Props = {
 };
 
 type TodoTimeView = 'DAILY' | 'WEEKLY' | 'MONTHLY';
-type FrontendTodoScope = 'DAY' | 'WEEK' | 'MONTH' | 'LATER';
 type ScopePickerTarget = 'ADD' | 'EDIT' | null;
-type FrontendScopeState =
-  | { scope: 'DAY'; scopeValue: string }
-  | { scope: 'WEEK'; scopeValue: { year: number; week: number } }
-  | { scope: 'MONTH'; scopeValue: { year: number; month: number } }
-  | { scope: 'LATER'; scopeValue: null };
 type TodoDatePickerContext =
   | 'ADD_DAY'
   | 'ADD_WEEK'
@@ -47,33 +71,6 @@ type TodoDatePickerContext =
   | 'EDIT_DAY'
   | 'EDIT_WEEK'
   | 'EDIT_MONTH';
-
-function getStartOfWeekMonday(date: Date) {
-  const next = new Date(date.getTime());
-  next.setHours(0, 0, 0, 0);
-  const day = next.getDay(); // 0 Sun ... 6 Sat
-  const diff = day === 0 ? -6 : 1 - day;
-  next.setDate(next.getDate() + diff);
-  return next;
-}
-
-function toDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getIsoWeekInfoFromDate(date: Date) {
-  const target = new Date(date.getTime());
-  target.setHours(0, 0, 0, 0);
-  const day = target.getDay() || 7;
-  target.setDate(target.getDate() + 4 - day);
-  const yearStart = new Date(target.getFullYear(), 0, 1);
-  const diffMs = target.getTime() - yearStart.getTime();
-  const week = Math.ceil(((diffMs / 86400000) + 1) / 7);
-  return { week, year: target.getFullYear() };
-}
 
 export function TodoListScreen({ token, onDone }: Props) {
   const { width: viewportWidth } = useWindowDimensions();
@@ -156,13 +153,17 @@ export function TodoListScreen({ token, onDone }: Props) {
     noItemsForDay: 'No todos for this day.',
     thisMonthSection: 'This Month',
     noMonthScopeTodosYet: 'No month-scoped todos yet (Phase 1).',
-    weekGoals: 'Week goals',
-    monthGoals: 'Month goals',
+    weekGoals: 'Unscheduled this week',
+    monthGoals: 'Unscheduled this month',
     details: 'Edit',
     editTitle: 'Edit todo',
     editSubtitle: 'Update details and scheduling.',
     saveChanges: 'Save changes',
     savingChanges: 'Saving...',
+    deleteTodo: 'Delete todo',
+    confirmDeleteTitle: 'Delete todo?',
+    confirmDeleteBody: 'This action cannot be undone.',
+    confirmDeleteAction: 'Delete',
     close: 'Close',
     clearDate: 'Clear date',
     change: 'Change',
@@ -265,36 +266,6 @@ export function TodoListScreen({ token, onDone }: Props) {
     };
   }, []);
 
-  function getMondayOfIsoWeek(year: number, week: number) {
-    const jan4 = new Date(year, 0, 4);
-    jan4.setHours(0, 0, 0, 0);
-    const mondayOfWeek1 = getStartOfWeekMonday(jan4);
-    const monday = new Date(mondayOfWeek1.getTime());
-    monday.setDate(monday.getDate() + (week - 1) * 7);
-    monday.setHours(0, 0, 0, 0);
-    return monday;
-  }
-
-  function deriveScopeStateFromItem(item: (typeof todos.items)[number]): FrontendScopeState {
-    if (item.scope === 'DAY' && item.dueDate) {
-      return { scope: 'DAY', scopeValue: item.dueDate };
-    }
-    if (item.scope === 'WEEK' && item.scopeYear && item.scopeWeek) {
-      return { scope: 'WEEK', scopeValue: { year: item.scopeYear, week: item.scopeWeek } };
-    }
-    if (item.scope === 'MONTH' && item.scopeYear && item.scopeMonth) {
-      return { scope: 'MONTH', scopeValue: { year: item.scopeYear, month: item.scopeMonth } };
-    }
-    if (item.scope === 'LATER') {
-      return { scope: 'LATER', scopeValue: null };
-    }
-    // Legacy fallback for rows created before backend scope migration/backfill.
-    if (item.dueDate) {
-      return { scope: 'DAY', scopeValue: item.dueDate };
-    }
-    return { scope: 'LATER', scopeValue: null };
-  }
-
   function buildSchedulingPayload(
     scope: FrontendTodoScope,
     dayDate: Date | null,
@@ -306,7 +277,7 @@ export function TodoListScreen({ token, onDone }: Props) {
       return {
         scope: 'DAY' as const,
         dueDate: dayDate ? toApiDate(dayDate) : null,
-        dueTime: dayDate ? time : null,
+        dueTime: dayDate ? normalizeUiTime(time) : null,
       };
     }
     if (scope === 'WEEK') {
@@ -423,63 +394,27 @@ export function TodoListScreen({ token, onDone }: Props) {
     setDetailMonthDate(new Date(now.getFullYear(), now.getMonth(), 1));
   }
 
-  function isSameDay(left: Date, right: Date) {
-    return left.getFullYear() === right.getFullYear()
-      && left.getMonth() === right.getMonth()
-      && left.getDate() === right.getDate();
-  }
-
-  function formatDate(date: Date) {
-    const day = date.toLocaleDateString(undefined, { weekday: 'short' });
-    const dayDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `${day} · ${dayDate}`;
-  }
-
-  function toApiDate(date: Date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  function parseApiDate(value?: string | null) {
-    if (!value) {
-      return null;
-    }
-    const [year, month, day] = value.split('-').map(Number);
-    if (!year || !month || !day) {
-      return null;
-    }
-    return new Date(year, month - 1, day);
-  }
-
-  function isToday(date: Date) {
-    return isSameDay(date, new Date());
-  }
-
-  function formatDueLabel(dueDate?: string | null, dueTime?: string | null) {
-    const parsed = parseApiDate(dueDate);
-    if (!parsed) {
-      return null;
-    }
-    const date = parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    let dayLabel = parsed.toLocaleDateString(undefined, { weekday: 'short' });
-    if (isToday(parsed)) {
-      dayLabel = 'Today';
-    } else if (isSameDay(parsed, getTomorrowDate())) {
-      dayLabel = 'Tomorrow';
-    }
-    return dueTime ? `${dayLabel} · ${date} · ${dueTime}` : `${dayLabel} · ${date}`;
-  }
-
   const timeOptions = [
-    { label: strings.timeMorning, value: '08:00' },
-    { label: strings.timeAfternoon, value: '13:00' },
-    { label: strings.timeEvening, value: '18:00' },
+    { label: strings.timeMorning, value: '08:00', aliases: ['08:00'] },
+    { label: strings.timeAfternoon, value: '13:00', aliases: ['12:00', '13:00'] },
+    { label: strings.timeEvening, value: '18:00', aliases: ['17:00', '18:00'] },
   ];
+  const formatForValueLabel = (scope: FrontendTodoScope, dayDate: Date | null, weekStartDate: Date, monthDate: Date) =>
+    formatForValue(scope, dayDate, weekStartDate, monthDate, strings);
+  const formatTimeValueLabel = (value: string | null) => formatTimeValue(value, timeOptions, strings);
+  const formatWeekScopeValue = (weekStartDate: Date) => formatWeekScopeLabel(weekStartDate, strings);
+  const normalizeUiTime = (value: string | null) => (value ? value.slice(0, 5) : null);
+  const isTimeOptionActive = (current: string | null, option: (typeof timeOptions)[number]) => {
+    const normalized = normalizeUiTime(current);
+    return !!normalized && (normalized === option.value || option.aliases?.includes(normalized));
+  };
+  const frontendScopedItems = useScopedTodos(todos.items);
 
   const selectedTodo = detailsTodoId
     ? todos.items.find((item) => item.id === detailsTodoId)
+    : null;
+  const selectedScopedTodo = detailsTodoId
+    ? frontendScopedItems.find((item) => item.id === detailsTodoId)
     : null;
   const canAddTodo = text.trim().length > 0;
   const horizontalGutter = theme.spacing.sm * 2;
@@ -491,8 +426,11 @@ export function TodoListScreen({ token, onDone }: Props) {
     }
     setDetailText(selectedTodo.text);
     const parsedDetailDate = parseApiDate(selectedTodo.dueDate);
-    const derivedScope = deriveScopeStateFromItem(selectedTodo);
-    setDetailTime(selectedTodo.dueTime ?? null);
+    const derivedScope: FrontendScopeState = selectedScopedTodo?.frontendScopeState
+      ?? (selectedTodo.dueDate
+        ? { scope: 'DAY', scopeValue: selectedTodo.dueDate }
+        : { scope: 'LATER', scopeValue: null });
+    setDetailTime(normalizeUiTime(selectedTodo.dueTime ?? null));
     if (derivedScope.scope === 'DAY') {
       const day = parseApiDate(derivedScope.scopeValue);
       setDetailScope('DAY');
@@ -521,7 +459,7 @@ export function TodoListScreen({ token, onDone }: Props) {
     setDetailScope('LATER');
     setDetailWeekStart(new Date(selectedWeeklyStart.getTime()));
     setDetailMonthDate(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1));
-  }, [selectedTodo, selectedWeeklyStart, calendarMonth]);
+  }, [selectedTodo, selectedScopedTodo, selectedWeeklyStart, calendarMonth]);
 
   async function handleSaveDetails() {
     if (!selectedTodo || savingDetails) {
@@ -537,6 +475,31 @@ export function TodoListScreen({ token, onDone }: Props) {
     if (updated) {
       setDetailsTodoId(null);
     }
+  }
+
+  function handleDeleteDetails() {
+    if (!selectedTodo || savingDetails) {
+      return;
+    }
+    Alert.alert(
+      strings.confirmDeleteTitle,
+      strings.confirmDeleteBody,
+      [
+        { text: strings.close, style: 'cancel' },
+        {
+          text: strings.confirmDeleteAction,
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const removed = await todos.remove(selectedTodo.id);
+              if (removed) {
+                setDetailsTodoId(null);
+              }
+            })();
+          },
+        },
+      ]
+    );
   }
 
   function clearDetailDate() {
@@ -589,10 +552,6 @@ export function TodoListScreen({ token, onDone }: Props) {
     setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
   }
 
-  function formatCalendarMonth(value: Date) {
-    return value.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  }
-
   function shiftSelectedDailyDate(delta: number) {
     setSelectedDailyDate((current) => {
       const next = new Date(current.getTime());
@@ -600,102 +559,6 @@ export function TodoListScreen({ token, onDone }: Props) {
       next.setHours(0, 0, 0, 0);
       return next;
     });
-  }
-
-  function formatSelectedDailyDate(value: Date) {
-    const dateLabel = value.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    });
-    if (isToday(value)) {
-      return `Today · ${dateLabel}`;
-    }
-    if (isSameDay(value, getTomorrowDate())) {
-      return `Tomorrow · ${dateLabel}`;
-    }
-    return value.toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  }
-
-  function getTomorrowDate() {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    return tomorrow;
-  }
-
-  function getIsoWeekInfo(date: Date) {
-    const target = new Date(date.getTime());
-    target.setHours(0, 0, 0, 0);
-    const day = target.getDay() || 7;
-    target.setDate(target.getDate() + 4 - day);
-    const yearStart = new Date(target.getFullYear(), 0, 1);
-    const diffMs = target.getTime() - yearStart.getTime();
-    const week = Math.ceil(((diffMs / 86400000) + 1) / 7);
-    return { week, year: target.getFullYear() };
-  }
-
-  function getIsoWeekLabel(date: Date) {
-    const { week, year } = getIsoWeekInfo(date);
-    return `Week ${week} · ${year}`;
-  }
-
-  function formatMonthScopeLabel(date: Date) {
-    return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  }
-
-  function formatDayScopeLabel(dayDate: Date) {
-    const pretty = dayDate.toLocaleDateString(undefined, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-    if (isToday(dayDate)) {
-      return `${strings.forToday} · ${pretty}`;
-    }
-    if (isSameDay(dayDate, getTomorrowDate())) {
-      return `${strings.forTomorrow} · ${pretty}`;
-    }
-    return pretty;
-  }
-
-  function formatWeekScopeLabel(weekStartDate: Date) {
-    const weekEnd = new Date(weekStartDate.getTime());
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    const { week, year } = getIsoWeekInfo(weekStartDate);
-    const range = `${weekStartDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}–${weekEnd.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
-    const currentWeekStart = getStartOfWeekMonday(new Date());
-    if (isSameDay(weekStartDate, currentWeekStart)) {
-      return `${strings.forWeek} · Week ${week} (${range})`;
-    }
-    return `Week ${week} · ${year} (${range})`;
-  }
-
-  function formatForValue(scope: FrontendTodoScope, dayDate: Date | null, weekStartDate: Date, monthDate: Date) {
-    if (scope === 'DAY' && dayDate) {
-      return formatDayScopeLabel(dayDate);
-    }
-    if (scope === 'WEEK') {
-      return formatWeekScopeLabel(weekStartDate);
-    }
-    if (scope === 'MONTH') {
-      const label = formatMonthScopeLabel(monthDate);
-      const now = new Date();
-      const isCurrentMonth = monthDate.getFullYear() === now.getFullYear() && monthDate.getMonth() === now.getMonth();
-      return isCurrentMonth ? `${strings.forMonth} · ${label}` : label;
-    }
-    return strings.forLater;
-  }
-
-  function formatTimeValue(value: string | null) {
-    if (!value) {
-      return `${strings.timeValuePrefix} · ${strings.timeNone}`;
-    }
-    const preset = timeOptions.find((option) => option.value === value);
-    return `${strings.timeValuePrefix} · ${preset ? preset.label : value}`;
   }
 
   function applyAddDefaultScopeFromView() {
@@ -738,18 +601,6 @@ export function TodoListScreen({ token, onDone }: Props) {
       next.setHours(0, 0, 0, 0);
       return getStartOfWeekMonday(next);
     });
-  }
-
-  function formatWeekRangeLabel(weekStartDate: Date) {
-    const weekEnd = new Date(weekStartDate.getTime());
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    const start = weekStartDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    const end = weekEnd.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `${start} - ${end}`;
-  }
-
-  function getFrontendScope(item: (typeof todos.items)[number]): FrontendScopeState {
-    return deriveScopeStateFromItem(item);
   }
 
   function openScopeDatePicker(context: TodoDatePickerContext) {
@@ -824,174 +675,48 @@ export function TodoListScreen({ token, onDone }: Props) {
     setDetailMonthDate(new Date(picked.getFullYear(), picked.getMonth(), 1));
   }
 
-  const frontendScopedItems = useMemo(() => {
-    return todos.items.map((item) => {
-      const scopeState = getFrontendScope(item);
-      return {
-        ...item,
-        parsedDueDate: parseApiDate(item.dueDate),
-        frontendScope: scopeState.scope,
-        frontendScopeState: scopeState,
-      };
-    });
-  }, [todos.items]);
+  const grouped = useTodoGrouping({
+    normalizedTodos: frontendScopedItems,
+    selectedDailyDate,
+    selectedWeeklyStart,
+    calendarMonth,
+  });
 
-  const weeklyDays = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, index) => {
-      const date = new Date(selectedWeeklyStart.getTime());
-      date.setDate(date.getDate() + index);
-      date.setHours(0, 0, 0, 0);
-      return date;
-    });
-  }, [selectedWeeklyStart]);
+  const visibleItems = frontendScopedItems;
+  const isViewingToday = isToday(selectedDailyDate);
+  const dailyOpenDayItems = grouped.daily.openDayItems;
+  const dailyOpenLaterItems = grouped.daily.laterItems;
+  const dailyDoneItems = grouped.daily.doneDayItems;
+  const weeklyWeekOpenItems = grouped.weekly.weekGoalsOpen;
+  const weeklyWeekDoneItems = grouped.weekly.weekGoalsDone;
+  const monthlyMonthOpenItems = grouped.monthly.monthGoalsOpen;
+  const monthlyMonthDoneItems = grouped.monthly.monthGoalsDone;
+  const dayTodoCountByDateKey = grouped.monthly.dayCountMap;
+  const monthGridCells = grouped.monthly.gridCells;
+  const weeklyDayRows = grouped.weekly.dayRows;
+  const progress = useTodoProgress(grouped);
 
-  const monthGridCells = useMemo(() => {
-    const monthStartDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
-    monthStartDate.setHours(0, 0, 0, 0);
-    const monthGridStartDate = getStartOfWeekMonday(monthStartDate);
-    return Array.from({ length: 42 }).map((_, index) => {
-      const date = new Date(monthGridStartDate.getTime());
-      date.setDate(date.getDate() + index);
-      date.setHours(0, 0, 0, 0);
-      const isCurrentMonth = date.getMonth() === calendarMonth.getMonth() && date.getFullYear() === calendarMonth.getFullYear();
-      return { date, isCurrentMonth };
-    });
-  }, [calendarMonth]);
-
-  const {
-    visibleItems,
-    isViewingToday,
-    dailyOpenDayItems,
-    dailyOpenLaterItems,
-    dailyDoneItems,
-    dailyTotalCount,
-    dailyDoneCount,
-    dailyProgressRatio,
-    weeklyWeekOpenItems,
-    weeklyWeekDoneItems,
-    weeklyDayOpenItems,
-    weeklyDayDoneItems,
-    weeklyTotalCount,
-    weeklyDoneCount,
-    weeklyProgressRatio,
-    weeklyDaySummaryByKey,
-    monthlyMonthOpenItems,
-    monthlyMonthDoneItems,
-    dayTodoCountByDateKey,
-  } = useMemo(() => {
-    const visible = frontendScopedItems;
-    const viewingToday = isToday(selectedDailyDate);
-    const weeklyDayKeys = new Set(weeklyDays.map((day) => toDateKey(day)));
-
-    const dailyOpenDay = visible.filter((item) =>
-      item.status === 'OPEN'
-      && item.frontendScope === 'DAY'
-      && !!item.parsedDueDate
-      && isSameDay(item.parsedDueDate, selectedDailyDate));
-    const dailyOpenLater = visible.filter((item) => item.status === 'OPEN' && item.frontendScope === 'LATER');
-    const dailyDone = visible.filter((item) =>
-      item.status === 'COMPLETED'
-      && item.frontendScope === 'DAY'
-      && !!item.parsedDueDate
-      && isSameDay(item.parsedDueDate, selectedDailyDate));
-
-    const weekOpen = visible.filter((item) => item.status === 'OPEN' && item.frontendScope === 'WEEK');
-    const weekDone = visible.filter((item) => item.status === 'COMPLETED' && item.frontendScope === 'WEEK');
-    const weeklyDayOpen = visible.filter((item) =>
-      item.status === 'OPEN'
-      && item.frontendScope === 'DAY'
-      && !!item.parsedDueDate
-      && weeklyDayKeys.has(toDateKey(item.parsedDueDate)));
-    const weeklyDayDone = visible.filter((item) =>
-      item.status === 'COMPLETED'
-      && item.frontendScope === 'DAY'
-      && !!item.parsedDueDate
-      && weeklyDayKeys.has(toDateKey(item.parsedDueDate)));
-
-    const monthlyOpen = visible.filter((item) => item.status === 'OPEN' && item.frontendScope === 'MONTH');
-    const monthlyDone = visible.filter((item) => item.status === 'COMPLETED' && item.frontendScope === 'MONTH');
-
-    const countsByDate = visible.reduce<Record<string, number>>((acc, item) => {
-      if (item.frontendScope !== 'DAY' || !item.parsedDueDate) {
-        return acc;
-      }
-      const key = toDateKey(item.parsedDueDate);
-      acc[key] = (acc[key] ?? 0) + 1;
-      return acc;
-    }, {});
-
-    const dTotal = dailyOpenDay.length + dailyDone.length;
-    const dDone = dailyDone.length;
-    const weeklySummaryByKey = weeklyDays.reduce<Record<string, { open: number; done: number }>>((acc, day) => {
-      acc[toDateKey(day)] = { open: 0, done: 0 };
-      return acc;
-    }, {});
-    for (const item of weeklyDayOpen) {
-      if (item.parsedDueDate) {
-        const key = toDateKey(item.parsedDueDate);
-        if (weeklySummaryByKey[key]) {
-          weeklySummaryByKey[key].open += 1;
-        }
-      }
-    }
-    for (const item of weeklyDayDone) {
-      if (item.parsedDueDate) {
-        const key = toDateKey(item.parsedDueDate);
-        if (weeklySummaryByKey[key]) {
-          weeklySummaryByKey[key].done += 1;
-        }
-      }
-    }
-
-    const wTotal = weekOpen.length + weekDone.length + weeklyDayOpen.length + weeklyDayDone.length;
-    const wDone = weekDone.length + weeklyDayDone.length;
-
-    return {
-      visibleItems: visible,
-      isViewingToday: viewingToday,
-      dailyOpenDayItems: dailyOpenDay,
-      dailyOpenLaterItems: dailyOpenLater,
-      dailyDoneItems: dailyDone,
-      dailyTotalCount: dTotal,
-      dailyDoneCount: dDone,
-      dailyProgressRatio: dTotal > 0 ? dDone / dTotal : 0,
-      weeklyWeekOpenItems: weekOpen,
-      weeklyWeekDoneItems: weekDone,
-      weeklyDayOpenItems: weeklyDayOpen,
-      weeklyDayDoneItems: weeklyDayDone,
-      weeklyTotalCount: wTotal,
-      weeklyDoneCount: wDone,
-      weeklyProgressRatio: wTotal > 0 ? wDone / wTotal : 0,
-      weeklyDaySummaryByKey: weeklySummaryByKey,
-      monthlyMonthOpenItems: monthlyOpen,
-      monthlyMonthDoneItems: monthlyDone,
-      dayTodoCountByDateKey: countsByDate,
-    };
-  }, [frontendScopedItems, selectedDailyDate, weeklyDays]);
+  const dailyTotalCount = progress.daily.total;
+  const dailyDoneCount = progress.daily.done;
+  const dailyProgressRatio = progress.daily.ratio;
+  const weeklyTotalCount = progress.weekly.total;
+  const weeklyDoneCount = progress.weekly.done;
+  const weeklyProgressRatio = progress.weekly.ratio;
 
   function renderTodoRow(item: (typeof visibleItems)[number], variant: 'default' | 'daily' = 'default') {
-    const dueLabel = formatDueLabel(item.dueDate, item.dueTime);
     return (
-      <View key={item.id} style={[styles.itemRow, variant === 'daily' ? styles.itemRowDaily : null]}>
-        <Pressable
-          style={styles.checkboxPressable}
-          onPress={() => todos.complete(item.id)}
-        >
-          <View style={[styles.checkbox, item.status === 'COMPLETED' ? styles.checkboxChecked : null]}>
-            {item.status === 'COMPLETED' ? <Text style={styles.checkboxMark}>✓</Text> : null}
-          </View>
-        </Pressable>
-        <View style={styles.itemInfo}>
-          <Text style={[styles.itemText, item.status === 'COMPLETED' ? styles.itemTextDone : null]}>
-            {item.text}
-          </Text>
-          {dueLabel ? <Text style={styles.itemMeta}>{dueLabel}</Text> : null}
-        </View>
-        <Pressable style={styles.detailZone} onPress={() => setDetailsTodoId(item.id)}>
-          <Text style={styles.itemHintText}>{strings.details}</Text>
-          <Text style={styles.itemHintChevron}>›</Text>
-        </Pressable>
-      </View>
+      <TodoRow
+        key={item.id}
+        item={item}
+        variant={variant}
+        onToggleComplete={(id) => {
+          void todos.complete(id);
+        }}
+        onEdit={setDetailsTodoId}
+        formatDueLabel={formatDueLabel}
+        editLabel={strings.details}
+        styles={styles}
+      />
     );
   }
 
@@ -1012,8 +737,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           keyboardDismissMode="on-drag"
         >
           <View style={styles.contentOffset}>
-        <AppCard>
-          <SectionTitle>{strings.viewTitle}</SectionTitle>
+        <AppCard style={styles.headerCard}>
           <View style={styles.filters}>
             <AppChip label={strings.daily} active={timeView === 'DAILY'} onPress={() => setTimeView('DAILY')} />
             <AppChip label={strings.weekly} active={timeView === 'WEEKLY'} onPress={() => setTimeView('WEEKLY')} />
@@ -1022,26 +746,24 @@ export function TodoListScreen({ token, onDone }: Props) {
         </AppCard>
 
         {timeView === 'DAILY' ? (
-          <AppCard>
-            <View style={styles.calendarMonthRow}>
+          <AppCard style={styles.weeklyHeaderCard}>
+            <View style={[styles.calendarMonthRow, styles.weeklyCalendarRowCompact]}>
               <AppButton title={strings.dayBack} onPress={() => shiftSelectedDailyDate(-1)} variant="ghost" />
               <Text style={styles.calendarMonthText}>{formatSelectedDailyDate(selectedDailyDate)}</Text>
               <AppButton title={strings.dayNext} onPress={() => shiftSelectedDailyDate(1)} variant="ghost" />
             </View>
-            {dailyTotalCount > 0 ? (
-              <View style={styles.dailyProgressBlock}>
-                <Subtle>{`${dailyDoneCount} / ${dailyTotalCount} completed`}</Subtle>
-                <View style={styles.weekProgressTrack}>
-                  <View style={[styles.weekProgressFill, { width: `${Math.round(dailyProgressRatio * 100)}%` }]} />
-                </View>
-              </View>
-            ) : null}
+            <ProgressBar
+              done={dailyDoneCount}
+              total={dailyTotalCount}
+              ratio={dailyProgressRatio}
+              styles={styles}
+            />
           </AppCard>
         ) : null}
 
         {timeView === 'MONTHLY' ? (
-          <AppCard>
-            <View style={styles.calendarMonthRow}>
+          <AppCard style={styles.weeklyHeaderCard}>
+            <View style={[styles.calendarMonthRow, styles.weeklyCalendarRowCompact]}>
               <AppButton title={strings.monthBack} onPress={() => shiftCalendarMonth(-1)} variant="ghost" />
               <Text style={styles.calendarMonthText}>{formatCalendarMonth(calendarMonth)}</Text>
               <AppButton title={strings.monthNext} onPress={() => shiftCalendarMonth(1)} variant="ghost" />
@@ -1049,20 +771,18 @@ export function TodoListScreen({ token, onDone }: Props) {
           </AppCard>
         ) : null}
         {timeView === 'WEEKLY' ? (
-          <AppCard>
-            <View style={styles.calendarMonthRow}>
+          <AppCard style={styles.weeklyHeaderCard}>
+            <View style={[styles.calendarMonthRow, styles.weeklyCalendarRowCompact]}>
               <AppButton title={strings.weekBack} onPress={() => shiftSelectedWeek(-1)} variant="ghost" />
               <Text style={styles.calendarMonthText}>{formatWeekRangeLabel(selectedWeeklyStart)}</Text>
               <AppButton title={strings.weekNext} onPress={() => shiftSelectedWeek(1)} variant="ghost" />
             </View>
-            {weeklyTotalCount > 0 ? (
-              <View style={styles.dailyProgressBlock}>
-                <Subtle>{`${weeklyDoneCount} / ${weeklyTotalCount} completed`}</Subtle>
-                <View style={styles.weekProgressTrack}>
-                  <View style={[styles.weekProgressFill, { width: `${Math.round(weeklyProgressRatio * 100)}%` }]} />
-                </View>
-              </View>
-            ) : null}
+            <ProgressBar
+              done={weeklyDoneCount}
+              total={weeklyTotalCount}
+              ratio={weeklyProgressRatio}
+              styles={styles}
+            />
           </AppCard>
         ) : null}
 
@@ -1088,13 +808,12 @@ export function TodoListScreen({ token, onDone }: Props) {
 
               {dailyDoneItems.length > 0 ? (
                 <View style={styles.todoSection}>
-                  <Pressable
-                    style={styles.collapsibleHeader}
+                  <CollapsibleSectionHeader
+                    title={`Done (${dailyDoneItems.length})`}
+                    expanded={isDailyDoneExpanded}
                     onPress={() => setIsDailyDoneExpanded((value) => !value)}
-                  >
-                    <Text style={styles.todoSectionTitle}>Done ({dailyDoneItems.length})</Text>
-                    <Text style={styles.itemHintChevron}>{isDailyDoneExpanded ? '⌄' : '›'}</Text>
-                  </Pressable>
+                    styles={styles}
+                  />
                   {isDailyDoneExpanded ? (
                     <View style={styles.list}>
                       {dailyDoneItems.map((item) => renderTodoRow(item, 'daily'))}
@@ -1107,107 +826,65 @@ export function TodoListScreen({ token, onDone }: Props) {
         ) : (
         <AppCard>
           {timeView === 'WEEKLY' ? (
-            <View style={styles.list}>
+            <View style={styles.weeklyOverviewList}>
+              {weeklyDayRows.map((row) => {
+                const dayTotal = row.open + row.done;
+                const label = row.date.toLocaleDateString(undefined, { weekday: 'short' });
+                const isTodayRow = isToday(row.date);
+                return (
+                  <WeekDayOverviewRow
+                    key={row.key}
+                    label={label}
+                    isToday={isTodayRow}
+                    openCount={row.open}
+                    doneCount={row.done}
+                    onPress={() => {
+                      setSelectedDailyDate(new Date(row.date.getTime()));
+                      setTimeView('DAILY');
+                    }}
+                    styles={styles}
+                  />
+                );
+              })}
+
               {weeklyWeekOpenItems.length + weeklyWeekDoneItems.length > 0 ? (
-                <Pressable
-                  style={styles.unplannedShortcutRow}
+                <SectionShortcutRow
+                  label={`${strings.weekGoals} (${weeklyWeekOpenItems.length + weeklyWeekDoneItems.length})`}
                   onPress={() => {
                     Keyboard.dismiss();
                     setShowWeekGoalsSheet(true);
                   }}
-                >
-                  <Text style={styles.itemText}>{`${strings.weekGoals} (${weeklyWeekOpenItems.length + weeklyWeekDoneItems.length})`}</Text>
-                  <Text style={styles.itemHintChevron}>›</Text>
-                </Pressable>
+                  styles={styles}
+                  style={styles.weeklyShortcutRow}
+                />
               ) : null}
-
-              {weeklyDays.map((dayDate) => {
-                const key = toDateKey(dayDate);
-                const summary = weeklyDaySummaryByKey[key] ?? { open: 0, done: 0 };
-                const dayTotal = summary.open + summary.done;
-                const label = dayDate.toLocaleDateString(undefined, { weekday: 'short' });
-                const isTodayRow = isToday(dayDate);
-                return (
-                  <Pressable
-                    key={key}
-                    style={[styles.weekDayOverviewRow, dayTotal === 0 ? styles.weekDayOverviewRowEmpty : null]}
-                    onPress={() => {
-                      setSelectedDailyDate(new Date(dayDate.getTime()));
-                      setTimeView('DAILY');
-                    }}
-                  >
-                    <Text style={[styles.weekDayOverviewText, isTodayRow ? styles.weekDayOverviewTextToday : null]}>
-                      {isTodayRow ? 'Today' : label}
-                    </Text>
-                    <Text style={styles.itemMeta}>
-                      {dayTotal === 0
-                        ? '0'
-                        : `${dayTotal} task${dayTotal === 1 ? '' : 's'} · ${summary.done} done`}
-                    </Text>
-                    <Text style={styles.itemHintChevron}>›</Text>
-                  </Pressable>
-                );
-              })}
             </View>
           ) : timeView === 'MONTHLY' ? (
             <View style={styles.list}>
-              <View style={styles.todoSection}>
-                <View style={styles.monthGridHeaderRow}>
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => (
-                    <Text key={label} style={styles.monthGridWeekday}>{label}</Text>
-                  ))}
-                </View>
-                <View style={styles.monthGrid}>
-                  {Array.from({ length: 6 }).map((_, rowIndex) => (
-                    <View key={`month-row-${rowIndex}`} style={styles.monthGridRow}>
-                      {monthGridCells.slice(rowIndex * 7, rowIndex * 7 + 7).map(({ date, isCurrentMonth }) => {
-                        const key = toDateKey(date);
-                        const count = dayTodoCountByDateKey[key] ?? 0;
-                        const isCurrentDay = isCurrentMonth && isToday(date);
-                        if (!isCurrentMonth) {
-                          return (
-                            <View key={key} style={[styles.monthGridCellBase, styles.monthCell, styles.monthCellPlaceholder]}>
-                              <Text style={styles.monthCellGhostText}>{date.getDate()}</Text>
-                              <View style={styles.monthCellGhostBadge} />
-                            </View>
-                          );
-                        }
-                        return (
-                          <Pressable
-                            key={key}
-                            style={[styles.monthGridCellBase, styles.monthCell, isCurrentDay ? styles.monthCellToday : null]}
-                            onPress={() => {
-                              const next = new Date(date.getTime());
-                              next.setHours(0, 0, 0, 0);
-                              setSelectedDailyDate(next);
-                              setTimeView('DAILY');
-                            }}
-                          >
-                            <Text style={[styles.monthCellText, isCurrentDay ? styles.monthCellTextToday : null]}>{date.getDate()}</Text>
-                            {count > 0 ? (
-                              <View style={styles.monthCountBadge}>
-                                <Text style={styles.monthCountBadgeText}>{count}</Text>
-                              </View>
-                            ) : null}
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ))}
-                </View>
-              </View>
+              <MonthGrid
+                cells={monthGridCells}
+                dayTodoCountByDateKey={dayTodoCountByDateKey}
+                toDateKey={toDateKey}
+                isToday={isToday}
+                onPressDay={(date) => {
+                  const next = new Date(date.getTime());
+                  next.setHours(0, 0, 0, 0);
+                  setSelectedDailyDate(next);
+                  setTimeView('DAILY');
+                }}
+                styles={styles}
+              />
 
               {monthlyMonthOpenItems.length + monthlyMonthDoneItems.length > 0 ? (
-                <Pressable
-                  style={styles.unplannedShortcutRow}
+                <SectionShortcutRow
+                  label={`${strings.monthGoals} (${monthlyMonthOpenItems.length + monthlyMonthDoneItems.length})`}
                   onPress={() => {
                     Keyboard.dismiss();
                     setShowMonthGoalsSheet(true);
                   }}
-                >
-                  <Text style={styles.itemText}>{`${strings.monthGoals} (${monthlyMonthOpenItems.length + monthlyMonthDoneItems.length})`}</Text>
-                  <Text style={styles.itemHintChevron}>›</Text>
-                </Pressable>
+                  styles={styles}
+                  style={styles.weeklyShortcutRow}
+                />
               ) : null}
             </View>
           ) : (
@@ -1219,16 +896,14 @@ export function TodoListScreen({ token, onDone }: Props) {
         )}
         {timeView === 'DAILY' && isViewingToday && dailyOpenLaterItems.length > 0 ? (
           <AppCard>
-            <Pressable
-              style={styles.unplannedShortcutRow}
+            <SectionShortcutRow
+              label={`${strings.unplannedTitle} (${dailyOpenLaterItems.length})`}
               onPress={() => {
                 Keyboard.dismiss();
                 setShowUnplannedSheet(true);
               }}
-            >
-              <Text style={styles.itemText}>{`${strings.unplannedTitle} (${dailyOpenLaterItems.length})`}</Text>
-              <Text style={styles.itemHintChevron}>›</Text>
-            </Pressable>
+              styles={styles}
+            />
           </AppCard>
         ) : null}
           </View>
@@ -1274,6 +949,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                     value={text}
                     placeholder={strings.addPlaceholder}
                     onChangeText={setText}
+                    style={styles.todoSheetInput}
                     autoFocus
                   />
                 </View>
@@ -1287,31 +963,34 @@ export function TodoListScreen({ token, onDone }: Props) {
                     }}
                   >
                     <Text style={styles.selectionRowValue}>
-                      {formatForValue(pendingScope, pendingDate, pendingWeekStart, pendingMonthDate)}
+                      {formatForValueLabel(pendingScope, pendingDate, pendingWeekStart, pendingMonthDate)}
                     </Text>
                     <Text style={styles.itemHintChevron}>›</Text>
                   </Pressable>
                 {pendingScope === 'DAY' && pendingDate ? (
                   <View style={styles.detailSubsection}>
-                    <Subtle>{formatTimeValue(pendingTime)}</Subtle>
+                    <Subtle>{formatTimeValueLabel(pendingTime)}</Subtle>
                     <View style={styles.quickDateChips}>
                       {timeOptions.map((option) => (
                         <AppChip
                           key={option.value}
                           label={option.label}
-                          active={pendingTime === option.value}
+                          active={isTimeOptionActive(pendingTime, option)}
                           onPress={() => setPendingTime(option.value)}
+                          style={styles.todoSheetChip}
                         />
                       ))}
                       <AppChip
                         label={strings.timePick}
                         active={showTimePicker}
                         onPress={() => setShowTimePicker(true)}
+                        style={styles.todoSheetChip}
                       />
                       <AppChip
                         label={strings.timeNone}
                         active={!pendingTime}
                         onPress={() => setPendingTime(null)}
+                        style={styles.todoSheetChip}
                       />
                     </View>
                   </View>
@@ -1492,7 +1171,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                     const value = new Date(selectedWeeklyStart.getTime());
                     value.setDate(value.getDate() + idx * 7);
                     const weekStart = getStartOfWeekMonday(value);
-                    const label = formatWeekScopeLabel(weekStart);
+                    const label = formatWeekScopeValue(weekStart);
                     return (
                       <Pressable
                         key={`${weekStart.toISOString()}-week`}
@@ -1533,7 +1212,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
                     const value = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + idx, 1);
-                    const label = formatForValue('MONTH', null, getStartOfWeekMonday(value), value);
+                    const label = formatForValueLabel('MONTH', null, getStartOfWeekMonday(value), value);
                     return (
                       <Pressable
                         key={`${value.getFullYear()}-${value.getMonth()}-month`}
@@ -1667,7 +1346,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                     const value = new Date(selectedWeeklyStart.getTime());
                     value.setDate(value.getDate() + idx * 7);
                     const weekStart = getStartOfWeekMonday(value);
-                    const label = formatWeekScopeLabel(weekStart);
+                    const label = formatWeekScopeValue(weekStart);
                     return (
                       <Pressable
                         key={`${weekStart.toISOString()}-detail-week`}
@@ -1708,7 +1387,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
                     const value = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + idx, 1);
-                    const label = formatForValue('MONTH', null, getStartOfWeekMonday(value), value);
+                    const label = formatForValueLabel('MONTH', null, getStartOfWeekMonday(value), value);
                     return (
                       <Pressable
                         key={`${value.getFullYear()}-${value.getMonth()}-detail-month`}
@@ -1799,6 +1478,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                     value={detailText}
                     placeholder={strings.addPlaceholder}
                     onChangeText={setDetailText}
+                    style={styles.todoSheetInput}
                   />
                 </View>
 
@@ -1811,31 +1491,34 @@ export function TodoListScreen({ token, onDone }: Props) {
                     }}
                   >
                     <Text style={styles.selectionRowValue}>
-                      {formatForValue(detailScope, detailDate, detailWeekStart, detailMonthDate)}
+                      {formatForValueLabel(detailScope, detailDate, detailWeekStart, detailMonthDate)}
                     </Text>
                     <Text style={styles.itemHintChevron}>›</Text>
                   </Pressable>
                 {detailScope === 'DAY' && detailDate ? (
                   <View style={styles.detailSubsection}>
-                    <Subtle>{formatTimeValue(detailTime)}</Subtle>
+                    <Subtle>{formatTimeValueLabel(detailTime)}</Subtle>
                     <View style={styles.quickDateChips}>
                       {timeOptions.map((option) => (
                         <AppChip
                           key={option.value}
                           label={option.label}
-                          active={detailTime === option.value}
+                          active={isTimeOptionActive(detailTime, option)}
                           onPress={() => setDetailTime(option.value)}
+                          style={styles.todoSheetChip}
                         />
                       ))}
                       <AppChip
                         label={strings.timePick}
                         active={showDetailTimePicker}
                         onPress={() => setShowDetailTimePicker(true)}
+                        style={styles.todoSheetChip}
                       />
                       <AppChip
                         label={strings.timeNone}
                         active={!detailTime}
                         onPress={() => setDetailTime(null)}
+                        style={styles.todoSheetChip}
                       />
                     </View>
                   </View>
@@ -1850,6 +1533,17 @@ export function TodoListScreen({ token, onDone }: Props) {
                   fullWidth
                   disabled={savingDetails || !detailText.trim()}
                 />
+                {!isKeyboardVisible ? (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.todoDeleteButton,
+                      pressed ? { opacity: 0.92 } : null,
+                    ]}
+                    onPress={handleDeleteDetails}
+                  >
+                    <Text style={styles.todoDeleteButtonText}>{strings.deleteTodo}</Text>
+                  </Pressable>
+                ) : null}
                 {!isKeyboardVisible ? (
                   <AppButton title={strings.close} onPress={() => setDetailsTodoId(null)} variant="ghost" fullWidth />
                 ) : null}
@@ -1876,8 +1570,8 @@ export function TodoListScreen({ token, onDone }: Props) {
                 <Pressable style={styles.selectionRow}>
                   <Text style={styles.selectionRowValue}>
                     {scopePickerTarget === 'ADD'
-                      ? formatForValue(pendingScope, pendingDate, pendingWeekStart, pendingMonthDate)
-                      : formatForValue(detailScope, detailDate, detailWeekStart, detailMonthDate)}
+                      ? formatForValueLabel(pendingScope, pendingDate, pendingWeekStart, pendingMonthDate)
+                      : formatForValueLabel(detailScope, detailDate, detailWeekStart, detailMonthDate)}
                   </Text>
                 </Pressable>
                 <Subtle>{strings.chooseScopeSubtitle}</Subtle>
@@ -1895,6 +1589,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                         : !!detailDate && isSameDay(detailDate, new Date()))
                     }
                     onPress={() => (scopePickerTarget === 'ADD' ? setDateToToday() : setDetailDateToToday())}
+                    style={styles.todoSheetChip}
                   />
                   <AppChip
                     label={strings.forTomorrow}
@@ -1905,11 +1600,13 @@ export function TodoListScreen({ token, onDone }: Props) {
                         : !!detailDate && isSameDay(detailDate, getTomorrowDate()))
                     }
                     onPress={() => (scopePickerTarget === 'ADD' ? setDateToTomorrow() : setDetailDateToTomorrow())}
+                    style={styles.todoSheetChip}
                   />
                   <AppChip
                     label={strings.quickPick}
                     active={scopePickerTarget === 'ADD' ? showDatePicker : showDetailDatePicker}
                     onPress={() => openScopeDatePicker(scopePickerTarget === 'ADD' ? 'ADD_DAY' : 'EDIT_DAY')}
+                    style={styles.todoSheetChip}
                   />
                 </View>
               </View>
@@ -1925,11 +1622,13 @@ export function TodoListScreen({ token, onDone }: Props) {
                         getStartOfWeekMonday(new Date()),
                       )}
                     onPress={() => (scopePickerTarget === 'ADD' ? setPendingToCurrentWeek() : setDetailToCurrentWeek())}
+                    style={styles.todoSheetChip}
                   />
                   <AppChip
                     label={strings.pickWeek}
                     active={scopePickerTarget === 'ADD' ? showWeekPicker : showDetailWeekPicker}
                     onPress={() => openScopeDatePicker(scopePickerTarget === 'ADD' ? 'ADD_WEEK' : 'EDIT_WEEK')}
+                    style={styles.todoSheetChip}
                   />
                 </View>
               </View>
@@ -1946,11 +1645,13 @@ export function TodoListScreen({ token, onDone }: Props) {
                         return selected.getFullYear() === current.getFullYear() && selected.getMonth() === current.getMonth();
                       })()}
                     onPress={() => (scopePickerTarget === 'ADD' ? setPendingToCurrentMonth() : setDetailToCurrentMonth())}
+                    style={styles.todoSheetChip}
                   />
                   <AppChip
                     label={strings.pickMonth}
                     active={scopePickerTarget === 'ADD' ? showMonthPicker : showDetailMonthPicker}
                     onPress={() => openScopeDatePicker(scopePickerTarget === 'ADD' ? 'ADD_MONTH' : 'EDIT_MONTH')}
+                    style={styles.todoSheetChip}
                   />
                 </View>
               </View>
@@ -1965,6 +1666,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                       applyScopeSelection(scopePickerTarget, 'LATER');
                       setScopePickerTarget(null);
                     }}
+                    style={styles.todoSheetChip}
                   />
                 </View>
               </View>
@@ -2000,11 +1702,13 @@ const styles = StyleSheet.create({
   contentOffset: {
     gap: theme.spacing.md,
   },
+  headerCard: {
+    gap: theme.spacing.xs,
+  },
   filters: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
   },
   calendarMonthRow: {
     flexDirection: 'row',
@@ -2018,6 +1722,16 @@ const styles = StyleSheet.create({
   },
   dailyProgressBlock: {
     marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  weeklyOverviewList: {
+    gap: theme.spacing.sm + 2,
+  },
+  weeklyHeaderCard: {
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+  },
+  weeklyCalendarRowCompact: {
     gap: theme.spacing.xs,
   },
   quickDateRow: {
@@ -2097,6 +1811,21 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     minWidth: 0,
   },
+  todoDeleteButton: {
+    minHeight: 48,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  todoDeleteButtonText: {
+    ...textStyles.body,
+    fontWeight: '600',
+    color: theme.colors.danger,
+  },
   weekDayOverviewRow: {
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -2114,10 +1843,16 @@ const styles = StyleSheet.create({
   weekDayOverviewText: {
     ...textStyles.body,
     minWidth: 52,
+    fontWeight: '500',
   },
   weekDayOverviewTextToday: {
-    fontWeight: '700',
+    fontWeight: '800',
     color: theme.colors.primary,
+  },
+  weekDayOverviewMeta: {
+    ...textStyles.subtle,
+    fontSize: 12,
+    color: theme.colors.subtle,
   },
   unplannedShortcutRow: {
     borderWidth: 1,
@@ -2129,6 +1864,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.sm,
+  },
+  weeklyShortcutRow: {
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
   },
   monthGridHeaderRow: {
     flexDirection: 'row',
@@ -2340,6 +2079,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceAlt,
     minWidth: 0,
   },
+  todoSheetInput: {
+    backgroundColor: theme.colors.surface,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
+  todoSheetChip: {
+    backgroundColor: theme.colors.surface,
+  },
   detailSubsection: {
     gap: theme.spacing.sm,
     marginTop: theme.spacing.xs,
@@ -2364,6 +2111,6 @@ const styles = StyleSheet.create({
   bottomComposerBar: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
   },
 });

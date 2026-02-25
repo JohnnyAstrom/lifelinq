@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useTodos } from '../features/todo/hooks/useTodos';
+import { useTodos } from '../hooks/useTodos';
 import {
   AppButton,
   AppCard,
@@ -10,8 +10,8 @@ import {
   AppScreen,
   SectionTitle,
   Subtle,
-} from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+} from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
