@@ -38,7 +38,8 @@ class UserApplicationServiceDeleteAccountTest {
         RecordingDeleteAccountUseCase deleteAccountUseCase = new RecordingDeleteAccountUseCase(port, userRepository, port.events);
         UserApplicationService service = new UserApplicationService(
                 new EnsureUserExistsUseCase(userRepository),
-                deleteAccountUseCase
+                deleteAccountUseCase,
+                userRepository
         );
 
         service.deleteAccount(userId);

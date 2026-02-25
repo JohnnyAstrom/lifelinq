@@ -24,8 +24,9 @@ public class UserApplicationConfig {
     @Bean
     public UserApplicationService userApplicationService(
             EnsureUserExistsUseCase ensureUserExistsUseCase,
-            DeleteAccountUseCase deleteAccountUseCase
+            DeleteAccountUseCase deleteAccountUseCase,
+            UserRepository userRepository
     ) {
-        return new UserApplicationService(ensureUserExistsUseCase, deleteAccountUseCase);
+        return new UserApplicationService(ensureUserExistsUseCase, deleteAccountUseCase, userRepository);
     }
 }

@@ -4,10 +4,10 @@ import app.lifelinq.features.user.domain.User;
 
 final class UserMapper {
     UserEntity toEntity(User user) {
-        return new UserEntity(user.getId());
+        return new UserEntity(user.getId(), user.getActiveGroupId());
     }
 
     User toDomain(UserEntity entity) {
-        return new User(entity.getId());
+        return new User(entity.getId(), entity.getActiveGroupId());
     }
 }
