@@ -15,7 +15,7 @@ import {
   type ShoppingUnit,
   type AddShoppingItemResponse,
   type ShoppingListResponse,
-} from '../../../shared/api/shopping';
+} from '../api/shoppingApi';
 
 type State = {
   loading: boolean;

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useShopping } from '../features/shopping/hooks/useShopping';
-import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+import { useShopping } from '../hooks/useShopping';
+import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;

@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { getWeekPlan, type WeekPlanResponse } from '../shared/api/meals';
-import { formatApiError } from '../shared/api/client';
-import { AppButton, AppCard, AppScreen, Subtle } from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+import { getWeekPlan, type WeekPlanResponse } from '../api/mealsApi';
+import { formatApiError } from '../../../shared/api/client';
+import { AppButton, AppCard, AppScreen, Subtle } from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;

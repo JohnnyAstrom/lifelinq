@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Alert,
   GestureResponderEvent,
@@ -10,11 +10,16 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
-import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { OverlaySheet } from '../shared/ui/OverlaySheet';
-import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+import { CreateListSheetContent } from '../components/CreateListSheetContent';
+import { ListActionsSheetContent } from '../components/ListActionsSheetContent';
+import { RenameListSheetContent } from '../components/RenameListSheetContent';
+import { ShoppingListRow } from '../components/ShoppingListRow';
+import { useShoppingListsWorkflow } from '../hooks/useShoppingListsWorkflow';
+import { useShoppingLists } from '../hooks/useShoppingLists';
+import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
+import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
+import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -24,14 +29,9 @@ type Props = {
 
 export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   const shopping = useShoppingLists(token);
+  const workflow = useShoppingListsWorkflow({ shopping });
+  const { state: workflowState, actions: workflowActions } = workflow;
   const insets = useSafeAreaInsets();
-  const [newListName, setNewListName] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [activeListId, setActiveListId] = useState<string | null>(null);
-  const [renameListId, setRenameListId] = useState<string | null>(null);
-  const [renameListName, setRenameListName] = useState('');
-  const [orderedListIds, setOrderedListIds] = useState<string[]>([]);
-  const [draggingListId, setDraggingListId] = useState<string | null>(null);
   const orderedListIdsRef = useRef<string[]>([]);
   const draggingListIdRef = useRef<string | null>(null);
   const dragStartIndexRef = useRef<number | null>(null);
@@ -70,7 +70,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   };
 
   useEffect(() => {
-    if (draggingListId || pendingListReorderSyncRef.current) {
+    if (workflowState.draggingListId || pendingListReorderSyncRef.current) {
       return;
     }
     const next = shopping.lists.map((list) => list.id);
@@ -80,37 +80,18 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
       return;
     }
     orderedListIdsRef.current = next;
-    setOrderedListIds(next);
-  }, [shopping.lists, draggingListId]);
-
-  const orderedLists = useMemo(() => {
-    if (orderedListIds.length === 0) {
-      return shopping.lists;
-    }
-    const byId = new Map(shopping.lists.map((list) => [list.id, list]));
-    const result = orderedListIds
-      .map((id) => byId.get(id))
-      .filter((list): list is NonNullable<typeof list> => !!list);
-    if (result.length === shopping.lists.length) {
-      return result;
-    }
-    return shopping.lists;
-  }, [orderedListIds, shopping.lists]);
+    workflowActions.setOrderedListIds(next);
+  }, [shopping.lists, workflowActions, workflowState.draggingListId]);
 
   async function handleCreateList() {
-    if (!newListName.trim()) {
-      return;
-    }
-    await shopping.createList(newListName.trim());
-    setNewListName('');
-    setShowCreate(false);
+    await workflowActions.handleCreateList();
     Keyboard.dismiss();
   }
 
-  const canCreateList = newListName.trim().length > 0;
+  const canCreateList = workflowState.canCreateList;
 
   function closeCreate() {
-    setShowCreate(false);
+    workflowActions.closeCreate();
     Keyboard.dismiss();
   }
 
@@ -128,44 +109,36 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   }
 
   function closeActions() {
-    setActiveListId(null);
+    workflowActions.closeActions();
     Keyboard.dismiss();
   }
 
   function closeRename() {
-    setRenameListId(null);
-    setRenameListName('');
+    workflowActions.closeRename();
     Keyboard.dismiss();
   }
 
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: showCreate || !!activeListId || !!renameListId,
+    isOverlayOpen: workflowState.showCreate || !!workflowState.activeListId || !!workflowState.renameListId,
     onCloseOverlay: () => {
-      if (renameListId) {
+      if (workflowState.renameListId) {
         closeRename();
         return;
       }
-      if (activeListId) {
+      if (workflowState.activeListId) {
         closeActions();
         return;
       }
-      if (showCreate) {
+      if (workflowState.showCreate) {
         closeCreate();
       }
     },
   });
 
-  function selectedActionList() {
-    if (!activeListId) {
-      return null;
-    }
-    return orderedLists.find((list) => list.id === activeListId) ?? null;
-  }
-
   async function handleShareList() {
-    const list = selectedActionList();
+    const list = workflowActions.selectedActionList();
     if (!list) {
       return;
     }
@@ -177,20 +150,12 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   }
 
   function openRename() {
-    const list = selectedActionList();
-    if (!list) {
-      return;
-    }
-    setRenameListId(list.id);
-    setRenameListName(list.name);
+    workflowActions.openRename();
     closeActions();
   }
 
   async function handleRenameList() {
-    if (!renameListId || !renameListName.trim()) {
-      return;
-    }
-    await shopping.renameList(renameListId, renameListName.trim());
+    await workflowActions.handleRenameList();
     closeRename();
   }
 
@@ -205,16 +170,16 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   }
 
   function startDrag(listId: string, pageY: number) {
-    const currentIds = orderedListIds.length > 0 ? orderedListIds : orderedLists.map((list) => list.id);
-    if (orderedListIds.length === 0) {
+    const currentIds = workflowState.orderedListIds.length > 0 ? workflowState.orderedListIds : workflowState.orderedLists.map((list) => list.id);
+    if (workflowState.orderedListIds.length === 0) {
       orderedListIdsRef.current = currentIds;
-      setOrderedListIds(currentIds);
+      workflowActions.setOrderedListIds(currentIds);
     }
     const index = currentIds.indexOf(listId);
     if (index < 0) {
       return;
     }
-    setDraggingListId(listId);
+    workflowActions.setDraggingListId(listId);
     draggingListIdRef.current = listId;
     dragStartIndexRef.current = index;
     dragMovedRef.current = false;
@@ -250,7 +215,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     dragMovedRef.current = true;
     const next = moveId(currentIds, currentIndex, target);
     orderedListIdsRef.current = next;
-    setOrderedListIds(next);
+    workflowActions.setOrderedListIds(next);
   }
 
   async function finishDrag() {
@@ -266,7 +231,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     }
     const moved = dragMovedRef.current;
     const finalIndex = orderedListIdsRef.current.indexOf(draggingId);
-    setDraggingListId(null);
+    workflowActions.setDraggingListId(null);
     draggingListIdRef.current = null;
     dragStartIndexRef.current = null;
     dragMovedRef.current = false;
@@ -275,11 +240,13 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
       finishingDragRef.current = false;
       return;
     }
-    const direction = finalIndex > startIndex ? 'DOWN' : 'UP';
-    const steps = Math.abs(finalIndex - startIndex);
     try {
       pendingListReorderSyncRef.current = true;
-      await shopping.reorderList(draggingId, direction, steps);
+      await workflowActions.finishDragList({
+        draggingId,
+        startIndex,
+        finalIds: orderedListIdsRef.current,
+      });
     } finally {
       pendingListReorderSyncRef.current = false;
       finishingDragRef.current = false;
@@ -321,44 +288,33 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                 }}
                 style={styles.listGrid}
               >
-              {orderedLists.map((list) => {
+              {workflowState.orderedLists.map((list) => {
                 const openCount = list.items.filter((item) => item.status !== 'BOUGHT').length;
                 const totalCount = list.items.length;
-                const isDragging = draggingListId === list.id;
+                const isDragging = workflowState.draggingListId === list.id;
                 return (
-                  <View key={list.id} style={[styles.listCard, isDragging ? styles.listCardDragging : null]}>
-                    <Pressable
-                      style={({ pressed }) => [styles.listMainPressable, pressed ? styles.listCardPressed : null]}
-                      onPress={() => {
-                        if (!draggingListIdRef.current) {
-                          onSelectList(list.id);
-                        }
-                      }}
-                      onLongPress={(event) => {
-                        startDrag(list.id, event.nativeEvent.pageY);
-                      }}
-                      delayLongPress={180}
-                    >
-                      <View style={styles.listMain}>
-                        <Text style={styles.listTitle} numberOfLines={1} ellipsizeMode="tail">
-                          {list.name}
-                        </Text>
-                        <Subtle>
-                          {openCount} {strings.open} · {totalCount} {strings.total}
-                        </Subtle>
-                      </View>
-                    </Pressable>
-                    <Pressable
-                      style={({ pressed }) => [styles.listMenuButton, pressed ? styles.listMenuButtonPressed : null]}
-                      onPress={() => {
-                        if (!draggingListId) {
-                          setActiveListId(list.id);
-                        }
-                      }}
-                    >
-                      <Text style={styles.listMenuText}>⋮</Text>
-                    </Pressable>
-                  </View>
+                  <ShoppingListRow
+                    key={list.id}
+                    list={list}
+                    openCount={openCount}
+                    totalCount={totalCount}
+                    strings={{ open: strings.open, total: strings.total }}
+                    styles={styles}
+                    isDragging={isDragging}
+                    onPress={() => {
+                      if (!draggingListIdRef.current) {
+                        onSelectList(list.id);
+                      }
+                    }}
+                    onLongPress={(event) => {
+                      startDrag(list.id, event.nativeEvent.pageY);
+                    }}
+                    onOpenActions={() => {
+                      if (!workflowState.draggingListId) {
+                        workflowActions.openActionsForList(list.id);
+                      }
+                    }}
+                  />
                 );
               })}
               </View>
@@ -370,79 +326,71 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
       <Pressable
         style={[styles.fab, { bottom: Math.max(insets.bottom + 8, 12) }]}
         onPress={() => {
-          setShowCreate(true);
+          workflowActions.setShowCreate(true);
         }}
       >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
-      {showCreate ? (
+      {workflowState.showCreate ? (
         <OverlaySheet onClose={closeCreate} sheetStyle={styles.sheet}>
-          <View style={styles.sheetHandle} />
-          <Text style={textStyles.h3}>{strings.createListTitle}</Text>
-          <Subtle>{strings.createListSubtitle}</Subtle>
-          <AppInput
+          <CreateListSheetContent
+            styles={styles}
+            title={strings.createListTitle}
+            subtitle={strings.createListSubtitle}
             placeholder={strings.listNamePlaceholder}
-            value={newListName}
-            onChangeText={setNewListName}
+            createActionLabel={strings.createListAction}
+            closeLabel={strings.close}
+            value={workflowState.newListName}
+            canCreate={canCreateList}
+            onChangeText={workflowActions.setNewListName}
             onSubmitEditing={async () => {
               if (canCreateList) {
                 await handleCreateList();
               }
             }}
-            returnKeyType="done"
-            autoFocus
+            onCreate={handleCreateList}
+            onClose={closeCreate}
           />
-          <View style={styles.sheetActions}>
-            <AppButton
-              title={strings.createListAction}
-              onPress={handleCreateList}
-              disabled={!canCreateList}
-              fullWidth
-            />
-            <AppButton title={strings.close} onPress={closeCreate} variant="ghost" fullWidth />
-          </View>
         </OverlaySheet>
       ) : null}
 
-      {activeListId ? (
+      {workflowState.activeListId ? (
         <OverlaySheet onClose={closeActions} sheetStyle={styles.sheet}>
-          <View style={styles.sheetHandle} />
-          <Text style={textStyles.h3}>{strings.actionsTitle}</Text>
-          <View style={styles.sheetActions}>
-            <AppButton title={strings.actionShare} onPress={() => void handleShareList()} fullWidth />
-            <AppButton title={strings.actionEditName} onPress={openRename} variant="secondary" fullWidth />
-            <AppButton
-              title={strings.actionDelete}
-              onPress={() => {
-                const list = selectedActionList();
-                closeActions();
-                if (list) {
-                  requestRemoveList(list.id);
-                }
-              }}
-              variant="ghost"
-              fullWidth
-            />
-            <AppButton title={strings.close} onPress={closeActions} variant="ghost" fullWidth />
-          </View>
+          <ListActionsSheetContent
+            styles={styles}
+            title={strings.actionsTitle}
+            shareLabel={strings.actionShare}
+            editNameLabel={strings.actionEditName}
+            deleteLabel={strings.actionDelete}
+            closeLabel={strings.close}
+            onShare={handleShareList}
+            onEditName={openRename}
+            onDelete={() => {
+              const list = workflowActions.selectedActionList();
+              closeActions();
+              if (list) {
+                requestRemoveList(list.id);
+              }
+            }}
+            onClose={closeActions}
+          />
         </OverlaySheet>
       ) : null}
 
-      {renameListId ? (
+      {workflowState.renameListId ? (
         <OverlaySheet onClose={closeRename} sheetStyle={styles.sheet}>
-          <View style={styles.sheetHandle} />
-          <Text style={textStyles.h3}>{strings.renameTitle}</Text>
-          <AppInput
+          <RenameListSheetContent
+            styles={styles}
+            title={strings.renameTitle}
             placeholder={strings.listNamePlaceholder}
-            value={renameListName}
-            onChangeText={setRenameListName}
-            autoFocus
+            saveLabel={strings.renameSave}
+            closeLabel={strings.close}
+            value={workflowState.renameListName}
+            onChangeText={workflowActions.setRenameListName}
+            onSave={() => void handleRenameList()}
+            onClose={closeRename}
           />
-          <View style={styles.sheetActions}>
-            <AppButton title={strings.renameSave} onPress={() => void handleRenameList()} fullWidth />
-            <AppButton title={strings.close} onPress={closeRename} variant="ghost" fullWidth />
-          </View>
         </OverlaySheet>
       ) : null}
     </AppScreen>

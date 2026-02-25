@@ -116,19 +116,22 @@ type ChipProps = {
   label: string;
   active?: boolean;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 };
 
-export function AppChip({ label, active, onPress }: ChipProps) {
+export function AppChip({ label, active, onPress, style, textStyle }: ChipProps) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
+        style,
         active ? styles.chipActive : null,
         pressed ? styles.chipPressed : null,
       ]}
     >
-      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>
+      <Text style={[styles.chipText, textStyle, active ? styles.chipTextActive : null]}>
         {label}
       </Text>
     </Pressable>

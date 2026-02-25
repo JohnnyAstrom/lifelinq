@@ -7,7 +7,7 @@ import {
   removeMeal,
   type WeekPlanResponse,
   type AddMealRequest,
-} from '../../../shared/api/meals';
+} from '../api/mealsApi';
 
 type State = {
   loading: boolean;

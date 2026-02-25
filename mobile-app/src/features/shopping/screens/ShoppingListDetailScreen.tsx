@@ -11,12 +11,19 @@ import {
   View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
-import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { type ShoppingUnit } from '../shared/api/shopping';
-import { AppButton, AppCard, AppChip, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
-import { OverlaySheet } from '../shared/ui/OverlaySheet';
-import { textStyles, theme } from '../shared/ui/theme';
+import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
+import { EditItemSheetContent } from '../components/EditItemSheetContent';
+import { QuickAddSheetContent } from '../components/QuickAddSheetContent';
+import { ShoppingAddBar } from '../components/ShoppingAddBar';
+import { ShoppingItemRow } from '../components/ShoppingItemRow';
+import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
+import { useShoppingLists } from '../hooks/useShoppingLists';
+import { formatItemMeta, formatItemTitle } from '../utils/shoppingFormatting';
+import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
+import { type ShoppingUnit } from '../api/shoppingApi';
+import { AppButton, AppCard, AppChip, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -26,24 +33,10 @@ type Props = {
 
 export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const shopping = useShoppingLists(token);
-  const [newItemName, setNewItemName] = useState('');
-  const [quickAddName, setQuickAddName] = useState('');
-  const [quickAddFeedback, setQuickAddFeedback] = useState<string | null>(null);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [editItemId, setEditItemId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editQuantity, setEditQuantity] = useState('');
-  const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('ST');
-  const [editError, setEditError] = useState<string | null>(null);
+  const workflow = useShoppingListDetailWorkflow({ shopping, listId });
+  const { state: workflowState, actions: workflowActions } = workflow;
   const [showMoreEditUnits, setShowMoreEditUnits] = useState(false);
-  const [showAddDetails, setShowAddDetails] = useState(false);
-  const [addQuantity, setAddQuantity] = useState('');
-  const [addUnit, setAddUnit] = useState<ShoppingUnit | null>('ST');
-  const [addError, setAddError] = useState<string | null>(null);
-  const [addDetailsFeedback, setAddDetailsFeedback] = useState<string | null>(null);
   const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);
-  const [orderedOpenItemIds, setOrderedOpenItemIds] = useState<string[]>([]);
-  const [draggingOpenItemId, setDraggingOpenItemId] = useState<string | null>(null);
   const orderedOpenItemIdsRef = useRef<string[]>([]);
   const draggingOpenItemIdRef = useRef<string | null>(null);
   const dragStartIndexRef = useRef<number | null>(null);
@@ -53,8 +46,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const finishingDragRef = useRef(false);
   const ignoreNextOpenPressRef = useRef(false);
   const pendingOpenReorderSyncRef = useRef(false);
-  const quickAddFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const addDetailsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quickAddInputRef = useRef<TextInput | null>(null);
   const addDetailsInputRef = useRef<TextInput | null>(null);
   const quantityRef = useRef<TextInput | null>(null);
@@ -66,15 +57,15 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const items = useMemo(() => selected?.items ?? [], [selected]);
   const openItemsBase = useMemo(() => items.filter((item) => item.status !== 'BOUGHT'), [items]);
   const openItems = useMemo(() => {
-    if (orderedOpenItemIds.length === 0) {
+    if (workflowState.orderedOpenItemIds.length === 0) {
       return openItemsBase;
     }
     const byId = new Map(openItemsBase.map((item) => [item.id, item]));
-    const ordered = orderedOpenItemIds
+    const ordered = workflowState.orderedOpenItemIds
       .map((id) => byId.get(id))
       .filter((item): item is NonNullable<typeof item> => !!item);
     return ordered.length === openItemsBase.length ? ordered : openItemsBase;
-  }, [openItemsBase, orderedOpenItemIds]);
+  }, [openItemsBase, workflowState.orderedOpenItemIds]);
   const boughtItems = items.filter((item) => item.status === 'BOUGHT');
 
   const strings = {
@@ -120,7 +111,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   };
 
   useEffect(() => {
-    if (draggingOpenItemId || pendingOpenReorderSyncRef.current) {
+    if (workflowState.draggingOpenItemId || pendingOpenReorderSyncRef.current) {
       return;
     }
     const next = openItemsBase.map((item) => item.id);
@@ -130,192 +121,62 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       return;
     }
     orderedOpenItemIdsRef.current = next;
-    setOrderedOpenItemIds(next);
-  }, [draggingOpenItemId, openItemsBase]);
-
-  useEffect(() => {
-    return () => {
-      if (quickAddFeedbackTimerRef.current) {
-        clearTimeout(quickAddFeedbackTimerRef.current);
-        quickAddFeedbackTimerRef.current = null;
-      }
-      if (addDetailsFeedbackTimerRef.current) {
-        clearTimeout(addDetailsFeedbackTimerRef.current);
-        addDetailsFeedbackTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  async function handleAddItem() {
-    if (!selected || !newItemName.trim()) {
-      return;
-    }
-    const addedName = newItemName.trim();
-    const parsedQuantity = parseQuantity(addQuantity);
-    if (Number.isNaN(parsedQuantity)) {
-      setAddError(strings.addErrorQuantity);
-      return;
-    }
-    if (parsedQuantity !== null && !addUnit) {
-      setAddError(strings.addErrorQuantityUnit);
-      return;
-    }
-    const effectiveUnit = parsedQuantity === null ? null : addUnit;
-    await shopping.addItem(selected.id, addedName, parsedQuantity, effectiveUnit);
-    setNewItemName('');
-    setAddQuantity('');
-    setAddUnit('ST');
-    setAddError(null);
-    const quantityPrefix =
-      parsedQuantity !== null && effectiveUnit
-        ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} - `
-        : '';
-    setAddDetailsFeedback(`${quantityPrefix}${addedName} ${strings.addDetailsAddedSuffix}`);
-    if (addDetailsFeedbackTimerRef.current) {
-      clearTimeout(addDetailsFeedbackTimerRef.current);
-    }
-    addDetailsFeedbackTimerRef.current = setTimeout(() => {
-      setAddDetailsFeedback(null);
-      addDetailsFeedbackTimerRef.current = null;
-    }, 3200);
-    requestAnimationFrame(() => {
-      addDetailsInputRef.current?.focus();
-    });
-  }
-
-  function formatQuantityForFeedback(value: number): string {
-    return Number.isInteger(value) ? String(value) : String(value);
-  }
-
-  function formatUnitForFeedback(unit: ShoppingUnit): string {
-    switch (unit) {
-      case 'ST':
-        return 'pcs';
-      case 'FORP':
-        return 'pack';
-      case 'KG':
-        return 'kg';
-      case 'HG':
-        return 'hg';
-      case 'G':
-        return 'g';
-      case 'L':
-        return 'l';
-      case 'DL':
-        return 'dl';
-      case 'ML':
-        return 'ml';
-      default:
-        return '';
-    }
-  }
-
-  async function handleQuickAdd() {
-    if (!selected || !quickAddName.trim()) {
-      return;
-    }
-    const addedName = quickAddName.trim();
-    await shopping.addItem(selected.id, addedName, null, null);
-    setQuickAddName('');
-    setQuickAddFeedback(`${addedName} ${strings.quickAddAddedSuffix}`);
-    if (quickAddFeedbackTimerRef.current) {
-      clearTimeout(quickAddFeedbackTimerRef.current);
-    }
-    quickAddFeedbackTimerRef.current = setTimeout(() => {
-      setQuickAddFeedback(null);
-      quickAddFeedbackTimerRef.current = null;
-    }, 3200);
-    requestAnimationFrame(() => {
-      quickAddInputRef.current?.focus();
-    });
-  }
+    workflowActions.setOrderedOpenItemIds(next);
+  }, [workflowActions, workflowState.draggingOpenItemId, openItemsBase]);
 
   function closeQuickAdd() {
-    setQuickAddName('');
-    setQuickAddFeedback(null);
-    if (quickAddFeedbackTimerRef.current) {
-      clearTimeout(quickAddFeedbackTimerRef.current);
-      quickAddFeedbackTimerRef.current = null;
-    }
-    setShowQuickAdd(false);
+    workflowActions.closeQuickAdd();
     Keyboard.dismiss();
   }
 
   function closeAddDetails() {
-    setShowAddDetails(false);
+    workflowActions.closeAddDetails();
     setShowMoreAddUnits(false);
-    setAddDetailsFeedback(null);
-    if (addDetailsFeedbackTimerRef.current) {
-      clearTimeout(addDetailsFeedbackTimerRef.current);
-      addDetailsFeedbackTimerRef.current = null;
-    }
     Keyboard.dismiss();
   }
 
   function openEdit(item: typeof items[number]) {
-    setEditItemId(item.id);
-    setEditName(item.name);
-    setEditQuantity(item.quantity ? String(item.quantity) : '');
-    setEditUnit(item.unit ?? 'ST');
-    setEditError(null);
+    workflowActions.openEdit(item);
     setShowMoreEditUnits(false);
   }
 
   function closeEdit() {
-    setEditItemId(null);
-    setEditName('');
-    setEditQuantity('');
-    setEditUnit('ST');
-    setEditError(null);
+    workflowActions.closeEdit();
     setShowMoreEditUnits(false);
     Keyboard.dismiss();
   }
 
-  function parseQuantity(value: string): number | null {
-    if (!value.trim()) {
-      return null;
-    }
-    const parsed = Number(value.replace(',', '.'));
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      return NaN;
-    }
-    return parsed;
-  }
-
   async function handleSaveEdit() {
-    if (!selected || !editItemId) {
-      return;
-    }
-    if (!editName.trim()) {
-      setEditError(strings.nameRequired);
-      return;
-    }
-    const parsedQuantity = parseQuantity(editQuantity);
-    if (Number.isNaN(parsedQuantity)) {
-      setEditError(strings.quantityInvalid);
-      return;
-    }
-    if (parsedQuantity !== null && !editUnit) {
-      setEditError(strings.quantityUnitMismatch);
-      return;
-    }
-    const effectiveUnit = parsedQuantity === null ? null : editUnit;
-    await shopping.updateItem(
-      selected.id,
-      editItemId,
-      editName.trim(),
-      parsedQuantity,
-      effectiveUnit
+    await workflowActions.handleSaveEdit(
+      {
+        nameRequired: strings.nameRequired,
+        quantityInvalid: strings.quantityInvalid,
+        quantityUnitMismatch: strings.quantityUnitMismatch,
+      },
+      { onClose: closeEdit }
     );
-    closeEdit();
   }
 
   async function handleRemoveEdit() {
-    if (!selected || !editItemId) {
-      return;
-    }
-    await shopping.removeItem(selected.id, editItemId);
-    closeEdit();
+    await workflowActions.handleRemoveEdit({ onClose: closeEdit });
+  }
+
+  async function handleQuickAdd() {
+    await workflowActions.handleQuickAdd(
+      { quickAddAddedSuffix: strings.quickAddAddedSuffix },
+      { onRefocus: () => quickAddInputRef.current?.focus() }
+    );
+  }
+
+  async function handleAddItem() {
+    await workflowActions.handleAddItem(
+      {
+        addErrorQuantity: strings.addErrorQuantity,
+        addErrorQuantityUnit: strings.addErrorQuantityUnit,
+        addDetailsAddedSuffix: strings.addDetailsAddedSuffix,
+      },
+      { onRefocus: () => addDetailsInputRef.current?.focus() }
+    );
   }
 
   async function handleClearBought() {
@@ -343,22 +204,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     ]);
   }
 
-  function formatItemMeta(item: typeof items[number]) {
-    if (item.quantity == null || !item.unit) {
-      return null;
-    }
-    const label = UNIT_LABELS[item.unit] ?? item.unit.toLowerCase();
-    return `${item.quantity} ${label}`;
-  }
-
-  function formatItemTitle(item: typeof items[number]) {
-    const meta = formatItemMeta(item);
-    if (meta) {
-      return `${meta} - ${item.name}`;
-    }
-    return item.name;
-  }
-
   function moveIds(ids: string[], from: number, to: number) {
     if (from === to) {
       return ids;
@@ -378,8 +223,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       return;
     }
     orderedOpenItemIdsRef.current = currentIds;
-    setOrderedOpenItemIds(currentIds);
-    setDraggingOpenItemId(itemId);
+    workflowActions.setOrderedOpenItemIds(currentIds);
+    workflowActions.setDraggingOpenItemId(itemId);
     draggingOpenItemIdRef.current = itemId;
     dragStartIndexRef.current = index;
     dragMovedRef.current = false;
@@ -417,7 +262,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     dragMovedRef.current = true;
     const next = moveIds(currentIds, currentIndex, targetIndex);
     orderedOpenItemIdsRef.current = next;
-    setOrderedOpenItemIds(next);
+    workflowActions.setOrderedOpenItemIds(next);
   }
 
   async function finishOpenDrag() {
@@ -427,13 +272,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     finishingDragRef.current = true;
     const draggedId = draggingOpenItemIdRef.current;
     const startIndex = dragStartIndexRef.current;
-    if (!selected || !draggedId || startIndex === null) {
+    if (!draggedId || startIndex === null) {
       finishingDragRef.current = false;
       return;
     }
     const moved = dragMovedRef.current;
     const finalIndex = orderedOpenItemIdsRef.current.indexOf(draggedId);
-    setDraggingOpenItemId(null);
+    workflowActions.setDraggingOpenItemId(null);
     draggingOpenItemIdRef.current = null;
     dragStartIndexRef.current = null;
     dragMovedRef.current = false;
@@ -445,11 +290,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       finishingDragRef.current = false;
       return;
     }
-    const direction = finalIndex > startIndex ? 'DOWN' : 'UP';
-    const steps = Math.abs(finalIndex - startIndex);
     try {
       pendingOpenReorderSyncRef.current = true;
-      await shopping.reorderItem(selected.id, draggedId, direction, steps);
+      await workflowActions.finishOpenDrag({
+        draggedId,
+        startIndex,
+        finalIds: orderedOpenItemIdsRef.current,
+      });
     } finally {
       pendingOpenReorderSyncRef.current = false;
       finishingDragRef.current = false;
@@ -459,17 +306,17 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onBack,
-    isOverlayOpen: showQuickAdd || !!editItemId || showAddDetails,
+    isOverlayOpen: workflowState.showQuickAdd || !!workflowState.editItemId || workflowState.showAddDetails,
     onCloseOverlay: () => {
-      if (showQuickAdd) {
+      if (workflowState.showQuickAdd) {
         closeQuickAdd();
         return;
       }
-      if (editItemId) {
+      if (workflowState.editItemId) {
         closeEdit();
         return;
       }
-      if (showAddDetails) {
+      if (workflowState.showAddDetails) {
         closeAddDetails();
       }
     },
@@ -486,7 +333,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         <ScrollView
           style={styles.listScroll}
           contentContainerStyle={styles.scrollContent}
-          scrollEnabled={!draggingOpenItemId}
+          scrollEnabled={!workflowState.draggingOpenItemId}
           keyboardShouldPersistTaps="handled"
         >
           {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
@@ -505,7 +352,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 {openItems.map((item) => (
                   <Swipeable
                     key={item.id}
-                    enabled={!draggingOpenItemId}
+                    enabled={!workflowState.draggingOpenItemId}
                     renderRightActions={() => (
                       <View style={[styles.swipeAction, styles.swipeActionBought]}>
                         <Text style={styles.swipeActionText}>{strings.swipeBought}</Text>
@@ -513,45 +360,36 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     )}
                     onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
                   >
-                    <View style={[styles.itemRow, draggingOpenItemId === item.id ? styles.itemRowDragging : null]}>
-                      <Pressable
-                        style={styles.toggleZone}
-                        onLongPress={(event) => startOpenDrag(item.id, event.nativeEvent.pageY)}
-                        delayLongPress={180}
-                        onTouchMove={handleOpenTouchMove}
-                        onTouchEnd={() => {
-                          void finishOpenDrag();
-                        }}
-                        onTouchCancel={() => {
-                          void finishOpenDrag();
-                        }}
-                        onPress={() => {
-                          if (ignoreNextOpenPressRef.current) {
-                            ignoreNextOpenPressRef.current = false;
-                            return;
-                          }
-                          if (selected && !draggingOpenItemIdRef.current) {
-                            shopping.toggleItem(selected.id, item.id);
-                          }
-                        }}
-                      >
-                        <View style={styles.checkbox} />
-                        <View style={styles.itemContent}>
-                          <Text style={styles.itemText}>{formatItemTitle(item)}</Text>
-                        </View>
-                      </Pressable>
-                      <Pressable
-                        style={styles.detailZone}
-                        onPress={() => {
-                          if (!draggingOpenItemIdRef.current) {
-                            openEdit(item);
-                          }
-                        }}
-                      >
-                        <Text style={styles.itemHintText}>{strings.details}</Text>
-                        <Text style={styles.itemHintChevron}>›</Text>
-                      </Pressable>
-                    </View>
+                    <ShoppingItemRow
+                      item={item}
+                      title={formatItemTitle(item)}
+                      checked={false}
+                      detailLabel={strings.details}
+                      dragging={workflowState.draggingOpenItemId === item.id}
+                      styles={styles}
+                      onToggle={() => {
+                        if (ignoreNextOpenPressRef.current) {
+                          ignoreNextOpenPressRef.current = false;
+                          return;
+                        }
+                        if (selected && !draggingOpenItemIdRef.current) {
+                          shopping.toggleItem(selected.id, item.id);
+                        }
+                      }}
+                      onEdit={() => {
+                        if (!draggingOpenItemIdRef.current) {
+                          openEdit(item);
+                        }
+                      }}
+                      onToggleLongPress={(event) => startOpenDrag(item.id, event.nativeEvent.pageY)}
+                      onToggleTouchMove={handleOpenTouchMove}
+                      onToggleTouchEnd={() => {
+                        void finishOpenDrag();
+                      }}
+                      onToggleTouchCancel={() => {
+                        void finishOpenDrag();
+                      }}
+                    />
                   </Swipeable>
                 ))}
               </View>
@@ -586,27 +424,19 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     )}
                     onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
                   >
-                    <View style={styles.itemRow}>
-                      <Pressable
-                        style={styles.toggleZone}
-                        onPress={() => {
-                          if (selected) {
-                            shopping.toggleItem(selected.id, item.id);
-                          }
-                        }}
-                      >
-                        <View style={[styles.checkbox, styles.checkboxChecked]}>
-                          <Text style={[styles.checkboxMark, styles.checkboxMarkChecked]}>✓</Text>
-                        </View>
-                        <View style={styles.itemContent}>
-                          <Text style={[styles.itemText, styles.itemTextDone]}>{formatItemTitle(item)}</Text>
-                        </View>
-                      </Pressable>
-                      <Pressable style={styles.detailZone} onPress={() => openEdit(item)}>
-                        <Text style={[styles.itemHintText, styles.itemTextDone]}>{strings.details}</Text>
-                        <Text style={[styles.itemHintChevron, styles.itemTextDone]}>›</Text>
-                      </Pressable>
-                    </View>
+                    <ShoppingItemRow
+                      item={item}
+                      title={formatItemTitle(item)}
+                      checked
+                      detailLabel={strings.details}
+                      styles={styles}
+                      onToggle={() => {
+                        if (selected) {
+                          shopping.toggleItem(selected.id, item.id);
+                        }
+                      }}
+                      onEdit={() => openEdit(item)}
+                    />
                   </Swipeable>
                 ))}
               </View>
@@ -614,228 +444,142 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           </AppCard>
         </ScrollView>
 
-      <View style={styles.bottomContainer}>
-        <View style={styles.bottomBar}>
-          <Pressable
-            style={styles.bottomInputPressable}
-            onPress={() => {
-              setQuickAddName('');
-              setShowQuickAdd(true);
-            }}
-          >
-            <Text style={styles.bottomInputPlaceholder}>{strings.addPlaceholder}</Text>
-          </Pressable>
-          <AppButton
-            title={strings.addAction}
-            onPress={() => {
-              Keyboard.dismiss();
-              setShowAddDetails(true);
-            }}
-          />
-        </View>
-      </View>
+      <ShoppingAddBar
+        styles={styles}
+        placeholder={strings.addPlaceholder}
+        actionTitle={strings.addAction}
+        onPressInput={() => {
+          workflowActions.setQuickAddName('');
+          workflowActions.setShowQuickAdd(true);
+        }}
+        onPressAction={() => {
+          Keyboard.dismiss();
+          workflowActions.setShowAddDetails(true);
+        }}
+      />
       </View>
 
 
-      {editItemId ? (
+      {workflowState.editItemId ? (
         <OverlaySheet onClose={closeEdit} sheetStyle={styles.quickAddSheet}>
-          <View style={styles.sheetHandle} />
-          <ScrollView
-            style={styles.editorScroll}
-            contentContainerStyle={styles.editorScrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.quickAddHeader}>
-              <Text style={textStyles.h3}>{strings.editTitle}</Text>
-            </View>
-            <AppInput
-              placeholder={strings.editNamePlaceholder}
-              value={editName}
-              onChangeText={setEditName}
-            />
-            <AppInput
-              placeholder={strings.editQuantityPlaceholder}
-              value={editQuantity}
-              onChangeText={setEditQuantity}
-              keyboardType="decimal-pad"
-            />
-            <View style={styles.unitRow}>
-              {PRIMARY_UNIT_OPTIONS.map((unit) => (
-                <AppChip
-                  key={unit.value}
-                  label={unit.label}
-                  active={editUnit === unit.value}
-                  onPress={() => setEditUnit(unit.value)}
-                />
-              ))}
-              <AppChip
-                label={strings.unitNone}
-                active={!editUnit}
-                onPress={() => {
-                  setEditUnit(null);
-                  setEditQuantity('');
-                }}
-              />
-              <AppChip
-                label={showMoreEditUnits ? strings.unitLess : strings.unitMore}
-                active={showMoreEditUnits}
-                onPress={() => setShowMoreEditUnits((prev) => !prev)}
-              />
-            </View>
-            {showMoreEditUnits ? (
-              <View style={styles.addUnitRow}>
-                {MORE_UNIT_OPTIONS.map((unit) => (
-                  <AppChip
-                    key={unit.value}
-                    label={unit.label}
-                    active={editUnit === unit.value}
-                    onPress={() => setEditUnit(unit.value)}
-                  />
-                ))}
-              </View>
-            ) : null}
-            {editError ? <Text style={styles.error}>{editError}</Text> : null}
-            <View style={styles.editorActions}>
-              <AppButton title={strings.saveChanges} onPress={handleSaveEdit} fullWidth />
-              <AppButton title={strings.removeItem} onPress={handleRemoveEdit} variant="ghost" fullWidth />
-              <AppButton title={strings.close} onPress={closeEdit} variant="secondary" fullWidth />
-            </View>
-          </ScrollView>
+          <EditItemSheetContent
+            styles={styles}
+            title={strings.editTitle}
+            editNamePlaceholder={strings.editNamePlaceholder}
+            editQuantityPlaceholder={strings.editQuantityPlaceholder}
+            saveChangesLabel={strings.saveChanges}
+            removeItemLabel={strings.removeItem}
+            closeLabel={strings.close}
+            unitNoneLabel={strings.unitNone}
+            unitToggleMoreLabel={strings.unitMore}
+            unitToggleLessLabel={strings.unitLess}
+            nameValue={workflowState.editName}
+            quantityValue={workflowState.editQuantity}
+            editUnit={workflowState.editUnit}
+            editError={workflowState.editError}
+            showMoreEditUnits={showMoreEditUnits}
+            primaryUnitOptions={PRIMARY_UNIT_OPTIONS}
+            moreUnitOptions={MORE_UNIT_OPTIONS}
+            onChangeName={workflowActions.setEditName}
+            onChangeQuantity={workflowActions.setEditQuantity}
+            onSelectUnit={(value) => {
+              workflowActions.setEditUnit(value as ShoppingUnit | null);
+              if (!value) {
+                workflowActions.setEditQuantity('');
+              }
+            }}
+            onToggleMoreUnits={() => setShowMoreEditUnits((prev) => !prev)}
+            onSave={handleSaveEdit}
+            onRemove={handleRemoveEdit}
+            onClose={closeEdit}
+          />
         </OverlaySheet>
       ) : null}
 
-      {showQuickAdd ? (
+      {workflowState.showQuickAdd ? (
         <OverlaySheet
           onClose={closeQuickAdd}
           sheetStyle={styles.quickAddSheet}
           aboveSheet={
-            quickAddFeedback ? (
+            workflowState.quickAddFeedback ? (
               <View style={styles.quickAddFeedback}>
-                <Text style={styles.quickAddFeedbackText}>{quickAddFeedback}</Text>
+                <Text style={styles.quickAddFeedbackText}>{workflowState.quickAddFeedback}</Text>
               </View>
             ) : null
           }
         >
-          <View style={styles.sheetHandle} />
-          <View style={styles.quickAddHeader}>
-            <Text style={textStyles.h3}>{strings.quickAddTitle}</Text>
-          </View>
-          <AppInput
-            ref={quickAddInputRef}
+          <QuickAddSheetContent
+            styles={styles}
+            title={strings.quickAddTitle}
             placeholder={strings.addPlaceholder}
-            value={quickAddName}
-            onChangeText={setQuickAddName}
-            autoFocus
-            blurOnSubmit={false}
+            value={workflowState.quickAddName}
+            inputRef={quickAddInputRef}
+            onChangeText={workflowActions.setQuickAddName}
             onSubmitEditing={async () => {
-              if (quickAddName.trim()) {
+              if (workflowState.quickAddName.trim()) {
                 await handleQuickAdd();
                 return;
               }
               closeQuickAdd();
             }}
-            returnKeyType="done"
           />
         </OverlaySheet>
       ) : null}
 
-      {showAddDetails ? (
+      {workflowState.showAddDetails ? (
         <OverlaySheet
           onClose={closeAddDetails}
           sheetStyle={styles.quickAddSheet}
           aboveSheet={
-            addDetailsFeedback ? (
+            workflowState.addDetailsFeedback ? (
               <View style={styles.quickAddFeedback}>
-                <Text style={styles.quickAddFeedbackText}>{addDetailsFeedback}</Text>
+                <Text style={styles.quickAddFeedbackText}>{workflowState.addDetailsFeedback}</Text>
               </View>
             ) : null
           }
         >
-          <View style={styles.sheetHandle} />
-          <View style={styles.quickAddHeader}>
-            <Text style={textStyles.h3}>{strings.addDetailsTitle}</Text>
-          </View>
-          <AppInput
-            ref={addDetailsInputRef}
-            placeholder={strings.addPlaceholderExtended}
-            value={newItemName}
-            onChangeText={setNewItemName}
-            onSubmitEditing={async () => {
-              if (newItemName.trim()) {
+          <AddDetailsSheetContent
+            styles={styles}
+            title={strings.addDetailsTitle}
+            addPlaceholderExtended={strings.addPlaceholderExtended}
+            addQuantityPlaceholder={strings.addQuantityPlaceholder}
+            addItemTitle={strings.addItemTitle}
+            closeLabel={strings.close}
+            unitNoneLabel={strings.unitNone}
+            unitToggleMoreLabel={strings.unitMore}
+            unitToggleLessLabel={strings.unitLess}
+            nameValue={workflowState.newItemName}
+            quantityValue={workflowState.addQuantity}
+            addUnit={workflowState.addUnit}
+            addError={workflowState.addError}
+            showMoreAddUnits={showMoreAddUnits}
+            inputRef={addDetailsInputRef}
+            quantityRef={quantityRef}
+            primaryUnitOptions={PRIMARY_UNIT_OPTIONS}
+            moreUnitOptions={MORE_UNIT_OPTIONS}
+            onChangeName={workflowActions.setNewItemName}
+            onSubmitName={async () => {
+              if (workflowState.newItemName.trim()) {
                 await handleAddItem();
               }
             }}
-            returnKeyType="done"
-          />
-          <AppInput
-            ref={quantityRef}
-            value={addQuantity}
-            onChangeText={(value) => {
-              setAddQuantity(value);
-              setAddError(null);
+            onChangeQuantity={(value) => {
+              workflowActions.setAddQuantity(value);
+              workflowActions.setAddError(null);
             }}
-            placeholder={strings.addQuantityPlaceholder}
-            keyboardType="decimal-pad"
-            style={styles.addQuantityInput}
+            onSelectUnit={(value) => {
+              workflowActions.setAddUnit(value as ShoppingUnit | null);
+              if (value === null) {
+                workflowActions.setAddQuantity('');
+              }
+              workflowActions.setAddError(null);
+            }}
+            onToggleMoreUnits={() => setShowMoreAddUnits((prev) => !prev)}
+            onAddItem={async () => {
+              await handleAddItem();
+            }}
+            onClose={closeAddDetails}
           />
-          <View style={styles.addUnitRow}>
-            {PRIMARY_UNIT_OPTIONS.map((unit) => (
-              <AppChip
-                key={unit.value}
-                label={unit.label}
-                active={addUnit === unit.value}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setAddUnit(unit.value);
-                  setAddError(null);
-                }}
-              />
-            ))}
-            <AppChip
-              label={strings.unitNone}
-              active={!addUnit}
-              onPress={() => {
-                Keyboard.dismiss();
-                setAddUnit(null);
-                setAddQuantity('');
-                setAddError(null);
-              }}
-            />
-            <AppChip
-              label={showMoreAddUnits ? strings.unitLess : strings.unitMore}
-              active={showMoreAddUnits}
-              onPress={() => setShowMoreAddUnits((prev) => !prev)}
-            />
-          </View>
-          {showMoreAddUnits ? (
-            <View style={styles.addUnitRow}>
-              {MORE_UNIT_OPTIONS.map((unit) => (
-                <AppChip
-                  key={unit.value}
-                  label={unit.label}
-                  active={addUnit === unit.value}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setAddUnit(unit.value);
-                    setAddError(null);
-                  }}
-                />
-              ))}
-            </View>
-          ) : null}
-          {addError ? <Text style={styles.error}>{addError}</Text> : null}
-          <View style={styles.sheetActions}>
-            <AppButton
-              title={strings.addItemTitle}
-              onPress={async () => {
-                await handleAddItem();
-              }}
-              disabled={newItemName.trim().length === 0}
-              fullWidth
-            />
-            <AppButton title={strings.close} onPress={closeAddDetails} variant="ghost" fullWidth />
-          </View>
         </OverlaySheet>
       ) : null}
     </AppScreen>
@@ -855,17 +599,6 @@ const MORE_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
   { label: 'dl', value: 'DL' },
   { label: 'ml', value: 'ML' },
 ];
-
-const UNIT_LABELS: Record<ShoppingUnit, string> = {
-  ST: 'pcs',
-  FORP: 'pack',
-  KG: 'kg',
-  HG: 'hg',
-  G: 'g',
-  L: 'l',
-  DL: 'dl',
-  ML: 'ml',
-};
 
 const styles = StyleSheet.create({
   screenContent: {
@@ -1024,7 +757,7 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
     paddingHorizontal: theme.spacing.lg,
     flexDirection: 'row',
     gap: theme.spacing.sm,

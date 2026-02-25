@@ -1,31 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
-  import {
-    Keyboard,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Switch,
-    Text,
-    View,
-  } from 'react-native';
-  import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useWeekPlan } from '../features/meals/hooks/useWeekPlan';
-import { useShoppingLists } from '../features/shopping/hooks/useShoppingLists';
-import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Keyboard,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { MealsDailyView } from '../components/MealsDailyView';
+import { MealsMonthlyView } from '../components/MealsMonthlyView';
+import { MealsWeeklyView } from '../components/MealsWeeklyView';
+import {
+  addDays,
+  buildMonthGridCells,
+  getIsoWeekParts,
+  getWeekStartDate,
+  isTodayDate,
+  toDateKey,
+} from '../utils/mealDates';
+import { useMealsWorkflow } from '../hooks/useMealsWorkflow';
+import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import {
   AppButton,
   AppCard,
   AppChip,
   AppInput,
   AppScreen,
-  SectionTitle,
   Subtle,
   TopBar,
-} from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
-import { formatApiError } from '../shared/api/client';
-import { createRecipe, updateRecipe } from '../shared/api/meals';
-import { useAuth } from '../shared/auth/AuthContext';
+} from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -33,13 +39,6 @@ type Props = {
 };
 
 type ViewMode = 'daily' | 'weekly' | 'monthly';
-
-type MealEntry = {
-  dayOfWeek: number;
-  mealType: (typeof MEAL_TYPES)[number];
-  recipeId: string;
-  recipeTitle: string;
-};
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER'] as const;
@@ -63,34 +62,6 @@ const MONTH_LABELS = [
   'Dec',
 ];
 
-const MEAL_ORDER = new Map(MEAL_TYPES.map((type, index) => [type, index]));
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date.getTime());
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function getIsoWeekParts(date: Date): { year: number; isoWeek: number } {
-  const target = new Date(date.getTime());
-  target.setHours(0, 0, 0, 0);
-  const day = target.getDay() || 7;
-  target.setDate(target.getDate() + 4 - day);
-  const yearStart = new Date(target.getFullYear(), 0, 1);
-  const diff = target.getTime() - yearStart.getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const week = Math.ceil((diff / dayMs + 1) / 7);
-  return { year: target.getFullYear(), isoWeek: week };
-}
-
-function getWeekStartDate(year: number, isoWeek: number): Date {
-  const date = new Date(Date.UTC(year, 0, 4));
-  const day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 1 - day);
-  date.setUTCDate(date.getUTCDate() + (isoWeek - 1) * 7);
-  return date;
-}
-
 function formatDayLabel(date: Date, dayIndex: number) {
   const dayLabel = DAY_LABELS[dayIndex];
   const day = String(date.getUTCDate()).padStart(2, '0');
@@ -98,37 +69,29 @@ function formatDayLabel(date: Date, dayIndex: number) {
   return `${dayLabel} ${day} ${month}`;
 }
 
-function formatMonthLabel(date: Date) {
-  return `${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-function getWeeksInMonth(anchorDate: Date) {
-  const startOfMonth = new Date(Date.UTC(anchorDate.getFullYear(), anchorDate.getMonth(), 1));
-  const endOfMonth = new Date(Date.UTC(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0));
-  const weeks: { year: number; isoWeek: number; start: Date; end: Date }[] = [];
-  let cursor = new Date(startOfMonth.getTime());
-  while (cursor <= endOfMonth) {
-    const { year, isoWeek } = getIsoWeekParts(cursor);
-    const start = getWeekStartDate(year, isoWeek);
-    const end = addDays(start, 6);
-    if (!weeks.find((week) => week.year === year && week.isoWeek === isoWeek)) {
-      weeks.push({ year, isoWeek, start, end });
-    }
-    cursor = addDays(cursor, 7);
+function formatRelativeDailyNavLabel(date: Date) {
+  const normalized = new Date(date.getTime());
+  normalized.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime());
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dateLabel = normalized.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  if (normalized.getTime() === today.getTime()) {
+    return `Today · ${dateLabel}`;
   }
-  return weeks;
+  if (normalized.getTime() === tomorrow.getTime()) {
+    return `Tomorrow · ${dateLabel}`;
+  }
+  const weekday = normalized.toLocaleDateString(undefined, { weekday: 'long' });
+  return `${weekday} · ${dateLabel}`;
 }
 
-function toIngredientsList(value: string) {
-  return value
-    .split('\n')
-    .flatMap((line) => line.split(','))
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+function formatMonthLabel(date: Date) {
+  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
 
 export function MealsWeekScreen({ token, onDone }: Props) {
-  const { handleApiError } = useAuth();
   const strings = {
     title: 'Meals',
     subtitle: 'Plan your week and keep shopping in sync.',
@@ -166,51 +129,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     () => getWeekStartDate(year, isoWeek),
     [year, isoWeek]
   );
-  const plan = useWeekPlan(token, year, isoWeek);
-  const shopping = useShoppingLists(token);
+  const workflow = useMealsWorkflow({ token, year, isoWeek });
+  const { editor, actions } = workflow;
+  const plan = workflow.plan;
+  const shopping = workflow.shopping;
 
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [selectedMealType, setSelectedMealType] = useState<(typeof MEAL_TYPES)[number] | null>('DINNER');
-  const [selectedMealRecipeId, setSelectedMealRecipeId] = useState<string | null>(null);
-  const [recipeTitle, setRecipeTitle] = useState('');
-  const [ingredientsText, setIngredientsText] = useState('');
-  const [pushToShopping, setPushToShopping] = useState(true);
-  const [selectedListId, setSelectedListId] = useState<string | null>(null);
-  const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-
-  const mealsByDay = useMemo(() => {
-    const map = new Map<number, MealEntry[]>();
-    if (plan.data) {
-      for (const meal of plan.data.meals) {
-        const entry: MealEntry = {
-          dayOfWeek: meal.dayOfWeek,
-          mealType: meal.mealType as (typeof MEAL_TYPES)[number],
-          recipeId: meal.recipeId,
-          recipeTitle: meal.recipeTitle,
-        };
-        const list = map.get(meal.dayOfWeek) ?? [];
-        list.push(entry);
-        map.set(meal.dayOfWeek, list);
-      }
-    }
-    for (const list of map.values()) {
-      list.sort((a, b) => (MEAL_ORDER.get(a.mealType) ?? 0) - (MEAL_ORDER.get(b.mealType) ?? 0));
-    }
-    return map;
-  }, [plan.data]);
-
+  const mealsByDay = workflow.mealsByDay;
   const lists = shopping.lists;
-  const effectiveListId =
-    selectedListId ?? (lists.length > 0 ? lists[0].id : null);
-
-  const selectedMeal = useMemo(() => {
-    if (!selectedDay || !selectedMealType) {
-      return null;
-    }
-    const list = mealsByDay.get(selectedDay) ?? [];
-    return list.find((meal) => meal.mealType === selectedMealType) ?? null;
-  }, [selectedDay, selectedMealType, mealsByDay]);
+  const effectiveListId = editor.effectiveListId;
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
@@ -220,93 +147,20 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       hideSub.remove();
     };
   }, []);
-
-  function openEditor(day: number, mealType: (typeof MEAL_TYPES)[number]) {
-    setSelectedDay(day);
-    setSelectedMealType(mealType);
-    const list = mealsByDay.get(day) ?? [];
-    const existing = list.find((meal) => meal.mealType === mealType);
-    setRecipeTitle(existing?.recipeTitle ?? '');
-    setSelectedMealRecipeId(existing?.recipeId ?? null);
-    setIngredientsText('');
-    setShoppingSyncError(null);
-  }
+  const wasEditorOpenRef = useRef(false);
+  useEffect(() => {
+    if (wasEditorOpenRef.current && !editor.isOpen) {
+      Keyboard.dismiss();
+    }
+    wasEditorOpenRef.current = editor.isOpen;
+  }, [editor.isOpen]);
 
   async function handleSave() {
-    if (!selectedDay || !selectedMealType) {
-      return;
-    }
-    if (!recipeTitle.trim()) {
-      return;
-    }
-
-    const ingredients = toIngredientsList(ingredientsText).map((name, index) => ({
-      name,
-      quantity: null,
-      unit: null,
-      position: index + 1,
-    }));
-
-    try {
-      let recipeId = selectedMealRecipeId;
-      if (recipeId) {
-        await updateRecipe(
-          recipeId,
-          {
-            name: recipeTitle.trim(),
-            ingredients,
-          },
-          { token }
-        );
-      } else {
-        const created = await createRecipe(
-          {
-            name: recipeTitle.trim(),
-            ingredients,
-          },
-          { token }
-        );
-        recipeId = created.recipeId;
-      }
-
-      await plan.addMeal(selectedDay, selectedMealType, {
-        recipeId,
-        mealType: selectedMealType,
-        targetShoppingListId: pushToShopping && effectiveListId ? effectiveListId : null,
-      });
-
-      if (pushToShopping && ingredients.length > 0 && effectiveListId) {
-        await shopping.reload();
-      }
-
-      setRecipeTitle('');
-      setSelectedMealRecipeId(null);
-      setIngredientsText('');
-      closeEditor();
-      setSelectedMealType('DINNER');
-      setShoppingSyncError(null);
-    } catch (err) {
-      await handleApiError(err);
-      setShoppingSyncError(formatApiError(err));
-    }
+    await actions.saveMeal();
   }
 
   async function handleRemove() {
-    if (!selectedDay || !selectedMealType) {
-      return;
-    }
-    try {
-      await plan.removeMeal(selectedDay, selectedMealType);
-      closeEditor();
-      setSelectedMealType('DINNER');
-      setSelectedMealRecipeId(null);
-      setRecipeTitle('');
-      setIngredientsText('');
-      setShoppingSyncError(null);
-    } catch (err) {
-      await handleApiError(err);
-      setShoppingSyncError(formatApiError(err));
-    }
+    await actions.removeMeal();
   }
 
   const weekEnd = useMemo(() => {
@@ -331,16 +185,34 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     return count;
   }, [mealsByDay]);
 
+  const monthGridCells = useMemo(() => buildMonthGridCells(anchorDate), [anchorDate]);
+
+  const monthMealCountByDateKey = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (let index = 0; index < 7; index += 1) {
+      const date = new Date(weekStart.getTime());
+      date.setUTCDate(weekStart.getUTCDate() + index);
+      const localDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+      if (
+        localDate.getFullYear() !== anchorDate.getFullYear()
+        || localDate.getMonth() !== anchorDate.getMonth()
+      ) {
+        continue;
+      }
+      const meals = mealsByDay.get(index + 1) ?? [];
+      counts[toDateKey(localDate)] = meals.length;
+    }
+    return counts;
+  }, [weekStart, mealsByDay, anchorDate]);
+
   function closeEditor() {
-    setSelectedDay(null);
-    setSelectedMealRecipeId(null);
-    Keyboard.dismiss();
+    actions.closeEditor();
   }
 
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: !!selectedDay && !!selectedMealType,
+    isOverlayOpen: editor.isOpen,
     onCloseOverlay: closeEditor,
   });
 
@@ -375,14 +247,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           </AppCard>
 
         {viewMode === 'weekly' ? (
-          <AppCard>
-            <View style={styles.headerRow}>
+          <AppCard style={styles.compactNavCard}>
+            <View style={[styles.headerRow, styles.compactHeaderRow]}>
               <AppButton
                 title={strings.prev}
                 onPress={() => setAnchorDate(addDays(anchorDate, -7))}
                 variant="ghost"
               />
-              <Text style={styles.headerText}>
+              <Text style={styles.dailyHeaderText}>
                 {strings.weekLabel} {isoWeek} · {year}
               </Text>
               <AppButton
@@ -398,15 +270,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         ) : null}
 
         {viewMode === 'daily' ? (
-          <AppCard>
-            <View style={styles.headerRow}>
+          <AppCard style={styles.compactNavCard}>
+            <View style={[styles.headerRow, styles.compactHeaderRow]}>
               <AppButton
                 title={strings.prev}
                 onPress={() => setAnchorDate(addDays(anchorDate, -1))}
                 variant="ghost"
               />
-              <Text style={styles.headerText}>
-                {formatDayLabel(anchorDate, dailyDayIndex)}
+              <Text style={styles.dailyHeaderText}>
+                {formatRelativeDailyNavLabel(anchorDate)}
               </Text>
               <AppButton
                 title={strings.next}
@@ -414,28 +286,27 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                 variant="ghost"
               />
             </View>
-            <Subtle>
+            <Subtle style={styles.navSubLabel}>
               {strings.weekLabel} {isoWeek} · {year}
             </Subtle>
           </AppCard>
         ) : null}
 
         {viewMode === 'monthly' ? (
-          <AppCard>
-            <View style={styles.headerRow}>
+          <AppCard style={styles.compactNavCard}>
+            <View style={[styles.headerRow, styles.compactHeaderRow]}>
               <AppButton
                 title={strings.prev}
                 onPress={() => setAnchorDate(addDays(anchorDate, -30))}
                 variant="ghost"
               />
-              <Text style={styles.headerText}>{formatMonthLabel(anchorDate)}</Text>
+              <Text style={styles.dailyHeaderText}>{formatMonthLabel(anchorDate)}</Text>
               <AppButton
                 title={strings.next}
                 onPress={() => setAnchorDate(addDays(anchorDate, 30))}
                 variant="ghost"
               />
             </View>
-            <Subtle>{strings.monthlyOverview}</Subtle>
           </AppCard>
         ) : null}
 
@@ -443,106 +314,46 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
 
         {viewMode === 'weekly' ? (
-          <View style={styles.dayList}>
-            {DAY_LABELS.map((_, index) => {
-              const day = index + 1;
-              const date = new Date(weekStart.getTime());
-              date.setUTCDate(weekStart.getUTCDate() + index);
-              const label = formatDayLabel(date, index);
-              const meals = mealsByDay.get(day) ?? [];
-              return (
-                <AppCard key={label} style={styles.dayCard}>
-                  <View style={styles.dayHeader}>
-                    <Text style={styles.dayLabel}>{label}</Text>
-                    <AppButton
-                      title={strings.addMeal}
-                      onPress={() => openEditor(day, 'DINNER')}
-                      variant="secondary"
-                    />
-                  </View>
-                  {meals.length === 0 ? (
-                    <Subtle>{strings.noMeals}</Subtle>
-                  ) : (
-                    <View style={styles.mealList}>
-                      {meals.map((meal) => (
-                        <Pressable
-                          key={`${meal.dayOfWeek}-${meal.mealType}`}
-                          style={styles.mealRow}
-                          onPress={() => openEditor(day, meal.mealType)}
-                        >
-                          <View style={[styles.mealTypeBadge, styles[`mealType_${meal.mealType}`]]}>
-                            <Text style={styles.mealTypeText}>{MEAL_TYPE_LABELS[meal.mealType]}</Text>
-                          </View>
-                          <Text style={styles.mealTitle}>{meal.recipeTitle}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  )}
-                </AppCard>
-              );
-            })}
-          </View>
+          <MealsWeeklyView
+            weekStart={weekStart}
+            mealsByDay={mealsByDay}
+            onOpenEditor={actions.openEditor}
+            formatDayLabel={formatDayLabel}
+            DAY_LABELS={DAY_LABELS}
+            MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+            styles={styles}
+            addMealLabel={strings.addMeal}
+            emptyText={strings.noMeals}
+          />
         ) : null}
 
         {viewMode === 'daily' ? (
-          <AppCard>
-            <View style={styles.dayHeader}>
-              <SectionTitle>{strings.title}</SectionTitle>
-              <AppButton
-                title={strings.addMeal}
-                onPress={() => openEditor(dailyDayNumber, 'DINNER')}
-                variant="secondary"
-              />
-            </View>
-            {dailyMeals.length === 0 ? (
-              <Subtle>{strings.noMeals}</Subtle>
-            ) : (
-              <View style={styles.mealList}>
-                {dailyMeals.map((meal) => (
-                  <Pressable
-                    key={`${meal.dayOfWeek}-${meal.mealType}`}
-                    style={styles.mealRow}
-                    onPress={() => openEditor(dailyDayNumber, meal.mealType)}
-                  >
-                    <View style={[styles.mealTypeBadge, styles[`mealType_${meal.mealType}`]]}>
-                      <Text style={styles.mealTypeText}>{MEAL_TYPE_LABELS[meal.mealType]}</Text>
-                    </View>
-                    <Text style={styles.mealTitle}>{meal.recipeTitle}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </AppCard>
+          <MealsDailyView
+            dailyDayNumber={dailyDayNumber}
+            dailyMeals={dailyMeals}
+            onOpenEditor={actions.openEditor}
+            MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+            styles={styles}
+            addMealLabel={strings.addMeal}
+            emptyText={strings.noMeals}
+            title={strings.title}
+          />
         ) : null}
 
         {viewMode === 'monthly' ? (
           <AppCard>
-            <SectionTitle>{strings.weeksTitle}</SectionTitle>
-            <View style={styles.mealList}>
-              {getWeeksInMonth(anchorDate).map((week) => {
-                const isCurrent = week.year === year && week.isoWeek === isoWeek;
-                return (
-                  <Pressable
-                    key={`${week.year}-${week.isoWeek}`}
-                    style={styles.weekRow}
-                    onPress={() => {
-                      setAnchorDate(week.start);
-                      setViewMode('weekly');
-                    }}
-                  >
-                    <View>
-                      <Text style={styles.weekTitle}>Week {week.isoWeek}</Text>
-                      <Subtle>
-                        {formatDayLabel(week.start, 0)} — {formatDayLabel(week.end, 6)}
-                      </Subtle>
-                    </View>
-                    <Text style={styles.weekCount}>
-                      {isCurrent ? currentWeekMealCount : 0} {strings.mealsCount}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <MealsMonthlyView
+              monthGridCells={monthGridCells}
+              monthMealCountByDateKey={monthMealCountByDateKey}
+              toDateKey={toDateKey}
+              isTodayDate={isTodayDate}
+              styles={styles}
+              onPressDay={(date) => {
+                setAnchorDate(new Date(date.getTime()));
+                setViewMode('weekly');
+              }}
+              weekdayLabels={DAY_LABELS}
+            />
           </AppCard>
         ) : null}
 
@@ -550,12 +361,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       </AppScreen>
 
       <Modal
-        visible={!!selectedDay && !!selectedMealType}
+        visible={editor.isOpen}
         transparent
         animationType="slide"
         onRequestClose={closeEditor}
       >
-        {selectedDay && selectedMealType ? (
+        {editor.selectedDay && editor.selectedMealType ? (
             <Pressable style={styles.backdrop} onPress={closeEditor}>
               <View style={styles.modalContent}>
                 <Pressable style={styles.sheet} onPress={() => null}>
@@ -564,13 +375,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     <Text style={textStyles.h3}>{strings.planMealTitle}</Text>
                     <Subtle>
                       {`${strings.selectedDayPrefix} ${formatDayLabel(
-                        new Date(weekStart.getTime() + (selectedDay - 1) * 86400000),
-                        selectedDay - 1
+                        new Date(weekStart.getTime() + (editor.selectedDay - 1) * 86400000),
+                        editor.selectedDay - 1
                       )}`}
                     </Subtle>
                     <View style={styles.mealTypeRow}>
                       {MEAL_TYPES.map((mealType) => {
-                        const active = mealType === selectedMealType;
+                        const active = mealType === editor.selectedMealType;
                         return (
                           <AppChip
                             key={mealType}
@@ -578,12 +389,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                             active={active}
                             onPress={() => {
                               Keyboard.dismiss();
-                              setSelectedMealType(mealType);
-                              const list = mealsByDay.get(selectedDay) ?? [];
+                              editor.setSelectedMealType(mealType);
+                              const list = mealsByDay.get(editor.selectedDay!) ?? [];
                               const existing = list.find((meal) => meal.mealType === mealType);
-                              setRecipeTitle(existing?.recipeTitle ?? '');
-                              setSelectedMealRecipeId(existing?.recipeId ?? null);
-                              setIngredientsText('');
+                              editor.setRecipeTitle(existing?.recipeTitle ?? '');
+                              editor.setSelectedMealRecipeId(existing?.recipeId ?? null);
+                              editor.setIngredientsText('');
                             }}
                           />
                         );
@@ -600,19 +411,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   >
                 <AppInput
                   placeholder={strings.mealTitlePlaceholder}
-                  value={recipeTitle}
-                  onChangeText={setRecipeTitle}
+                  value={editor.recipeTitle}
+                  onChangeText={editor.setRecipeTitle}
                 />
                 <AppInput
                   placeholder={strings.ingredientsPlaceholder}
-                  value={ingredientsText}
-                  onChangeText={setIngredientsText}
+                  value={editor.ingredientsText}
+                  onChangeText={editor.setIngredientsText}
                   multiline
                   style={styles.ingredientsInput}
                 />
                 <View style={styles.toggleRow}>
                   <Text style={styles.toggleLabel}>{strings.addIngredientsToShopping}</Text>
-                  <Switch value={pushToShopping} onValueChange={setPushToShopping} />
+                  <Switch value={editor.pushToShopping} onValueChange={editor.setPushToShopping} />
                 </View>
                 <View style={styles.lists}>
                   {lists.length === 0 ? (
@@ -626,19 +437,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                             key={list.id}
                             label={list.name}
                             active={active}
-                            onPress={() => setSelectedListId(list.id)}
+                            onPress={() => editor.setSelectedListId(list.id)}
                           />
                         );
                       })}
                     </View>
                   )}
                 </View>
-                {shoppingSyncError ? (
-                  <Text style={styles.error}>{strings.shoppingSyncFailed} {shoppingSyncError}</Text>
+                {editor.shoppingSyncError ? (
+                  <Text style={styles.error}>{strings.shoppingSyncFailed} {editor.shoppingSyncError}</Text>
                 ) : null}
                 <View style={styles.editorActions}>
                   <AppButton title={strings.saveMeal} onPress={handleSave} fullWidth />
-                  {selectedMeal?.recipeTitle ? (
+                  {editor.selectedMeal?.recipeTitle && !isKeyboardVisible ? (
                     <AppButton
                       title={strings.removeMeal}
                       onPress={handleRemove}
@@ -673,6 +484,14 @@ const styles = StyleSheet.create({
   headerCard: {
     gap: theme.spacing.xs,
   },
+  navCard: {
+    gap: theme.spacing.sm,
+  },
+  compactNavCard: {
+    gap: theme.spacing.xs,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+  },
   contentOffset: {
     paddingTop: 90,
     gap: theme.spacing.md,
@@ -681,21 +500,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  compactHeaderRow: {
+    gap: theme.spacing.xs,
+  },
   headerText: {
     ...textStyles.h2,
+  },
+  dailyHeaderText: {
+    ...textStyles.h3,
+    textTransform: 'capitalize',
+  },
+  navSubLabel: {
+    ...textStyles.subtle,
   },
   dayList: {
     gap: theme.spacing.md,
   },
   dayCard: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   dayHeader: {
     flexDirection: 'row',
@@ -706,7 +534,10 @@ const styles = StyleSheet.create({
     ...textStyles.h3,
   },
   mealList: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+  },
+  dailyMealList: {
     marginTop: theme.spacing.sm,
   },
   mealRow: {
@@ -716,7 +547,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     backgroundColor: theme.colors.surfaceAlt,
   },
   mealTypeBadge: {
@@ -755,8 +587,82 @@ const styles = StyleSheet.create({
   weekCount: {
     ...textStyles.subtle,
   },
+  weeklyEmptyText: {
+    ...textStyles.subtle,
+    opacity: 0.8,
+    fontSize: 13,
+  },
+  monthGridHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.xs,
+  },
+  monthGridWeekday: {
+    ...textStyles.subtle,
+    flex: 1,
+    textAlign: 'center',
+  },
+  monthGrid: {
+    gap: theme.spacing.xs,
+  },
+  monthGridRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  monthGridCellBase: {
+    flex: 1,
+    aspectRatio: 1,
+  },
+  monthCell: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+    padding: theme.spacing.xs,
+    justifyContent: 'space-between',
+  },
+  monthCellPlaceholder: {
+    opacity: 0.45,
+  },
+  monthCellGhostText: {
+    ...textStyles.subtle,
+    color: 'transparent',
+  },
+  monthCellGhostBadge: {
+    alignSelf: 'flex-end',
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+  },
+  monthCellToday: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+  },
+  monthCellText: {
+    ...textStyles.subtle,
+    color: theme.colors.text,
+  },
+  monthCellTextToday: {
+    color: theme.colors.primary,
+    fontWeight: '700',
+  },
+  monthCountBadge: {
+    alignSelf: 'flex-end',
+    minWidth: 18,
+    height: 18,
+    borderRadius: 999,
+    paddingHorizontal: 4,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthCountBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   ingredientsInput: {
-    minHeight: 72,
+    minHeight: 64,
     textAlignVertical: 'top',
   },
   toggleRow: {
