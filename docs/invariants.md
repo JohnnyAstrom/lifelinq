@@ -35,6 +35,7 @@ If a design or implementation violates an invariant, **the design is wrong**.
 
 **Implication:**
 - Clients send intent, never authority.
+- Clients may initiate a context switch, but the server validates and applies it.
 - JWT claims define access, not request payloads.
 
 ---
@@ -52,6 +53,7 @@ If a design or implementation violates an invariant, **the design is wrong**.
 **Transitional note (temporary):**
 - Some endpoints still accept `groupId` in the URL path.
 - This is temporarily allowed only when **validated against server‑derived context**.
+- Validated means: the `groupId` in the request path must match the server‑derived active `groupId` for the request.
 - The long‑term goal is full server‑derived scoping with no client‑provided groupId.
 
 ---
