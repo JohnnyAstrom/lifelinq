@@ -1,6 +1,6 @@
 package app.lifelinq.features.meals.api;
 
-import app.lifelinq.features.household.application.AccessDeniedException;
+import app.lifelinq.features.meals.application.MealsAccessDeniedException;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.application.MealsShoppingDuplicateItemException;
@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(basePackages = "app.lifelinq.features.meals.api")
 public final class MealsExceptionHandler {
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<String> handleAccessDenied(AccessDeniedException ex) {
+    @ExceptionHandler(MealsAccessDeniedException.class)
+    public ResponseEntity<String> handleAccessDenied(MealsAccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
     }
 

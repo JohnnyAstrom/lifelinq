@@ -1,5 +1,6 @@
 package app.lifelinq.features.meals.application;
 
+import app.lifelinq.features.household.application.AccessDeniedException;
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
@@ -73,7 +74,7 @@ public class MealsApplicationService {
             String name,
             List<IngredientInput> ingredients
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureMealAccess(householdId, actorUserId);
         Recipe recipe = new Recipe(
                 UUID.randomUUID(),
                 householdId,
@@ -86,13 +87,13 @@ public class MealsApplicationService {
 
     @Transactional(readOnly = true)
     public RecipeView getRecipe(UUID householdId, UUID actorUserId, UUID recipeId) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureMealAccess(householdId, actorUserId);
         return toView(loadRecipe(householdId, recipeId));
     }
 
     @Transactional(readOnly = true)
     public List<RecipeView> listRecipes(UUID householdId, UUID actorUserId) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureMealAccess(householdId, actorUserId);
         List<RecipeView> views = new ArrayList<>();
         for (Recipe recipe : recipeRepository.findByHouseholdId(householdId)) {
             views.add(toView(recipe));
@@ -115,7 +116,7 @@ public class MealsApplicationService {
             String name,
             List<IngredientInput> ingredients
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureMealAccess(householdId, actorUserId);
         Recipe existing = loadRecipe(householdId, recipeId);
         Recipe updated = new Recipe(
                 existing.getId(),
@@ -138,7 +139,7 @@ public class MealsApplicationService {
             UUID recipeId,
             UUID targetShoppingListId
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureMealAccess(householdId, actorUserId);
         validateIsoWeek(year, isoWeek);
         Recipe recipe = loadRecipe(householdId, recipeId);
         WeekPlan weekPlan = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
@@ -177,7 +178,7 @@ public class MealsApplicationService {
             int dayOfWeek,
             MealType mealType
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureMealAccess(householdId, actorUserId);
         validateIsoWeek(year, isoWeek);
         WeekPlan weekPlan = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
                 .orElseThrow(() -> new MealNotFoundException("Meal not found"));
@@ -196,7 +197,7 @@ public class MealsApplicationService {
             int year,
             int isoWeek
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureMealAccess(householdId, actorUserId);
         validateIsoWeek(year, isoWeek);
         return weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
                 .map(this::toView)
@@ -331,6 +332,14 @@ public class MealsApplicationService {
             throw new IllegalArgumentException("ingredient name must not be blank");
         }
         return trimmed.replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private void ensureMealAccess(UUID householdId, UUID actorUserId) {
+        try {
+            ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        } catch (AccessDeniedException ex) {
+            throw new MealsAccessDeniedException(ex.getMessage());
+        }
     }
 
     private void validateIsoWeek(int year, int isoWeek) {
