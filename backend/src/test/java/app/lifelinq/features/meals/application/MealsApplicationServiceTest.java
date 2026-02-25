@@ -18,8 +18,6 @@ import app.lifelinq.features.meals.domain.Recipe;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
-import app.lifelinq.features.shopping.application.ShoppingApplicationService;
-import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -45,7 +43,7 @@ class MealsApplicationServiceTest {
         EnsureHouseholdMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
-        ShoppingApplicationService shopping = mock(ShoppingApplicationService.class);
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
         MealsApplicationService service = new MealsApplicationService(
                 weekPlans,
                 recipes,
@@ -95,7 +93,7 @@ class MealsApplicationServiceTest {
                 eq(listId),
                 eq("olive oil"),
                 eq(new BigDecimal("2")),
-                eq(ShoppingUnit.DL)
+                eq(IngredientUnit.DL)
         );
         order.verify(shopping).addShoppingItem(
                 eq(householdId),
@@ -116,7 +114,7 @@ class MealsApplicationServiceTest {
         EnsureHouseholdMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
-        ShoppingApplicationService shopping = mock(ShoppingApplicationService.class);
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
         MealsApplicationService service = new MealsApplicationService(
                 weekPlans,
                 recipes,
@@ -149,7 +147,7 @@ class MealsApplicationServiceTest {
         EnsureHouseholdMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
-        ShoppingApplicationService shopping = mock(ShoppingApplicationService.class);
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
         MealsApplicationService service = new MealsApplicationService(
                 weekPlans,
                 recipes,
@@ -181,7 +179,7 @@ class MealsApplicationServiceTest {
                 new InMemoryWeekPlanRepository(),
                 new InMemoryRecipeRepository(),
                 membership,
-                mock(ShoppingApplicationService.class),
+                mock(MealsShoppingPort.class),
                 Clock.systemUTC()
         );
 
@@ -209,7 +207,7 @@ class MealsApplicationServiceTest {
                 weekPlans,
                 recipes,
                 membership,
-                mock(ShoppingApplicationService.class),
+                mock(MealsShoppingPort.class),
                 Clock.systemUTC()
         );
 
@@ -249,7 +247,7 @@ class MealsApplicationServiceTest {
         EnsureHouseholdMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
-        ShoppingApplicationService shopping = mock(ShoppingApplicationService.class);
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
         MealsApplicationService service = new MealsApplicationService(
                 weekPlans,
                 recipes,

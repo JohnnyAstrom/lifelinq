@@ -2,9 +2,9 @@ package app.lifelinq.features.meals.infrastructure;
 
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.application.MealsShoppingPort;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
-import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,14 +17,14 @@ public class MealsApplicationConfig {
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
             EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase,
-            ShoppingApplicationService shoppingApplicationService,
+            MealsShoppingPort mealsShoppingPort,
             Clock clock
     ) {
         return new MealsApplicationService(
                 weekPlanRepository,
                 recipeRepository,
                 ensureHouseholdMemberUseCase,
-                shoppingApplicationService,
+                mealsShoppingPort,
                 clock
         );
     }

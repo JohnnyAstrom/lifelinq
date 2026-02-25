@@ -1,5 +1,6 @@
 package app.lifelinq.features.shopping.infrastructure;
 
+import app.lifelinq.features.meals.application.MealsShoppingPort;
 import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
@@ -17,5 +18,10 @@ public class ShoppingApplicationConfig {
             Clock clock
     ) {
         return new ShoppingApplicationService(repository, ensureHouseholdMemberUseCase, clock);
+    }
+
+    @Bean
+    public MealsShoppingPort mealsShoppingPort(ShoppingApplicationService shoppingApplicationService) {
+        return new MealsShoppingPortAdapter(shoppingApplicationService);
     }
 }

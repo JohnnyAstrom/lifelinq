@@ -16,8 +16,6 @@ import app.lifelinq.features.meals.domain.Recipe;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
-import app.lifelinq.features.shopping.application.ShoppingApplicationService;
-import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -36,14 +34,14 @@ public class MealsApplicationService {
     private final WeekPlanRepository weekPlanRepository;
     private final RecipeRepository recipeRepository;
     private final EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase;
-    private final ShoppingApplicationService shoppingApplicationService;
+    private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
 
     public MealsApplicationService(
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
             EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase,
-            ShoppingApplicationService shoppingApplicationService,
+            MealsShoppingPort mealsShoppingPort,
             Clock clock
     ) {
         if (weekPlanRepository == null) {
@@ -55,8 +53,8 @@ public class MealsApplicationService {
         if (ensureHouseholdMemberUseCase == null) {
             throw new IllegalArgumentException("ensureHouseholdMemberUseCase must not be null");
         }
-        if (shoppingApplicationService == null) {
-            throw new IllegalArgumentException("shoppingApplicationService must not be null");
+        if (mealsShoppingPort == null) {
+            throw new IllegalArgumentException("mealsShoppingPort must not be null");
         }
         if (clock == null) {
             throw new IllegalArgumentException("clock must not be null");
@@ -64,7 +62,7 @@ public class MealsApplicationService {
         this.weekPlanRepository = weekPlanRepository;
         this.recipeRepository = recipeRepository;
         this.ensureHouseholdMemberUseCase = ensureHouseholdMemberUseCase;
-        this.shoppingApplicationService = shoppingApplicationService;
+        this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
     }
 
@@ -313,22 +311,15 @@ public class MealsApplicationService {
         // final list preserves the original ingredient order for users.
         for (int index = ingredients.size() - 1; index >= 0; index--) {
             Ingredient ingredient = ingredients.get(index);
-            shoppingApplicationService.addShoppingItem(
+            mealsShoppingPort.addShoppingItem(
                     householdId,
                     actorUserId,
                     targetShoppingListId,
                     normalizeIngredientName(ingredient.getName()),
                     ingredient.getQuantity(),
-                    toShoppingUnit(ingredient.getUnit())
+                    ingredient.getUnit()
             );
         }
-    }
-
-    private ShoppingUnit toShoppingUnit(IngredientUnit unit) {
-        if (unit == null) {
-            return null;
-        }
-        return ShoppingUnit.valueOf(unit.name());
     }
 
     private String normalizeIngredientName(String name) {
