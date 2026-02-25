@@ -317,7 +317,7 @@ public class MealsApplicationService {
                     targetShoppingListId,
                     normalizeIngredientName(ingredient.getName()),
                     ingredient.getQuantity(),
-                    ingredient.getUnit()
+                    ingredient.getUnit() == null ? null : ingredient.getUnit().name()
             );
         }
     }

@@ -4,7 +4,6 @@ import app.lifelinq.features.meals.application.MealsShoppingPort;
 import app.lifelinq.features.meals.application.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.application.MealsShoppingDuplicateItemException;
 import app.lifelinq.features.meals.application.MealsShoppingListNotFoundException;
-import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.shopping.application.AccessDeniedException;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.domain.DuplicateShoppingItemNameException;
@@ -27,7 +26,7 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
             UUID listId,
             String itemName,
             BigDecimal quantity,
-            IngredientUnit unit
+            String unitName
     ) {
         try {
             shoppingApplicationService.addShoppingItem(
@@ -36,7 +35,7 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
                     listId,
                     itemName,
                     quantity,
-                    toShoppingUnit(unit)
+                    toShoppingUnit(unitName)
             );
         } catch (AccessDeniedException ex) {
             throw new MealsShoppingAccessDeniedException(ex.getMessage());
@@ -47,10 +46,10 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
         }
     }
 
-    private ShoppingUnit toShoppingUnit(IngredientUnit unit) {
-        if (unit == null) {
+    private ShoppingUnit toShoppingUnit(String unitName) {
+        if (unitName == null) {
             return null;
         }
-        return ShoppingUnit.valueOf(unit.name());
+        return ShoppingUnit.valueOf(unitName);
     }
 }

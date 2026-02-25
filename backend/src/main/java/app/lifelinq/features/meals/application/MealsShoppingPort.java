@@ -1,6 +1,5 @@
 package app.lifelinq.features.meals.application;
 
-import app.lifelinq.features.meals.domain.IngredientUnit;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -11,6 +10,6 @@ public interface MealsShoppingPort {
             UUID listId,
             String itemName,
             BigDecimal quantity,
-            IngredientUnit unit
+            String unitName
     );
 }

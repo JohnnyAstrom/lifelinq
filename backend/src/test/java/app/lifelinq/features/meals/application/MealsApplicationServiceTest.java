@@ -93,7 +93,7 @@ class MealsApplicationServiceTest {
                 eq(listId),
                 eq("olive oil"),
                 eq(new BigDecimal("2")),
-                eq(IngredientUnit.DL)
+                eq("DL")
         );
         order.verify(shopping).addShoppingItem(
                 eq(householdId),
