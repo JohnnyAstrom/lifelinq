@@ -37,11 +37,24 @@ Memberships may change over time without affecting group data.
 
 Roles are intentionally minimal:
 
-- admin – manages group membership
-- member – participates in the group
+- `ADMIN` – manages group membership
+- `MEMBER` – participates in the group
 
 Roles control access, not ownership.
 Roles do not gate everyday coordination actions like task assignment.
+
+## Governance (Phase 1)
+
+Current governance rules:
+
+- `ADMIN -> ADMIN` removal is always forbidden (intentional governance rule).
+- Removing a member is blocked if that member is the **sole `ADMIN`** in a group with **more than one member**.
+- Removing the sole `ADMIN` is allowed when they are the only member in the group.
+- Account deletion is blocked if the user is the sole `ADMIN` in any group with more than one member.
+- Successful account deletion:
+  - removes all memberships for the user
+  - deletes groups that become empty
+  - deletes the user account
 
 ---
 

@@ -47,6 +47,18 @@ This is a **minimal scoping layer** only:
 `GET /me` returns the current request context (userId and groupId).
 If there is no authenticated context, the endpoint returns **401**.
 
+`DELETE /me` deletes the authenticated user account.
+- Returns **204** on success.
+- Returns **401** if there is no authenticated context.
+- Returns **409** if deletion is blocked by group governance (the user is the sole `ADMIN` in one or more groups with more than one member).
+
+### Scoping note (Phase 1 limitation)
+
+`DELETE /me` currently passes through `RequestContextFilter` like other authenticated endpoints.
+This means it can be blocked with **401** if group resolution is ambiguous (for example, the user belongs to multiple groups and no active group selection exists yet).
+
+This is a known Phase 1 limitation and will be addressed in Phase 2 via explicit active-group selection (or a user-scoped bypass for `DELETE /me`).
+
 ---
 
 ## CURRENT: Minimal OAuth2 login (implemented)
@@ -99,7 +111,7 @@ Access is determined by:
 - role within the group
 
 Roles are intentionally simple:
-- owner
+- admin
 - member
 
 ---

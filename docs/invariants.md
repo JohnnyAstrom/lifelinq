@@ -175,5 +175,15 @@ Transactions are defined at the `ApplicationService` boundary.
 
 ## 14. A group must always have an admin
 
-- A group cannot be left without an ADMIN.
-- Removing the last ADMIN is forbidden.
+- A group cannot be left without an ADMIN when other members remain.
+- `ADMIN -> ADMIN` removal is forbidden (governance rule).
+- Removing a member is forbidden when that member is the sole ADMIN and the group has more than one member.
+- Removing the sole ADMIN is allowed when they are the only member.
+
+## 15. Account deletion must preserve group governance
+
+- Account deletion is forbidden if the user is the sole ADMIN in any group with more than one member.
+- Successful account deletion must:
+  - remove all memberships for the user
+  - delete groups that become empty
+  - delete the user account
