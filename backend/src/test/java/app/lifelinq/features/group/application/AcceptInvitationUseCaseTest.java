@@ -140,6 +140,11 @@ class AcceptInvitationUseCaseTest {
         }
 
         @Override
+        public List<Membership> findByUserId(UUID userId) {
+            return List.of();
+        }
+
+        @Override
         public List<UUID> findGroupIdsByUserId(UUID userId) {
             return List.of();
         }
@@ -147,6 +152,10 @@ class AcceptInvitationUseCaseTest {
         @Override
         public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             return false;
+        }
+
+        @Override
+        public void deleteByUserId(UUID userId) {
         }
     }
 }

@@ -80,6 +80,17 @@ class AddMemberToGroupUseCaseTest {
         }
 
         @Override
+        public List<Membership> findByUserId(UUID userId) {
+            List<Membership> result = new ArrayList<>();
+            for (Membership membership : saved) {
+                if (userId.equals(membership.getUserId())) {
+                    result.add(membership);
+                }
+            }
+            return result;
+        }
+
+        @Override
         public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             for (int i = 0; i < saved.size(); i++) {
                 Membership membership = saved.get(i);
@@ -89,6 +100,11 @@ class AddMemberToGroupUseCaseTest {
                 }
             }
             return false;
+        }
+
+        @Override
+        public void deleteByUserId(UUID userId) {
+            saved.removeIf(membership -> userId.equals(membership.getUserId()));
         }
     }
 }

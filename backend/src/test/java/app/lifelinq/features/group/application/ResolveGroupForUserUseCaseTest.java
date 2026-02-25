@@ -68,6 +68,11 @@ class ResolveGroupForUserUseCaseTest {
         }
 
         @Override
+        public List<Membership> findByUserId(UUID userId) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
         public List<UUID> findGroupIdsByUserId(UUID userId) {
             if (!this.userId.equals(userId)) {
                 return List.of();
@@ -77,6 +82,11 @@ class ResolveGroupForUserUseCaseTest {
 
         @Override
         public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public void deleteByUserId(UUID userId) {
             throw new UnsupportedOperationException("not used");
         }
     }

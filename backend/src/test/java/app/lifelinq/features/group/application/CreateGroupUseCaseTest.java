@@ -66,6 +66,16 @@ class CreateGroupUseCaseTest {
             }
             return java.util.Optional.empty();
         }
+
+        @Override
+        public void deleteById(UUID id) {
+            for (int i = 0; i < saved.size(); i++) {
+                if (id.equals(saved.get(i).getId())) {
+                    saved.remove(i);
+                    return;
+                }
+            }
+        }
     }
 
     private static final class InMemoryMembershipRepository implements MembershipRepository {
@@ -99,6 +109,17 @@ class CreateGroupUseCaseTest {
         }
 
         @Override
+        public List<Membership> findByUserId(UUID userId) {
+            List<Membership> result = new ArrayList<>();
+            for (Membership membership : saved) {
+                if (userId.equals(membership.getUserId())) {
+                    result.add(membership);
+                }
+            }
+            return result;
+        }
+
+        @Override
         public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             for (int i = 0; i < saved.size(); i++) {
                 Membership membership = saved.get(i);
@@ -108,6 +129,11 @@ class CreateGroupUseCaseTest {
                 }
             }
             return false;
+        }
+
+        @Override
+        public void deleteByUserId(UUID userId) {
+            saved.removeIf(membership -> userId.equals(membership.getUserId()));
         }
     }
 }

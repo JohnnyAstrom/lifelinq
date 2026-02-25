@@ -53,5 +53,10 @@ class EnsureUserExistsUseCaseTest {
             storage.put(user.getId(), user);
             saveCount++;
         }
+
+        @Override
+        public void deleteById(UUID id) {
+            storage.remove(id);
+        }
     }
 }

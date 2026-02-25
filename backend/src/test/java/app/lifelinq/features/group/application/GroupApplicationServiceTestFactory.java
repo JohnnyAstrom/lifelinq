@@ -45,6 +45,11 @@ public final class GroupApplicationServiceTestFactory {
         public void save(User user) {
             users.put(user.getId(), user);
         }
+
+        @Override
+        public void deleteById(UUID id) {
+            users.remove(id);
+        }
     }
 
     private static final class StubGroupRepository implements GroupRepository {
@@ -55,6 +60,11 @@ public final class GroupApplicationServiceTestFactory {
 
         @Override
         public Optional<Group> findById(UUID id) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public void deleteById(UUID id) {
             throw new UnsupportedOperationException("not used");
         }
     }

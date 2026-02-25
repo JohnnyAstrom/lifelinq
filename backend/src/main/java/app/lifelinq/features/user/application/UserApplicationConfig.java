@@ -1,5 +1,6 @@
 package app.lifelinq.features.user.application;
 
+import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
 import app.lifelinq.features.user.domain.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +14,18 @@ public class UserApplicationConfig {
     }
 
     @Bean
-    public UserApplicationService userApplicationService(EnsureUserExistsUseCase ensureUserExistsUseCase) {
-        return new UserApplicationService(ensureUserExistsUseCase);
+    public DeleteAccountUseCase deleteAccountUseCase(
+            GroupAccountDeletionGovernancePort groupAccountDeletionGovernancePort,
+            UserRepository userRepository
+    ) {
+        return new DeleteAccountUseCase(groupAccountDeletionGovernancePort, userRepository);
+    }
+
+    @Bean
+    public UserApplicationService userApplicationService(
+            EnsureUserExistsUseCase ensureUserExistsUseCase,
+            DeleteAccountUseCase deleteAccountUseCase
+    ) {
+        return new UserApplicationService(ensureUserExistsUseCase, deleteAccountUseCase);
     }
 }

@@ -1,5 +1,6 @@
 package app.lifelinq.features.group.infrastructure;
 
+import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.MembershipRepository;
@@ -30,5 +31,13 @@ public class GroupInMemoryConfig {
     @Bean
     public InvitationTokenGenerator invitationTokenGenerator() {
         return new InMemoryInvitationTokenGenerator();
+    }
+
+    @Bean
+    public GroupAccountDeletionGovernancePort groupAccountDeletionGovernancePort(
+            MembershipRepository membershipRepository,
+            GroupRepository groupRepository
+    ) {
+        return new UserAccountDeletionGovernanceAdapter(membershipRepository, groupRepository);
     }
 }

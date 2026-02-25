@@ -6,6 +6,8 @@ import app.lifelinq.features.auth.api.DevTokenController;
 import app.lifelinq.features.auth.api.MeController;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
+import app.lifelinq.features.group.contract.UserGroupMembershipView;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.infrastructure.InMemoryMembershipRepository;
 import app.lifelinq.features.user.application.UserApplicationConfig;
@@ -14,6 +16,7 @@ import app.lifelinq.features.user.domain.UserRepository;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -56,6 +59,29 @@ public class DevAuthTestApplication {
             @Override
             public void save(User user) {
                 users.put(user.getId(), user);
+            }
+
+            @Override
+            public void deleteById(UUID id) {
+                users.remove(id);
+            }
+        };
+    }
+
+    @Bean
+    public GroupAccountDeletionGovernancePort groupAccountDeletionGovernancePort() {
+        return new GroupAccountDeletionGovernancePort() {
+            @Override
+            public List<UserGroupMembershipView> findMembershipsForUser(UUID userId) {
+                return List.of();
+            }
+
+            @Override
+            public void deleteMembershipsByUserId(UUID userId) {
+            }
+
+            @Override
+            public void deleteEmptyGroupsByIds(List<UUID> groupIds) {
             }
         };
     }

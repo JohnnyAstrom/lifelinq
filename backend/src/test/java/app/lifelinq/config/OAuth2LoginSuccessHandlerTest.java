@@ -87,5 +87,10 @@ class OAuth2LoginSuccessHandlerTest {
             lastSavedUserId = user.getId();
             store.put(user.getId(), user);
         }
+
+        @Override
+        public void deleteById(UUID id) {
+            store.remove(id);
+        }
     }
 }

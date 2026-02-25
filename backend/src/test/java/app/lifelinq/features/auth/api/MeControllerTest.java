@@ -117,12 +117,22 @@ class MeControllerTest {
         }
 
         @Override
+        public List<Membership> findByUserId(UUID userId) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
         public List<UUID> findGroupIdsByUserId(UUID userId) {
             return byUser.getOrDefault(userId, List.of());
         }
 
         @Override
         public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public void deleteByUserId(UUID userId) {
             throw new UnsupportedOperationException("not used");
         }
     }

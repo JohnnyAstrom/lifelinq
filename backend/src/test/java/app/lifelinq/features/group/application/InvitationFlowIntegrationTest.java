@@ -116,6 +116,11 @@ class InvitationFlowIntegrationTest {
         public void save(User user) {
             users.put(user.getId(), user);
         }
+
+        @Override
+        public void deleteById(UUID id) {
+            users.remove(id);
+        }
     }
 
     @Test

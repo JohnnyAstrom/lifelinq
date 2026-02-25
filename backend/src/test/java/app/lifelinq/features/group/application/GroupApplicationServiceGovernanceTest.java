@@ -139,6 +139,17 @@ class GroupApplicationServiceGovernanceTest {
         }
 
         @Override
+        public List<Membership> findByUserId(UUID userId) {
+            List<Membership> result = new ArrayList<>();
+            for (Membership membership : memberships) {
+                if (membership.getUserId().equals(userId)) {
+                    result.add(membership);
+                }
+            }
+            return result;
+        }
+
+        @Override
         public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             for (int i = 0; i < memberships.size(); i++) {
                 Membership membership = memberships.get(i);
@@ -148,6 +159,11 @@ class GroupApplicationServiceGovernanceTest {
                 }
             }
             return false;
+        }
+
+        @Override
+        public void deleteByUserId(UUID userId) {
+            memberships.removeIf(membership -> membership.getUserId().equals(userId));
         }
     }
 
@@ -162,6 +178,11 @@ class GroupApplicationServiceGovernanceTest {
         @Override
         public Optional<Group> findById(UUID id) {
             return Optional.ofNullable(groups.get(id));
+        }
+
+        @Override
+        public void deleteById(UUID id) {
+            groups.remove(id);
         }
     }
 
