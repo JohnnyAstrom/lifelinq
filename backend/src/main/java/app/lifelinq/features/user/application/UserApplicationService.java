@@ -1,8 +1,9 @@
 package app.lifelinq.features.user.application;
 
+import app.lifelinq.features.user.contract.UserProvisioning;
 import java.util.UUID;
 
-public class UserApplicationService {
+public class UserApplicationService implements UserProvisioning {
     private final EnsureUserExistsUseCase ensureUserExistsUseCase;
 
     public UserApplicationService(EnsureUserExistsUseCase ensureUserExistsUseCase) {
@@ -12,6 +13,7 @@ public class UserApplicationService {
         this.ensureUserExistsUseCase = ensureUserExistsUseCase;
     }
 
+    @Override
     public void ensureUserExists(UUID userId) {
         ensureUserExistsUseCase.execute(userId);
     }

@@ -7,7 +7,7 @@ import app.lifelinq.features.household.domain.HouseholdRole;
 import app.lifelinq.features.household.domain.LastOwnerRemovalException;
 import app.lifelinq.features.household.domain.HouseholdRepository;
 import app.lifelinq.features.household.domain.InvitationRepository;
-import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.user.contract.UserProvisioning;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -27,7 +27,7 @@ public class HouseholdApplicationService {
     private final CreateInvitationUseCase createInvitationUseCase;
     private final RevokeInvitationUseCase revokeInvitationUseCase;
     private final MembershipRepository membershipRepository;
-    private final UserApplicationService userApplicationService;
+    private final UserProvisioning userProvisioning;
     private final ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase;
     private final Clock clock;
 
@@ -40,7 +40,7 @@ public class HouseholdApplicationService {
             CreateInvitationUseCase createInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
-            UserApplicationService userApplicationService,
+            UserProvisioning userProvisioning,
             ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase,
             Clock clock
     ) {
@@ -52,14 +52,14 @@ public class HouseholdApplicationService {
         this.createInvitationUseCase = createInvitationUseCase;
         this.revokeInvitationUseCase = revokeInvitationUseCase;
         this.membershipRepository = membershipRepository;
-        this.userApplicationService = userApplicationService;
+        this.userProvisioning = userProvisioning;
         this.resolveHouseholdForUserUseCase = resolveHouseholdForUserUseCase;
         this.clock = clock;
     }
 
     @Transactional
     public MembershipId acceptInvitation(String token, UUID userId) {
-        userApplicationService.ensureUserExists(userId);
+        userProvisioning.ensureUserExists(userId);
         AcceptInvitationCommand command = new AcceptInvitationCommand(token, userId, clock.instant());
         AcceptInvitationResult result = acceptInvitationUseCase.execute(command);
         return new MembershipId(result.getHouseholdId(), result.getUserId());
@@ -72,7 +72,7 @@ public class HouseholdApplicationService {
             String inviteeEmail,
             Duration ttl
     ) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         ensureOwner(householdId, actorUserId);
         String normalizedEmail = normalizeEmail(inviteeEmail);
         Duration effectiveTtl = ttl == null ? DEFAULT_INVITATION_TTL : ttl;
@@ -92,7 +92,7 @@ public class HouseholdApplicationService {
 
     @Transactional
     public boolean revokeInvitation(UUID householdId, UUID actorUserId, UUID invitationId) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         ensureOwner(householdId, actorUserId);
         RevokeInvitationCommand command = new RevokeInvitationCommand(invitationId, clock.instant());
         RevokeInvitationResult result = revokeInvitationUseCase.execute(command);
@@ -101,7 +101,7 @@ public class HouseholdApplicationService {
 
     @Transactional
     public UUID createHousehold(String name, UUID ownerUserId) {
-        userApplicationService.ensureUserExists(ownerUserId);
+        userProvisioning.ensureUserExists(ownerUserId);
         CreateHouseholdCommand command = new CreateHouseholdCommand(name, ownerUserId);
         CreateHouseholdResult result = createHouseholdUseCase.execute(command);
         return result.getHouseholdId();
@@ -109,7 +109,7 @@ public class HouseholdApplicationService {
 
     @Transactional
     public Membership addMember(UUID householdId, UUID actorUserId, UUID targetUserId) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         ensureOwner(householdId, actorUserId);
         AddMemberToHouseholdCommand command = new AddMemberToHouseholdCommand(householdId, targetUserId);
         AddMemberToHouseholdResult result = addMemberToHouseholdUseCase.execute(command);
@@ -118,7 +118,7 @@ public class HouseholdApplicationService {
 
     @Transactional
     public boolean removeMember(UUID householdId, UUID actorUserId, UUID targetUserId) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         List<Membership> memberships = membershipRepository.findByHouseholdId(householdId);
         ensureOwner(householdId, actorUserId, memberships);
         ensureNotLastOwner(targetUserId, memberships);
@@ -145,7 +145,7 @@ public class HouseholdApplicationService {
             MembershipRepository membershipRepository,
             InvitationRepository invitationRepository,
             InvitationTokenGenerator tokenGenerator,
-            UserApplicationService userApplicationService,
+            UserProvisioning userProvisioning,
             Clock clock
     ) {
         ResolveHouseholdForUserUseCase resolveHouseholdForUserUseCase =
@@ -159,7 +159,7 @@ public class HouseholdApplicationService {
                 new CreateInvitationUseCase(invitationRepository, tokenGenerator),
                 new RevokeInvitationUseCase(invitationRepository),
                 membershipRepository,
-                userApplicationService,
+                userProvisioning,
                 resolveHouseholdForUserUseCase,
                 clock
         );

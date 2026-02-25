@@ -4,7 +4,7 @@ import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
 import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
-import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.user.contract.UserProvisioning;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,17 +19,17 @@ public class TodoApplicationService {
     private final ListTodosUseCase listTodosUseCase;
     private final ListTodosForMonthUseCase listTodosForMonthUseCase;
     private final UpdateTodoUseCase updateTodoUseCase;
-    private final UserApplicationService userApplicationService;
+    private final UserProvisioning userProvisioning;
 
     public TodoApplicationService(
             TodoRepository todoRepository,
-            UserApplicationService userApplicationService
+            UserProvisioning userProvisioning
     ) {
         if (todoRepository == null) {
             throw new IllegalArgumentException("todoRepository must not be null");
         }
-        if (userApplicationService == null) {
-            throw new IllegalArgumentException("userApplicationService must not be null");
+        if (userProvisioning == null) {
+            throw new IllegalArgumentException("userProvisioning must not be null");
         }
         this.createTodoUseCase = new CreateTodoUseCase(todoRepository);
         this.completeTodoUseCase = new CompleteTodoUseCase(todoRepository);
@@ -37,7 +37,7 @@ public class TodoApplicationService {
         this.listTodosUseCase = new ListTodosUseCase(todoRepository);
         this.listTodosForMonthUseCase = new ListTodosForMonthUseCase(todoRepository);
         this.updateTodoUseCase = new UpdateTodoUseCase(todoRepository);
-        this.userApplicationService = userApplicationService;
+        this.userProvisioning = userProvisioning;
     }
 
     @Transactional
@@ -52,7 +52,7 @@ public class TodoApplicationService {
             Integer scopeWeek,
             Integer scopeMonth
     ) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         CreateTodoResult result = createTodoUseCase.execute(
                 new CreateTodoCommand(householdId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
         );
@@ -61,7 +61,7 @@ public class TodoApplicationService {
 
     @Transactional
     public boolean completeTodo(UUID todoId, UUID actorUserId, Instant now) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         CompleteTodoResult result = completeTodoUseCase.execute(new CompleteTodoCommand(todoId, now));
         return result.isCompleted();
     }
@@ -78,7 +78,7 @@ public class TodoApplicationService {
             Integer scopeWeek,
             Integer scopeMonth
     ) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         UpdateTodoResult result = updateTodoUseCase.execute(
                 new UpdateTodoCommand(todoId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
         );
@@ -87,7 +87,7 @@ public class TodoApplicationService {
 
     @Transactional
     public boolean deleteTodo(UUID todoId, UUID actorUserId, Instant now) {
-        userApplicationService.ensureUserExists(actorUserId);
+        userProvisioning.ensureUserExists(actorUserId);
         DeleteTodoResult result = deleteTodoUseCase.execute(new DeleteTodoCommand(todoId, now));
         return result.isDeleted();
     }

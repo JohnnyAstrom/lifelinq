@@ -1,14 +1,14 @@
 package app.lifelinq.features.household.infrastructure;
 
 import app.lifelinq.features.household.application.HouseholdApplicationService;
-import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.user.contract.UserProvisioning;
 import java.time.Clock;
 
 public final class HouseholdInMemoryWiring {
     private HouseholdInMemoryWiring() {
     }
 
-    public static HouseholdApplicationService createApplicationService(UserApplicationService userApplicationService) {
+    public static HouseholdApplicationService createApplicationService(UserProvisioning userProvisioning) {
         HouseholdPersistenceAdapter adapter = new HouseholdPersistenceAdapter();
         InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
         InMemoryInvitationTokenGenerator tokenGenerator = new InMemoryInvitationTokenGenerator();
@@ -17,7 +17,7 @@ public final class HouseholdInMemoryWiring {
                 adapter,
                 invitationRepository,
                 tokenGenerator,
-                userApplicationService,
+                userProvisioning,
                 Clock.systemUTC()
         );
     }
