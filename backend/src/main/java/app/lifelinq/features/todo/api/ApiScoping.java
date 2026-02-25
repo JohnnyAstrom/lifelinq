@@ -13,6 +13,10 @@ final class ApiScoping {
     }
 
     static ResponseEntity<String> missingContext() {
+        RequestContext context = getContext();
+        if (context != null && context.getUserId() != null && context.getGroupId() == null) {
+            throw new app.lifelinq.config.NoActiveGroupSelectedException();
+        }
         return ResponseEntity.status(401).body("Missing group context");
     }
 }

@@ -26,7 +26,8 @@ public class SecurityConfig {
             HttpSecurity http,
             OAuth2LoginSuccessHandler successHandler,
             ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
-            RequestContextFilter requestContextFilter,
+            AuthenticationFilter authenticationFilter,
+            GroupContextFilter groupContextFilter,
             @Value("${lifelinq.devAuth.enabled:false}") boolean devAuthEnabled
     ) throws Exception {
         http
@@ -43,7 +44,8 @@ public class SecurityConfig {
         if (clientRegistrationRepository.getIfAvailable() != null) {
             http.oauth2Login(oauth -> oauth.successHandler(successHandler));
         }
-        http.addFilterBefore(requestContextFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAfter(groupContextFilter, AuthenticationFilter.class);
         return http.build();
     }
 

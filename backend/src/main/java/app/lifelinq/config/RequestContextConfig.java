@@ -3,18 +3,20 @@ package app.lifelinq.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
-import app.lifelinq.features.group.application.GroupApplicationService;
+import app.lifelinq.features.user.domain.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 public class RequestContextConfig {
 
-    @Bean(name = "lifeLinqRequestContextFilter")
-    public RequestContextFilter lifeLinqRequestContextFilter(
-            JwtVerifier jwtVerifier,
-            GroupApplicationService groupApplicationService
-    ) {
-        return new RequestContextFilter(jwtVerifier, groupApplicationService);
+    @Bean
+    public AuthenticationFilter authenticationFilter(JwtVerifier jwtVerifier) {
+        return new AuthenticationFilter(jwtVerifier);
+    }
+
+    @Bean
+    public GroupContextFilter groupContextFilter(UserRepository userRepository) {
+        return new GroupContextFilter(userRepository);
     }
 
     @Bean
