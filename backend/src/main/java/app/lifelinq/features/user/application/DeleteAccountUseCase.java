@@ -2,6 +2,7 @@ package app.lifelinq.features.user.application;
 
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
 import app.lifelinq.features.group.contract.UserGroupMembershipView;
+import app.lifelinq.features.user.contract.DeleteAccountBlockedException;
 import app.lifelinq.features.user.domain.UserRepository;
 import java.util.ArrayList;
 import java.util.List;

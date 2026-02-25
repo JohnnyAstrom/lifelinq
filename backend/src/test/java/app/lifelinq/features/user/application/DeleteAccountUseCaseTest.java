@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
 import app.lifelinq.features.group.contract.UserGroupMembershipView;
+import app.lifelinq.features.user.contract.DeleteAccountBlockedException;
 import app.lifelinq.features.user.domain.User;
 import app.lifelinq.features.user.domain.UserRepository;
 import java.util.ArrayList;
@@ -42,6 +43,35 @@ class DeleteAccountUseCaseTest {
     void allowsWhenUserIsMemberOnly() {
         RecordingPort port = new RecordingPort();
         port.memberships = List.of(new UserGroupMembershipView(UUID.randomUUID(), false, 2, 1));
+        DeleteAccountUseCase useCase = new DeleteAccountUseCase(port, new InMemoryUserRepository());
+
+        useCase.validateGovernance(useCase.loadMemberships(UUID.randomUUID()));
+    }
+
+    @Test
+    void mixedRolesAcrossThreeGroupsBlocksWhenAnyGroupHasSoleAdminWithOtherMembers() {
+        RecordingPort port = new RecordingPort();
+        port.memberships = List.of(
+                new UserGroupMembershipView(UUID.randomUUID(), false, 4, 1),
+                new UserGroupMembershipView(UUID.randomUUID(), true, 3, 2),
+                new UserGroupMembershipView(UUID.randomUUID(), true, 2, 1)
+        );
+        DeleteAccountUseCase useCase = new DeleteAccountUseCase(port, new InMemoryUserRepository());
+
+        assertThrows(
+                DeleteAccountBlockedException.class,
+                () -> useCase.validateGovernance(useCase.loadMemberships(UUID.randomUUID()))
+        );
+    }
+
+    @Test
+    void mixedRolesAcrossThreeGroupsAllowsWhenNoBlockingSoleAdminCaseExists() {
+        RecordingPort port = new RecordingPort();
+        port.memberships = List.of(
+                new UserGroupMembershipView(UUID.randomUUID(), false, 4, 1),
+                new UserGroupMembershipView(UUID.randomUUID(), true, 3, 2),
+                new UserGroupMembershipView(UUID.randomUUID(), true, 1, 1)
+        );
         DeleteAccountUseCase useCase = new DeleteAccountUseCase(port, new InMemoryUserRepository());
 
         useCase.validateGovernance(useCase.loadMemberships(UUID.randomUUID()));

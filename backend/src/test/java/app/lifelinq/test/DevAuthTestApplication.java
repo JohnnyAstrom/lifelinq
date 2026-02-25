@@ -4,6 +4,7 @@ import app.lifelinq.config.RequestContextConfig;
 import app.lifelinq.config.SecurityConfig;
 import app.lifelinq.features.auth.api.DevTokenController;
 import app.lifelinq.features.auth.api.MeController;
+import app.lifelinq.features.auth.infrastructure.AuthApplicationConfig;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
@@ -30,6 +31,7 @@ import org.springframework.context.annotation.Import;
         SecurityConfig.class,
         DevTokenController.class,
         MeController.class,
+        AuthApplicationConfig.class,
         UserApplicationConfig.class
 })
 public class DevAuthTestApplication {

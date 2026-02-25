@@ -1,14 +1,21 @@
 package app.lifelinq.features.auth.api;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
+import app.lifelinq.features.auth.application.AuthApplicationService;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipRepository;
+import app.lifelinq.features.user.contract.DeleteAccountBlockedException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -20,6 +27,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -29,12 +37,15 @@ class MeControllerTest {
 
     private MockMvc mockMvc;
     private FakeMembershipRepository membershipRepository;
+    private AuthApplicationService authApplicationService;
 
     @BeforeEach
     void setUp() {
         membershipRepository = new FakeMembershipRepository();
-        MeController controller = new MeController();
+        authApplicationService = Mockito.mock(AuthApplicationService.class);
+        MeController controller = new MeController(authApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new AuthExceptionHandler())
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
                         GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
@@ -47,6 +58,8 @@ class MeControllerTest {
         mockMvc.perform(get("/me")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(authApplicationService);
     }
 
     @Test
@@ -73,6 +86,46 @@ class MeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.groupId").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void deleteMeReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(delete("/me")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(authApplicationService);
+    }
+
+    @Test
+    void deleteMeReturns204OnSuccess() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(delete("/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        verify(authApplicationService).deleteAccount(userId);
+    }
+
+    @Test
+    void deleteMeReturns409WhenDeletionBlockedByGroupGovernance() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+        doThrow(new DeleteAccountBlockedException(
+                "Account deletion blocked: you are the sole admin in one or more groups"
+        )).when(authApplicationService).deleteAccount(Mockito.eq(userId));
+
+        mockMvc.perform(delete("/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+
+        verify(authApplicationService).deleteAccount(userId);
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {

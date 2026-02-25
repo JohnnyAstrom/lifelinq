@@ -1,10 +1,11 @@
 package app.lifelinq.features.user.application;
 
+import app.lifelinq.features.user.contract.UserAccountDeletion;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
-public class UserApplicationService implements UserProvisioning {
+public class UserApplicationService implements UserProvisioning, UserAccountDeletion {
     private final EnsureUserExistsUseCase ensureUserExistsUseCase;
     private final DeleteAccountUseCase deleteAccountUseCase;
 
@@ -28,6 +29,7 @@ public class UserApplicationService implements UserProvisioning {
     }
 
     @Transactional
+    @Override
     public void deleteAccount(UUID userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
