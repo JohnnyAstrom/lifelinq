@@ -14,9 +14,10 @@ LifeLinq focuses on four core domains of everyday household life:
 
 ### 1. Things to do / remember
 
-Simple, non‑project tasks and reminders with a **dual view**:
-- a clear all‑items list
-- a simple, legible calendar view
+Simple, non‑project tasks and reminders with a **time-scope model**:
+- **Daily** for execution and completion
+- **Weekly** for planning and overview
+- **Monthly** for calendar overview and navigation
 
 Completion is distinct from deletion, and scheduled items may sync with Google Calendar.
 
@@ -75,6 +76,11 @@ Authoritative documentation lives in `docs/`:
 - `docs/decisions/` – architectural decision records (ADRs)
 
 If something is unclear, **the docs are the source of truth**.
+
+### Frontend architecture (canonical)
+
+Frontend structure is feature-based and uses thin screens, data hooks, workflow hooks, and feature-owned API façades.
+The canonical frontend architecture reference is `docs/architecture/frontend-architecture.md`.
 
 ---
 

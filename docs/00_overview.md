@@ -17,9 +17,10 @@ It focuses on four core domains:
 
 ### 1. Things to do / remember
 
-Everyday items that need to happen or be remembered, with a **dual view**:
-- a clear **all-items overview**
-- a simple, legible **calendar view**
+Everyday items that need to happen or be remembered, with a **time-scope view model**:
+- **Daily** for execution and completion
+- **Weekly** for planning and overview
+- **Monthly** for calendar overview and navigation
 
 Examples:
 - book a dentist appointment
@@ -33,7 +34,7 @@ Characteristics:
 - incomplete data is allowed
 - recurring items are supported
 - items may be scheduled on dates/times
-- fast switching between list and calendar is core UX (backend calendar API implemented in V0.5b; frontend UX polish continues)
+- fast switching between daily, weekly, and monthly views is core UX
 - optional calendar sync (e.g. Google Calendar) for scheduled items (planned)
 - assignment is coordination only; any household member may assign or clear it
 - completion is distinct from deletion (done vs intentionally removed)

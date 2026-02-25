@@ -5,9 +5,11 @@ Before doing any work, read:
 - README.md
 - docs/INVARIANTS.md
 - docs/architecture/backend-structure.md
-- docs/architecture/frontend-structure.md
+- docs/architecture/frontend-architecture.md
 - docs/architecture/households.md
 - docs/architecture/auth.md
+
+Note: `docs/v0.5.md` is a historical milestone document and not a current architectural source of truth.
 
 ## Non-negotiables
 - Household-first: all domain data belongs to a household.

@@ -1,50 +1,43 @@
-# Welcome to your Expo app 👋
+# LifeLinq Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Project Structure (`src/`)
 
-## Get started
+### `src/bootstrap`
 
-1. Install dependencies
+Contains app entry/composition logic, including the root app shell and screen composition. This is where top-level providers and navigation composition are wired together.
 
-   ```bash
-   npm install
-   ```
+### `src/features`
 
-2. Start the app
+Contains feature-owned frontend code using the structure `features/<feature>/{api,hooks,components,utils,screens}`. Features should import their domain API through their own `api/` façade, not directly from shared domain API modules.
 
-   ```bash
-   npx expo start
-   ```
+### `src/shared`
 
-In the output, you'll find options to open the app in a
+Contains generic shared code used across features, such as UI primitives, shared hooks, auth context, and generic API client/helpers. `shared/` should not become a home for feature-specific domain logic.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Navigation Model
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Navigation is composed in `src/bootstrap/App.tsx` using app state and screen composition rather than a feature-owned navigator per module. Feature screens live under `src/features/<feature>/screens` and are imported into the app shell.
 
-## Get a fresh project
+## Dev Client Workflow
 
-When you're ready, run:
+### Start Metro
 
-```bash
-npm run reset-project
-```
+Use `npm start` (or `npx expo start`) for normal frontend iteration. This is the default workflow for JS/TS/UI changes that do not touch native configuration.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### When `expo run:android` is required
 
-## Learn more
+Run `npx expo run:android` when you change native configuration or add/change native modules. This rebuilds and reinstalls the Android dev client so native changes actually take effect.
 
-To learn more about developing your project with Expo, look at the following resources:
+### What triggers a native rebuild
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Typical rebuild triggers include changes to Expo config, Android manifest/native config, Gradle/native dependencies, or libraries that require native installation/linking. Pure screen/component/hook logic changes usually only need Metro reload.
 
-## Join the community
+## Frontend Architecture (Short Summary)
 
-Join our community of developers creating universal apps.
+Screens should be thin and focused on composition, navigation state, and render order. Data hooks handle fetch/mutate/reload, while workflow hooks handle UI state machines and use-case orchestration above data hooks.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Feature code should follow the API façade rule: `screens -> hooks -> feature api -> shared api client`. Shared UI and generic helpers may be used across features, but feature boundaries should remain explicit.
+
+## Canonical Frontend Architecture Reference
+
+See `../docs/architecture/frontend-architecture.md` for the current frontend architecture rules, dependency direction, workflow-hook guidance, and feature structure conventions.
