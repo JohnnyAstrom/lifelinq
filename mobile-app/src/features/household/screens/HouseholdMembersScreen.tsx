@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useHouseholdMembers } from '../features/household/hooks/useHouseholdMembers';
-import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+import { useHouseholdMembers } from '../hooks/useHouseholdMembers';
+import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
+import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;

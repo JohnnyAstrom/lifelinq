@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
-import { devLogin } from '../features/auth/api/devLoginApi';
-import { formatApiError } from '../shared/api/client';
-import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+import { devLogin } from '../api/devLoginApi';
+import { formatApiError } from '../../../shared/api/client';
+import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   onLoggedIn: (token: string) => void;

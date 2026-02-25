@@ -1,12 +1,12 @@
 import { Alert, Keyboard, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useAuth } from '../shared/auth/AuthContext';
-import { useDocuments } from '../features/documents/hooks/useDocuments';
-import { ApiError } from '../shared/api/client';
-import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+import { useAuth } from '../../../shared/auth/AuthContext';
+import { useDocuments } from '../hooks/useDocuments';
+import { ApiError } from '../../../shared/api/client';
+import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
+import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   onDone: () => void;

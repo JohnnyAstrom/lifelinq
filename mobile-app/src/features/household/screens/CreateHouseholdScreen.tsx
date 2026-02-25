@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { formatApiError } from '../shared/api/client';
-import { useAuth } from '../shared/auth/AuthContext';
-import { createHousehold } from '../features/household/api/householdApi';
-import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
-import { textStyles, theme } from '../shared/ui/theme';
+import { formatApiError } from '../../../shared/api/client';
+import { useAuth } from '../../../shared/auth/AuthContext';
+import { createHousehold } from '../api/householdApi';
+import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../../../shared/ui/components';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
