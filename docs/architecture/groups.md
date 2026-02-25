@@ -37,7 +37,7 @@ Memberships may change over time without affecting group data.
 
 Roles are intentionally minimal:
 
-- owner – manages group membership
+- admin – manages group membership
 - member – participates in the group
 
 Roles control access, not ownership.
@@ -82,7 +82,7 @@ Future: May be extracted if resend, tracking, or pending-user workflows become c
 
 Identity: invitationId  
 Token: random value used only for acceptance flow  
-Ownership: only OWNER may create/revoke  
+Ownership: only ADMIN may create/revoke  
 Expiry: default TTL applied if not provided  
 Status: ACTIVE | REVOKED  
 Duplicate rule: only one non-expired ACTIVE invitation per email per group  
@@ -110,7 +110,7 @@ Acceptance validates: invitation exists, status is ACTIVE, and it is not expired
 ## Invitation Lifecycle (Domain)
 
 At the domain level, invitations follow a simple lifecycle:
-- `ACTIVE` → `REVOKED` when an owner revokes an invitation
+- `ACTIVE` → `REVOKED` when an admin revokes an invitation
 - `ACTIVE` → expired (derived) when `now > expiresAt`
 
 Invitations are time‑limited, and acceptance of a valid invitation creates a group membership.

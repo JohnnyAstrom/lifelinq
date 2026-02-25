@@ -50,7 +50,7 @@ class MealsShoppingIntegrationTest {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         groupRepository.save(new Group(groupId, "Home"));
-        membershipRepository.save(new Membership(groupId, userId, GroupRole.OWNER));
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.ADMIN));
 
         CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
                 groupId,
@@ -92,7 +92,7 @@ class MealsShoppingIntegrationTest {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         groupRepository.save(new Group(groupId, "Home"));
-        membershipRepository.save(new Membership(groupId, userId, GroupRole.OWNER));
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.ADMIN));
 
         CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
                 groupId,

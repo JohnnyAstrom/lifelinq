@@ -30,7 +30,7 @@ class InMemoryMembershipRepositoryTest {
         UUID otherGroupId = UUID.randomUUID();
 
         repository.save(new Membership(groupId, UUID.randomUUID(), GroupRole.MEMBER));
-        repository.save(new Membership(groupId, UUID.randomUUID(), GroupRole.OWNER));
+        repository.save(new Membership(groupId, UUID.randomUUID(), GroupRole.ADMIN));
         repository.save(new Membership(otherGroupId, UUID.randomUUID(), GroupRole.MEMBER));
 
         List<Membership> result = repository.findByGroupId(groupId);

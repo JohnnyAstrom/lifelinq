@@ -173,7 +173,7 @@ Transactions are defined at the `ApplicationService` boundary.
 
 ---
 
-## 14. A group must always have an owner
+## 14. A group must always have an admin
 
-- A group cannot be left without an OWNER.
-- Removing the last OWNER is forbidden.
+- A group cannot be left without an ADMIN.
+- Removing the last ADMIN is forbidden.

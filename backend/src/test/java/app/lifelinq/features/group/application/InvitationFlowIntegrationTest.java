@@ -137,7 +137,7 @@ class InvitationFlowIntegrationTest {
         List<Membership> memberships = groupApplicationService.listMembers(groupId);
         assertEquals(2, memberships.size());
         assertTrue(memberships.stream().anyMatch(m -> m.getUserId().equals(ownerUserId)
-                && m.getRole() == GroupRole.OWNER));
+                && m.getRole() == GroupRole.ADMIN));
         assertTrue(memberships.stream().anyMatch(m -> m.getUserId().equals(invitedUserId)
                 && m.getRole() == GroupRole.MEMBER));
     }

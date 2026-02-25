@@ -4,7 +4,7 @@ import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.domain.GroupRole;
-import app.lifelinq.features.group.domain.LastOwnerRemovalException;
+import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.user.contract.UserProvisioning;
@@ -73,7 +73,7 @@ public class GroupApplicationService {
             Duration ttl
     ) {
         userProvisioning.ensureUserExists(actorUserId);
-        ensureOwner(groupId, actorUserId);
+        ensureAdmin(groupId, actorUserId);
         String normalizedEmail = normalizeEmail(inviteeEmail);
         Duration effectiveTtl = ttl == null ? DEFAULT_INVITATION_TTL : ttl;
         CreateInvitationCommand command = new CreateInvitationCommand(
@@ -93,7 +93,7 @@ public class GroupApplicationService {
     @Transactional
     public boolean revokeInvitation(UUID groupId, UUID actorUserId, UUID invitationId) {
         userProvisioning.ensureUserExists(actorUserId);
-        ensureOwner(groupId, actorUserId);
+        ensureAdmin(groupId, actorUserId);
         RevokeInvitationCommand command = new RevokeInvitationCommand(invitationId, clock.instant());
         RevokeInvitationResult result = revokeInvitationUseCase.execute(command);
         return result.isRevoked();
@@ -110,7 +110,7 @@ public class GroupApplicationService {
     @Transactional
     public Membership addMember(UUID groupId, UUID actorUserId, UUID targetUserId) {
         userProvisioning.ensureUserExists(actorUserId);
-        ensureOwner(groupId, actorUserId);
+        ensureAdmin(groupId, actorUserId);
         AddMemberToGroupCommand command = new AddMemberToGroupCommand(groupId, targetUserId);
         AddMemberToGroupResult result = addMemberToGroupUseCase.execute(command);
         return new Membership(result.getGroupId(), result.getUserId(), result.getRole());
@@ -120,8 +120,9 @@ public class GroupApplicationService {
     public boolean removeMember(UUID groupId, UUID actorUserId, UUID targetUserId) {
         userProvisioning.ensureUserExists(actorUserId);
         List<Membership> memberships = membershipRepository.findByGroupId(groupId);
-        ensureOwner(groupId, actorUserId, memberships);
-        ensureNotLastOwner(targetUserId, memberships);
+        ensureAdmin(groupId, actorUserId, memberships);
+        ensureNoAdminToAdminRemoval(actorUserId, targetUserId, memberships);
+        ensureNotBlockedLastAdminRemoval(targetUserId, memberships);
         RemoveMemberFromGroupCommand command = new RemoveMemberFromGroupCommand(groupId, targetUserId);
         RemoveMemberFromGroupResult result = removeMemberFromGroupUseCase.execute(command);
         return result.isRemoved();
@@ -165,35 +166,62 @@ public class GroupApplicationService {
         );
     }
 
-    private void ensureOwner(UUID groupId, UUID actorUserId) {
-        ensureOwner(groupId, actorUserId, membershipRepository.findByGroupId(groupId));
+    private void ensureAdmin(UUID groupId, UUID actorUserId) {
+        ensureAdmin(groupId, actorUserId, membershipRepository.findByGroupId(groupId));
     }
 
-    private void ensureOwner(UUID groupId, UUID actorUserId, List<Membership> memberships) {
+    private void ensureAdmin(UUID groupId, UUID actorUserId, List<Membership> memberships) {
         for (Membership membership : memberships) {
             if (membership.getUserId().equals(actorUserId)) {
-                if (membership.getRole() == GroupRole.OWNER) {
+                if (membership.getRole() == GroupRole.ADMIN) {
                     return;
                 }
-                throw new AccessDeniedException("Only owners can perform this action");
+                throw new AccessDeniedException("Only admins can perform this action");
             }
         }
         throw new AccessDeniedException("Actor is not a member of the group");
     }
 
-    private void ensureNotLastOwner(UUID targetUserId, List<Membership> memberships) {
-        int ownerCount = 0;
-        boolean targetIsOwner = false;
+    private void ensureNoAdminToAdminRemoval(
+            UUID actorUserId,
+            UUID targetUserId,
+            List<Membership> memberships
+    ) {
+        if (actorUserId.equals(targetUserId)) {
+            return;
+        }
+        boolean actorIsAdmin = false;
+        boolean targetIsAdmin = false;
         for (Membership membership : memberships) {
-            if (membership.getRole() == GroupRole.OWNER) {
-                ownerCount++;
+            if (membership.getRole() != GroupRole.ADMIN) {
+                continue;
+            }
+            if (membership.getUserId().equals(actorUserId)) {
+                actorIsAdmin = true;
+            }
+            if (membership.getUserId().equals(targetUserId)) {
+                targetIsAdmin = true;
+            }
+        }
+        if (actorIsAdmin && targetIsAdmin) {
+            throw new AdminRemovalConflictException("Admins cannot remove other admins");
+        }
+    }
+
+    private void ensureNotBlockedLastAdminRemoval(UUID targetUserId, List<Membership> memberships) {
+        int memberCount = memberships.size();
+        int adminCount = 0;
+        boolean targetIsAdmin = false;
+        for (Membership membership : memberships) {
+            if (membership.getRole() == GroupRole.ADMIN) {
+                adminCount++;
                 if (membership.getUserId().equals(targetUserId)) {
-                    targetIsOwner = true;
+                    targetIsAdmin = true;
                 }
             }
         }
-        if (targetIsOwner && ownerCount <= 1) {
-            throw new LastOwnerRemovalException("Cannot remove the last owner");
+        if (targetIsAdmin && adminCount <= 1 && memberCount > 1) {
+            throw new LastAdminRemovalException("Cannot remove the last admin while other members exist");
         }
     }
 

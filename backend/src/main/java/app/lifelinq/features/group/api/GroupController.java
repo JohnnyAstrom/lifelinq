@@ -6,7 +6,7 @@ import app.lifelinq.features.group.application.AccessDeniedException;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
-import app.lifelinq.features.group.domain.LastOwnerRemovalException;
+import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,8 +82,8 @@ public class GroupController {
             return ResponseEntity.ok(new RemoveMemberResponse(removed));
         } catch (AccessDeniedException ex) {
             return ResponseEntity.status(403).body("Access denied");
-        } catch (LastOwnerRemovalException ex) {
-            return ResponseEntity.status(409).body("Cannot remove last owner");
+        } catch (LastAdminRemovalException ex) {
+            return ResponseEntity.status(409).body("Cannot remove the last admin while other members exist");
         }
     }
 

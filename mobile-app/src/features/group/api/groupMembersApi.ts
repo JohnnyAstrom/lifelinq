@@ -2,7 +2,7 @@ import { fetchJson } from '../../../shared/api/client';
 
 export type MemberItemResponse = {
   userId: string;
-  role: 'OWNER' | 'MEMBER';
+  role: 'ADMIN' | 'MEMBER';
 };
 
 type ListMembersResponse = {

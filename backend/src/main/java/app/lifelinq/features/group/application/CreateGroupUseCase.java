@@ -32,7 +32,7 @@ final class CreateGroupUseCase {
 
         UUID groupId = UUID.randomUUID();
         Group group = new Group(groupId, command.getGroupName());
-        Membership ownerMembership = new Membership(group.getId(), command.getOwnerUserId(), GroupRole.OWNER);
+        Membership ownerMembership = new Membership(group.getId(), command.getOwnerUserId(), GroupRole.ADMIN);
 
         groupRepository.save(group);
         membershipRepository.save(ownerMembership);

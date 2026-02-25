@@ -6,16 +6,18 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
 import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.application.AdminRemovalConflictException;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.GroupRole;
-import app.lifelinq.features.group.domain.LastOwnerRemovalException;
+import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
 import app.lifelinq.features.group.domain.MembershipRepository;
@@ -325,7 +327,8 @@ class GroupControllerTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"" + targetUserId + "\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("MEMBER"));
 
         verify(groupApplicationService).addMember(groupId, actorUserId, targetUserId);
     }
@@ -362,11 +365,14 @@ class GroupControllerTest {
         membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(groupApplicationService.listMembers(groupId)).thenReturn(List.of());
+        when(groupApplicationService.listMembers(groupId)).thenReturn(List.of(
+                new Membership(groupId, userId, GroupRole.ADMIN)
+        ));
 
         mockMvc.perform(get("/groups/members")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.members[0].role").value("ADMIN"));
 
         verify(groupApplicationService).listMembers(groupId);
     }
@@ -417,7 +423,7 @@ class GroupControllerTest {
     }
 
     @Test
-    void removeMemberReturns409WhenRemovingLastOwner() throws Exception {
+    void removeMemberReturns409WhenRemovingLastAdmin() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
@@ -425,7 +431,27 @@ class GroupControllerTest {
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.removeMember(groupId, actorUserId, targetUserId))
-                .thenThrow(new LastOwnerRemovalException("last owner"));
+                .thenThrow(new LastAdminRemovalException("last admin"));
+
+        mockMvc.perform(post("/groups/members/remove")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"" + targetUserId + "\"}"))
+                .andExpect(status().isConflict());
+
+        verify(groupApplicationService).removeMember(groupId, actorUserId, targetUserId);
+    }
+
+    @Test
+    void removeMemberReturns409WhenRemovingAnotherAdmin() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        membershipRepository.withMembership(actorUserId, groupId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(groupApplicationService.removeMember(groupId, actorUserId, targetUserId))
+                .thenThrow(new AdminRemovalConflictException("Admins cannot remove other admins"));
 
         mockMvc.perform(post("/groups/members/remove")
                         .header("Authorization", "Bearer " + token)
