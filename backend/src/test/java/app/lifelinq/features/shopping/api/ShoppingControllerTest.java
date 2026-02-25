@@ -8,20 +8,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import app.lifelinq.config.AuthenticationFilter;
+import app.lifelinq.config.GroupContextFilter;
 import app.lifelinq.config.JwtVerifier;
-import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
-import app.lifelinq.features.group.domain.Membership;
-import app.lifelinq.features.group.domain.MembershipRepository;
+import app.lifelinq.config.RequestContextExceptionHandler;
+import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -37,18 +35,19 @@ class ShoppingControllerTest {
 
     private MockMvc mockMvc;
     private ShoppingApplicationService shoppingApplicationService;
-    private FakeMembershipRepository membershipRepository;
+    private FakeActiveGroupUserRepository userRepository;
 
     @BeforeEach
     void setUp() {
-        membershipRepository = new FakeMembershipRepository();
+        userRepository = new FakeActiveGroupUserRepository();
         shoppingApplicationService = Mockito.mock(ShoppingApplicationService.class);
         ShoppingController controller = new ShoppingController(shoppingApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .addFilters(new RequestContextFilter(
-                        new JwtVerifier(SECRET),
-                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
-                ))
+                .setControllerAdvice(new RequestContextExceptionHandler())
+                .addFilters(
+                        new AuthenticationFilter(new JwtVerifier(SECRET)),
+                        new GroupContextFilter(userRepository)
+                )
                 .build();
     }
 
@@ -74,15 +73,16 @@ class ShoppingControllerTest {
     }
 
     @Test
-    void createReturns401WhenGroupMissing() throws Exception {
+    void createReturns409WhenNoActiveGroupSelected() throws Exception {
         UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(post("/shopping-lists")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Groceries\"}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isConflict());
 
         verifyNoInteractions(shoppingApplicationService);
     }
@@ -92,7 +92,7 @@ class ShoppingControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(shoppingApplicationService.createShoppingList(groupId, userId, "Groceries"))
@@ -120,7 +120,7 @@ class ShoppingControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(delete("/shopping-lists/{listId}", listId)
@@ -135,7 +135,7 @@ class ShoppingControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(shoppingApplicationService.updateShoppingListName(groupId, userId, listId, "Renamed"))
@@ -155,7 +155,7 @@ class ShoppingControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(patch("/shopping-lists/{listId}/order", listId)
@@ -173,7 +173,7 @@ class ShoppingControllerTest {
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
         UUID itemId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(patch("/shopping-lists/{listId}/items/{itemId}/order", listId, itemId)
@@ -208,42 +208,4 @@ class ShoppingControllerTest {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
     }
 
-    private static final class FakeMembershipRepository implements MembershipRepository {
-        private final Map<UUID, List<UUID>> byUser = new HashMap<>();
-
-        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
-            byUser.put(userId, List.of(groupId));
-            return this;
-        }
-
-        @Override
-        public void save(Membership membership) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByGroupId(UUID groupId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<UUID> findGroupIdsByUserId(UUID userId) {
-            return byUser.getOrDefault(userId, List.of());
-        }
-
-        @Override
-        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public void deleteByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-    }
 }

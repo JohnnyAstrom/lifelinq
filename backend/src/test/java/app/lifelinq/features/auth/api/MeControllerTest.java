@@ -6,22 +6,23 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import app.lifelinq.config.AuthenticationFilter;
+import app.lifelinq.config.GroupContextFilter;
 import app.lifelinq.config.JwtVerifier;
-import app.lifelinq.config.RequestContextFilter;
+import app.lifelinq.features.auth.application.ActiveGroupSelectionConflictException;
 import app.lifelinq.features.auth.application.AuthApplicationService;
-import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
-import app.lifelinq.features.group.domain.Membership;
-import app.lifelinq.features.group.domain.MembershipRepository;
+import app.lifelinq.features.auth.contract.UserContextView;
+import app.lifelinq.features.auth.contract.UserMembershipView;
 import app.lifelinq.features.user.contract.DeleteAccountBlockedException;
+import app.lifelinq.test.FakeActiveGroupUserRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -36,20 +37,20 @@ class MeControllerTest {
     private static final String SECRET = "test-secret";
 
     private MockMvc mockMvc;
-    private FakeMembershipRepository membershipRepository;
+    private FakeActiveGroupUserRepository userRepository;
     private AuthApplicationService authApplicationService;
 
     @BeforeEach
     void setUp() {
-        membershipRepository = new FakeMembershipRepository();
+        userRepository = new FakeActiveGroupUserRepository();
         authApplicationService = Mockito.mock(AuthApplicationService.class);
         MeController controller = new MeController(authApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new AuthExceptionHandler())
-                .addFilters(new RequestContextFilter(
-                        new JwtVerifier(SECRET),
-                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
-                ))
+                .addFilters(
+                        new AuthenticationFilter(new JwtVerifier(SECRET)),
+                        new GroupContextFilter(userRepository)
+                )
                 .build();
     }
 
@@ -66,26 +67,42 @@ class MeControllerTest {
     void returnsUserAndGroupWhenContextPresent() throws Exception {
         UUID userId = UUID.randomUUID();
         UUID groupId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
+        when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
+                userId,
+                groupId,
+                List.of(new UserMembershipView(groupId, "ADMIN"))
+        ));
 
         mockMvc.perform(get("/me")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
-                .andExpect(jsonPath("$.groupId").value(groupId.toString()));
+                .andExpect(jsonPath("$.activeGroupId").value(groupId.toString()))
+                .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
+                .andExpect(jsonPath("$.memberships[0].role").value("ADMIN"));
+
+        verify(authApplicationService).getMe(userId);
     }
 
     @Test
     void returnsNullGroupWhenMissingMembership() throws Exception {
         UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
+        when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
+                userId,
+                null,
+                List.of()
+        ));
 
         mockMvc.perform(get("/me")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
-                .andExpect(jsonPath("$.groupId").value(org.hamcrest.Matchers.nullValue()));
+                .andExpect(jsonPath("$.activeGroupId").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.memberships").isArray());
     }
 
     @Test
@@ -100,8 +117,7 @@ class MeControllerTest {
     @Test
     void deleteMeReturns204OnSuccess() throws Exception {
         UUID userId = UUID.randomUUID();
-        UUID groupId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(delete("/me")
@@ -115,7 +131,7 @@ class MeControllerTest {
     void deleteMeReturns409WhenDeletionBlockedByGroupGovernance() throws Exception {
         UUID userId = UUID.randomUUID();
         UUID groupId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
         doThrow(new DeleteAccountBlockedException(
                 "Account deletion blocked: you are the sole admin in one or more groups"
@@ -126,6 +142,59 @@ class MeControllerTest {
                 .andExpect(status().isConflict());
 
         verify(authApplicationService).deleteAccount(userId);
+    }
+
+    @Test
+    void setActiveGroupReturns200WithUpdatedMeResponse() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID currentGroupId = UUID.randomUUID();
+        UUID selectedGroupId = UUID.randomUUID();
+        userRepository.withUser(userId, currentGroupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+        when(authApplicationService.setActiveGroup(Mockito.eq(userId), Mockito.eq(selectedGroupId)))
+                .thenReturn(new UserContextView(
+                        userId,
+                        selectedGroupId,
+                        List.of(
+                                new UserMembershipView(currentGroupId, "MEMBER"),
+                                new UserMembershipView(selectedGroupId, "ADMIN")
+                        )
+                ));
+
+        mockMvc.perform(put("/me/active-group")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activeGroupId\":\"" + selectedGroupId + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(userId.toString()))
+                .andExpect(jsonPath("$.activeGroupId").value(selectedGroupId.toString()))
+                .andExpect(jsonPath("$.memberships.length()").value(2));
+    }
+
+    @Test
+    void setActiveGroupReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(put("/me/active-group")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activeGroupId\":\"" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void setActiveGroupReturns409WhenSelectionConflicts() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID currentGroupId = UUID.randomUUID();
+        UUID selectedGroupId = UUID.randomUUID();
+        userRepository.withUser(userId, currentGroupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+        doThrow(new ActiveGroupSelectionConflictException("Selected group is not a membership of the current user"))
+                .when(authApplicationService)
+                .setActiveGroup(Mockito.eq(userId), Mockito.eq(selectedGroupId));
+
+        mockMvc.perform(put("/me/active-group")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activeGroupId\":\"" + selectedGroupId + "\"}"))
+                .andExpect(status().isConflict());
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {
@@ -151,42 +220,4 @@ class MeControllerTest {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
     }
 
-    private static final class FakeMembershipRepository implements MembershipRepository {
-        private final Map<UUID, List<UUID>> byUser = new HashMap<>();
-
-        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
-            byUser.put(userId, List.of(groupId));
-            return this;
-        }
-
-        @Override
-        public void save(Membership membership) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByGroupId(UUID groupId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<UUID> findGroupIdsByUserId(UUID userId) {
-            return byUser.getOrDefault(userId, List.of());
-        }
-
-        @Override
-        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public void deleteByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-    }
 }

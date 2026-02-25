@@ -9,9 +9,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import app.lifelinq.config.AuthenticationFilter;
+import app.lifelinq.config.GroupContextFilter;
 import app.lifelinq.config.JwtVerifier;
-import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.config.RequestContextExceptionHandler;
+import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.group.application.AccessDeniedException;
 import app.lifelinq.features.group.application.AdminRemovalConflictException;
 import app.lifelinq.features.group.application.GroupApplicationService;
@@ -20,13 +22,11 @@ import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
-import app.lifelinq.features.group.domain.MembershipRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -42,19 +42,19 @@ class GroupControllerTest {
 
     private MockMvc mockMvc;
     private GroupApplicationService groupApplicationService;
-    private FakeMembershipRepository membershipRepository;
+    private FakeActiveGroupUserRepository userRepository;
 
     @BeforeEach
     void setUp() {
-        membershipRepository = new FakeMembershipRepository();
+        userRepository = new FakeActiveGroupUserRepository();
         groupApplicationService = Mockito.mock(GroupApplicationService.class);
         GroupController controller = new GroupController(groupApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new GroupExceptionHandler())
-                .addFilters(new RequestContextFilter(
-                        new JwtVerifier(SECRET),
-                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
-                ))
+                .setControllerAdvice(new GroupExceptionHandler(), new RequestContextExceptionHandler())
+                .addFilters(
+                        new AuthenticationFilter(new JwtVerifier(SECRET)),
+                        new GroupContextFilter(userRepository)
+                )
                 .build();
     }
 
@@ -90,6 +90,7 @@ class GroupControllerTest {
     void createSucceedsWithUserIdFromToken() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.createGroup("Home", userId)).thenReturn(groupId);
@@ -117,7 +118,7 @@ class GroupControllerTest {
     void acceptInvitationSucceedsWithUserIdFromToken() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         MembershipId membershipId = new MembershipId(groupId, userId);
@@ -153,7 +154,7 @@ class GroupControllerTest {
     void createInvitationReturns403WhenActorIsNotOwner() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.createInvitation(
@@ -174,7 +175,7 @@ class GroupControllerTest {
     void createInvitationReturns409WhenDuplicateExists() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.createInvitation(
@@ -195,7 +196,7 @@ class GroupControllerTest {
     void createInvitationSucceeds() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         UUID invitationId = UUID.randomUUID();
@@ -233,7 +234,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID invitationId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.revokeInvitation(groupId, actorUserId, invitationId))
@@ -249,7 +250,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID invitationId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.revokeInvitation(groupId, actorUserId, invitationId))
@@ -265,7 +266,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID invitationId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.revokeInvitation(groupId, actorUserId, invitationId))
@@ -277,16 +278,17 @@ class GroupControllerTest {
     }
 
     @Test
-    void addMemberReturns401WhenGroupMissing() throws Exception {
+    void addMemberReturns409WhenNoActiveGroupSelected() throws Exception {
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(post("/groups/members")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"" + targetUserId + "\"}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isConflict());
 
         verifyNoInteractions(groupApplicationService);
     }
@@ -296,7 +298,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.addMember(groupId, actorUserId, targetUserId))
@@ -316,7 +318,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
         Membership membership = new Membership(groupId, targetUserId, GroupRole.MEMBER);
 
@@ -334,26 +336,14 @@ class GroupControllerTest {
     }
 
     @Test
-    void listMembersReturns401WhenGroupMissing() throws Exception {
+    void listMembersReturns409WhenNoActiveGroupSelected() throws Exception {
         UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(get("/groups/members")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isUnauthorized());
-
-        verifyNoInteractions(groupApplicationService);
-    }
-
-    @Test
-    void listMembersReturns401WhenGroupAmbiguous() throws Exception {
-        UUID userId = UUID.randomUUID();
-        membershipRepository.withMemberships(userId, List.of(UUID.randomUUID(), UUID.randomUUID()));
-        String token = createToken(userId, Instant.now().plusSeconds(60));
-
-        mockMvc.perform(get("/groups/members")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isConflict());
 
         verifyNoInteractions(groupApplicationService);
     }
@@ -362,7 +352,7 @@ class GroupControllerTest {
     void listMembersSucceedsWhenGroupMatches() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.listMembers(groupId)).thenReturn(List.of(
@@ -388,16 +378,17 @@ class GroupControllerTest {
     }
 
     @Test
-    void removeMemberReturns401WhenGroupMissing() throws Exception {
+    void removeMemberReturns409WhenNoActiveGroupSelected() throws Exception {
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(post("/groups/members/remove")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"" + targetUserId + "\"}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isConflict());
 
         verifyNoInteractions(groupApplicationService);
     }
@@ -407,7 +398,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.removeMember(groupId, actorUserId, targetUserId))
@@ -427,7 +418,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.removeMember(groupId, actorUserId, targetUserId))
@@ -447,7 +438,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.removeMember(groupId, actorUserId, targetUserId))
@@ -467,7 +458,7 @@ class GroupControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         UUID targetUserId = UUID.randomUUID();
-        membershipRepository.withMembership(actorUserId, groupId);
+        userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.removeMember(groupId, actorUserId, targetUserId))
@@ -505,46 +496,5 @@ class GroupControllerTest {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
     }
 
-    private static final class FakeMembershipRepository implements MembershipRepository {
-        private final Map<UUID, List<UUID>> byUser = new HashMap<>();
-
-        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
-            return withMemberships(userId, List.of(groupId));
-        }
-
-        FakeMembershipRepository withMemberships(UUID userId, List<UUID> groupIds) {
-            byUser.put(userId, groupIds);
-            return this;
-        }
-
-        @Override
-        public void save(Membership membership) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByGroupId(UUID groupId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<UUID> findGroupIdsByUserId(UUID userId) {
-            return byUser.getOrDefault(userId, List.of());
-        }
-
-        @Override
-        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public void deleteByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-    }
 }
+

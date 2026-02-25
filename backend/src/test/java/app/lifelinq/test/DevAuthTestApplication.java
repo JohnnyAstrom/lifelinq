@@ -8,6 +8,8 @@ import app.lifelinq.features.auth.infrastructure.AuthApplicationConfig;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
+import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
+import app.lifelinq.features.group.contract.UserGroupMembershipSummary;
 import app.lifelinq.features.group.contract.UserGroupMembershipView;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.infrastructure.InMemoryMembershipRepository;
@@ -84,6 +86,21 @@ public class DevAuthTestApplication {
 
             @Override
             public void deleteEmptyGroupsByIds(List<UUID> groupIds) {
+            }
+        };
+    }
+
+    @Bean
+    public UserGroupMembershipLookup userGroupMembershipLookup() {
+        return new UserGroupMembershipLookup() {
+            @Override
+            public boolean isMember(UUID userId, UUID groupId) {
+                return false;
+            }
+
+            @Override
+            public List<UserGroupMembershipSummary> listMemberships(UUID userId) {
+                return List.of();
             }
         };
     }

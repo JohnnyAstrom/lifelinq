@@ -7,11 +7,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import app.lifelinq.config.AuthenticationFilter;
+import app.lifelinq.config.GroupContextFilter;
 import app.lifelinq.config.JwtVerifier;
-import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
-import app.lifelinq.features.group.domain.Membership;
-import app.lifelinq.features.group.domain.MembershipRepository;
+import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.MealsShoppingAccessDeniedException;
@@ -23,9 +22,7 @@ import app.lifelinq.features.meals.contract.PlannedMealView;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -41,19 +38,19 @@ class MealsControllerTest {
 
     private MockMvc mockMvc;
     private MealsApplicationService mealsApplicationService;
-    private FakeMembershipRepository membershipRepository;
+    private FakeActiveGroupUserRepository userRepository;
 
     @BeforeEach
     void setUp() {
-        membershipRepository = new FakeMembershipRepository();
+        userRepository = new FakeActiveGroupUserRepository();
         mealsApplicationService = Mockito.mock(MealsApplicationService.class);
         MealsController controller = new MealsController(mealsApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new MealsExceptionHandler())
-                .addFilters(new RequestContextFilter(
-                        new JwtVerifier(SECRET),
-                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
-                ))
+                .addFilters(
+                        new AuthenticationFilter(new JwtVerifier(SECRET)),
+                        new GroupContextFilter(userRepository)
+                )
                 .build();
     }
 
@@ -73,7 +70,7 @@ class MealsControllerTest {
         UUID userId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(mealsApplicationService.addOrReplaceMeal(
@@ -114,7 +111,7 @@ class MealsControllerTest {
     void removeReturns404WhenMealMissing() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealNotFoundException("Meal not found"))
@@ -132,7 +129,7 @@ class MealsControllerTest {
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID targetListId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealsShoppingAccessDeniedException("Access denied"))
@@ -152,7 +149,7 @@ class MealsControllerTest {
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID targetListId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealsShoppingListNotFoundException("list not found: " + targetListId))
@@ -172,7 +169,7 @@ class MealsControllerTest {
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID targetListId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealsShoppingDuplicateItemException("item name must be unique within list: pasta"))
@@ -191,7 +188,7 @@ class MealsControllerTest {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, groupId);
+        userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new RecipeNotFoundException(recipeId))
@@ -228,42 +225,4 @@ class MealsControllerTest {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
     }
 
-    private static final class FakeMembershipRepository implements MembershipRepository {
-        private final Map<UUID, List<UUID>> byUser = new HashMap<>();
-
-        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
-            byUser.put(userId, List.of(groupId));
-            return this;
-        }
-
-        @Override
-        public void save(Membership membership) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByGroupId(UUID groupId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<Membership> findByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public List<UUID> findGroupIdsByUserId(UUID userId) {
-            return byUser.getOrDefault(userId, List.of());
-        }
-
-        @Override
-        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-
-        @Override
-        public void deleteByUserId(UUID userId) {
-            throw new UnsupportedOperationException("not used");
-        }
-    }
 }
