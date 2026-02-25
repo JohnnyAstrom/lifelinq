@@ -40,6 +40,18 @@ public final class JpaMembershipRepositoryAdapter implements MembershipRepositor
     }
 
     @Override
+    public List<Membership> findByUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        List<Membership> result = new ArrayList<>();
+        for (MembershipEntity entity : membershipJpaRepository.findByIdUserId(userId)) {
+            result.add(mapper.toDomain(entity));
+        }
+        return result;
+    }
+
+    @Override
     public List<UUID> findGroupIdsByUserId(UUID userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
@@ -63,5 +75,13 @@ public final class JpaMembershipRepositoryAdapter implements MembershipRepositor
             throw new IllegalArgumentException("userId must not be null");
         }
         return membershipJpaRepository.deleteByIdGroupIdAndIdUserId(groupId, userId) > 0;
+    }
+
+    @Override
+    public void deleteByUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        membershipJpaRepository.deleteByIdUserId(userId);
     }
 }

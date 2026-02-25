@@ -30,6 +30,11 @@ public final class GroupPersistenceAdapter
     }
 
     @Override
+    public void deleteById(UUID id) {
+        groupRepository.deleteById(id);
+    }
+
+    @Override
     public void save(Membership membership) {
         membershipRepository.save(membership);
     }
@@ -40,6 +45,11 @@ public final class GroupPersistenceAdapter
     }
 
     @Override
+    public List<Membership> findByUserId(UUID userId) {
+        return membershipRepository.findByUserId(userId);
+    }
+
+    @Override
     public List<UUID> findGroupIdsByUserId(UUID userId) {
         return membershipRepository.findGroupIdsByUserId(userId);
     }
@@ -47,5 +57,10 @@ public final class GroupPersistenceAdapter
     @Override
     public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
         return membershipRepository.deleteByGroupIdAndUserId(groupId, userId);
+    }
+
+    @Override
+    public void deleteByUserId(UUID userId) {
+        membershipRepository.deleteByUserId(userId);
     }
 }

@@ -10,4 +10,6 @@ public interface MembershipJpaRepository extends JpaRepository<MembershipEntity,
     List<MembershipEntity> findByIdUserId(UUID userId);
 
     long deleteByIdGroupIdAndIdUserId(UUID groupId, UUID userId);
+
+    long deleteByIdUserId(UUID userId);
 }

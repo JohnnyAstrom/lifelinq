@@ -25,4 +25,12 @@ public final class InMemoryGroupRepository implements GroupRepository {
         }
         return Optional.ofNullable(groups.get(id));
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id must not be null");
+        }
+        groups.remove(id);
+    }
 }

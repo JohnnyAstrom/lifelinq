@@ -7,4 +7,6 @@ public interface UserRepository {
     Optional<User> findById(UUID id);
 
     void save(User user);
+
+    void deleteById(UUID id);
 }

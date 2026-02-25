@@ -33,6 +33,20 @@ public final class InMemoryMembershipRepository implements MembershipRepository 
     }
 
     @Override
+    public List<Membership> findByUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        List<Membership> result = new ArrayList<>();
+        for (Membership membership : memberships) {
+            if (userId.equals(membership.getUserId())) {
+                result.add(membership);
+            }
+        }
+        return result;
+    }
+
+    @Override
     public List<UUID> findGroupIdsByUserId(UUID userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
@@ -62,5 +76,13 @@ public final class InMemoryMembershipRepository implements MembershipRepository 
             }
         }
         return false;
+    }
+
+    @Override
+    public void deleteByUserId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        memberships.removeIf(membership -> userId.equals(membership.getUserId()));
     }
 }

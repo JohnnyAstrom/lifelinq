@@ -29,4 +29,14 @@ class JpaUserRepositoryAdapterTest {
         assertTrue(loaded.isPresent());
         assertEquals(user.getId(), loaded.get().getId());
     }
+
+    @Test
+    void deletesUserById() {
+        User user = new User(UUID.randomUUID());
+        repository.save(user);
+
+        repository.deleteById(user.getId());
+
+        assertTrue(repository.findById(user.getId()).isEmpty());
+    }
 }

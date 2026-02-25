@@ -7,4 +7,6 @@ public interface GroupRepository {
     void save(Group group);
 
     Optional<Group> findById(UUID id);
+
+    void deleteById(UUID id);
 }

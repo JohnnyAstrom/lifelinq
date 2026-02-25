@@ -29,4 +29,12 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     public void save(User user) {
         repository.save(mapper.toEntity(user));
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id must not be null");
+        }
+        repository.deleteById(id);
+    }
 }

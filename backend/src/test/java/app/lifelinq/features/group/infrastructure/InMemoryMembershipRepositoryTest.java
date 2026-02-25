@@ -2,6 +2,7 @@ package app.lifelinq.features.group.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.Membership;
@@ -63,5 +64,36 @@ class InMemoryMembershipRepositoryTest {
         List<UUID> result = repository.findGroupIdsByUserId(userId);
 
         assertEquals(List.of(groupId), result);
+    }
+
+    @Test
+    void findsByUserId() {
+        InMemoryMembershipRepository repository = new InMemoryMembershipRepository();
+        UUID userId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        repository.save(new Membership(groupId, userId, GroupRole.MEMBER));
+        repository.save(new Membership(UUID.randomUUID(), userId, GroupRole.ADMIN));
+        repository.save(new Membership(groupId, otherUserId, GroupRole.MEMBER));
+
+        List<Membership> result = repository.findByUserId(userId);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(m -> userId.equals(m.getUserId())));
+    }
+
+    @Test
+    void deletesByUserId() {
+        InMemoryMembershipRepository repository = new InMemoryMembershipRepository();
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        repository.save(new Membership(UUID.randomUUID(), userId, GroupRole.MEMBER));
+        repository.save(new Membership(UUID.randomUUID(), userId, GroupRole.ADMIN));
+        repository.save(new Membership(UUID.randomUUID(), otherUserId, GroupRole.MEMBER));
+
+        repository.deleteByUserId(userId);
+
+        assertEquals(0, repository.findByUserId(userId).size());
+        assertEquals(1, repository.findByUserId(otherUserId).size());
     }
 }

@@ -8,7 +8,11 @@ public interface MembershipRepository {
 
     List<Membership> findByGroupId(UUID groupId);
 
+    List<Membership> findByUserId(UUID userId);
+
     List<UUID> findGroupIdsByUserId(UUID userId);
 
     boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

@@ -1,6 +1,7 @@
 package app.lifelinq.features.group.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.group.domain.Group;
@@ -37,5 +38,19 @@ class JpaGroupRepositoryAdapterTest {
 
         Membership membership = new Membership(loaded.get().getId(), UUID.randomUUID(), GroupRole.MEMBER);
         assertEquals(loaded.get().getId(), membership.getGroupId());
+    }
+
+    @Test
+    void deletesById() {
+        JpaGroupRepositoryAdapter adapter = new JpaGroupRepositoryAdapter(
+                groupJpaRepository,
+                new GroupMapper()
+        );
+        Group group = new Group(UUID.randomUUID(), "Home");
+        adapter.save(group);
+
+        adapter.deleteById(group.getId());
+
+        assertFalse(adapter.findById(group.getId()).isPresent());
     }
 }

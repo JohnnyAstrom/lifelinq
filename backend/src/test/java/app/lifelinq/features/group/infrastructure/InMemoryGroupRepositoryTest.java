@@ -1,5 +1,6 @@
 package app.lifelinq.features.group.infrastructure;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import app.lifelinq.features.group.domain.Group;
@@ -19,5 +20,16 @@ class InMemoryGroupRepositoryTest {
         InMemoryGroupRepository repository = new InMemoryGroupRepository();
         Group group = new Group(UUID.randomUUID(), "Home");
         repository.save(group);
+    }
+
+    @Test
+    void deletesById() {
+        InMemoryGroupRepository repository = new InMemoryGroupRepository();
+        Group group = new Group(UUID.randomUUID(), "Home");
+        repository.save(group);
+
+        repository.deleteById(group.getId());
+
+        assertFalse(repository.findById(group.getId()).isPresent());
     }
 }

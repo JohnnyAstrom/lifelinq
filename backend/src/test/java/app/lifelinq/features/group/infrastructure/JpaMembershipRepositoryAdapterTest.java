@@ -70,4 +70,40 @@ class JpaMembershipRepositoryAdapterTest {
 
         assertEquals(List.of(groupId), ids);
     }
+
+    @Test
+    void findsByUserId() {
+        JpaMembershipRepositoryAdapter adapter = new JpaMembershipRepositoryAdapter(
+                membershipJpaRepository,
+                new MembershipMapper()
+        );
+        UUID userId = UUID.randomUUID();
+        adapter.save(new Membership(UUID.randomUUID(), userId, GroupRole.MEMBER));
+        adapter.save(new Membership(UUID.randomUUID(), userId, GroupRole.ADMIN));
+        adapter.save(new Membership(UUID.randomUUID(), UUID.randomUUID(), GroupRole.MEMBER));
+
+        List<Membership> memberships = adapter.findByUserId(userId);
+
+        assertEquals(2, memberships.size());
+        assertTrue(memberships.stream().allMatch(m -> userId.equals(m.getUserId())));
+    }
+
+    @Test
+    @Transactional
+    void deletesByUserId() {
+        JpaMembershipRepositoryAdapter adapter = new JpaMembershipRepositoryAdapter(
+                membershipJpaRepository,
+                new MembershipMapper()
+        );
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        adapter.save(new Membership(UUID.randomUUID(), userId, GroupRole.MEMBER));
+        adapter.save(new Membership(UUID.randomUUID(), userId, GroupRole.ADMIN));
+        adapter.save(new Membership(UUID.randomUUID(), otherUserId, GroupRole.MEMBER));
+
+        adapter.deleteByUserId(userId);
+
+        assertEquals(0, adapter.findByUserId(userId).size());
+        assertEquals(1, adapter.findByUserId(otherUserId).size());
+    }
 }

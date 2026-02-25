@@ -33,4 +33,12 @@ public final class JpaGroupRepositoryAdapter implements GroupRepository {
         }
         return groupJpaRepository.findById(id).map(mapper::toDomain);
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id must not be null");
+        }
+        groupJpaRepository.deleteById(id);
+    }
 }
