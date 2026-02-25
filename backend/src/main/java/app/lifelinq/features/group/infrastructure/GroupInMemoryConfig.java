@@ -1,6 +1,7 @@
 package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
+import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.MembershipRepository;
@@ -39,5 +40,10 @@ public class GroupInMemoryConfig {
             GroupRepository groupRepository
     ) {
         return new UserAccountDeletionGovernanceAdapter(membershipRepository, groupRepository);
+    }
+
+    @Bean
+    public UserGroupMembershipLookup userGroupMembershipLookup(MembershipRepository membershipRepository) {
+        return new UserGroupMembershipLookupAdapter(membershipRepository);
     }
 }
