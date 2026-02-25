@@ -14,11 +14,12 @@ import app.lifelinq.features.household.domain.Membership;
 import app.lifelinq.features.household.domain.MembershipRepository;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.application.MealsShoppingAccessDeniedException;
+import app.lifelinq.features.meals.application.MealsShoppingDuplicateItemException;
+import app.lifelinq.features.meals.application.MealsShoppingListNotFoundException;
 import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.PlannedMealView;
-import app.lifelinq.features.shopping.domain.DuplicateShoppingItemNameException;
-import app.lifelinq.features.shopping.domain.ShoppingListNotFoundException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -134,7 +135,7 @@ class MealsControllerTest {
         membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        Mockito.doThrow(new app.lifelinq.features.shopping.application.AccessDeniedException("Access denied"))
+        Mockito.doThrow(new MealsShoppingAccessDeniedException("Access denied"))
                 .when(mealsApplicationService)
                 .addOrReplaceMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
 
@@ -154,7 +155,7 @@ class MealsControllerTest {
         membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        Mockito.doThrow(new ShoppingListNotFoundException(targetListId))
+        Mockito.doThrow(new MealsShoppingListNotFoundException("list not found: " + targetListId))
                 .when(mealsApplicationService)
                 .addOrReplaceMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
 
@@ -174,7 +175,7 @@ class MealsControllerTest {
         membershipRepository.withMembership(userId, householdId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        Mockito.doThrow(new DuplicateShoppingItemNameException("pasta"))
+        Mockito.doThrow(new MealsShoppingDuplicateItemException("item name must be unique within list: pasta"))
                 .when(mealsApplicationService)
                 .addOrReplaceMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
 
