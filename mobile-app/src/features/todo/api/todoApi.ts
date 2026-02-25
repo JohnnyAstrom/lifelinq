@@ -2,7 +2,7 @@ import { fetchJson } from '../../../shared/api/client';
 
 export type TodoResponse = {
   id: string;
-  householdId: string;
+  groupId: string;
   text: string;
   status: 'OPEN' | 'COMPLETED';
   scope?: 'DAY' | 'WEEK' | 'MONTH' | 'LATER' | null;

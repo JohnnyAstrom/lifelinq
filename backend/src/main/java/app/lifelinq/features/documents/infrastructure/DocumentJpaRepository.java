@@ -11,22 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface DocumentJpaRepository extends JpaRepository<DocumentEntity, UUID> {
     @EntityGraph(attributePaths = "tags")
-    List<DocumentEntity> findByHouseholdIdOrderByCreatedAtDescIdAsc(UUID householdId);
+    List<DocumentEntity> findByGroupIdOrderByCreatedAtDescIdAsc(UUID groupId);
 
     @EntityGraph(attributePaths = "tags")
     @Query("""
             select d
             from DocumentEntity d
-            where d.householdId = :householdId
+            where d.groupId = :groupId
               and (
                   lower(d.title) like lower(concat('%', :query, '%'))
                   or lower(coalesce(d.notes, '')) like lower(concat('%', :query, '%'))
               )
             order by d.createdAt desc, d.id asc
             """)
-    List<DocumentEntity> searchByHouseholdIdAndText(@Param("householdId") UUID householdId, @Param("query") String query);
+    List<DocumentEntity> searchByGroupIdAndText(@Param("groupId") UUID groupId, @Param("query") String query);
 
     @Modifying
     @Transactional
-    long deleteByIdAndHouseholdId(UUID id, UUID householdId);
+    long deleteByIdAndGroupId(UUID id, UUID groupId);
 }

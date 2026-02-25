@@ -10,7 +10,7 @@ public interface TodoRepository {
 
     void save(Todo todo);
 
-    List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter);
+    List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter);
 
-    List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate);
+    List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate);
 }

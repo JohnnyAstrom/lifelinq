@@ -22,7 +22,7 @@ class JwtVerifierTest {
 
         JwtClaims claims = new JwtVerifier(SECRET).verify(token);
 
-        assertNull(claims.getHouseholdId());
+        assertNull(claims.getGroupId());
         assertEquals(userId, claims.getUserId());
     }
 

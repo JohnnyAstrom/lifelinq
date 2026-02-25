@@ -3,11 +3,11 @@ package app.lifelinq.features.meals.integration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import app.lifelinq.features.household.domain.Household;
-import app.lifelinq.features.household.domain.HouseholdRepository;
-import app.lifelinq.features.household.domain.HouseholdRole;
-import app.lifelinq.features.household.domain.Membership;
-import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.group.domain.Group;
+import app.lifelinq.features.group.domain.GroupRepository;
+import app.lifelinq.features.group.domain.GroupRole;
+import app.lifelinq.features.group.domain.Membership;
+import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.RecipeView;
@@ -31,7 +31,7 @@ import org.springframework.test.context.ActiveProfiles;
 class MealsShoppingIntegrationTest {
 
     @Autowired
-    private HouseholdRepository householdRepository;
+    private GroupRepository groupRepository;
 
     @Autowired
     private MembershipRepository membershipRepository;
@@ -47,19 +47,19 @@ class MealsShoppingIntegrationTest {
 
     @Test
     void addMealPushesIngredientsToList() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        householdRepository.save(new Household(householdId, "Home"));
-        membershipRepository.save(new Membership(householdId, userId, HouseholdRole.OWNER));
+        groupRepository.save(new Group(groupId, "Home"));
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.OWNER));
 
         CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
-                householdId,
+                groupId,
                 userId,
                 "Groceries"
         );
 
         RecipeView recipe = mealsApplicationService.createRecipe(
-                householdId,
+                groupId,
                 userId,
                 "Pasta",
                 List.of(
@@ -69,7 +69,7 @@ class MealsShoppingIntegrationTest {
         );
 
         mealsApplicationService.addOrReplaceMeal(
-                householdId,
+                groupId,
                 userId,
                 2025,
                 10,
@@ -89,19 +89,19 @@ class MealsShoppingIntegrationTest {
 
     @Test
     void duplicateIngredientNamesCreateSeparateItems() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        householdRepository.save(new Household(householdId, "Home"));
-        membershipRepository.save(new Membership(householdId, userId, HouseholdRole.OWNER));
+        groupRepository.save(new Group(groupId, "Home"));
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.OWNER));
 
         CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
-                householdId,
+                groupId,
                 userId,
                 "Groceries"
         );
 
         RecipeView recipe = mealsApplicationService.createRecipe(
-                householdId,
+                groupId,
                 userId,
                 "Salad",
                 List.of(
@@ -111,7 +111,7 @@ class MealsShoppingIntegrationTest {
         );
 
         mealsApplicationService.addOrReplaceMeal(
-                householdId,
+                groupId,
                 userId,
                 2025,
                 10,

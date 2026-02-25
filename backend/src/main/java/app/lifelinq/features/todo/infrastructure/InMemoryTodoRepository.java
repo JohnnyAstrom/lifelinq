@@ -33,16 +33,16 @@ public final class InMemoryTodoRepository implements TodoRepository {
     }
 
     @Override
-    public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (statusFilter == null) {
             throw new IllegalArgumentException("statusFilter must not be null");
         }
         List<Todo> result = new ArrayList<>();
         for (Todo todo : byId.values()) {
-            if (!householdId.equals(todo.getHouseholdId())) {
+            if (!groupId.equals(todo.getGroupId())) {
                 continue;
             }
             if (todo.isDeleted()) {
@@ -58,9 +58,9 @@ public final class InMemoryTodoRepository implements TodoRepository {
     }
 
     @Override
-    public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (startDate == null) {
             throw new IllegalArgumentException("startDate must not be null");
@@ -70,7 +70,7 @@ public final class InMemoryTodoRepository implements TodoRepository {
         }
         List<Todo> result = new ArrayList<>();
         for (Todo todo : byId.values()) {
-            if (!householdId.equals(todo.getHouseholdId())) {
+            if (!groupId.equals(todo.getGroupId())) {
                 continue;
             }
             if (todo.isDeleted()) {

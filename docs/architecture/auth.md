@@ -12,11 +12,11 @@ Authorization answers **what a user may do**.
 LifeLinq distinguishes clearly between:
 
 - User – a real person
-- Household – a shared context
+- Group – a shared context
 - Membership – the relationship between them
 
 Users do not own data.
-Households own data.
+Groups own data.
 
 ---
 
@@ -24,16 +24,18 @@ Households own data.
 
 The backend currently derives request context from a **JWT Bearer token**:
 
+See `docs/architecture/context-model.md` for the canonical context model and current-vs-intended scoping behavior.
+
 - `Authorization: Bearer <token>`
 - Required claims: `userId`, `exp`
 - Optional claims: `iss`, `aud`
 
 Tokens are **validated for signature and expiration**. If missing or invalid, the request is rejected with **401**.
 
-After validation, the server resolves **household context**:
-- If the user has exactly one household membership → use it.
-- If the user has none → continue with `householdId = null` (endpoints requiring scope return 401).
-- If the user has multiple → return **401** (active household selection not implemented yet).
+After validation, the server resolves **group context**:
+- If the user has exactly one group membership → use it.
+- If the user has none → continue with `groupId = null` (endpoints requiring scope return 401).
+- If the user has multiple → return **401** (active group selection not implemented yet).
 
 This is a **minimal scoping layer** only:
 - no OAuth flow
@@ -42,7 +44,7 @@ This is a **minimal scoping layer** only:
 
 ## Current identity endpoint (minimal)
 
-`GET /me` returns the current request context (userId and householdId).
+`GET /me` returns the current request context (userId and groupId).
 If there is no authenticated context, the endpoint returns **401**.
 
 ---
@@ -93,8 +95,8 @@ Planned authentication flow (future):
 Authorization is enforced server-side.
 
 Access is determined by:
-- household membership
-- role within the household
+- group membership
+- role within the group
 
 Roles are intentionally simple:
 - owner
@@ -112,20 +114,20 @@ Tokens contain:
 
 Tokens do not contain:
 - business data
-- household context (current)
+- group context (current)
 - roles or permissions (current)
 
 ---
 
-## Household context
+## Group context
 
-Clients never choose a household.
+Clients never choose a group.
 
-Household context is always:
+Group context is always:
 - derived server-side from membership
 - validated server-side
 
-Switching households requires an explicit active-household selection (not implemented yet).
+Switching groups requires an explicit active-group selection (not implemented yet).
 
 ---
 
@@ -143,7 +145,7 @@ Switching households requires an explicit active-household selection (not implem
 Authentication establishes identity.
 Authorization establishes context.
 
-Both are enforced strictly to protect shared household data.
+Both are enforced strictly to protect shared group data.
 
 ---
 
@@ -162,7 +164,7 @@ These are architectural guidelines only and do not reflect current code.
 
 ## Invite Tokens vs Auth Tokens
 
-Invite tokens are **domain‑specific, one‑time tokens** used only to accept household invitations.
+Invite tokens are **domain‑specific, one‑time tokens** used only to accept group invitations.
 
 Invite tokens:
 - are **not** access or refresh tokens

@@ -3,18 +3,18 @@ package app.lifelinq.features.todo.application;
 import java.util.UUID;
 
 final class TodoMonthQuery {
-    private final UUID householdId;
+    private final UUID groupId;
     private final int year;
     private final int month;
 
-    TodoMonthQuery(UUID householdId, int year, int month) {
-        this.householdId = householdId;
+    TodoMonthQuery(UUID groupId, int year, int month) {
+        this.groupId = groupId;
         this.year = year;
         this.month = month;
     }
 
-    UUID getHouseholdId() {
-        return householdId;
+    UUID getGroupId() {
+        return groupId;
     }
 
     int getYear() {

@@ -21,7 +21,7 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
 
     @Override
     public void addShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             String itemName,
@@ -30,7 +30,7 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
     ) {
         try {
             shoppingApplicationService.addShoppingItem(
-                    householdId,
+                    groupId,
                     actorUserId,
                     listId,
                     itemName,

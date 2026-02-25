@@ -7,7 +7,7 @@ import java.util.UUID;
 public interface DocumentRepository {
     void save(DocumentItem item);
 
-    List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q);
+    List<DocumentItem> findByGroupId(UUID groupId, Optional<String> q);
 
-    boolean deleteByIdAndHouseholdId(UUID id, UUID householdId);
+    boolean deleteByIdAndGroupId(UUID id, UUID groupId);
 }

@@ -10,7 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
+import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
@@ -36,11 +36,11 @@ class MealsApplicationServiceTest {
 
     @Test
     void addMealPushesIngredientsInPositionOrderWithLockedNormalization() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
         MealsShoppingPort shopping = mock(MealsShoppingPort.class);
@@ -54,7 +54,7 @@ class MealsApplicationServiceTest {
 
         recipes.save(new Recipe(
                 recipeId,
-                householdId,
+                groupId,
                 "Dinner",
                 Instant.parse("2026-01-01T00:00:00Z"),
                 List.of(
@@ -76,7 +76,7 @@ class MealsApplicationServiceTest {
         ));
 
         service.addOrReplaceMeal(
-                householdId,
+                groupId,
                 userId,
                 2026,
                 5,
@@ -88,7 +88,7 @@ class MealsApplicationServiceTest {
 
         InOrder order = inOrder(shopping);
         order.verify(shopping).addShoppingItem(
-                eq(householdId),
+                eq(groupId),
                 eq(userId),
                 eq(listId),
                 eq("olive oil"),
@@ -96,7 +96,7 @@ class MealsApplicationServiceTest {
                 eq("DL")
         );
         order.verify(shopping).addShoppingItem(
-                eq(householdId),
+                eq(groupId),
                 eq(userId),
                 eq(listId),
                 eq("tomato"),
@@ -107,11 +107,11 @@ class MealsApplicationServiceTest {
 
     @Test
     void duplicateIngredientNamesArePushedAsSeparateOccurrences() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
         MealsShoppingPort shopping = mock(MealsShoppingPort.class);
@@ -125,7 +125,7 @@ class MealsApplicationServiceTest {
 
         recipes.save(new Recipe(
                 recipeId,
-                householdId,
+                groupId,
                 "Soup",
                 Instant.parse("2026-01-01T00:00:00Z"),
                 List.of(
@@ -134,17 +134,17 @@ class MealsApplicationServiceTest {
                 )
         ));
 
-        service.addOrReplaceMeal(householdId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId);
+        service.addOrReplaceMeal(groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId);
 
-        verify(shopping, times(2)).addShoppingItem(householdId, userId, listId, "tomato", null, null);
+        verify(shopping, times(2)).addShoppingItem(groupId, userId, listId, "tomato", null, null);
     }
 
     @Test
-    void recipeMissingInHouseholdFailsAndNoShoppingCallsAreMade() {
-        UUID householdId = UUID.randomUUID();
+    void recipeMissingInGroupFailsAndNoShoppingCallsAreMade() {
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
-        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
         MealsShoppingPort shopping = mock(MealsShoppingPort.class);
@@ -157,7 +157,7 @@ class MealsApplicationServiceTest {
         );
 
         assertThatThrownBy(() -> service.addOrReplaceMeal(
-                householdId,
+                groupId,
                 userId,
                 2026,
                 5,
@@ -172,9 +172,9 @@ class MealsApplicationServiceTest {
 
     @Test
     void createRecipeRejectsDuplicatePositions() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
         MealsApplicationService service = new MealsApplicationService(
                 new InMemoryWeekPlanRepository(),
                 new InMemoryRecipeRepository(),
@@ -184,7 +184,7 @@ class MealsApplicationServiceTest {
         );
 
         assertThatThrownBy(() -> service.createRecipe(
-                householdId,
+                groupId,
                 userId,
                 "Recipe",
                 List.of(
@@ -197,10 +197,10 @@ class MealsApplicationServiceTest {
 
     @Test
     void getWeekPlanUsesRuntimeRecipeNameLookup() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
-        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
         MealsApplicationService service = new MealsApplicationService(
@@ -213,7 +213,7 @@ class MealsApplicationServiceTest {
 
         recipes.save(new Recipe(
                 recipeId,
-                householdId,
+                groupId,
                 "Old Name",
                 Instant.parse("2026-01-01T00:00:00Z"),
                 List.of(new app.lifelinq.features.meals.domain.Ingredient(
@@ -221,30 +221,30 @@ class MealsApplicationServiceTest {
         ));
 
         service.addOrReplaceMeal(
-                householdId, userId, 2026, 5, 1, MealType.DINNER, recipeId, null
+                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, null
         );
 
         recipes.save(new Recipe(
                 recipeId,
-                householdId,
+                groupId,
                 "New Name",
                 Instant.parse("2026-01-01T00:00:00Z"),
                 List.of(new app.lifelinq.features.meals.domain.Ingredient(
                         UUID.randomUUID(), "Tomato", null, null, 1))
         ));
 
-        var weekPlan = service.getWeekPlan(householdId, userId, 2026, 5);
+        var weekPlan = service.getWeekPlan(groupId, userId, 2026, 5);
         assertThat(weekPlan.meals()).hasSize(1);
         assertThat(weekPlan.meals().get(0).recipeTitle()).isEqualTo("New Name");
     }
 
     @Test
     void addMealPushUsesCurrentRecipeIngredientsForSameRecipeId() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        EnsureHouseholdMemberUseCase membership = (h, u) -> {};
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
         InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
         InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
         MealsShoppingPort shopping = mock(MealsShoppingPort.class);
@@ -258,7 +258,7 @@ class MealsApplicationServiceTest {
 
         recipes.save(new Recipe(
                 recipeId,
-                householdId,
+                groupId,
                 "Recipe",
                 Instant.parse("2026-01-01T00:00:00Z"),
                 List.of(new app.lifelinq.features.meals.domain.Ingredient(
@@ -266,12 +266,12 @@ class MealsApplicationServiceTest {
         ));
 
         service.addOrReplaceMeal(
-                householdId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
+                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
         );
 
         recipes.save(new Recipe(
                 recipeId,
-                householdId,
+                groupId,
                 "Recipe",
                 Instant.parse("2026-01-01T00:00:00Z"),
                 List.of(new app.lifelinq.features.meals.domain.Ingredient(
@@ -279,12 +279,12 @@ class MealsApplicationServiceTest {
         ));
 
         service.addOrReplaceMeal(
-                householdId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
+                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
         );
 
         InOrder order = inOrder(shopping);
-        order.verify(shopping).addShoppingItem(householdId, userId, listId, "tomato", null, null);
-        order.verify(shopping).addShoppingItem(householdId, userId, listId, "onion", null, null);
+        order.verify(shopping).addShoppingItem(groupId, userId, listId, "tomato", null, null);
+        order.verify(shopping).addShoppingItem(groupId, userId, listId, "onion", null, null);
     }
 
     private static final class InMemoryWeekPlanRepository implements WeekPlanRepository {
@@ -297,9 +297,9 @@ class MealsApplicationServiceTest {
         }
 
         @Override
-        public Optional<WeekPlan> findByHouseholdAndWeek(UUID householdId, int year, int isoWeek) {
+        public Optional<WeekPlan> findByGroupAndWeek(UUID groupId, int year, int isoWeek) {
             return byId.values().stream()
-                    .filter(plan -> plan.getHouseholdId().equals(householdId))
+                    .filter(plan -> plan.getGroupId().equals(groupId))
                     .filter(plan -> plan.getYear() == year)
                     .filter(plan -> plan.getIsoWeek() == isoWeek)
                     .findFirst();
@@ -321,19 +321,19 @@ class MealsApplicationServiceTest {
         }
 
         @Override
-        public Optional<Recipe> findByIdAndHouseholdId(UUID recipeId, UUID householdId) {
+        public Optional<Recipe> findByIdAndGroupId(UUID recipeId, UUID groupId) {
             Recipe recipe = recipes.get(recipeId);
-            if (recipe == null || !recipe.getHouseholdId().equals(householdId)) {
+            if (recipe == null || !recipe.getGroupId().equals(groupId)) {
                 return Optional.empty();
             }
             return Optional.of(recipe);
         }
 
         @Override
-        public List<Recipe> findByHouseholdId(UUID householdId) {
+        public List<Recipe> findByGroupId(UUID groupId) {
             List<Recipe> result = new ArrayList<>();
             for (Recipe recipe : recipes.values()) {
-                if (recipe.getHouseholdId().equals(householdId)) {
+                if (recipe.getGroupId().equals(groupId)) {
                     result.add(recipe);
                 }
             }
@@ -341,11 +341,11 @@ class MealsApplicationServiceTest {
         }
 
         @Override
-        public List<Recipe> findByHouseholdIdAndIds(UUID householdId, Set<UUID> recipeIds) {
+        public List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds) {
             List<Recipe> result = new ArrayList<>();
             for (UUID recipeId : recipeIds) {
                 Recipe recipe = recipes.get(recipeId);
-                if (recipe != null && recipe.getHouseholdId().equals(householdId)) {
+                if (recipe != null && recipe.getGroupId().equals(groupId)) {
                     result.add(recipe);
                 }
             }

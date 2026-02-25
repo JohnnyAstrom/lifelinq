@@ -43,12 +43,12 @@ public final class JpaShoppingListRepositoryAdapter implements ShoppingListRepos
     }
 
     @Override
-    public List<ShoppingList> findByHouseholdId(UUID householdId) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<ShoppingList> findByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         List<ShoppingList> result = new ArrayList<>();
-        for (ShoppingListEntity entity : repository.findByHouseholdId(householdId)) {
+        for (ShoppingListEntity entity : repository.findByGroupId(groupId)) {
             result.add(mapper.toDomain(entity));
         }
         return result;

@@ -14,12 +14,12 @@ to reflect the current storage structure.
 Represents a real person.
 
 - authenticated via external provider
-- may belong to multiple households
+- may belong to multiple groups
 - does not own domain data
 
 ---
 
-### Household
+### Group
 
 Represents a shared context.
 
@@ -31,7 +31,7 @@ Represents a shared context.
 
 ### Membership
 
-Connects a user to a household.
+Connects a user to a group.
 
 - defines role
 - defines participation
@@ -41,7 +41,7 @@ Connects a user to a household.
 
 ## Domain entities
 
-All domain entities belong to a household.
+All domain entities belong to a group.
 
 ### TodoItem
 
@@ -53,7 +53,7 @@ All domain entities belong to a household.
 - optional recurrence
 - optional assignee
 - assignment is coordination only, not ownership
-- any household member may reassign or clear assignment
+- any group member may reassign or clear assignment
 - `createdAt` (required)
 - `completedAt` (optional)
 - optional calendar sync reference (external event id + provider)
@@ -69,7 +69,7 @@ All domain entities belong to a household.
 ### MealPlan
 
 - weekly planning surface for meals
-- composed of day entries within a household
+- composed of day entries within a group
 - supports history and forward planning (via week navigation)
 
 ### MealEntry
@@ -90,7 +90,7 @@ All domain entities belong to a household.
 
 ### ShoppingList
 
-- a named list within a household
+- a named list within a group
 - can be created ad hoc
 - holds ShoppingItems derived from recipes or manual input
 
@@ -102,22 +102,22 @@ All domain entities belong to a household.
 - optimized for retrieval
 - metadata-first in V0
 - local attachments in V0.5 (creator-only storage)
-- cloud attachments in V1 (household shared)
+- cloud attachments in V1 (group shared)
 
 ---
 
 ## Ownership rules
 
 - Users never own domain entities
-- Households own all domain entities
+- Groups own all domain entities
 - Membership controls access, not ownership
 
 ---
 
 ## Relationships
 
-- User ↔ Household: many-to-many via Membership
-- Household → Domain entities: one-to-many
+- User ↔ Group: many-to-many via Membership
+- Group → Domain entities: one-to-many
 
 ---
 
@@ -134,7 +134,7 @@ All domain entities belong to a household.
 This section describes a **long-term, stable core** for each domain object.
 It is a guiding target, not a strict implementation requirement.
 
-### Household
+### Group
 
 - `id` (core)
 - `name` (core)
@@ -143,7 +143,7 @@ It is a guiding target, not a strict implementation requirement.
 
 ### Membership
 
-- `householdId` (core)
+- `groupId` (core)
 - `userId` (core)
 - `role` (core)
 - `createdAt` (core)
@@ -151,7 +151,7 @@ It is a guiding target, not a strict implementation requirement.
 ### Invitation
 
 - `id` (core)
-- `householdId` (core)
+- `groupId` (core)
 - `inviteeEmail` (core)
 - `token` (core)
 - `expiresAt` (core)
@@ -161,7 +161,7 @@ It is a guiding target, not a strict implementation requirement.
 ### TodoItem
 
 - `id` (core)
-- `householdId` (core)
+- `groupId` (core)
 - `text` (core)
 - `status` (core)
 - `createdAt` (core)
@@ -183,7 +183,7 @@ It is a guiding target, not a strict implementation requirement.
 ### ShoppingList
 
 - `id` (core)
-- `householdId` (core)
+- `groupId` (core)
 - `name` (core)
 - `createdAt` (core)
 
@@ -202,7 +202,7 @@ It is a guiding target, not a strict implementation requirement.
 ### MealPlan
 
 - `id` (core)
-- `householdId` (core)
+- `groupId` (core)
 - `weekStart` (core)
 - `createdAt` (core)
 
@@ -218,7 +218,7 @@ It is a guiding target, not a strict implementation requirement.
 ### Recipe
 
 - `id` (core)
-- `householdId` (core)
+- `groupId` (core)
 - `name` (core)
 - `createdAt` (core)
 - `instructions` (later)
@@ -235,7 +235,7 @@ It is a guiding target, not a strict implementation requirement.
 ### DocumentItem
 
 - `id` (core)
-- `householdId` (core)
+- `groupId` (core)
 - `title` (core)
 - `createdAt` (core)
 - `notes` (later)
@@ -254,42 +254,42 @@ This is a structural overview of tables and relations that are implemented today
 ### Tables
 
 - `users`: `id`
-- `households`: `id`, `name`
-- `todos`: `id`, `household_id`, `text`, `status`, `scope`, `due_date`, `due_time`, `scope_year`, `scope_week`, `scope_month`, `created_at`, `completed_at`, `deleted_at`
-- `documents`: `id`, `household_id`, `created_by_user_id`, `title`, `notes`, `date`, `category`, `external_link`, `created_at`
+- `groups`: `id`, `name`
+- `todos`: `id`, `group_id`, `text`, `status`, `scope`, `due_date`, `due_time`, `scope_year`, `scope_week`, `scope_month`, `created_at`, `completed_at`, `deleted_at`
+- `documents`: `id`, `group_id`, `created_by_user_id`, `title`, `notes`, `date`, `category`, `external_link`, `created_at`
 - `document_tags`: `document_id`, `tag`
-- `week_plans`: `id`, `household_id`, `week_year`, `iso_week`, `created_at`
+- `week_plans`: `id`, `group_id`, `week_year`, `iso_week`, `created_at`
 - `planned_meals`: composite key (`week_plan_id`, `day_of_week`, `meal_type`), `recipe_id`
-- `recipes`: `id`, `household_id`, `name`, `created_at`
+- `recipes`: `id`, `group_id`, `name`, `created_at`
 - `recipe_ingredients`: `id`, `recipe_id`, `name`, `quantity`, `unit`, `position`
-- `shopping_lists`: `id`, `household_id`, `name`, `created_at`
+- `shopping_lists`: `id`, `group_id`, `name`, `created_at`
 - `shopping_items`: `id`, `list_id`, `name`, `status`, `quantity`, `unit`, `created_at`, `bought_at`
-- `memberships`: composite key (`household_id`, `user_id`), `role`
-- `invitations`: `id`, `household_id`, `invitee_email`, `token`, `expires_at`, `status`
+- `memberships`: composite key (`group_id`, `user_id`), `role`
+- `invitations`: `id`, `group_id`, `invitee_email`, `token`, `expires_at`, `status`
 
 ### Relations (ID‑based)
 
-- `todos.household_id` → `households.id`
-- `documents.household_id` → `households.id`
+- `todos.group_id` → `groups.id`
+- `documents.group_id` → `groups.id`
 - `document_tags.document_id` → `documents.id`
-- `week_plans.household_id` → `households.id`
+- `week_plans.group_id` → `groups.id`
 - `planned_meals.week_plan_id` → `week_plans.id`
 - `planned_meals.recipe_id` → `recipes.id`
-- `recipes.household_id` → `households.id`
+- `recipes.group_id` → `groups.id`
 - `recipe_ingredients.recipe_id` → `recipes.id`
-- `shopping_lists.household_id` → `households.id`
+- `shopping_lists.group_id` → `groups.id`
 - `shopping_items.list_id` → `shopping_lists.id`
-- `memberships.household_id` → `households.id`
-- `invitations.household_id` → `households.id`
+- `memberships.group_id` → `groups.id`
+- `invitations.group_id` → `groups.id`
 
 ### ASCII Sketch
 
 ```text
-households (id)
+groups (id)
   ↑            ↑            ↑             ↑             ↑
   │            │            │             │             │
 todos          memberships  invitations   week_plans    recipes
-(household_id) (household_id, user_id) (household_id) (household_id) (household_id)
+(group_id) (group_id, user_id) (group_id) (group_id) (group_id)
 
 week_plans (id)            recipes (id)
   ↑                         ↑
@@ -297,7 +297,7 @@ week_plans (id)            recipes (id)
 planned_meals               recipe_ingredients
 (week_plan_id, recipe_id)   (recipe_id)
 
-shopping_lists (id, household_id)
+shopping_lists (id, group_id)
   ↑
   │
 shopping_items (list_id)
@@ -305,14 +305,14 @@ shopping_items (list_id)
 
 ### Constraints
 
-- `memberships` primary key is (`household_id`, `user_id`)
+- `memberships` primary key is (`group_id`, `user_id`)
 - `invitations.token` is unique
 - `invitations.status` is `ACTIVE` or `REVOKED`; expired is derived from `expires_at`
 
 ### Aggregate boundaries
 
-- `household` is the aggregate root for `memberships` and `invitations`
-- `todo` is its own aggregate, bound to `household_id`
+- `group` is the aggregate root for `memberships` and `invitations`
+- `todo` is its own aggregate, bound to `group_id`
 - `shopping_list` is the aggregate root for `shopping_items`
 
 ---
@@ -323,28 +323,28 @@ This is a target structure based on the current architecture plan.
 
 ### Tables (planned)
 
-- `meal_plans`: `id`, `household_id`, `week_start`
+- `meal_plans`: `id`, `group_id`, `week_start`
 - `meal_entries`: `id`, `meal_plan_id`, `date`, `slot`, `recipe_id`
-- `recipes`: `id`, `household_id`, `name`
+- `recipes`: `id`, `group_id`, `name`
 - `recipe_ingredients`: `id`, `recipe_id`, `name`, `quantity`, `unit`
-- `shopping_lists`: `id`, `household_id`, `name`
+- `shopping_lists`: `id`, `group_id`, `name`
 - `shopping_items`: `id`, `shopping_list_id`, `name`, `status`
-- `document_items`: `id`, `household_id`, `title`, `notes`, `category`, `tags`, `external_link`
+- `document_items`: `id`, `group_id`, `title`, `notes`, `category`, `tags`, `external_link`
 
 ### Relations (planned, ID‑based)
 
-- `meal_plans.household_id` → `households.id`
+- `meal_plans.group_id` → `groups.id`
 - `meal_entries.meal_plan_id` → `meal_plans.id`
-- `recipes.household_id` → `households.id`
+- `recipes.group_id` → `groups.id`
 - `recipe_ingredients.recipe_id` → `recipes.id`
-- `shopping_lists.household_id` → `households.id`
+- `shopping_lists.group_id` → `groups.id`
 - `shopping_items.shopping_list_id` → `shopping_lists.id`
-- `document_items.household_id` → `households.id`
+- `document_items.group_id` → `groups.id`
 
 ---
 
 ## Summary
 
-The data model reinforces LifeLinq’s household-first philosophy.
+The data model reinforces LifeLinq’s group-first philosophy.
 
 Technical persistence details are intentionally excluded.

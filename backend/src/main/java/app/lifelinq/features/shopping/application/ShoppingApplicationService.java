@@ -1,6 +1,6 @@
 package app.lifelinq.features.shopping.application;
 
-import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
+import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.shopping.contract.AddShoppingItemOutput;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.contract.ShoppingItemStatusView;
@@ -25,66 +25,66 @@ import org.springframework.transaction.annotation.Transactional;
 
 public class ShoppingApplicationService {
     private final ShoppingListRepository shoppingListRepository;
-    private final EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase;
+    private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final Clock clock;
 
     public ShoppingApplicationService(
             ShoppingListRepository shoppingListRepository,
-            EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase,
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             Clock clock
     ) {
         if (shoppingListRepository == null) {
             throw new IllegalArgumentException("shoppingListRepository must not be null");
         }
-        if (ensureHouseholdMemberUseCase == null) {
-            throw new IllegalArgumentException("ensureHouseholdMemberUseCase must not be null");
+        if (ensureGroupMemberUseCase == null) {
+            throw new IllegalArgumentException("ensureGroupMemberUseCase must not be null");
         }
         if (clock == null) {
             throw new IllegalArgumentException("clock must not be null");
         }
         this.shoppingListRepository = shoppingListRepository;
-        this.ensureHouseholdMemberUseCase = ensureHouseholdMemberUseCase;
+        this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.clock = clock;
     }
 
     @Transactional
     public CreateShoppingListOutput createShoppingList(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             String name
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
         String normalizedName = normalizeListName(name);
         UUID listId = UUID.randomUUID();
-        List<ShoppingList> existingLists = loadOrderedLists(householdId);
+        List<ShoppingList> existingLists = loadOrderedLists(groupId);
         normalizeOrderAndPersist(existingLists);
         int nextOrderIndex = existingLists.size();
-        ShoppingList list = new ShoppingList(listId, householdId, normalizedName, nextOrderIndex, clock.instant());
+        ShoppingList list = new ShoppingList(listId, groupId, normalizedName, nextOrderIndex, clock.instant());
         shoppingListRepository.save(list);
         return new CreateShoppingListOutput(listId, normalizedName);
     }
 
     @Transactional
     public AddShoppingItemOutput addShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             String itemName
     ) {
-        return addShoppingItem(householdId, actorUserId, listId, itemName, null, null);
+        return addShoppingItem(groupId, actorUserId, listId, itemName, null, null);
     }
 
     @Transactional
     public AddShoppingItemOutput addShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             String itemName,
             BigDecimal quantity,
             ShoppingUnit unit
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        ShoppingList list = getListForHousehold(householdId, listId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        ShoppingList list = getListForGroup(groupId, listId);
         String normalizedName = normalizeItemName(itemName);
         UUID itemId = UUID.randomUUID();
         Instant now = clock.instant();
@@ -105,13 +105,13 @@ public class ShoppingApplicationService {
 
     @Transactional
     public ToggleShoppingItemOutput toggleShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             UUID itemId
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        ShoppingList list = getListForHousehold(householdId, listId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        ShoppingList list = getListForGroup(groupId, listId);
         list.toggleItem(itemId, clock.instant());
         shoppingListRepository.save(list);
         ShoppingItem item = list.getItemOrThrow(itemId);
@@ -125,46 +125,46 @@ public class ShoppingApplicationService {
 
     @Transactional
     public void removeShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             UUID itemId
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        ShoppingList list = getListForHousehold(householdId, listId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        ShoppingList list = getListForGroup(groupId, listId);
         list.removeItem(itemId);
         shoppingListRepository.save(list);
     }
 
     @Transactional
     public void reorderShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             UUID itemId,
             String direction
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        ShoppingList list = getListForHousehold(householdId, listId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        ShoppingList list = getListForGroup(groupId, listId);
         list.reorderOpenItem(itemId, direction);
         shoppingListRepository.save(list);
     }
 
     @Transactional
     public void removeShoppingList(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        getListForHousehold(householdId, listId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        getListForGroup(groupId, listId);
         shoppingListRepository.deleteById(listId);
-        normalizeOrderAndPersist(loadOrderedLists(householdId));
+        normalizeOrderAndPersist(loadOrderedLists(groupId));
     }
 
     @Transactional
     public ShoppingItemView updateShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             UUID itemId,
@@ -172,8 +172,8 @@ public class ShoppingApplicationService {
             BigDecimal quantity,
             ShoppingUnit unit
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        ShoppingList list = getListForHousehold(householdId, listId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        ShoppingList list = getListForGroup(groupId, listId);
         String normalizedName = normalizeItemName(name);
         list.updateItem(itemId, normalizedName, quantity, unit);
         shoppingListRepository.save(list);
@@ -181,9 +181,9 @@ public class ShoppingApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<ShoppingListView> listShoppingLists(UUID householdId, UUID actorUserId) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        List<ShoppingList> lists = loadOrderedLists(householdId);
+    public List<ShoppingListView> listShoppingLists(UUID groupId, UUID actorUserId) {
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        List<ShoppingList> lists = loadOrderedLists(groupId);
         List<ShoppingListView> result = new ArrayList<>();
         for (ShoppingList list : lists) {
             result.add(toView(list));
@@ -193,13 +193,13 @@ public class ShoppingApplicationService {
 
     @Transactional
     public void reorderShoppingList(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             String direction
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        List<ShoppingList> lists = loadOrderedLists(householdId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        List<ShoppingList> lists = loadOrderedLists(groupId);
         normalizeOrderAndPersist(lists);
         int currentIndex = findIndexById(lists, listId);
         int targetIndex;
@@ -223,33 +223,33 @@ public class ShoppingApplicationService {
 
     @Transactional
     public ShoppingListView updateShoppingListName(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             String name
     ) {
-        ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
-        ShoppingList list = getListForHousehold(householdId, listId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        ShoppingList list = getListForGroup(groupId, listId);
         String normalizedName = normalizeListName(name);
         list.rename(normalizedName);
         shoppingListRepository.save(list);
         return toView(list);
     }
 
-    private ShoppingList getListForHousehold(UUID householdId, UUID listId) {
+    private ShoppingList getListForGroup(UUID groupId, UUID listId) {
         if (listId == null) {
             throw new IllegalArgumentException("listId must not be null");
         }
         ShoppingList list = shoppingListRepository.findById(listId)
                 .orElseThrow(() -> new ShoppingListNotFoundException(listId));
-        if (!list.getHouseholdId().equals(householdId)) {
-            throw new AccessDeniedException("List does not belong to household");
+        if (!list.getGroupId().equals(groupId)) {
+            throw new AccessDeniedException("List does not belong to group");
         }
         return list;
     }
 
-    private List<ShoppingList> loadOrderedLists(UUID householdId) {
-        List<ShoppingList> lists = new ArrayList<>(shoppingListRepository.findByHouseholdId(householdId));
+    private List<ShoppingList> loadOrderedLists(UUID groupId) {
+        List<ShoppingList> lists = new ArrayList<>(shoppingListRepository.findByGroupId(groupId));
         lists.sort(Comparator
                 .comparingInt(ShoppingList::getOrderIndex)
                 .thenComparing(ShoppingList::getCreatedAt)

@@ -43,19 +43,19 @@ class InMemoryShoppingListRepositoryTest {
     }
 
     @Test
-    void findsByHouseholdId() {
+    void findsByGroupId() {
         InMemoryShoppingListRepository repository = new InMemoryShoppingListRepository();
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         ShoppingList list = new ShoppingList(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 "Groceries",
                 Instant.now()
         );
 
         repository.save(list);
 
-        List<ShoppingList> result = repository.findByHouseholdId(householdId);
+        List<ShoppingList> result = repository.findByGroupId(groupId);
         assertEquals(1, result.size());
     }
 

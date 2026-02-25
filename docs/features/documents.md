@@ -4,7 +4,7 @@ This document defines the detailed intent and behavior for the Documents feature
 
 ## Purpose
 
-Documents is the household’s **retrieval-first archive** for:
+Documents is the group’s **retrieval-first archive** for:
 - contracts and agreements
 - warranties and receipts
 - subscriptions and bills
@@ -14,7 +14,7 @@ Documents is the household’s **retrieval-first archive** for:
 - Metadata-first records only.
 - Required: `title`
 - Optional: `notes`, `date`, `category`, `tags`, `externalLink`
-- All household members can see and search records.
+- All group members can see and search records.
 
 ### Implementation status (current)
 
@@ -22,11 +22,11 @@ The backend implements the metadata-first model.
 
 The following endpoints are available:
 - `POST /documents` to create a document record.
-- `GET /documents` to list documents for the current household.
+- `GET /documents` to list documents for the current group.
 - `GET /documents?q=...` to search text in `title` and `notes` (case-insensitive partial match).
-- `DELETE /documents/{id}` to remove a document in the current household.
+- `DELETE /documents/{id}` to remove a document in the current group.
 
-Household scoping, `createdByUserId`, and `createdAt` are enforced server-side.
+Group scoping, `createdByUserId`, and `createdAt` are enforced server-side.
 
 V0 is metadata-only by design.
 In V0.5a, only text search (`title` + `notes`) is implemented.
@@ -34,7 +34,7 @@ Category/date/tag filters and attachments are not implemented.
 
 ## Decisions
 
-Decision: Documents are household-shared with createdBy attribution.
+Decision: Documents are group-shared with createdBy attribution.
 Rationale: Shared access is required, while authorship still matters.
 Consequences: Store `createdByUserId` for traceability.
 
@@ -52,14 +52,14 @@ Consequences: `externalLink` may point to Drive/iCloud/OneDrive or other externa
 ### V0.5 (future)
 
 - Local attachments for the creator.
-- Household sees: “stored locally by X”.
+- Group sees: “stored locally by X”.
 - Not shared access.
 
 ### V1 (future)
 
 - Cloud attachments stored in object storage.
 - Compression + previews.
-- Full household sharing.
+- Full group sharing.
 
 ## UX principles
 

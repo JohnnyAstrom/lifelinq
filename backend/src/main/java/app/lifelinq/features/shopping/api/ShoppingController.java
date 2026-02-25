@@ -32,14 +32,14 @@ public class ShoppingController {
     @PostMapping("/shopping-lists")
     public ResponseEntity<?> createList(@RequestBody CreateShoppingListRequest request) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         CreateShoppingListOutput output = shoppingApplicationService.createShoppingList(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 request.getName()
         );
@@ -50,14 +50,14 @@ public class ShoppingController {
     @GetMapping("/shopping-lists")
     public ResponseEntity<?> listLists() {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         List<ShoppingListView> lists = shoppingApplicationService.listShoppingLists(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId()
         );
         List<ShoppingListResponse> responses = new ArrayList<>();
@@ -73,14 +73,14 @@ public class ShoppingController {
             @RequestBody UpdateShoppingListRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         ShoppingListView list = shoppingApplicationService.updateShoppingListName(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId,
                 request.getName()
@@ -94,14 +94,14 @@ public class ShoppingController {
             @RequestBody ReorderShoppingListRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         shoppingApplicationService.reorderShoppingList(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId,
                 request.getDirection()
@@ -115,14 +115,14 @@ public class ShoppingController {
             @RequestBody AddShoppingItemRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         AddShoppingItemOutput output = shoppingApplicationService.addShoppingItem(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId,
                 request.getName(),
@@ -148,14 +148,14 @@ public class ShoppingController {
             @RequestBody UpdateShoppingItemRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         ShoppingItemView item = shoppingApplicationService.updateShoppingItem(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId,
                 itemId,
@@ -180,14 +180,14 @@ public class ShoppingController {
             @PathVariable UUID itemId
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         ToggleShoppingItemOutput output = shoppingApplicationService.toggleShoppingItem(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId,
                 itemId
@@ -206,14 +206,14 @@ public class ShoppingController {
             @RequestBody ReorderShoppingItemRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         shoppingApplicationService.reorderShoppingItem(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId,
                 itemId,
@@ -228,14 +228,14 @@ public class ShoppingController {
             @PathVariable UUID itemId
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         shoppingApplicationService.removeShoppingItem(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId,
                 itemId
@@ -246,14 +246,14 @@ public class ShoppingController {
     @DeleteMapping("/shopping-lists/{listId}")
     public ResponseEntity<?> removeList(@PathVariable UUID listId) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         shoppingApplicationService.removeShoppingList(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 listId
         );

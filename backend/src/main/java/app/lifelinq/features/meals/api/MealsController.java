@@ -31,11 +31,11 @@ public class MealsController {
     @PostMapping("/meals/recipes")
     public ResponseEntity<?> createRecipe(@RequestBody CreateOrUpdateRecipeRequest request) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null || context.getUserId() == null) {
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         RecipeView recipe = mealsApplicationService.createRecipe(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 request.getName(),
                 toIngredientInputs(request.getIngredients())
@@ -46,11 +46,11 @@ public class MealsController {
     @GetMapping("/meals/recipes")
     public ResponseEntity<?> listRecipes() {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null || context.getUserId() == null) {
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         List<RecipeResponse> recipes = new ArrayList<>();
-        for (RecipeView recipe : mealsApplicationService.listRecipes(context.getHouseholdId(), context.getUserId())) {
+        for (RecipeView recipe : mealsApplicationService.listRecipes(context.getGroupId(), context.getUserId())) {
             recipes.add(toRecipeResponse(recipe));
         }
         return ResponseEntity.ok(recipes);
@@ -59,10 +59,10 @@ public class MealsController {
     @GetMapping("/meals/recipes/{recipeId}")
     public ResponseEntity<?> getRecipe(@PathVariable UUID recipeId) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null || context.getUserId() == null) {
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        RecipeView recipe = mealsApplicationService.getRecipe(context.getHouseholdId(), context.getUserId(), recipeId);
+        RecipeView recipe = mealsApplicationService.getRecipe(context.getGroupId(), context.getUserId(), recipeId);
         return ResponseEntity.ok(toRecipeResponse(recipe));
     }
 
@@ -72,11 +72,11 @@ public class MealsController {
             @RequestBody CreateOrUpdateRecipeRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null || context.getUserId() == null) {
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         RecipeView recipe = mealsApplicationService.updateRecipe(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 recipeId,
                 request.getName(),
@@ -97,7 +97,7 @@ public class MealsController {
             @RequestBody AddMealRequest request
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
@@ -108,7 +108,7 @@ public class MealsController {
             throw new IllegalArgumentException("mealType must not be null");
         }
         AddMealOutput output = mealsApplicationService.addOrReplaceMeal(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 year,
                 isoWeek,
@@ -128,14 +128,14 @@ public class MealsController {
             @PathVariable String mealType
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         mealsApplicationService.removeMeal(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 year,
                 isoWeek,
@@ -151,14 +151,14 @@ public class MealsController {
             @PathVariable int isoWeek
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         WeekPlanView view = mealsApplicationService.getWeekPlan(
-                context.getHouseholdId(),
+                context.getGroupId(),
                 context.getUserId(),
                 year,
                 isoWeek
@@ -208,7 +208,7 @@ public class MealsController {
         }
         return new RecipeResponse(
                 view.recipeId(),
-                view.householdId(),
+                view.groupId(),
                 view.name(),
                 view.createdAt(),
                 ingredients

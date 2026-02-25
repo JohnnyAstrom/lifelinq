@@ -3,15 +3,15 @@ package app.lifelinq.config;
 import java.util.UUID;
 
 public final class RequestContext {
-    private UUID householdId;
+    private UUID groupId;
     private UUID userId;
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
-    public void setHouseholdId(UUID householdId) {
-        this.householdId = householdId;
+    public void setGroupId(UUID groupId) {
+        this.groupId = groupId;
     }
 
     public UUID getUserId() {

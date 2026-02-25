@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
-import app.lifelinq.features.household.domain.Membership;
-import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.features.group.domain.Membership;
+import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
@@ -47,7 +47,7 @@ class ShoppingControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
-                        HouseholdApplicationServiceTestFactory.createForContextResolution(membershipRepository)
+                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
                 ))
                 .build();
     }
@@ -74,7 +74,7 @@ class ShoppingControllerTest {
     }
 
     @Test
-    void createReturns401WhenHouseholdMissing() throws Exception {
+    void createReturns401WhenGroupMissing() throws Exception {
         UUID userId = UUID.randomUUID();
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
@@ -89,13 +89,13 @@ class ShoppingControllerTest {
 
     @Test
     void createSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(shoppingApplicationService.createShoppingList(householdId, userId, "Groceries"))
+        when(shoppingApplicationService.createShoppingList(groupId, userId, "Groceries"))
                 .thenReturn(new CreateShoppingListOutput(listId, "groceries"));
 
         mockMvc.perform(post("/shopping-lists")
@@ -104,7 +104,7 @@ class ShoppingControllerTest {
                         .content("{\"name\":\"Groceries\"}"))
                 .andExpect(status().isCreated());
 
-        verify(shoppingApplicationService).createShoppingList(householdId, userId, "Groceries");
+        verify(shoppingApplicationService).createShoppingList(groupId, userId, "Groceries");
     }
 
     @Test
@@ -117,28 +117,28 @@ class ShoppingControllerTest {
 
     @Test
     void removeListSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(delete("/shopping-lists/{listId}", listId)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNoContent());
 
-        verify(shoppingApplicationService).removeShoppingList(householdId, userId, listId);
+        verify(shoppingApplicationService).removeShoppingList(groupId, userId, listId);
     }
 
     @Test
     void updateListSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(shoppingApplicationService.updateShoppingListName(householdId, userId, listId, "Renamed"))
+        when(shoppingApplicationService.updateShoppingListName(groupId, userId, listId, "Renamed"))
                 .thenReturn(new ShoppingListView(listId, "Renamed", List.of()));
 
         mockMvc.perform(patch("/shopping-lists/{listId}", listId)
@@ -147,15 +147,15 @@ class ShoppingControllerTest {
                         .content("{\"name\":\"Renamed\"}"))
                 .andExpect(status().isOk());
 
-        verify(shoppingApplicationService).updateShoppingListName(householdId, userId, listId, "Renamed");
+        verify(shoppingApplicationService).updateShoppingListName(groupId, userId, listId, "Renamed");
     }
 
     @Test
     void reorderListSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(patch("/shopping-lists/{listId}/order", listId)
@@ -164,16 +164,16 @@ class ShoppingControllerTest {
                         .content("{\"direction\":\"UP\"}"))
                 .andExpect(status().isNoContent());
 
-        verify(shoppingApplicationService).reorderShoppingList(householdId, userId, listId, "UP");
+        verify(shoppingApplicationService).reorderShoppingList(groupId, userId, listId, "UP");
     }
 
     @Test
     void reorderItemSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
         UUID itemId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(patch("/shopping-lists/{listId}/items/{itemId}/order", listId, itemId)
@@ -182,7 +182,7 @@ class ShoppingControllerTest {
                         .content("{\"direction\":\"DOWN\"}"))
                 .andExpect(status().isNoContent());
 
-        verify(shoppingApplicationService).reorderShoppingItem(householdId, userId, listId, itemId, "DOWN");
+        verify(shoppingApplicationService).reorderShoppingItem(groupId, userId, listId, itemId, "DOWN");
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {
@@ -211,8 +211,8 @@ class ShoppingControllerTest {
     private static final class FakeMembershipRepository implements MembershipRepository {
         private final Map<UUID, List<UUID>> byUser = new HashMap<>();
 
-        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
-            byUser.put(userId, List.of(householdId));
+        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
+            byUser.put(userId, List.of(groupId));
             return this;
         }
 
@@ -222,17 +222,17 @@ class ShoppingControllerTest {
         }
 
         @Override
-        public List<Membership> findByHouseholdId(UUID householdId) {
+        public List<Membership> findByGroupId(UUID groupId) {
             throw new UnsupportedOperationException("not used");
         }
 
         @Override
-        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        public List<UUID> findGroupIdsByUserId(UUID userId) {
             return byUser.getOrDefault(userId, List.of());
         }
 
         @Override
-        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             throw new UnsupportedOperationException("not used");
         }
     }

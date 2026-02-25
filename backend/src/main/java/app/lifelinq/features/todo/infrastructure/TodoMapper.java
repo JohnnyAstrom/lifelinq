@@ -10,7 +10,7 @@ public final class TodoMapper {
         }
         return new TodoEntity(
                 todo.getId(),
-                todo.getHouseholdId(),
+                todo.getGroupId(),
                 todo.getText(),
                 todo.getStatus(),
                 todo.getScope(),
@@ -31,7 +31,7 @@ public final class TodoMapper {
         }
         return Todo.rehydrate(
                 entity.getId(),
-                entity.getHouseholdId(),
+                entity.getGroupId(),
                 entity.getText(),
                 entity.getStatus(),
                 entity.getScope(),

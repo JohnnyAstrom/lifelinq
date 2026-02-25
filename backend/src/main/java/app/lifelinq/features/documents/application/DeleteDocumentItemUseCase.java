@@ -13,13 +13,13 @@ final class DeleteDocumentItemUseCase {
         this.documentRepository = documentRepository;
     }
 
-    boolean execute(UUID householdId, UUID documentId) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    boolean execute(UUID groupId, UUID documentId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (documentId == null) {
             throw new IllegalArgumentException("documentId must not be null");
         }
-        return documentRepository.deleteByIdAndHouseholdId(documentId, householdId);
+        return documentRepository.deleteByIdAndGroupId(documentId, groupId);
     }
 }

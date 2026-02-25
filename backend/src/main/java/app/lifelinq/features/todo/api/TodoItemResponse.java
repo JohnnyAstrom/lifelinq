@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public final class TodoItemResponse {
     private final UUID id;
-    private final UUID householdId;
+    private final UUID groupId;
     private final String text;
     private final TodoStatus status;
     private final TodoScope scope;
@@ -23,7 +23,7 @@ public final class TodoItemResponse {
 
     public TodoItemResponse(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             String text,
             TodoStatus status,
             TodoScope scope,
@@ -36,7 +36,7 @@ public final class TodoItemResponse {
             Instant createdAt
     ) {
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.text = text;
         this.status = status;
         this.scope = scope;
@@ -53,8 +53,8 @@ public final class TodoItemResponse {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public String getText() {

@@ -4,10 +4,10 @@ import app.lifelinq.config.RequestContextConfig;
 import app.lifelinq.config.SecurityConfig;
 import app.lifelinq.features.auth.api.DevTokenController;
 import app.lifelinq.features.auth.api.MeController;
-import app.lifelinq.features.household.application.HouseholdApplicationService;
-import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
-import app.lifelinq.features.household.domain.MembershipRepository;
-import app.lifelinq.features.household.infrastructure.InMemoryMembershipRepository;
+import app.lifelinq.features.group.application.GroupApplicationService;
+import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.features.group.domain.MembershipRepository;
+import app.lifelinq.features.group.infrastructure.InMemoryMembershipRepository;
 import app.lifelinq.features.user.application.UserApplicationConfig;
 import app.lifelinq.features.user.domain.User;
 import app.lifelinq.features.user.domain.UserRepository;
@@ -37,10 +37,10 @@ public class DevAuthTestApplication {
     }
 
     @Bean
-    public HouseholdApplicationService householdApplicationService(
+    public GroupApplicationService groupApplicationService(
             MembershipRepository membershipRepository
     ) {
-        return HouseholdApplicationServiceTestFactory.createForContextResolution(membershipRepository);
+        return GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository);
     }
 
     @Bean

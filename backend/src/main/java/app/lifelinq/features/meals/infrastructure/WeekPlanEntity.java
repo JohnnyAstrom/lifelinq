@@ -27,7 +27,7 @@ public class WeekPlanEntity {
     private UUID id;
 
     @Column(name = "household_id", nullable = false)
-    private UUID householdId;
+    private UUID groupId;
 
     @Column(name = "week_year", nullable = false)
     private int year;
@@ -48,9 +48,9 @@ public class WeekPlanEntity {
     protected WeekPlanEntity() {
     }
 
-    WeekPlanEntity(UUID id, UUID householdId, int year, int isoWeek, Instant createdAt) {
+    WeekPlanEntity(UUID id, UUID groupId, int year, int isoWeek, Instant createdAt) {
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.year = year;
         this.isoWeek = isoWeek;
         this.createdAt = createdAt;
@@ -60,8 +60,8 @@ public class WeekPlanEntity {
         return id;
     }
 
-    UUID getHouseholdId() {
-        return householdId;
+    UUID getGroupId() {
+        return groupId;
     }
 
     int getYear() {

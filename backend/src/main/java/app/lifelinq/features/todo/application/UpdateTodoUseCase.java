@@ -25,7 +25,7 @@ final class UpdateTodoUseCase {
         Todo current = existing.get();
         Todo updated = Todo.rehydrate(
                 current.getId(),
-                current.getHouseholdId(),
+                current.getGroupId(),
                 command.getText(),
                 current.getStatus(),
                 command.getScope(),

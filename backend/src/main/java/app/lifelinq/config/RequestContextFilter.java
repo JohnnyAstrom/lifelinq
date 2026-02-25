@@ -11,15 +11,15 @@ import java.util.Collections;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import app.lifelinq.features.household.application.HouseholdApplicationService;
+import app.lifelinq.features.group.application.GroupApplicationService;
 
 public class RequestContextFilter extends OncePerRequestFilter {
     private final JwtVerifier jwtVerifier;
-    private final HouseholdApplicationService householdApplicationService;
+    private final GroupApplicationService groupApplicationService;
 
-    public RequestContextFilter(JwtVerifier jwtVerifier, HouseholdApplicationService householdApplicationService) {
+    public RequestContextFilter(JwtVerifier jwtVerifier, GroupApplicationService groupApplicationService) {
         this.jwtVerifier = jwtVerifier;
-        this.householdApplicationService = householdApplicationService;
+        this.groupApplicationService = groupApplicationService;
     }
 
     @Override
@@ -50,15 +50,15 @@ public class RequestContextFilter extends OncePerRequestFilter {
             }
 
             UUID userId = claims.getUserId();
-            Optional<UUID> householdId;
+            Optional<UUID> groupId;
             try {
-                householdId = householdApplicationService.resolveHouseholdForUser(userId);
-            } catch (app.lifelinq.features.household.application.AmbiguousHouseholdException ex) {
+                groupId = groupApplicationService.resolveGroupForUser(userId);
+            } catch (app.lifelinq.features.group.application.AmbiguousGroupException ex) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
             RequestContext context = new RequestContext();
-            context.setHouseholdId(householdId.orElse(null));
+            context.setGroupId(groupId.orElse(null));
             context.setUserId(userId);
             RequestContextHolder.set(context);
             UsernamePasswordAuthenticationToken authentication =

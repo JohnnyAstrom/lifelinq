@@ -7,7 +7,7 @@ It describes the structure that exists in `mobile-app/src/` today and the rules 
 
 ## Purpose
 
-The frontend uses a feature-based structure so that each domain (todo, meals, shopping, documents, household, auth) can evolve with clear ownership.
+The frontend uses a feature-based structure so that each domain (todo, meals, shopping, documents, group, auth) can evolve with clear ownership.
 This document defines the dependency rules and responsibility boundaries used in the current codebase.
 
 ---
@@ -38,7 +38,7 @@ Feature screens live under:
 
 `src/features/<feature>/screens/`
 
-This is now the default placement for feature-owned screens (e.g. Meals, Todo, Shopping, Documents, Household, Auth).
+This is now the default placement for feature-owned screens (e.g. Meals, Todo, Shopping, Documents, Group, Auth).
 Root `src/screens/` is reserved for cross-feature orchestration screens or screens that do not naturally belong to a single feature.
 
 ---
@@ -205,7 +205,7 @@ If a module is domain-specific (e.g. shopping or meals API), it should be access
 - **Todo**: strongest separation so far (feature screens, data hooks, grouping/progress hooks, presentational components, utils).
 - **Meals**: feature-based with extracted views/components/utils and a workflow hook; still refining screen thinning and feature-owned API usage patterns.
 - **Shopping**: boundary cleanup and Phase A/B refactor underway; screens are becoming thinner via presentational extraction and workflow hooks.
-- **Documents / Household / Auth**: functional but less refactored; more screen-centric in places.
+- **Documents / Group / Auth**: functional but less refactored; more screen-centric in places.
 
 ---
 

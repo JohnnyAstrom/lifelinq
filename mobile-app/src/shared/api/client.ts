@@ -64,7 +64,7 @@ export class UnauthorizedError extends ApiError {
 
 export function formatApiError(err: unknown): string {
   if (err instanceof UnauthorizedError) {
-    return 'You must create a household first or log in again.';
+    return 'You must create a group first or log in again.';
   }
   if (err instanceof ApiError) {
     if (err.status === 403) {

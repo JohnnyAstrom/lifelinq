@@ -25,11 +25,11 @@ class JpaRecipeRepositoryAdapterTest {
 
     @Test
     void savesAndLoadsRecipeWithIngredientsOrderedByPositionThenId() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         Recipe recipe = new Recipe(
                 recipeId,
-                householdId,
+                groupId,
                 "Soup",
                 Instant.parse("2026-02-01T10:00:00Z"),
                 List.of(
@@ -51,7 +51,7 @@ class JpaRecipeRepositoryAdapterTest {
         );
 
         repository.save(recipe);
-        Optional<Recipe> loaded = repository.findByIdAndHouseholdId(recipeId, householdId);
+        Optional<Recipe> loaded = repository.findByIdAndGroupId(recipeId, groupId);
 
         assertThat(loaded).isPresent();
         assertThat(loaded.get().getIngredients())
@@ -62,28 +62,28 @@ class JpaRecipeRepositoryAdapterTest {
     }
 
     @Test
-    void findByHouseholdIdAndIdsIsScopedByHousehold() {
-        UUID householdA = UUID.randomUUID();
-        UUID householdB = UUID.randomUUID();
+    void findByGroupIdAndIdsIsScopedByGroup() {
+        UUID groupA = UUID.randomUUID();
+        UUID groupB = UUID.randomUUID();
         UUID recipeA = UUID.randomUUID();
         UUID recipeB = UUID.randomUUID();
 
         repository.save(new Recipe(
                 recipeA,
-                householdA,
+                groupA,
                 "A",
                 Instant.parse("2026-02-01T10:00:00Z"),
                 List.of()
         ));
         repository.save(new Recipe(
                 recipeB,
-                householdB,
+                groupB,
                 "B",
                 Instant.parse("2026-02-01T10:00:00Z"),
                 List.of()
         ));
 
-        List<Recipe> result = repository.findByHouseholdIdAndIds(householdA, Set.of(recipeA, recipeB));
+        List<Recipe> result = repository.findByGroupIdAndIds(groupA, Set.of(recipeA, recipeB));
 
         assertThat(result).extracting(Recipe::getId).containsExactly(recipeA);
     }

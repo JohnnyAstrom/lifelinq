@@ -28,7 +28,7 @@ public class DocumentsController {
     @PostMapping("/documents")
     public ResponseEntity<?> create(@RequestBody CreateDocumentRequest request) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
@@ -36,7 +36,7 @@ public class DocumentsController {
         }
         return ResponseEntity.ok(new CreateDocumentResponse(
                 documentsApplicationService.createDocument(
-                        context.getHouseholdId(),
+                        context.getGroupId(),
                         context.getUserId(),
                         request.getTitle(),
                         request.getNotes(),
@@ -51,24 +51,24 @@ public class DocumentsController {
     @GetMapping("/documents")
     public ResponseEntity<?> list(@RequestParam(name = "q", required = false) String q) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         return ResponseEntity.ok(new ListDocumentsResponse(toResponseItems(
-                documentsApplicationService.listDocuments(context.getHouseholdId(), Optional.ofNullable(q))
+                documentsApplicationService.listDocuments(context.getGroupId(), Optional.ofNullable(q))
         )));
     }
 
     @DeleteMapping("/documents/{id}")
     public ResponseEntity<?> delete(@PathVariable("id") UUID id) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        boolean deleted = documentsApplicationService.deleteDocument(context.getHouseholdId(), id);
+        boolean deleted = documentsApplicationService.deleteDocument(context.getGroupId(), id);
         return deleted
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -79,7 +79,7 @@ public class DocumentsController {
         for (DocumentItem item : items) {
             responses.add(new DocumentItemResponse(
                     item.getId(),
-                    item.getHouseholdId(),
+                    item.getGroupId(),
                     item.getCreatedByUserId(),
                     item.getTitle(),
                     item.getNotes(),

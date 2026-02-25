@@ -13,6 +13,6 @@ final class ApiScoping {
     }
 
     static ResponseEntity<String> missingContext() {
-        return ResponseEntity.status(401).body("Missing household context");
+        return ResponseEntity.status(401).body("Missing group context");
     }
 }

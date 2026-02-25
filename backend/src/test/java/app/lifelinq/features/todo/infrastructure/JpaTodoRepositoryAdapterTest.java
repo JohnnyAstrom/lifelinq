@@ -33,7 +33,7 @@ class JpaTodoRepositoryAdapterTest {
 
         assertTrue(loaded.isPresent());
         assertEquals(todo.getId(), loaded.get().getId());
-        assertEquals(todo.getHouseholdId(), loaded.get().getHouseholdId());
+        assertEquals(todo.getGroupId(), loaded.get().getGroupId());
         assertEquals(todo.getText(), loaded.get().getText());
         assertEquals(TodoStatus.OPEN, loaded.get().getStatus());
 
@@ -42,14 +42,14 @@ class JpaTodoRepositoryAdapterTest {
     }
 
     @Test
-    void findsByHouseholdAndMonthOrderedByDueDateThenId() {
+    void findsByGroupAndMonthOrderedByDueDateThenId() {
         JpaTodoRepositoryAdapter adapter = new JpaTodoRepositoryAdapter(todoJpaRepository, new TodoMapper());
-        UUID householdId = UUID.randomUUID();
-        UUID otherHousehold = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        UUID otherGroup = UUID.randomUUID();
 
         Todo febLater = Todo.rehydrate(
                 UUID.fromString("00000000-0000-0000-0000-000000000002"),
-                householdId,
+                groupId,
                 "Later",
                 TodoStatus.OPEN,
                 LocalDate.of(2026, 2, 20),
@@ -58,7 +58,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo febEarlierHigherId = Todo.rehydrate(
                 UUID.fromString("00000000-0000-0000-0000-000000000003"),
-                householdId,
+                groupId,
                 "Early B",
                 TodoStatus.OPEN,
                 LocalDate.of(2026, 2, 10),
@@ -67,7 +67,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo febEarlierLowerId = Todo.rehydrate(
                 UUID.fromString("00000000-0000-0000-0000-000000000001"),
-                householdId,
+                groupId,
                 "Early A",
                 TodoStatus.OPEN,
                 LocalDate.of(2026, 2, 10),
@@ -76,16 +76,16 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo outOfMonth = Todo.rehydrate(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 "March",
                 TodoStatus.OPEN,
                 LocalDate.of(2026, 3, 1),
                 null,
                 null
         );
-        Todo otherHouseholdTodo = Todo.rehydrate(
+        Todo otherGroupTodo = Todo.rehydrate(
                 UUID.randomUUID(),
-                otherHousehold,
+                otherGroup,
                 "Other",
                 TodoStatus.OPEN,
                 LocalDate.of(2026, 2, 12),
@@ -94,7 +94,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo withoutDueDate = Todo.rehydrate(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 "No due",
                 TodoStatus.OPEN,
                 null,
@@ -103,7 +103,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo monthGoal = Todo.rehydrate(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 "Month goal",
                 TodoStatus.OPEN,
                 TodoScope.MONTH,
@@ -118,7 +118,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo deleted = Todo.rehydrate(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 "Deleted",
                 TodoStatus.OPEN,
                 LocalDate.of(2026, 2, 15),
@@ -130,13 +130,13 @@ class JpaTodoRepositoryAdapterTest {
         adapter.save(febEarlierHigherId);
         adapter.save(febEarlierLowerId);
         adapter.save(outOfMonth);
-        adapter.save(otherHouseholdTodo);
+        adapter.save(otherGroupTodo);
         adapter.save(withoutDueDate);
         adapter.save(deleted);
         adapter.save(monthGoal);
 
         List<Todo> result = adapter.listForMonth(
-                householdId,
+                groupId,
                 2026,
                 2,
                 LocalDate.of(2026, 2, 1),
@@ -151,13 +151,13 @@ class JpaTodoRepositoryAdapterTest {
     }
 
     @Test
-    void listByHouseholdFiltersDeletedAndSortsStably() {
+    void listByGroupFiltersDeletedAndSortsStably() {
         JpaTodoRepositoryAdapter adapter = new JpaTodoRepositoryAdapter(todoJpaRepository, new TodoMapper());
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
 
         Todo later = Todo.rehydrate(
                 UUID.fromString("00000000-0000-0000-0000-000000000021"),
-                householdId,
+                groupId,
                 "Later",
                 TodoStatus.OPEN,
                 TodoScope.LATER,
@@ -172,7 +172,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo dayWithTime = Todo.rehydrate(
                 UUID.fromString("00000000-0000-0000-0000-000000000022"),
-                householdId,
+                groupId,
                 "Day with time",
                 TodoStatus.OPEN,
                 TodoScope.DAY,
@@ -187,7 +187,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo dayWithoutTime = Todo.rehydrate(
                 UUID.fromString("00000000-0000-0000-0000-000000000023"),
-                householdId,
+                groupId,
                 "Day no time",
                 TodoStatus.OPEN,
                 TodoScope.DAY,
@@ -202,7 +202,7 @@ class JpaTodoRepositoryAdapterTest {
         );
         Todo deleted = Todo.rehydrate(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 "Deleted",
                 TodoStatus.OPEN,
                 TodoScope.LATER,
@@ -221,7 +221,7 @@ class JpaTodoRepositoryAdapterTest {
         adapter.save(dayWithTime);
         adapter.save(deleted);
 
-        List<Todo> result = adapter.listByHousehold(householdId, TodoStatus.ALL);
+        List<Todo> result = adapter.listByGroup(groupId, TodoStatus.ALL);
 
         assertEquals(3, result.size());
         assertEquals(dayWithTime.getId(), result.get(0).getId());

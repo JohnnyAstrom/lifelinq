@@ -16,24 +16,24 @@ public class MeController {
         if (context == null || context.getUserId() == null) {
             return ResponseEntity.status(401).body("Missing authenticated context");
         }
-        return ResponseEntity.ok(new MeResponse(context.getUserId(), context.getHouseholdId()));
+        return ResponseEntity.ok(new MeResponse(context.getUserId(), context.getGroupId()));
     }
 
     private static final class MeResponse {
         private final UUID userId;
-        private final UUID householdId;
+        private final UUID groupId;
 
-        private MeResponse(UUID userId, UUID householdId) {
+        private MeResponse(UUID userId, UUID groupId) {
             this.userId = userId;
-            this.householdId = householdId;
+            this.groupId = groupId;
         }
 
         public UUID getUserId() {
             return userId;
         }
 
-        public UUID getHouseholdId() {
-            return householdId;
+        public UUID getGroupId() {
+            return groupId;
         }
     }
 }

@@ -39,25 +39,25 @@ public final class JpaTodoRepositoryAdapter implements TodoRepository {
     }
 
     @Override
-    public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (statusFilter == null) {
             throw new IllegalArgumentException("statusFilter must not be null");
         }
         List<Todo> result = new ArrayList<>();
         TodoStatus dbFilter = statusFilter == TodoStatus.ALL ? null : statusFilter;
-        for (TodoEntity entity : todoJpaRepository.listForHousehold(householdId, dbFilter)) {
+        for (TodoEntity entity : todoJpaRepository.listForGroup(groupId, dbFilter)) {
             result.add(mapper.toDomain(entity));
         }
         return result;
     }
 
     @Override
-    public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (startDate == null) {
             throw new IllegalArgumentException("startDate must not be null");
@@ -66,7 +66,7 @@ public final class JpaTodoRepositoryAdapter implements TodoRepository {
             throw new IllegalArgumentException("endDate must not be null");
         }
         List<Todo> result = new ArrayList<>();
-        for (TodoEntity entity : todoJpaRepository.listForMonth(householdId, year, month, startDate, endDate)) {
+        for (TodoEntity entity : todoJpaRepository.listForMonth(groupId, year, month, startDate, endDate)) {
             result.add(mapper.toDomain(entity));
         }
         return result;

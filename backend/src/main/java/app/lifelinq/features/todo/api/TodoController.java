@@ -32,7 +32,7 @@ public class TodoController {
     @PostMapping("/todos")
     public ResponseEntity<?> create(@RequestBody CreateTodoRequest request) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (context.getUserId() == null) {
@@ -40,7 +40,7 @@ public class TodoController {
         }
         return ResponseEntity.ok(new CreateTodoResponse(
                 todoApplicationService.createTodo(
-                        context.getHouseholdId(),
+                        context.getGroupId(),
                         context.getUserId(),
                         request.getText(),
                         resolveScope(request.getScope(), request.getDueDate()),
@@ -98,12 +98,12 @@ public class TodoController {
             @RequestParam(name = "status", defaultValue = "ALL") String status
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         TodoStatus filter = TodoStatus.valueOf(status);
         return ResponseEntity.ok(new ListTodosResponse(toResponseItems(
-                todoApplicationService.listTodos(context.getHouseholdId(), filter)
+                todoApplicationService.listTodos(context.getGroupId(), filter)
         )));
     }
 
@@ -113,14 +113,14 @@ public class TodoController {
             @PathVariable int month
     ) {
         RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getHouseholdId() == null) {
+        if (context == null || context.getGroupId() == null) {
             return ApiScoping.missingContext();
         }
         if (month < 1 || month > 12) {
             return ResponseEntity.badRequest().body("month must be between 1 and 12");
         }
         return ResponseEntity.ok(new ListTodosResponse(toResponseItems(
-                todoApplicationService.listTodosForMonth(context.getHouseholdId(), year, month)
+                todoApplicationService.listTodosForMonth(context.getGroupId(), year, month)
         )));
     }
 
@@ -129,7 +129,7 @@ public class TodoController {
         for (Todo todo : todos) {
             items.add(new TodoItemResponse(
                     todo.getId(),
-                    todo.getHouseholdId(),
+                    todo.getGroupId(),
                     todo.getText(),
                     todo.getStatus(),
                     todo.getScope(),

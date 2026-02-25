@@ -30,13 +30,13 @@ public final class InMemoryShoppingListRepository implements ShoppingListReposit
     }
 
     @Override
-    public List<ShoppingList> findByHouseholdId(UUID householdId) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<ShoppingList> findByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         List<ShoppingList> result = new ArrayList<>();
         for (ShoppingList list : lists.values()) {
-            if (householdId.equals(list.getHouseholdId())) {
+            if (groupId.equals(list.getGroupId())) {
                 result.add(list);
             }
         }

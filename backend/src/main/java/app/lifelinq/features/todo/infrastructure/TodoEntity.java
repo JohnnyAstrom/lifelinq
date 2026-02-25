@@ -18,9 +18,9 @@ import java.util.UUID;
 @Table(
         name = "todos",
         indexes = {
-                @Index(name = "idx_todos_household", columnList = "householdId"),
-                @Index(name = "idx_todos_household_scope", columnList = "householdId,scope"),
-                @Index(name = "idx_todos_household_duedate", columnList = "householdId,dueDate"),
+                @Index(name = "idx_todos_household", columnList = "household_id"),
+                @Index(name = "idx_todos_household_scope", columnList = "household_id,scope"),
+                @Index(name = "idx_todos_household_duedate", columnList = "household_id,dueDate"),
                 @Index(name = "idx_todos_deletedat", columnList = "deletedAt")
         }
 )
@@ -28,8 +28,8 @@ public class TodoEntity {
     @Id
     private UUID id;
 
-    @Column(nullable = false)
-    private UUID householdId;
+    @Column(name = "household_id", nullable = false)
+    private UUID groupId;
 
     @Column(nullable = false)
     private String text;
@@ -64,7 +64,7 @@ public class TodoEntity {
 
     public TodoEntity(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             String text,
             TodoStatus status,
             TodoScope scope,
@@ -78,7 +78,7 @@ public class TodoEntity {
             Instant deletedAt
     ) {
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.text = text;
         this.status = status;
         this.scope = scope;
@@ -96,8 +96,8 @@ public class TodoEntity {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public String getText() {

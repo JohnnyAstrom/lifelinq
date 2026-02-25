@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface WeekPlanJpaRepository extends JpaRepository<WeekPlanEntity, UUID> {
 
     @EntityGraph(attributePaths = "meals")
-    Optional<WeekPlanEntity> findByHouseholdIdAndYearAndIsoWeek(UUID householdId, int year, int isoWeek);
+    Optional<WeekPlanEntity> findByGroupIdAndYearAndIsoWeek(UUID groupId, int year, int isoWeek);
 
     @Override
     @EntityGraph(attributePaths = "meals")

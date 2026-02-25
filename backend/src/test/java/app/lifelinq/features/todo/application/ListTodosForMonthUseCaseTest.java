@@ -20,16 +20,16 @@ class ListTodosForMonthUseCaseTest {
 
     @Test
     void returns_only_requested_month_in_due_date_order_then_id() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         InMemoryTodoRepository repository = new InMemoryTodoRepository();
-        Todo outOfMonth = new Todo(UUID.randomUUID(), householdId, "March", LocalDate.of(2026, 3, 1), null);
-        Todo febLater = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000002"), householdId, "B", LocalDate.of(2026, 2, 20), null);
-        Todo febEarlierHigherId = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000003"), householdId, "C", LocalDate.of(2026, 2, 10), null);
-        Todo febEarlierLowerId = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000001"), householdId, "A", LocalDate.of(2026, 2, 10), null);
-        Todo noDueDate = new Todo(UUID.randomUUID(), householdId, "No due", null, null);
+        Todo outOfMonth = new Todo(UUID.randomUUID(), groupId, "March", LocalDate.of(2026, 3, 1), null);
+        Todo febLater = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000002"), groupId, "B", LocalDate.of(2026, 2, 20), null);
+        Todo febEarlierHigherId = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000003"), groupId, "C", LocalDate.of(2026, 2, 10), null);
+        Todo febEarlierLowerId = new Todo(UUID.fromString("00000000-0000-0000-0000-000000000001"), groupId, "A", LocalDate.of(2026, 2, 10), null);
+        Todo noDueDate = new Todo(UUID.randomUUID(), groupId, "No due", null, null);
         Todo monthGoal = new Todo(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 "Month goal",
                 TodoScope.MONTH,
                 null,
@@ -47,7 +47,7 @@ class ListTodosForMonthUseCaseTest {
         repository.save(monthGoal);
 
         ListTodosForMonthUseCase useCase = new ListTodosForMonthUseCase(repository);
-        List<Todo> items = useCase.execute(new TodoMonthQuery(householdId, 2026, 2)).getTodos();
+        List<Todo> items = useCase.execute(new TodoMonthQuery(groupId, 2026, 2)).getTodos();
 
         assertThat(items).extracting(Todo::getId).containsExactly(
                 febEarlierLowerId.getId(),
@@ -79,15 +79,15 @@ class ListTodosForMonthUseCaseTest {
         }
 
         @Override
-        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+        public List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter) {
             return new ArrayList<>(store);
         }
 
         @Override
-        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate) {
             List<Todo> result = new ArrayList<>();
             for (Todo todo : store) {
-                if (!householdId.equals(todo.getHouseholdId())) {
+                if (!groupId.equals(todo.getGroupId())) {
                     continue;
                 }
                 if (todo.getScope() == TodoScope.DAY && todo.getDueDate() != null

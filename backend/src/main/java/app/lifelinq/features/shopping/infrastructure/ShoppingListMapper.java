@@ -12,7 +12,7 @@ final class ShoppingListMapper {
     ShoppingListEntity toEntity(ShoppingList list) {
         ShoppingListEntity entity = new ShoppingListEntity(
                 list.getId(),
-                list.getHouseholdId(),
+                list.getGroupId(),
                 list.getName(),
                 list.getOrderIndex(),
                 list.getCreatedAt()
@@ -30,7 +30,7 @@ final class ShoppingListMapper {
         }
         return new ShoppingList(
                 entity.getId(),
-                entity.getHouseholdId(),
+                entity.getGroupId(),
                 entity.getName(),
                 entity.getOrderIndex(),
                 entity.getCreatedAt(),

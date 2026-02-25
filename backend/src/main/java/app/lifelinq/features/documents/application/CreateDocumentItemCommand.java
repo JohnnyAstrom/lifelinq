@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 public final class CreateDocumentItemCommand {
-    private final UUID householdId;
+    private final UUID groupId;
     private final UUID createdByUserId;
     private final String title;
     private final String notes;
@@ -17,7 +17,7 @@ public final class CreateDocumentItemCommand {
     private final Instant createdAt;
 
     public CreateDocumentItemCommand(
-            UUID householdId,
+            UUID groupId,
             UUID createdByUserId,
             String title,
             String notes,
@@ -27,7 +27,7 @@ public final class CreateDocumentItemCommand {
             String externalLink,
             Instant createdAt
     ) {
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.createdByUserId = createdByUserId;
         this.title = title;
         this.notes = notes;
@@ -38,8 +38,8 @@ public final class CreateDocumentItemCommand {
         this.createdAt = createdAt;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public UUID getCreatedByUserId() {

@@ -96,7 +96,7 @@ export type IngredientResponse = {
 
 export type RecipeResponse = {
   recipeId: string;
-  householdId: string;
+  groupId: string;
   name: string;
   createdAt: string;
   ingredients: IngredientResponse[];

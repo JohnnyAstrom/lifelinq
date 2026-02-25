@@ -13,11 +13,11 @@ class DocumentItemTest {
     @Test
     void createsItemWhenValid() {
         UUID id = UUID.randomUUID();
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID createdByUserId = UUID.randomUUID();
         DocumentItem item = new DocumentItem(
                 id,
-                householdId,
+                groupId,
                 createdByUserId,
                 "Pay rent",
                 null,
@@ -29,7 +29,7 @@ class DocumentItemTest {
         );
 
         assertEquals(id, item.getId());
-        assertEquals(householdId, item.getHouseholdId());
+        assertEquals(groupId, item.getGroupId());
         assertEquals(createdByUserId, item.getCreatedByUserId());
         assertEquals("Pay rent", item.getTitle());
     }
@@ -52,7 +52,7 @@ class DocumentItemTest {
     }
 
     @Test
-    void requiresHouseholdId() {
+    void requiresGroupId() {
         assertThrows(IllegalArgumentException.class,
                 () -> new DocumentItem(
                         UUID.randomUUID(),

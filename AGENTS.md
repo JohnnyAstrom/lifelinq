@@ -6,13 +6,13 @@ Before doing any work, read:
 - docs/INVARIANTS.md
 - docs/architecture/backend-structure.md
 - docs/architecture/frontend-architecture.md
-- docs/architecture/households.md
+- docs/architecture/groups.md
 - docs/architecture/auth.md
 
 Note: `docs/v0.5.md` is a historical milestone document and not a current architectural source of truth.
 
 ## Non-negotiables
-- Household-first: all domain data belongs to a household.
+- Group-first: all domain data belongs to a group.
 - Clients are untrusted; backend is the source of truth.
 - Feature-based architecture.
 - Backend + frontend features map 1:1.
@@ -25,7 +25,7 @@ When proposing next steps related to authentication, users, or tokens, follow th
 - Minimal identity read endpoints (e.g. `/me`) and JWT-based request scoping are allowed.
 - Do not introduce full authentication features yet (OAuth flows, refresh tokens, session management).
 - Auth-related domain objects beyond the current minimal `User` must not be introduced until persistence and a security context are expanded.
-- Avoid proposing auth use cases that depend on permissions or roles beyond current household membership checks.
+- Avoid proposing auth use cases that depend on permissions or roles beyond current group membership checks.
 - Access token and refresh token handling (rotation, reuse detection) must remain documented-only until auth implementation explicitly begins.
 - Invite tokens are domain-specific, single-use tokens and must never be treated as auth or session tokens.
 - Any auth-related proposal must clearly explain why it is architecturally significant at this point in the project.

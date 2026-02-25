@@ -1,4 +1,4 @@
-# Decision 0002: Household-first Data Ownership
+# Decision 0002: Group-first Data Ownership
 
 ## Status
 Accepted
@@ -9,15 +9,15 @@ Accepted
 
 LifeLinq is designed for shared everyday life.
 
-Individual ownership of data does not reflect how households operate.
+Individual ownership of data does not reflect how groups operate.
 
 ---
 
 ## Decision
 
-All domain data is owned by households, not by individual users.
+All domain data is owned by groups, not by individual users.
 
-Users interact with data through household memberships.
+Users interact with data through group memberships.
 
 ---
 
@@ -31,7 +31,7 @@ Users interact with data through household memberships.
 
 ## Consequences
 
-- all queries are household-scoped
+- all queries are group-scoped
 - authorization is based on membership
 - data persists independently of users
 

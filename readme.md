@@ -1,6 +1,6 @@
 # LifeLinq
 
-LifeLinq is a **household‑first life assistant**.
+LifeLinq is a **group‑first life assistant**.
 
 It is designed to reduce mental load by acting as a shared external memory for everyday life — the kind of things that otherwise live in people’s heads and cause friction, stress, or forgetfulness.
 
@@ -10,7 +10,7 @@ LifeLinq is **mobile‑first**, collaborative by default, and built for long‑t
 
 ## What LifeLinq is
 
-LifeLinq focuses on four core domains of everyday household life:
+LifeLinq focuses on four core domains of everyday group life:
 
 ### 1. Things to do / remember
 
@@ -45,17 +45,17 @@ A safety layer for items that are expensive, hard to replace, or stressful to lo
 
 Documents roadmap:
 - **V0 (now)**: metadata only (title, notes, date, category, tags, external link)
-- **V0.5 (future)**: local attachments (visible to household as "stored locally by X")
+- **V0.5 (future)**: local attachments (visible to group as "stored locally by X")
 - **V1 (future)**: cloud attachments with compression, previews, and sharing
 
 ---
 
 ## Core principles
 
-- **Household‑first**: all data belongs to a household, not an individual user
+- **Group‑first**: all data belongs to a group, not an individual user
 - **Low friction**: it must be easier to write something down than to remember it
 - **Tolerance for messiness**: real life is incomplete and inconsistent
-- **Shared by default**: multiple people collaborate in the same household
+- **Shared by default**: multiple people collaborate in the same group
 - **Backend authority**: all business rules live on the server
 - **Bilingual by default**: full support for Swedish and English from the start
 
@@ -73,6 +73,7 @@ Authoritative documentation lives in `docs/`:
 - `docs/invariants.md` – system laws (non‑negotiable rules)
 - `docs/roadmap.md` – phased delivery plan
 - `docs/architecture/` – backend & frontend structure
+- `docs/architecture/context-model.md` – canonical context/scoping model
 - `docs/decisions/` – architectural decision records (ADRs)
 
 If something is unclear, **the docs are the source of truth**.
@@ -111,7 +112,7 @@ lifelinq/
 LifeLinq is under active development.
 
 The current focus is Phase 1 (see `docs/roadmap.md`):
-- solid domain model and household scoping
+- solid domain model and group scoping
 - invitation flow and onboarding foundation
 - durable feature boundaries for future growth
 
@@ -135,6 +136,6 @@ LifeLinq is designed to evolve — but never drift.
    - `npm start` in `mobile-app/` and press `w` for web.
 3. Log in with any email in the UI (dev-only):
    - The app calls `POST /auth/dev-login` and stores a JWT.
-4. If `/me` returns `householdId: null`, create a household once.
-5. Todos and other scoped endpoints require a household context.
+4. If `/me` returns `groupId: null`, create a group once.
+5. Todos and other scoped endpoints require a group context.
 

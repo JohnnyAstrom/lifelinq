@@ -15,12 +15,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ListDocumentsUseCaseTest {
 
     @Test
-    void lists_documents_by_household() {
-        UUID householdId = UUID.randomUUID();
+    void lists_documents_by_group() {
+        UUID groupId = UUID.randomUUID();
         InMemoryDocumentRepository repository = new InMemoryDocumentRepository();
         repository.items.add(new DocumentItem(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 UUID.randomUUID(),
                 "Title",
                 null,
@@ -32,26 +32,26 @@ class ListDocumentsUseCaseTest {
         ));
         ListDocumentsUseCase useCase = new ListDocumentsUseCase(repository);
 
-        List<DocumentItem> items = useCase.execute(householdId, Optional.empty());
+        List<DocumentItem> items = useCase.execute(groupId, Optional.empty());
 
         assertThat(items).hasSize(1);
-        assertThat(items.get(0).getHouseholdId()).isEqualTo(householdId);
+        assertThat(items.get(0).getGroupId()).isEqualTo(groupId);
         assertThat(repository.lastQuery).isEmpty();
     }
 
     @Test
     void treats_whitespace_query_as_absent() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         InMemoryDocumentRepository repository = new InMemoryDocumentRepository();
         ListDocumentsUseCase useCase = new ListDocumentsUseCase(repository);
 
-        useCase.execute(householdId, Optional.of("   "));
+        useCase.execute(groupId, Optional.of("   "));
 
         assertThat(repository.lastQuery).isEmpty();
     }
 
     @Test
-    void rejects_missing_household_id() {
+    void rejects_missing_group_id() {
         ListDocumentsUseCase useCase = new ListDocumentsUseCase(new InMemoryDocumentRepository());
 
         assertThatThrownBy(() -> useCase.execute(null, Optional.empty()))
@@ -68,13 +68,13 @@ class ListDocumentsUseCaseTest {
         }
 
         @Override
-        public List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q) {
+        public List<DocumentItem> findByGroupId(UUID groupId, Optional<String> q) {
             this.lastQuery = q;
             return new ArrayList<>(items);
         }
 
         @Override
-        public boolean deleteByIdAndHouseholdId(UUID id, UUID householdId) {
+        public boolean deleteByIdAndGroupId(UUID id, UUID groupId) {
             throw new UnsupportedOperationException("Not needed for this test");
         }
     }

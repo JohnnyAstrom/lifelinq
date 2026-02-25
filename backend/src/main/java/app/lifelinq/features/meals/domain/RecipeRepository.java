@@ -8,9 +8,9 @@ import java.util.UUID;
 public interface RecipeRepository {
     Recipe save(Recipe recipe);
 
-    Optional<Recipe> findByIdAndHouseholdId(UUID recipeId, UUID householdId);
+    Optional<Recipe> findByIdAndGroupId(UUID recipeId, UUID groupId);
 
-    List<Recipe> findByHouseholdId(UUID householdId);
+    List<Recipe> findByGroupId(UUID groupId);
 
-    List<Recipe> findByHouseholdIdAndIds(UUID householdId, Set<UUID> recipeIds);
+    List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds);
 }

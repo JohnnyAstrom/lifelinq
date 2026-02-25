@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
-import app.lifelinq.features.household.domain.Membership;
-import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.features.group.domain.Membership;
+import app.lifelinq.features.group.domain.MembershipRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,12 +31,12 @@ class RequestContextFilterTest {
 
     @Test
     void setsContextFromHeadersAndClearsAfterChain() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                HouseholdApplicationServiceTestFactory.createForContextResolution(
-                        new FakeMembershipRepository().withMembership(userId, householdId)
+                GroupApplicationServiceTestFactory.createForContextResolution(
+                        new FakeMembershipRepository().withMembership(userId, groupId)
                 )
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
@@ -47,7 +47,7 @@ class RequestContextFilterTest {
 
         FilterChain chain = (req, res) -> {
             RequestContext context = RequestContextHolder.getCurrent();
-            assertEquals(householdId, context.getHouseholdId());
+            assertEquals(groupId, context.getGroupId());
             assertEquals(userId, context.getUserId());
         };
 
@@ -58,12 +58,12 @@ class RequestContextFilterTest {
 
     @Test
     void clearsContextWhenChainThrows() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                HouseholdApplicationServiceTestFactory.createForContextResolution(
-                        new FakeMembershipRepository().withMembership(userId, householdId)
+                GroupApplicationServiceTestFactory.createForContextResolution(
+                        new FakeMembershipRepository().withMembership(userId, groupId)
                 )
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
@@ -85,7 +85,7 @@ class RequestContextFilterTest {
     void returnsUnauthorizedWhenTokenMissing() throws Exception {
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                GroupApplicationServiceTestFactory.createForContextResolution(
                         new FakeMembershipRepository()
                 )
         );
@@ -105,7 +105,7 @@ class RequestContextFilterTest {
     void returnsUnauthorizedWhenTokenInvalid() throws Exception {
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                GroupApplicationServiceTestFactory.createForContextResolution(
                         new FakeMembershipRepository()
                 )
         );
@@ -124,11 +124,11 @@ class RequestContextFilterTest {
     }
 
     @Test
-    void proceedsWhenHouseholdMissing() throws Exception {
+    void proceedsWhenGroupMissing() throws Exception {
         UUID userId = UUID.randomUUID();
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                HouseholdApplicationServiceTestFactory.createForContextResolution(
+                GroupApplicationServiceTestFactory.createForContextResolution(
                         new FakeMembershipRepository()
                 )
         );
@@ -140,7 +140,7 @@ class RequestContextFilterTest {
 
         FilterChain chain = (req, res) -> {
             RequestContext context = RequestContextHolder.getCurrent();
-            assertNull(context.getHouseholdId());
+            assertNull(context.getGroupId());
             assertEquals(userId, context.getUserId());
         };
 
@@ -150,13 +150,13 @@ class RequestContextFilterTest {
     }
 
     @Test
-    void returnsUnauthorizedWhenHouseholdResolutionAmbiguous() throws Exception {
+    void returnsUnauthorizedWhenGroupResolutionAmbiguous() throws Exception {
         UUID userId = UUID.randomUUID();
         FakeMembershipRepository repository = new FakeMembershipRepository()
                 .withMemberships(userId, List.of(UUID.randomUUID(), UUID.randomUUID()));
         RequestContextFilter filter = new RequestContextFilter(
                 new JwtVerifier(SECRET),
-                HouseholdApplicationServiceTestFactory.createForContextResolution(repository)
+                GroupApplicationServiceTestFactory.createForContextResolution(repository)
         );
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -199,12 +199,12 @@ class RequestContextFilterTest {
     private static final class FakeMembershipRepository implements MembershipRepository {
         private final Map<UUID, List<UUID>> byUser = new HashMap<>();
 
-        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
-            return withMemberships(userId, List.of(householdId));
+        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
+            return withMemberships(userId, List.of(groupId));
         }
 
-        FakeMembershipRepository withMemberships(UUID userId, List<UUID> householdIds) {
-            byUser.put(userId, householdIds);
+        FakeMembershipRepository withMemberships(UUID userId, List<UUID> groupIds) {
+            byUser.put(userId, groupIds);
             return this;
         }
 
@@ -214,17 +214,17 @@ class RequestContextFilterTest {
         }
 
         @Override
-        public List<Membership> findByHouseholdId(UUID householdId) {
+        public List<Membership> findByGroupId(UUID groupId) {
             throw new UnsupportedOperationException("not used");
         }
 
         @Override
-        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        public List<UUID> findGroupIdsByUserId(UUID userId) {
             return byUser.getOrDefault(userId, List.of());
         }
 
         @Override
-        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             throw new UnsupportedOperationException("not used");
         }
     }

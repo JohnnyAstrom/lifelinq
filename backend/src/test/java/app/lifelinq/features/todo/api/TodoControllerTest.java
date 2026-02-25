@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
-import app.lifelinq.features.household.domain.Membership;
-import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.features.group.domain.Membership;
+import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
@@ -47,7 +47,7 @@ class TodoControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
-                        HouseholdApplicationServiceTestFactory.createForContextResolution(membershipRepository)
+                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
                 ))
                 .build();
     }
@@ -63,7 +63,7 @@ class TodoControllerTest {
     }
 
     @Test
-    void createReturns401WhenHouseholdMissing() throws Exception {
+    void createReturns401WhenGroupMissing() throws Exception {
         UUID userId = UUID.randomUUID();
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
@@ -85,7 +85,7 @@ class TodoControllerTest {
     }
 
     @Test
-    void listReturns401WhenHouseholdMissing() throws Exception {
+    void listReturns401WhenGroupMissing() throws Exception {
         UUID userId = UUID.randomUUID();
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
@@ -98,13 +98,13 @@ class TodoControllerTest {
 
     @Test
     void createSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(todoApplicationService.createTodo(householdId, userId, "Buy milk", TodoScope.LATER, null, null, null, null, null))
+        when(todoApplicationService.createTodo(groupId, userId, "Buy milk", TodoScope.LATER, null, null, null, null, null))
                 .thenReturn(todoId);
 
         mockMvc.perform(post("/todos")
@@ -113,24 +113,24 @@ class TodoControllerTest {
                         .content("{\"text\":\"Buy milk\"}"))
                 .andExpect(status().isOk());
 
-        verify(todoApplicationService).createTodo(householdId, userId, "Buy milk", TodoScope.LATER, null, null, null, null, null);
+        verify(todoApplicationService).createTodo(groupId, userId, "Buy milk", TodoScope.LATER, null, null, null, null, null);
     }
 
     @Test
     void listSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(todoApplicationService.listTodos(householdId, TodoStatus.ALL)).thenReturn(List.of());
+        when(todoApplicationService.listTodos(groupId, TodoStatus.ALL)).thenReturn(List.of());
 
         mockMvc.perform(get("/todos")
                         .header("Authorization", "Bearer " + token)
                         .param("status", "ALL"))
                 .andExpect(status().isOk());
 
-        verify(todoApplicationService).listTodos(householdId, TodoStatus.ALL);
+        verify(todoApplicationService).listTodos(groupId, TodoStatus.ALL);
     }
 
     @Test
@@ -143,9 +143,9 @@ class TodoControllerTest {
 
     @Test
     void calendarReturns400ForInvalidMonth() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(get("/todos/calendar/2026/13")
@@ -157,9 +157,9 @@ class TodoControllerTest {
 
     @Test
     void calendarReturns400ForMonthZero() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(get("/todos/calendar/2026/0")
@@ -171,18 +171,18 @@ class TodoControllerTest {
 
     @Test
     void calendarSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(todoApplicationService.listTodosForMonth(householdId, 2026, 2)).thenReturn(List.of());
+        when(todoApplicationService.listTodosForMonth(groupId, 2026, 2)).thenReturn(List.of());
 
         mockMvc.perform(get("/todos/calendar/2026/2")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
-        verify(todoApplicationService).listTodosForMonth(householdId, 2026, 2);
+        verify(todoApplicationService).listTodosForMonth(groupId, 2026, 2);
     }
 
     @Test
@@ -197,10 +197,10 @@ class TodoControllerTest {
 
     @Test
     void updateSucceedsWithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(todoApplicationService.updateTodo(
@@ -260,8 +260,8 @@ class TodoControllerTest {
     private static final class FakeMembershipRepository implements MembershipRepository {
         private final Map<UUID, List<UUID>> byUser = new HashMap<>();
 
-        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
-            byUser.put(userId, List.of(householdId));
+        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
+            byUser.put(userId, List.of(groupId));
             return this;
         }
 
@@ -271,17 +271,17 @@ class TodoControllerTest {
         }
 
         @Override
-        public List<Membership> findByHouseholdId(UUID householdId) {
+        public List<Membership> findByGroupId(UUID groupId) {
             throw new UnsupportedOperationException("not used");
         }
 
         @Override
-        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        public List<UUID> findGroupIdsByUserId(UUID userId) {
             return byUser.getOrDefault(userId, List.of());
         }
 
         @Override
-        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             throw new UnsupportedOperationException("not used");
         }
     }

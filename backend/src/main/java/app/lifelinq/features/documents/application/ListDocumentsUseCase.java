@@ -16,13 +16,13 @@ final class ListDocumentsUseCase {
         this.documentRepository = documentRepository;
     }
 
-    public List<DocumentItem> execute(UUID householdId, Optional<String> q) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<DocumentItem> execute(UUID groupId, Optional<String> q) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         Optional<String> normalizedQuery = (q == null ? Optional.<String>empty() : q)
                 .map(String::trim)
                 .filter(value -> !value.isEmpty());
-        return documentRepository.findByHouseholdId(householdId, normalizedQuery);
+        return documentRepository.findByGroupId(groupId, normalizedQuery);
     }
 }

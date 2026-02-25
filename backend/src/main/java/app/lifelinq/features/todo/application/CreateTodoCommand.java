@@ -6,7 +6,7 @@ import java.time.LocalTime;
 import java.util.UUID;
 
 public final class CreateTodoCommand {
-    private final UUID householdId;
+    private final UUID groupId;
     private final String text;
     private final TodoScope scope;
     private final LocalDate dueDate;
@@ -15,16 +15,16 @@ public final class CreateTodoCommand {
     private final Integer scopeWeek;
     private final Integer scopeMonth;
 
-    public CreateTodoCommand(UUID householdId, String text) {
-        this(householdId, text, TodoScope.LATER, null, null, null, null, null);
+    public CreateTodoCommand(UUID groupId, String text) {
+        this(groupId, text, TodoScope.LATER, null, null, null, null, null);
     }
 
-    public CreateTodoCommand(UUID householdId, String text, LocalDate dueDate, LocalTime dueTime) {
-        this(householdId, text, dueDate != null ? TodoScope.DAY : TodoScope.LATER, dueDate, dueTime, null, null, null);
+    public CreateTodoCommand(UUID groupId, String text, LocalDate dueDate, LocalTime dueTime) {
+        this(groupId, text, dueDate != null ? TodoScope.DAY : TodoScope.LATER, dueDate, dueTime, null, null, null);
     }
 
     public CreateTodoCommand(
-            UUID householdId,
+            UUID groupId,
             String text,
             TodoScope scope,
             LocalDate dueDate,
@@ -33,7 +33,7 @@ public final class CreateTodoCommand {
             Integer scopeWeek,
             Integer scopeMonth
     ) {
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.text = text;
         this.scope = scope;
         this.dueDate = dueDate;
@@ -43,8 +43,8 @@ public final class CreateTodoCommand {
         this.scopeMonth = scopeMonth;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public String getText() {

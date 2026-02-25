@@ -19,8 +19,8 @@ final class CreateTodoUseCase {
         if (command == null) {
             throw new IllegalArgumentException("command must not be null");
         }
-        if (command.getHouseholdId() == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (command.getGroupId() == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (command.getText() == null || command.getText().isBlank()) {
             throw new IllegalArgumentException("text must not be blank");
@@ -28,7 +28,7 @@ final class CreateTodoUseCase {
 
         Todo todo = new Todo(
                 UUID.randomUUID(),
-                command.getHouseholdId(),
+                command.getGroupId(),
                 command.getText(),
                 command.getScope(),
                 command.getDueDate(),

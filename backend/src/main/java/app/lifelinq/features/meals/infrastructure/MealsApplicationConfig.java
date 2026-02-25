@@ -1,6 +1,6 @@
 package app.lifelinq.features.meals.infrastructure;
 
-import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
+import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.MealsShoppingPort;
 import app.lifelinq.features.meals.domain.RecipeRepository;
@@ -16,14 +16,14 @@ public class MealsApplicationConfig {
     public MealsApplicationService mealsApplicationService(
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
-            EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase,
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
     ) {
         return new MealsApplicationService(
                 weekPlanRepository,
                 recipeRepository,
-                ensureHouseholdMemberUseCase,
+                ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
         );

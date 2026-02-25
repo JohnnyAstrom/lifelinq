@@ -33,32 +33,32 @@ public final class JpaRecipeRepositoryAdapter implements RecipeRepository {
     }
 
     @Override
-    public Optional<Recipe> findByIdAndHouseholdId(UUID recipeId, UUID householdId) {
+    public Optional<Recipe> findByIdAndGroupId(UUID recipeId, UUID groupId) {
         if (recipeId == null) {
             throw new IllegalArgumentException("recipeId must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
-        return repository.findByIdAndHouseholdId(recipeId, householdId).map(mapper::toDomain);
+        return repository.findByIdAndGroupId(recipeId, groupId).map(mapper::toDomain);
     }
 
     @Override
-    public List<Recipe> findByHouseholdId(UUID householdId) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Recipe> findByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         List<Recipe> result = new ArrayList<>();
-        for (RecipeEntity entity : repository.findByHouseholdId(householdId)) {
+        for (RecipeEntity entity : repository.findByGroupId(groupId)) {
             result.add(mapper.toDomain(entity));
         }
         return result;
     }
 
     @Override
-    public List<Recipe> findByHouseholdIdAndIds(UUID householdId, Set<UUID> recipeIds) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (recipeIds == null) {
             throw new IllegalArgumentException("recipeIds must not be null");
@@ -67,7 +67,7 @@ public final class JpaRecipeRepositoryAdapter implements RecipeRepository {
             return List.of();
         }
         List<Recipe> result = new ArrayList<>();
-        for (RecipeEntity entity : repository.findByHouseholdIdAndIdIn(householdId, recipeIds)) {
+        for (RecipeEntity entity : repository.findByGroupIdAndIdIn(groupId, recipeIds)) {
             result.add(mapper.toDomain(entity));
         }
         return result;

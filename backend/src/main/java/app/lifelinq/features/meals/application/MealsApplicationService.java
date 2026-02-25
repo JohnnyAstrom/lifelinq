@@ -1,7 +1,7 @@
 package app.lifelinq.features.meals.application;
 
-import app.lifelinq.features.household.application.AccessDeniedException;
-import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
+import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
@@ -34,14 +34,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class MealsApplicationService {
     private final WeekPlanRepository weekPlanRepository;
     private final RecipeRepository recipeRepository;
-    private final EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase;
+    private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
 
     public MealsApplicationService(
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
-            EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase,
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
     ) {
@@ -51,8 +51,8 @@ public class MealsApplicationService {
         if (recipeRepository == null) {
             throw new IllegalArgumentException("recipeRepository must not be null");
         }
-        if (ensureHouseholdMemberUseCase == null) {
-            throw new IllegalArgumentException("ensureHouseholdMemberUseCase must not be null");
+        if (ensureGroupMemberUseCase == null) {
+            throw new IllegalArgumentException("ensureGroupMemberUseCase must not be null");
         }
         if (mealsShoppingPort == null) {
             throw new IllegalArgumentException("mealsShoppingPort must not be null");
@@ -62,22 +62,22 @@ public class MealsApplicationService {
         }
         this.weekPlanRepository = weekPlanRepository;
         this.recipeRepository = recipeRepository;
-        this.ensureHouseholdMemberUseCase = ensureHouseholdMemberUseCase;
+        this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
     }
 
     @Transactional
     public RecipeView createRecipe(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             String name,
             List<IngredientInput> ingredients
     ) {
-        ensureMealAccess(householdId, actorUserId);
+        ensureMealAccess(groupId, actorUserId);
         Recipe recipe = new Recipe(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 normalizeRecipeName(name),
                 clock.instant(),
                 toDomainIngredients(ingredients)
@@ -86,16 +86,16 @@ public class MealsApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public RecipeView getRecipe(UUID householdId, UUID actorUserId, UUID recipeId) {
-        ensureMealAccess(householdId, actorUserId);
-        return toView(loadRecipe(householdId, recipeId));
+    public RecipeView getRecipe(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        return toView(loadRecipe(groupId, recipeId));
     }
 
     @Transactional(readOnly = true)
-    public List<RecipeView> listRecipes(UUID householdId, UUID actorUserId) {
-        ensureMealAccess(householdId, actorUserId);
+    public List<RecipeView> listRecipes(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
         List<RecipeView> views = new ArrayList<>();
-        for (Recipe recipe : recipeRepository.findByHouseholdId(householdId)) {
+        for (Recipe recipe : recipeRepository.findByGroupId(groupId)) {
             views.add(toView(recipe));
         }
         views.sort((a, b) -> {
@@ -110,17 +110,17 @@ public class MealsApplicationService {
 
     @Transactional
     public RecipeView updateRecipe(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID recipeId,
             String name,
             List<IngredientInput> ingredients
     ) {
-        ensureMealAccess(householdId, actorUserId);
-        Recipe existing = loadRecipe(householdId, recipeId);
+        ensureMealAccess(groupId, actorUserId);
+        Recipe existing = loadRecipe(groupId, recipeId);
         Recipe updated = new Recipe(
                 existing.getId(),
-                existing.getHouseholdId(),
+                existing.getGroupId(),
                 normalizeRecipeName(name),
                 existing.getCreatedAt(),
                 toDomainIngredients(ingredients)
@@ -130,7 +130,7 @@ public class MealsApplicationService {
 
     @Transactional
     public AddMealOutput addOrReplaceMeal(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             int year,
             int isoWeek,
@@ -139,13 +139,13 @@ public class MealsApplicationService {
             UUID recipeId,
             UUID targetShoppingListId
     ) {
-        ensureMealAccess(householdId, actorUserId);
+        ensureMealAccess(groupId, actorUserId);
         validateIsoWeek(year, isoWeek);
-        Recipe recipe = loadRecipe(householdId, recipeId);
-        WeekPlan weekPlan = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
+        Recipe recipe = loadRecipe(groupId, recipeId);
+        WeekPlan weekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
                 .orElseGet(() -> new WeekPlan(
                         UUID.randomUUID(),
-                        householdId,
+                        groupId,
                         year,
                         isoWeek,
                         clock.instant()
@@ -156,7 +156,7 @@ public class MealsApplicationService {
 
         if (targetShoppingListId != null) {
             // V0.5c intent: recipe ingredients primarily act as shopping-item generators.
-            pushIngredientsToShopping(householdId, actorUserId, targetShoppingListId, recipe.getIngredients());
+            pushIngredientsToShopping(groupId, actorUserId, targetShoppingListId, recipe.getIngredients());
         }
 
         PlannedMeal savedMeal = saved.getMealOrThrow(dayOfWeek, mealType);
@@ -171,16 +171,16 @@ public class MealsApplicationService {
 
     @Transactional
     public void removeMeal(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             int year,
             int isoWeek,
             int dayOfWeek,
             MealType mealType
     ) {
-        ensureMealAccess(householdId, actorUserId);
+        ensureMealAccess(groupId, actorUserId);
         validateIsoWeek(year, isoWeek);
-        WeekPlan weekPlan = weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
+        WeekPlan weekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
                 .orElseThrow(() -> new MealNotFoundException("Meal not found"));
         try {
             weekPlan.removeMeal(dayOfWeek, mealType);
@@ -192,14 +192,14 @@ public class MealsApplicationService {
 
     @Transactional(readOnly = true)
     public WeekPlanView getWeekPlan(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             int year,
             int isoWeek
     ) {
-        ensureMealAccess(householdId, actorUserId);
+        ensureMealAccess(groupId, actorUserId);
         validateIsoWeek(year, isoWeek);
-        return weekPlanRepository.findByHouseholdAndWeek(householdId, year, isoWeek)
+        return weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
                 .map(this::toView)
                 .orElseGet(() -> new WeekPlanView(null, year, isoWeek, null, List.of()));
     }
@@ -211,7 +211,7 @@ public class MealsApplicationService {
         }
 
         Map<UUID, String> namesByRecipeId = new HashMap<>();
-        for (Recipe recipe : recipeRepository.findByHouseholdIdAndIds(weekPlan.getHouseholdId(), recipeIds)) {
+        for (Recipe recipe : recipeRepository.findByGroupIdAndIds(weekPlan.getGroupId(), recipeIds)) {
             namesByRecipeId.put(recipe.getId(), recipe.getName());
         }
 
@@ -233,11 +233,11 @@ public class MealsApplicationService {
         );
     }
 
-    private Recipe loadRecipe(UUID householdId, UUID recipeId) {
+    private Recipe loadRecipe(UUID groupId, UUID recipeId) {
         if (recipeId == null) {
             throw new IllegalArgumentException("recipeId must not be null");
         }
-        return recipeRepository.findByIdAndHouseholdId(recipeId, householdId)
+        return recipeRepository.findByIdAndGroupId(recipeId, groupId)
                 .orElseThrow(() -> new RecipeNotFoundException(recipeId));
     }
 
@@ -288,7 +288,7 @@ public class MealsApplicationService {
         }
         return new RecipeView(
                 recipe.getId(),
-                recipe.getHouseholdId(),
+                recipe.getGroupId(),
                 recipe.getName(),
                 recipe.getCreatedAt(),
                 ingredients
@@ -303,7 +303,7 @@ public class MealsApplicationService {
     }
 
     private void pushIngredientsToShopping(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID targetShoppingListId,
             List<Ingredient> ingredients
@@ -313,7 +313,7 @@ public class MealsApplicationService {
         for (int index = ingredients.size() - 1; index >= 0; index--) {
             Ingredient ingredient = ingredients.get(index);
             mealsShoppingPort.addShoppingItem(
-                    householdId,
+                    groupId,
                     actorUserId,
                     targetShoppingListId,
                     normalizeIngredientName(ingredient.getName()),
@@ -334,9 +334,9 @@ public class MealsApplicationService {
         return trimmed.replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
-    private void ensureMealAccess(UUID householdId, UUID actorUserId) {
+    private void ensureMealAccess(UUID groupId, UUID actorUserId) {
         try {
-            ensureHouseholdMemberUseCase.execute(householdId, actorUserId);
+            ensureGroupMemberUseCase.execute(groupId, actorUserId);
         } catch (AccessDeniedException ex) {
             throw new MealsAccessDeniedException(ex.getMessage());
         }

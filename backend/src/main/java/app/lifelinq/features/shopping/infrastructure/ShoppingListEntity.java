@@ -24,7 +24,7 @@ public class ShoppingListEntity {
     private UUID id;
 
     @Column(name = "household_id", nullable = false)
-    private UUID householdId;
+    private UUID groupId;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -45,9 +45,9 @@ public class ShoppingListEntity {
     protected ShoppingListEntity() {
     }
 
-    ShoppingListEntity(UUID id, UUID householdId, String name, int orderIndex, Instant createdAt) {
+    ShoppingListEntity(UUID id, UUID groupId, String name, int orderIndex, Instant createdAt) {
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.name = name;
         this.orderIndex = orderIndex;
         this.createdAt = createdAt;
@@ -57,8 +57,8 @@ public class ShoppingListEntity {
         return id;
     }
 
-    UUID getHouseholdId() {
-        return householdId;
+    UUID getGroupId() {
+        return groupId;
     }
 
     String getName() {

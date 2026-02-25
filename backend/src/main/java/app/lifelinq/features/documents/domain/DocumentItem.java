@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public final class DocumentItem {
     private final UUID id;
-    private final UUID householdId;
+    private final UUID groupId;
     private final UUID createdByUserId;
     private final String title;
     private final String notes;
@@ -20,7 +20,7 @@ public final class DocumentItem {
 
     public DocumentItem(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             UUID createdByUserId,
             String title,
             String notes,
@@ -33,8 +33,8 @@ public final class DocumentItem {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (createdByUserId == null) {
             throw new IllegalArgumentException("createdByUserId must not be null");
@@ -46,7 +46,7 @@ public final class DocumentItem {
             throw new IllegalArgumentException("createdAt must not be null");
         }
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.createdByUserId = createdByUserId;
         this.title = title;
         this.notes = notes;
@@ -61,8 +61,8 @@ public final class DocumentItem {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public UUID getCreatedByUserId() {

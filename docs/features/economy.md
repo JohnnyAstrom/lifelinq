@@ -9,9 +9,9 @@ This document serves as the architectural contract for its implementation.
 
 ## Purpose
 
-Economy is a **household settlement engine**.
+Economy is a **group settlement engine**.
 
-Its purpose is to calculate how shared expenses (and optionally incomes) should be balanced between household members over defined settlement periods.
+Its purpose is to calculate how shared expenses (and optionally incomes) should be balanced between group members over defined settlement periods.
 
 Economy does not:
 
@@ -32,7 +32,7 @@ It calculates settlement obligations only.
 - Historical periods are immutable.
 - Settlement is always derived, never stored.
 - The model must support multiple fairness strategies.
-- The model must remain lightweight and household-oriented.
+- The model must remain lightweight and group-oriented.
 
 ---
 
@@ -40,12 +40,12 @@ It calculates settlement obligations only.
 
 ### SettlementPeriod (Aggregate Root)
 
-Each household operates in sequential settlement periods.
+Each group operates in sequential settlement periods.
 
 #### Data shape (conceptual)
 
 - `id`
-- `householdId`
+- `groupId`
 - `startDate`
 - `endDate` (nullable when OPEN)
 - `status` (`OPEN` | `CLOSED`)
@@ -53,7 +53,7 @@ Each household operates in sequential settlement periods.
 
 #### Invariants
 
-- Exactly one `OPEN` period per household.
+- Exactly one `OPEN` period per group.
 - Periods must not overlap.
 - No temporal gaps between periods.
 - `previous.endDate == next.startDate`.
@@ -152,7 +152,7 @@ remaining disposable income is equalized between members.
 
 ## Period Lifecycle
 
-- A new household starts with one `OPEN` period.
+- A new group starts with one `OPEN` period.
 - Closing a period:
   - sets `endDate`
   - sets `status = CLOSED`

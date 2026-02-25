@@ -6,9 +6,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
-import app.lifelinq.features.household.domain.Membership;
-import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.features.group.domain.Membership;
+import app.lifelinq.features.group.domain.MembershipRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -37,7 +37,7 @@ class MeControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
-                        HouseholdApplicationServiceTestFactory.createForContextResolution(membershipRepository)
+                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
                 ))
                 .build();
     }
@@ -50,21 +50,21 @@ class MeControllerTest {
     }
 
     @Test
-    void returnsUserAndHouseholdWhenContextPresent() throws Exception {
+    void returnsUserAndGroupWhenContextPresent() throws Exception {
         UUID userId = UUID.randomUUID();
-        UUID householdId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        UUID groupId = UUID.randomUUID();
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         mockMvc.perform(get("/me")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
-                .andExpect(jsonPath("$.householdId").value(householdId.toString()));
+                .andExpect(jsonPath("$.groupId").value(groupId.toString()));
     }
 
     @Test
-    void returnsNullHouseholdWhenMissingMembership() throws Exception {
+    void returnsNullGroupWhenMissingMembership() throws Exception {
         UUID userId = UUID.randomUUID();
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
@@ -72,7 +72,7 @@ class MeControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
-                .andExpect(jsonPath("$.householdId").value(org.hamcrest.Matchers.nullValue()));
+                .andExpect(jsonPath("$.groupId").value(org.hamcrest.Matchers.nullValue()));
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {
@@ -101,8 +101,8 @@ class MeControllerTest {
     private static final class FakeMembershipRepository implements MembershipRepository {
         private final Map<UUID, List<UUID>> byUser = new HashMap<>();
 
-        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
-            byUser.put(userId, List.of(householdId));
+        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
+            byUser.put(userId, List.of(groupId));
             return this;
         }
 
@@ -112,17 +112,17 @@ class MeControllerTest {
         }
 
         @Override
-        public List<Membership> findByHouseholdId(UUID householdId) {
+        public List<Membership> findByGroupId(UUID groupId) {
             throw new UnsupportedOperationException("not used");
         }
 
         @Override
-        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        public List<UUID> findGroupIdsByUserId(UUID userId) {
             return byUser.getOrDefault(userId, List.of());
         }
 
         @Override
-        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             throw new UnsupportedOperationException("not used");
         }
     }

@@ -8,8 +8,8 @@ import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
-import { CreateHouseholdScreen } from '../features/household/screens/CreateHouseholdScreen';
-import { HouseholdMembersScreen } from '../features/household/screens/HouseholdMembersScreen';
+import { CreateGroupScreen } from '../features/group/screens/CreateGroupScreen';
+import { GroupMembersScreen } from '../features/group/screens/GroupMembersScreen';
 import { TodoListScreen } from '../features/todo/screens/TodoListScreen';
 import { MealsWeekScreen } from '../features/meals/screens/MealsWeekScreen';
 import { ShoppingListsScreen } from '../features/shopping/screens/ShoppingListsScreen';
@@ -132,9 +132,9 @@ function AppShell() {
     );
   }
 
-  if (!me.data.householdId) {
+  if (!me.data.groupId) {
     return (
-      <CreateHouseholdScreen
+      <CreateGroupScreen
         token={token}
         onCreated={async () => {
           me.reload();
@@ -157,7 +157,7 @@ function AppShell() {
 
   if (screen === 'members') {
     return (
-      <HouseholdMembersScreen
+      <GroupMembersScreen
         token={token}
         onDone={() => {
           setScreen('settings');

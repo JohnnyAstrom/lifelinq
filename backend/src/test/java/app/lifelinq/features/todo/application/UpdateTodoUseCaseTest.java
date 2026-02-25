@@ -22,8 +22,8 @@ class UpdateTodoUseCaseTest {
     @Test
     void updatesTodoTextAndSchedule() {
         InMemoryTodoRepository todoRepository = new InMemoryTodoRepository();
-        UUID householdId = UUID.randomUUID();
-        Todo original = new Todo(UUID.randomUUID(), householdId, "Buy milk");
+        UUID groupId = UUID.randomUUID();
+        Todo original = new Todo(UUID.randomUUID(), groupId, "Buy milk");
         todoRepository.save(original);
         UpdateTodoUseCase useCase = new UpdateTodoUseCase(todoRepository);
         UpdateTodoCommand command = new UpdateTodoCommand(
@@ -45,8 +45,8 @@ class UpdateTodoUseCaseTest {
     @Test
     void preservesCompletedStatusWhenUpdating() {
         InMemoryTodoRepository todoRepository = new InMemoryTodoRepository();
-        UUID householdId = UUID.randomUUID();
-        Todo original = new Todo(UUID.randomUUID(), householdId, "Pay bill");
+        UUID groupId = UUID.randomUUID();
+        Todo original = new Todo(UUID.randomUUID(), groupId, "Pay bill");
         original.toggle(Instant.now());
         todoRepository.save(original);
         UpdateTodoUseCase useCase = new UpdateTodoUseCase(todoRepository);
@@ -140,12 +140,12 @@ class UpdateTodoUseCaseTest {
         }
 
         @Override
-        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+        public List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter) {
             return new ArrayList<>(saved);
         }
 
         @Override
-        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new ArrayList<>();
         }
     }

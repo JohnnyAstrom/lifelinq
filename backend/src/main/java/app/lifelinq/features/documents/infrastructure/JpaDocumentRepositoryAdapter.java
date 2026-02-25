@@ -28,17 +28,17 @@ public final class JpaDocumentRepositoryAdapter implements DocumentRepository {
     }
 
     @Override
-    public List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<DocumentItem> findByGroupId(UUID groupId, Optional<String> q) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (q == null) {
             throw new IllegalArgumentException("q must not be null");
         }
         List<DocumentItem> items = new ArrayList<>();
         List<DocumentEntity> entities = q.isPresent()
-                ? repository.searchByHouseholdIdAndText(householdId, q.get())
-                : repository.findByHouseholdIdOrderByCreatedAtDescIdAsc(householdId);
+                ? repository.searchByGroupIdAndText(groupId, q.get())
+                : repository.findByGroupIdOrderByCreatedAtDescIdAsc(groupId);
         for (DocumentEntity entity : entities) {
             items.add(mapper.toDomain(entity));
         }
@@ -46,13 +46,13 @@ public final class JpaDocumentRepositoryAdapter implements DocumentRepository {
     }
 
     @Override
-    public boolean deleteByIdAndHouseholdId(UUID id, UUID householdId) {
+    public boolean deleteByIdAndGroupId(UUID id, UUID groupId) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
-        return repository.deleteByIdAndHouseholdId(id, householdId) > 0;
+        return repository.deleteByIdAndGroupId(id, groupId) > 0;
     }
 }

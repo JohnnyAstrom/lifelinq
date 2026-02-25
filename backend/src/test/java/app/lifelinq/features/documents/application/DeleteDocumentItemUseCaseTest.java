@@ -13,21 +13,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DeleteDocumentItemUseCaseTest {
 
     @Test
-    void deletes_document_by_id_and_household() {
+    void deletes_document_by_id_and_group() {
         InMemoryDocumentRepository repository = new InMemoryDocumentRepository();
         DeleteDocumentItemUseCase useCase = new DeleteDocumentItemUseCase(repository);
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID documentId = UUID.randomUUID();
 
-        boolean deleted = useCase.execute(householdId, documentId);
+        boolean deleted = useCase.execute(groupId, documentId);
 
         assertThat(deleted).isTrue();
-        assertThat(repository.lastHouseholdId).isEqualTo(householdId);
+        assertThat(repository.lastGroupId).isEqualTo(groupId);
         assertThat(repository.lastDocumentId).isEqualTo(documentId);
     }
 
     @Test
-    void rejects_missing_household_id() {
+    void rejects_missing_group_id() {
         DeleteDocumentItemUseCase useCase = new DeleteDocumentItemUseCase(new InMemoryDocumentRepository());
 
         assertThatThrownBy(() -> useCase.execute(null, UUID.randomUUID()))
@@ -44,7 +44,7 @@ class DeleteDocumentItemUseCaseTest {
 
     private static final class InMemoryDocumentRepository implements DocumentRepository {
         private UUID lastDocumentId;
-        private UUID lastHouseholdId;
+        private UUID lastGroupId;
 
         @Override
         public void save(DocumentItem item) {
@@ -52,14 +52,14 @@ class DeleteDocumentItemUseCaseTest {
         }
 
         @Override
-        public List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q) {
+        public List<DocumentItem> findByGroupId(UUID groupId, Optional<String> q) {
             throw new UnsupportedOperationException("Not needed for this test");
         }
 
         @Override
-        public boolean deleteByIdAndHouseholdId(UUID id, UUID householdId) {
+        public boolean deleteByIdAndGroupId(UUID id, UUID groupId) {
             this.lastDocumentId = id;
-            this.lastHouseholdId = householdId;
+            this.lastGroupId = groupId;
             return true;
         }
     }

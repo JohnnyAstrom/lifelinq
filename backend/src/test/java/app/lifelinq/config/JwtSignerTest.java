@@ -23,6 +23,6 @@ class JwtSignerTest {
 
         JwtClaims claims = new JwtVerifier(SECRET).verify(token);
         assertEquals(userId, claims.getUserId());
-        assertNull(claims.getHouseholdId());
+        assertNull(claims.getGroupId());
     }
 }

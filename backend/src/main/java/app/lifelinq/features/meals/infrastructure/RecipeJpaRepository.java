@@ -9,11 +9,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RecipeJpaRepository extends JpaRepository<RecipeEntity, UUID> {
     @EntityGraph(attributePaths = "ingredients")
-    Optional<RecipeEntity> findByIdAndHouseholdId(UUID id, UUID householdId);
+    Optional<RecipeEntity> findByIdAndGroupId(UUID id, UUID groupId);
 
     @EntityGraph(attributePaths = "ingredients")
-    List<RecipeEntity> findByHouseholdId(UUID householdId);
+    List<RecipeEntity> findByGroupId(UUID groupId);
 
     @EntityGraph(attributePaths = "ingredients")
-    List<RecipeEntity> findByHouseholdIdAndIdIn(UUID householdId, Collection<UUID> ids);
+    List<RecipeEntity> findByGroupIdAndIdIn(UUID groupId, Collection<UUID> ids);
 }

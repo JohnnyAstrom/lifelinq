@@ -1,9 +1,9 @@
 package app.lifelinq.test.integration;
 
-import app.lifelinq.features.household.application.AccessDeniedException;
-import app.lifelinq.features.household.contract.EnsureHouseholdMemberUseCase;
-import app.lifelinq.features.household.infrastructure.HouseholdJpaRepository;
-import app.lifelinq.features.household.infrastructure.HouseholdPersistenceConfig;
+import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
+import app.lifelinq.features.group.infrastructure.GroupJpaRepository;
+import app.lifelinq.features.group.infrastructure.GroupPersistenceConfig;
 import app.lifelinq.features.meals.infrastructure.MealsApplicationConfig;
 import app.lifelinq.features.meals.infrastructure.MealsPersistenceConfig;
 import app.lifelinq.features.meals.infrastructure.WeekPlanJpaRepository;
@@ -28,13 +28,13 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @SpringBootConfiguration
 @EnableAutoConfiguration
 @EnableJpaRepositories(basePackageClasses = {
-        HouseholdJpaRepository.class,
+        GroupJpaRepository.class,
         ShoppingListJpaRepository.class,
         WeekPlanJpaRepository.class
 })
 @EnableTransactionManagement
 @Import({
-        HouseholdPersistenceConfig.class,
+        GroupPersistenceConfig.class,
         ShoppingPersistenceConfig.class,
         MealsPersistenceConfig.class,
         ShoppingApplicationConfig.class,
@@ -47,7 +47,7 @@ public class MealsShoppingIntegrationTestApplication {
         LocalContainerEntityManagerFactoryBean factoryBean = new LocalContainerEntityManagerFactoryBean();
         factoryBean.setDataSource(dataSource);
         factoryBean.setPackagesToScan(
-                "app.lifelinq.features.household.infrastructure",
+                "app.lifelinq.features.group.infrastructure",
                 "app.lifelinq.features.shopping.infrastructure",
                 "app.lifelinq.features.meals.infrastructure"
         );
@@ -64,17 +64,17 @@ public class MealsShoppingIntegrationTestApplication {
     }
 
     @Bean
-    public EnsureHouseholdMemberUseCase ensureHouseholdMemberUseCase(
-            app.lifelinq.features.household.domain.MembershipRepository membershipRepository
+    public EnsureGroupMemberUseCase ensureGroupMemberUseCase(
+            app.lifelinq.features.group.domain.MembershipRepository membershipRepository
     ) {
-        return (householdId, actorUserId) -> {
-            var memberships = membershipRepository.findByHouseholdId(householdId);
+        return (groupId, actorUserId) -> {
+            var memberships = membershipRepository.findByGroupId(groupId);
             for (var membership : memberships) {
                 if (membership.getUserId().equals(actorUserId)) {
                     return;
                 }
             }
-            throw new AccessDeniedException("Actor is not a member of the household");
+            throw new AccessDeniedException("Actor is not a member of the group");
         };
     }
 

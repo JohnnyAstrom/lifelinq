@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public interface MealsShoppingPort {
     void addShoppingItem(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             UUID listId,
             String itemName,

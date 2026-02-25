@@ -22,14 +22,14 @@ final class ListTodosForMonthUseCase {
         if (query == null) {
             throw new IllegalArgumentException("query must not be null");
         }
-        if (query.getHouseholdId() == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (query.getGroupId() == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         YearMonth yearMonth = YearMonth.of(query.getYear(), query.getMonth());
         LocalDate startDate = toUtcDate(yearMonth.atDay(1));
         LocalDate endDate = toUtcDate(yearMonth.atEndOfMonth());
         List<Todo> todos = todoRepository.listForMonth(
-                query.getHouseholdId(),
+                query.getGroupId(),
                 query.getYear(),
                 query.getMonth(),
                 startDate,

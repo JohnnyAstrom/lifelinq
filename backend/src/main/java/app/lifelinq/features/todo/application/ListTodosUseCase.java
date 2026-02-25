@@ -22,11 +22,11 @@ final class ListTodosUseCase {
         if (query.getStatusFilter() == null) {
             throw new IllegalArgumentException("statusFilter must not be null");
         }
-        if (query.getHouseholdId() == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (query.getGroupId() == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
 
-        List<Todo> items = todoRepository.listByHousehold(query.getHouseholdId(), query.getStatusFilter());
+        List<Todo> items = todoRepository.listByGroup(query.getGroupId(), query.getStatusFilter());
         return new ListTodosResult(items);
     }
 }

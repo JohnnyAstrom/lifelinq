@@ -3,7 +3,7 @@ package app.lifelinq.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
-import app.lifelinq.features.household.application.HouseholdApplicationService;
+import app.lifelinq.features.group.application.GroupApplicationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
@@ -12,9 +12,9 @@ public class RequestContextConfig {
     @Bean(name = "lifeLinqRequestContextFilter")
     public RequestContextFilter lifeLinqRequestContextFilter(
             JwtVerifier jwtVerifier,
-            HouseholdApplicationService householdApplicationService
+            GroupApplicationService groupApplicationService
     ) {
-        return new RequestContextFilter(jwtVerifier, householdApplicationService);
+        return new RequestContextFilter(jwtVerifier, groupApplicationService);
     }
 
     @Bean

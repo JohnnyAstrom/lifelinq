@@ -41,14 +41,14 @@ public final class JwtVerifier {
         verifySignature(parts[0], parts[1], parts[2]);
 
         String payloadJson = decodeJson(parts[1]);
-        UUID householdId = parseOptionalUuidClaim(payloadJson, "householdId");
+        UUID groupId = parseOptionalUuidClaim(payloadJson, "groupId");
         UUID userId = parseRequiredUuidClaim(payloadJson, "userId");
         long exp = parseExp(payloadJson);
         if (Instant.now().getEpochSecond() >= exp) {
             throw new JwtValidationException("Token expired");
         }
 
-        return new JwtClaims(householdId, userId);
+        return new JwtClaims(groupId, userId);
     }
 
     private String decodeJson(String part) {

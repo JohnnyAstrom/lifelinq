@@ -42,11 +42,11 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
     }
 
     @Override
-    public Optional<WeekPlan> findByHouseholdAndWeek(UUID householdId, int year, int isoWeek) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public Optional<WeekPlan> findByGroupAndWeek(UUID groupId, int year, int isoWeek) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
-        return repository.findByHouseholdIdAndYearAndIsoWeek(householdId, year, isoWeek)
+        return repository.findByGroupIdAndYearAndIsoWeek(groupId, year, isoWeek)
                 .map(mapper::toDomain);
     }
 
@@ -59,8 +59,8 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
     }
 
     private WeekPlanEntity updateEntity(WeekPlanEntity entity, WeekPlan weekPlan) {
-        if (!entity.getHouseholdId().equals(weekPlan.getHouseholdId())) {
-            throw new IllegalArgumentException("householdId cannot be changed");
+        if (!entity.getGroupId().equals(weekPlan.getGroupId())) {
+            throw new IllegalArgumentException("groupId cannot be changed");
         }
         if (entity.getYear() != weekPlan.getYear()) {
             throw new IllegalArgumentException("year cannot be changed");
@@ -79,8 +79,8 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
     }
 
     private WeekPlan resolveUniqueConstraintConflict(WeekPlan weekPlan, DataIntegrityViolationException ex) {
-        Optional<WeekPlanEntity> existingEntity = repository.findByHouseholdIdAndYearAndIsoWeek(
-                weekPlan.getHouseholdId(),
+        Optional<WeekPlanEntity> existingEntity = repository.findByGroupIdAndYearAndIsoWeek(
+                weekPlan.getGroupId(),
                 weekPlan.getYear(),
                 weekPlan.getIsoWeek()
         );

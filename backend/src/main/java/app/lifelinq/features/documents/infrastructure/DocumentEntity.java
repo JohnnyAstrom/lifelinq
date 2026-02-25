@@ -19,8 +19,8 @@ public class DocumentEntity {
     @Id
     private UUID id;
 
-    @Column(nullable = false)
-    private UUID householdId;
+    @Column(name = "household_id", nullable = false)
+    private UUID groupId;
 
     @Column(nullable = false)
     private UUID createdByUserId;
@@ -49,7 +49,7 @@ public class DocumentEntity {
 
     public DocumentEntity(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             UUID createdByUserId,
             String title,
             String notes,
@@ -60,7 +60,7 @@ public class DocumentEntity {
             Instant createdAt
     ) {
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.createdByUserId = createdByUserId;
         this.title = title;
         this.notes = notes;
@@ -75,8 +75,8 @@ public class DocumentEntity {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public UUID getCreatedByUserId() {

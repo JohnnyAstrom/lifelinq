@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public final class DocumentItemResponse {
     private final UUID id;
-    private final UUID householdId;
+    private final UUID groupId;
     private final UUID createdByUserId;
     private final String title;
     private final String notes;
@@ -19,7 +19,7 @@ public final class DocumentItemResponse {
 
     public DocumentItemResponse(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             UUID createdByUserId,
             String title,
             String notes,
@@ -30,7 +30,7 @@ public final class DocumentItemResponse {
             Instant createdAt
     ) {
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.createdByUserId = createdByUserId;
         this.title = title;
         this.notes = notes;
@@ -45,8 +45,8 @@ public final class DocumentItemResponse {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public UUID getCreatedByUserId() {

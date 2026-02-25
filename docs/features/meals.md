@@ -4,7 +4,7 @@ This document defines the detailed intent and behavior for the Meals feature.
 
 ## Purpose
 
-Meals is a **meal planning** surface for the household.
+Meals is a **meal planning** surface for the group.
 It exists to turn planned meals into actionable shopping items.
 Meals is a separate feature from Shopping, with an explicit integration point.
 In V0.5c, recipes serve primarily as a shopping-generator: ingredients listed on a recipe are used to push shopping items. Full culinary modeling (instructions, nutrition, comprehensive ingredient sets) is out of scope.
@@ -24,26 +24,26 @@ when `targetShoppingListId` is provided, once per ingredient occurrence.
 
 - `WeekPlan` is the aggregate root.
 - Primary identity: UUID id.
-- Unique constraint: (householdId, year, isoWeek).
+- Unique constraint: (groupId, year, isoWeek).
 - `createdAt` is stored on `WeekPlan` and set via application Clock.
 
 ### Scope
 
-- Household-scoped.
-- One `WeekPlan` per household per ISO week.
+- Group-scoped.
+- One `WeekPlan` per group per ISO week.
 
 ### Entities / value objects
 
 - `WeekPlan`
-  - `id`, `householdId`, `year`, `isoWeek`, `createdAt`, `meals`
+  - `id`, `groupId`, `year`, `isoWeek`, `createdAt`, `meals`
 - `PlannedMeal`
   - `dayOfWeek` (1–7, ISO)
   - `mealType` (BREAKFAST, LUNCH, DINNER)
   - `recipeId` (UUID reference)
   - Identity within `WeekPlan` is `(dayOfWeek, mealType)` (no separate UUID in V0).
-  - Inherits household scope from `WeekPlan` (no householdId on `PlannedMeal`).
+  - Inherits group scope from `WeekPlan` (no groupId on `PlannedMeal`).
 - `Recipe`
-  - `id`, `householdId`, `name`, `createdAt`, `ingredients`
+  - `id`, `groupId`, `name`, `createdAt`, `ingredients`
 - `Ingredient`
   - `id`, `name`, `quantity` (BigDecimal, nullable), `unit` (ShoppingUnit, nullable), `position`
 
@@ -52,10 +52,10 @@ when `targetShoppingListId` is provided, once per ingredient occurrence.
 - `dayOfWeek` must be 1–7.
 - Max 1 planned meal per day + meal type within a week.
 - Adding a meal for an existing day + type replaces the current meal.
-- `WeekPlan` unique per household + ISO week.
+- `WeekPlan` unique per group + ISO week.
 - `isoWeek` must be valid for the given year (validated in application layer).
 - No cross-week move in V0 (move = delete + re-add).
-- Household scope is enforced at application layer.
+- Group scope is enforced at application layer.
 - `Ingredient.position` must be unique within a recipe.
 - `Ingredient.name` must be non-blank.
 
@@ -119,49 +119,49 @@ Purpose: Add or replace the meal for a specific day + type. Implicitly creates t
 Request body: `recipeId`, `mealType`, `targetShoppingListId` (optional; null means no push).  
 Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
 Status: 200 OK.  
-Errors: 400 invalid input, 401 missing context, 403 not a household member or shopping list not owned, 404 recipe not found in household.
+Errors: 400 invalid input, 401 missing context, 403 not a group member or shopping list not owned, 404 recipe not found in group.
 
 Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}`  
 Purpose: Add or replace a meal when `mealType` is provided in the request body.  
 Request body: `recipeId`, `mealType` (required), `targetShoppingListId` (optional).  
 Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
 Status: 200 OK.  
-Errors: 400 invalid input, 401 missing context, 403 not a household member or shopping list not owned, 404 recipe not found in household.
+Errors: 400 invalid input, 401 missing context, 403 not a group member or shopping list not owned, 404 recipe not found in group.
 
 Endpoint: `DELETE /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}`  
 Purpose: Remove the meal for a specific day + type.  
 Response: none.  
 Status: 204 No Content.  
-Errors: 400 invalid input, 401 missing context, 403 not a household member, 404 meal not found.
+Errors: 400 invalid input, 401 missing context, 403 not a group member, 404 meal not found.
 
 Endpoint: `GET /meals/weeks/{year}/{isoWeek}`  
 Purpose: Get the week plan.  
 Response: `weekPlanId` (nullable), `year`, `isoWeek`, `createdAt` (nullable), `meals`.  
 Status: 200 OK (returns an empty plan when missing).  
-Errors: 400 invalid input, 401 missing context, 403 not a household member.
+Errors: 400 invalid input, 401 missing context, 403 not a group member.
 
 Endpoint: `POST /meals/recipes`  
-Purpose: Create a household-scoped recipe with ordered ingredients.  
+Purpose: Create a group-scoped recipe with ordered ingredients.  
 Request body: `name`, `ingredients[]` (`name`, `quantity`, `unit`, `position`).  
-Response: `recipeId`, `householdId`, `name`, `createdAt`, `ingredients`.  
+Response: `recipeId`, `groupId`, `name`, `createdAt`, `ingredients`.  
 Status: 200 OK.  
-Errors: 400 invalid input, 401 missing context, 403 not a household member.
+Errors: 400 invalid input, 401 missing context, 403 not a group member.
 
 Endpoint: `GET /meals/recipes`  
-Purpose: List recipes for the current household.  
+Purpose: List recipes for the current group.  
 Response: list of `Recipe` responses with ingredients.  
 Status: 200 OK.  
-Errors: 401 missing context, 403 not a household member.
+Errors: 401 missing context, 403 not a group member.
 
 Endpoint: `GET /meals/recipes/{recipeId}`  
-Purpose: Get one recipe in the current household.  
+Purpose: Get one recipe in the current group.  
 Response: `Recipe` response with ingredients.  
 Status: 200 OK.  
-Errors: 401 missing context, 403 not a household member, 404 recipe not found in household.
+Errors: 401 missing context, 403 not a group member, 404 recipe not found in group.
 
 Endpoint: `PUT /meals/recipes/{recipeId}`  
-Purpose: Replace recipe name and ingredient set for one household-scoped recipe.  
+Purpose: Replace recipe name and ingredient set for one group-scoped recipe.  
 Request body: `name`, `ingredients[]` (`name`, `quantity`, `unit`, `position`).  
 Response: updated `Recipe` response.  
 Status: 200 OK.  
-Errors: 400 invalid input, 401 missing context, 403 not a household member, 404 recipe not found in household.
+Errors: 400 invalid input, 401 missing context, 403 not a group member, 404 recipe not found in group.

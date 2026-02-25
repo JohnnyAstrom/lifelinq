@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
     private final ConcurrentMap<UUID, WeekPlan> byId = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, UUID> byHouseholdWeek = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, UUID> byGroupWeek = new ConcurrentHashMap<>();
 
     @Override
     public WeekPlan save(WeekPlan weekPlan) {
@@ -17,16 +17,16 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
             throw new IllegalArgumentException("weekPlan must not be null");
         }
         byId.put(weekPlan.getId(), weekPlan);
-        byHouseholdWeek.put(key(weekPlan.getHouseholdId(), weekPlan.getYear(), weekPlan.getIsoWeek()), weekPlan.getId());
+        byGroupWeek.put(key(weekPlan.getGroupId(), weekPlan.getYear(), weekPlan.getIsoWeek()), weekPlan.getId());
         return weekPlan;
     }
 
     @Override
-    public Optional<WeekPlan> findByHouseholdAndWeek(UUID householdId, int year, int isoWeek) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public Optional<WeekPlan> findByGroupAndWeek(UUID groupId, int year, int isoWeek) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
-        UUID id = byHouseholdWeek.get(key(householdId, year, isoWeek));
+        UUID id = byGroupWeek.get(key(groupId, year, isoWeek));
         if (id == null) {
             return Optional.empty();
         }
@@ -41,7 +41,7 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
         return Optional.ofNullable(byId.get(id));
     }
 
-    private String key(UUID householdId, int year, int isoWeek) {
-        return householdId + ":" + year + ":" + isoWeek;
+    private String key(UUID groupId, int year, int isoWeek) {
+        return groupId + ":" + year + ":" + isoWeek;
     }
 }

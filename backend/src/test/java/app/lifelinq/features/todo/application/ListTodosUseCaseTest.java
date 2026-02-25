@@ -18,18 +18,18 @@ class ListTodosUseCaseTest {
     @Test
     void filtersByStatus() {
         InMemoryTodoRepository repository = new InMemoryTodoRepository();
-        UUID householdId = UUID.randomUUID();
-        Todo open = new Todo(UUID.randomUUID(), householdId, "Open");
-        Todo completed = new Todo(UUID.randomUUID(), householdId, "Done");
+        UUID groupId = UUID.randomUUID();
+        Todo open = new Todo(UUID.randomUUID(), groupId, "Open");
+        Todo completed = new Todo(UUID.randomUUID(), groupId, "Done");
         completed.toggle(java.time.Instant.parse("2026-01-01T00:00:00Z"));
         repository.save(open);
         repository.save(completed);
 
         ListTodosUseCase useCase = new ListTodosUseCase(repository);
 
-        ListTodosResult openResult = useCase.execute(new TodoQuery(householdId, TodoStatus.OPEN));
-        ListTodosResult completedResult = useCase.execute(new TodoQuery(householdId, TodoStatus.COMPLETED));
-        ListTodosResult allResult = useCase.execute(new TodoQuery(householdId, TodoStatus.ALL));
+        ListTodosResult openResult = useCase.execute(new TodoQuery(groupId, TodoStatus.OPEN));
+        ListTodosResult completedResult = useCase.execute(new TodoQuery(groupId, TodoStatus.COMPLETED));
+        ListTodosResult allResult = useCase.execute(new TodoQuery(groupId, TodoStatus.ALL));
 
         assertEquals(1, openResult.getTodos().size());
         assertEquals(1, completedResult.getTodos().size());
@@ -37,17 +37,17 @@ class ListTodosUseCaseTest {
     }
 
     @Test
-    void filtersByHouseholdWhenProvided() {
+    void filtersByGroupWhenProvided() {
         InMemoryTodoRepository repository = new InMemoryTodoRepository();
-        UUID householdId = UUID.randomUUID();
-        repository.save(new Todo(UUID.randomUUID(), householdId, "A"));
+        UUID groupId = UUID.randomUUID();
+        repository.save(new Todo(UUID.randomUUID(), groupId, "A"));
         repository.save(new Todo(UUID.randomUUID(), UUID.randomUUID(), "B"));
 
         ListTodosUseCase useCase = new ListTodosUseCase(repository);
-        ListTodosResult result = useCase.execute(new TodoQuery(householdId, TodoStatus.ALL));
+        ListTodosResult result = useCase.execute(new TodoQuery(groupId, TodoStatus.ALL));
 
         assertEquals(1, result.getTodos().size());
-        assertEquals(householdId, result.getTodos().get(0).getHouseholdId());
+        assertEquals(groupId, result.getTodos().get(0).getGroupId());
     }
 
     @Test
@@ -63,7 +63,7 @@ class ListTodosUseCaseTest {
     }
 
     @Test
-    void requiresHouseholdId() {
+    void requiresGroupId() {
         ListTodosUseCase useCase = new ListTodosUseCase(new InMemoryTodoRepository());
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(new TodoQuery(null, TodoStatus.ALL)));
     }
@@ -87,10 +87,10 @@ class ListTodosUseCaseTest {
         }
 
         @Override
-        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+        public List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter) {
             List<Todo> result = new ArrayList<>();
             for (Todo todo : store) {
-                if (householdId != null && !householdId.equals(todo.getHouseholdId())) {
+                if (groupId != null && !groupId.equals(todo.getGroupId())) {
                     continue;
                 }
                 if (statusFilter != TodoStatus.ALL && todo.getStatus() != statusFilter) {
@@ -105,7 +105,7 @@ class ListTodosUseCaseTest {
         }
 
         @Override
-        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new ArrayList<>();
         }
     }

@@ -18,12 +18,12 @@ class CreateDocumentItemUseCaseTest {
     void creates_document_item_with_metadata() {
         InMemoryDocumentRepository repository = new InMemoryDocumentRepository();
         CreateDocumentItemUseCase useCase = new CreateDocumentItemUseCase(repository);
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Instant createdAt = Instant.now();
 
         CreateDocumentItemResult result = useCase.execute(new CreateDocumentItemCommand(
-                householdId,
+                groupId,
                 userId,
                 "Warranty",
                 "Kitchen fridge",
@@ -36,7 +36,7 @@ class CreateDocumentItemUseCaseTest {
 
         assertThat(result.getItemId()).isNotNull();
         assertThat(repository.savedItem).isNotNull();
-        assertThat(repository.savedItem.getHouseholdId()).isEqualTo(householdId);
+        assertThat(repository.savedItem.getGroupId()).isEqualTo(groupId);
         assertThat(repository.savedItem.getCreatedByUserId()).isEqualTo(userId);
         assertThat(repository.savedItem.getTitle()).isEqualTo("Warranty");
         assertThat(repository.savedItem.getNotes()).isEqualTo("Kitchen fridge");
@@ -73,12 +73,12 @@ class CreateDocumentItemUseCaseTest {
         }
 
         @Override
-        public List<DocumentItem> findByHouseholdId(UUID householdId, Optional<String> q) {
+        public List<DocumentItem> findByGroupId(UUID groupId, Optional<String> q) {
             throw new UnsupportedOperationException("Not needed for this test");
         }
 
         @Override
-        public boolean deleteByIdAndHouseholdId(UUID id, UUID householdId) {
+        public boolean deleteByIdAndGroupId(UUID id, UUID groupId) {
             throw new UnsupportedOperationException("Not needed for this test");
         }
     }

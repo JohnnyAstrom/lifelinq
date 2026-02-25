@@ -23,20 +23,20 @@ class JpaWeekPlanRepositoryAdapterTest {
 
     @Test
     void savesAndLoadsWeekPlanRoundTrip() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();
         Instant createdAt = Instant.now();
-        WeekPlan plan = new WeekPlan(weekPlanId, householdId, 2025, 10, createdAt);
+        WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 10, createdAt);
         UUID recipeId = UUID.randomUUID();
         plan.addOrReplaceMeal(1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId);
 
         repository.save(plan);
 
-        Optional<WeekPlan> loaded = repository.findByHouseholdAndWeek(householdId, 2025, 10);
+        Optional<WeekPlan> loaded = repository.findByGroupAndWeek(groupId, 2025, 10);
         assertTrue(loaded.isPresent());
         WeekPlan loadedPlan = loaded.get();
         assertEquals(weekPlanId, loadedPlan.getId());
-        assertEquals(householdId, loadedPlan.getHouseholdId());
+        assertEquals(groupId, loadedPlan.getGroupId());
         assertEquals(2025, loadedPlan.getYear());
         assertEquals(10, loadedPlan.getIsoWeek());
         long diffNanos = Math.abs(Duration.between(createdAt, loadedPlan.getCreatedAt()).toNanos());
@@ -48,36 +48,36 @@ class JpaWeekPlanRepositoryAdapterTest {
 
     @Test
     void replacesMealForSameDay() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();
         Instant createdAt = Instant.now();
-        WeekPlan plan = new WeekPlan(weekPlanId, householdId, 2025, 12, createdAt);
+        WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 12, createdAt);
         plan.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, UUID.randomUUID());
         repository.save(plan);
 
-        WeekPlan reloaded = repository.findByHouseholdAndWeek(householdId, 2025, 12).orElseThrow();
+        WeekPlan reloaded = repository.findByGroupAndWeek(groupId, 2025, 12).orElseThrow();
         UUID newRecipeId = UUID.randomUUID();
         reloaded.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, newRecipeId);
         repository.save(reloaded);
 
-        WeekPlan updated = repository.findByHouseholdAndWeek(householdId, 2025, 12).orElseThrow();
+        WeekPlan updated = repository.findByGroupAndWeek(groupId, 2025, 12).orElseThrow();
         assertEquals(1, updated.getMeals().size());
         assertEquals(newRecipeId, updated.getMeals().get(0).getRecipeId());
     }
 
     @Test
     void removesMeal() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();
-        WeekPlan plan = new WeekPlan(weekPlanId, householdId, 2025, 15, Instant.now());
+        WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 15, Instant.now());
         plan.addOrReplaceMeal(5, app.lifelinq.features.meals.domain.MealType.DINNER, UUID.randomUUID());
         repository.save(plan);
 
-        WeekPlan reloaded = repository.findByHouseholdAndWeek(householdId, 2025, 15).orElseThrow();
+        WeekPlan reloaded = repository.findByGroupAndWeek(groupId, 2025, 15).orElseThrow();
         reloaded.removeMeal(5, app.lifelinq.features.meals.domain.MealType.DINNER);
         repository.save(reloaded);
 
-        WeekPlan updated = repository.findByHouseholdAndWeek(householdId, 2025, 15).orElseThrow();
+        WeekPlan updated = repository.findByGroupAndWeek(groupId, 2025, 15).orElseThrow();
         assertTrue(updated.getMeals().isEmpty());
     }
 }

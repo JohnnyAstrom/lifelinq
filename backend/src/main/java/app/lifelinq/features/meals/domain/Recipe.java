@@ -10,17 +10,17 @@ import java.util.UUID;
 
 public final class Recipe {
     private final UUID id;
-    private final UUID householdId;
+    private final UUID groupId;
     private final String name;
     private final Instant createdAt;
     private final List<Ingredient> ingredients;
 
-    public Recipe(UUID id, UUID householdId, String name, Instant createdAt, List<Ingredient> ingredients) {
+    public Recipe(UUID id, UUID groupId, String name, Instant createdAt, List<Ingredient> ingredients) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
@@ -49,7 +49,7 @@ public final class Recipe {
         );
 
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.name = name;
         this.createdAt = createdAt;
         this.ingredients = List.copyOf(normalizedIngredients);
@@ -59,8 +59,8 @@ public final class Recipe {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public String getName() {

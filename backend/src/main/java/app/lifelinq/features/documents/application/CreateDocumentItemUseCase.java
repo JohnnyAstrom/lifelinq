@@ -18,8 +18,8 @@ final class CreateDocumentItemUseCase {
         if (command == null) {
             throw new IllegalArgumentException("command must not be null");
         }
-        if (command.getHouseholdId() == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (command.getGroupId() == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (command.getCreatedByUserId() == null) {
             throw new IllegalArgumentException("createdByUserId must not be null");
@@ -33,7 +33,7 @@ final class CreateDocumentItemUseCase {
 
         DocumentItem item = new DocumentItem(
                 UUID.randomUUID(),
-                command.getHouseholdId(),
+                command.getGroupId(),
                 command.getCreatedByUserId(),
                 command.getTitle(),
                 command.getNotes(),

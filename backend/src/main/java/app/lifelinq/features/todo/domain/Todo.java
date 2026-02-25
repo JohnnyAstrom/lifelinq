@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public final class Todo {
     private final UUID id;
-    private final UUID householdId;
+    private final UUID groupId;
     private final String text;
     private TodoStatus status;
     private final TodoScope scope;
@@ -20,14 +20,14 @@ public final class Todo {
     private final Instant createdAt;
     private Instant deletedAt;
 
-    public Todo(UUID id, UUID householdId, String text) {
-        this(id, householdId, text, TodoScope.LATER, null, null, null, null, null, Instant.now());
+    public Todo(UUID id, UUID groupId, String text) {
+        this(id, groupId, text, TodoScope.LATER, null, null, null, null, null, Instant.now());
     }
 
-    public Todo(UUID id, UUID householdId, String text, LocalDate dueDate, LocalTime dueTime) {
+    public Todo(UUID id, UUID groupId, String text, LocalDate dueDate, LocalTime dueTime) {
         this(
                 id,
-                householdId,
+                groupId,
                 text,
                 dueDate != null ? TodoScope.DAY : TodoScope.LATER,
                 dueDate,
@@ -41,7 +41,7 @@ public final class Todo {
 
     public Todo(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             String text,
             TodoScope scope,
             LocalDate dueDate,
@@ -51,10 +51,10 @@ public final class Todo {
             Integer scopeMonth,
             Instant createdAt
     ) {
-        validateBase(id, householdId, text, createdAt);
+        validateBase(id, groupId, text, createdAt);
         validateScopeFields(scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth);
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.text = text;
         this.scope = scope;
         this.dueDate = dueDate;
@@ -70,7 +70,7 @@ public final class Todo {
 
     public static Todo rehydrate(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             String text,
             TodoStatus status,
             TodoScope scope,
@@ -93,7 +93,7 @@ public final class Todo {
         Instant effectiveCreatedAt = createdAt != null ? createdAt : Instant.EPOCH;
         Todo todo = new Todo(
                 id,
-                householdId,
+                groupId,
                 text,
                 effectiveScope,
                 dueDate,
@@ -111,7 +111,7 @@ public final class Todo {
 
     public static Todo rehydrate(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             String text,
             TodoStatus status,
             LocalDate dueDate,
@@ -120,7 +120,7 @@ public final class Todo {
     ) {
         return rehydrate(
                 id,
-                householdId,
+                groupId,
                 text,
                 status,
                 null,
@@ -135,12 +135,12 @@ public final class Todo {
         );
     }
 
-    private static void validateBase(UUID id, UUID householdId, String text, Instant createdAt) {
+    private static void validateBase(UUID id, UUID groupId, String text, Instant createdAt) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("text must not be blank");
@@ -207,8 +207,8 @@ public final class Todo {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public String getText() {

@@ -13,7 +13,7 @@ public interface TodoJpaRepository extends JpaRepository<TodoEntity, UUID> {
             select t
             from TodoEntity t
             where t.deletedAt is null
-              and t.householdId = :householdId
+              and t.groupId = :groupId
               and (:status is null or t.status = :status)
             order by
               case
@@ -50,8 +50,8 @@ public interface TodoJpaRepository extends JpaRepository<TodoEntity, UUID> {
               end asc,
               t.id asc
             """)
-    List<TodoEntity> listForHousehold(
-            @Param("householdId") UUID householdId,
+    List<TodoEntity> listForGroup(
+            @Param("groupId") UUID groupId,
             @Param("status") TodoStatus status
     );
 
@@ -59,7 +59,7 @@ public interface TodoJpaRepository extends JpaRepository<TodoEntity, UUID> {
             select t
             from TodoEntity t
             where t.deletedAt is null
-              and t.householdId = :householdId
+              and t.groupId = :groupId
               and (
                 ((t.scope = app.lifelinq.features.todo.domain.TodoScope.DAY or (t.scope is null and t.dueDate is not null))
                   and t.dueDate between :startDate and :endDate)
@@ -80,7 +80,7 @@ public interface TodoJpaRepository extends JpaRepository<TodoEntity, UUID> {
               t.id asc
             """)
     List<TodoEntity> listForMonth(
-            @Param("householdId") UUID householdId,
+            @Param("groupId") UUID groupId,
             @Param("year") Integer year,
             @Param("month") Integer month,
             @Param("startDate") LocalDate startDate,

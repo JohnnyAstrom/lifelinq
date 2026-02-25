@@ -2,7 +2,7 @@ import { fetchJson } from '../../../shared/api/client';
 
 export type DocumentItemResponse = {
   id: string;
-  householdId: string;
+  groupId: string;
   createdByUserId: string;
   title: string | null;
   notes: string | null;

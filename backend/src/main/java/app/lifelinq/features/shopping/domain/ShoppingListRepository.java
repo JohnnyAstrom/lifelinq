@@ -9,7 +9,7 @@ public interface ShoppingListRepository {
 
     Optional<ShoppingList> findById(UUID id);
 
-    List<ShoppingList> findByHouseholdId(UUID householdId);
+    List<ShoppingList> findByGroupId(UUID groupId);
 
     void deleteById(UUID id);
 }

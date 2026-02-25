@@ -4,7 +4,7 @@ This document defines the detailed intent and behavior for the Todo feature.
 
 ## Purpose
 
-Todos are a **shared household memory**, not project management.
+Todos are a **shared group memory**, not project management.
 The system must be fast to capture and easy to recall.
 
 ## Core views
@@ -42,7 +42,7 @@ The system must be fast to capture and easy to recall.
 ## Assignment rules
 
 - Assignment is **coordination only**, never ownership.
-- Any household member can assign, reassign, or clear assignment.
+- Any group member can assign, reassign, or clear assignment.
 
 ## Completion and deletion
 

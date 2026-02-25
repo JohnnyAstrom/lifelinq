@@ -6,7 +6,7 @@ import java.util.UUID;
 public interface WeekPlanRepository {
     WeekPlan save(WeekPlan weekPlan);
 
-    Optional<WeekPlan> findByHouseholdAndWeek(UUID householdId, int year, int isoWeek);
+    Optional<WeekPlan> findByGroupAndWeek(UUID groupId, int year, int isoWeek);
 
     Optional<WeekPlan> findById(UUID id);
 }

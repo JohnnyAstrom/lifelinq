@@ -23,28 +23,28 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
     }
 
     @Override
-    public Optional<Recipe> findByIdAndHouseholdId(UUID recipeId, UUID householdId) {
+    public Optional<Recipe> findByIdAndGroupId(UUID recipeId, UUID groupId) {
         if (recipeId == null) {
             throw new IllegalArgumentException("recipeId must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         Recipe recipe = byId.get(recipeId);
-        if (recipe == null || !householdId.equals(recipe.getHouseholdId())) {
+        if (recipe == null || !groupId.equals(recipe.getGroupId())) {
             return Optional.empty();
         }
         return Optional.of(recipe);
     }
 
     @Override
-    public List<Recipe> findByHouseholdId(UUID householdId) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Recipe> findByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         List<Recipe> result = new ArrayList<>();
         for (Recipe recipe : byId.values()) {
-            if (householdId.equals(recipe.getHouseholdId())) {
+            if (groupId.equals(recipe.getGroupId())) {
                 result.add(recipe);
             }
         }
@@ -52,9 +52,9 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
     }
 
     @Override
-    public List<Recipe> findByHouseholdIdAndIds(UUID householdId, Set<UUID> recipeIds) {
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+    public List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (recipeIds == null) {
             throw new IllegalArgumentException("recipeIds must not be null");
@@ -62,7 +62,7 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
         List<Recipe> result = new ArrayList<>();
         for (UUID recipeId : recipeIds) {
             Recipe recipe = byId.get(recipeId);
-            if (recipe != null && householdId.equals(recipe.getHouseholdId())) {
+            if (recipe != null && groupId.equals(recipe.getGroupId())) {
                 result.add(recipe);
             }
         }

@@ -20,7 +20,7 @@ public final class WeekPlan {
     }
 
     private final UUID id;
-    private final UUID householdId;
+    private final UUID groupId;
     private final int year;
     private final int isoWeek;
     private final Instant createdAt;
@@ -28,17 +28,17 @@ public final class WeekPlan {
 
     public WeekPlan(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             int year,
             int isoWeek,
             Instant createdAt
     ) {
-        this(id, householdId, year, isoWeek, createdAt, Map.of());
+        this(id, groupId, year, isoWeek, createdAt, Map.of());
     }
 
     public WeekPlan(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             int year,
             int isoWeek,
             Instant createdAt,
@@ -47,8 +47,8 @@ public final class WeekPlan {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (isoWeek < 1 || isoWeek > 53) {
             throw new IllegalArgumentException("isoWeek must be between 1 and 53");
@@ -60,7 +60,7 @@ public final class WeekPlan {
             throw new IllegalArgumentException("mealsByDay must not be null");
         }
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.year = year;
         this.isoWeek = isoWeek;
         this.createdAt = createdAt;
@@ -103,8 +103,8 @@ public final class WeekPlan {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public int getYear() {

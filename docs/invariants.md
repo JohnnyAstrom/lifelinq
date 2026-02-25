@@ -12,15 +12,15 @@ If a design or implementation violates an invariant, **the design is wrong**.
 
 ---
 
-## 1. Household is the primary context
+## 1. Group is the primary context
 
-- All domain data belongs to a **Household**, not to a User.
-- Users may belong to one or more households.
+- All domain data belongs to a **Group**, not to a User.
+- Users may belong to one or more groups.
 - Users never own domain data directly.
 
 **Implication:**
-- Every domain operation is executed within a household context.
-- Household context is always derived server-side.
+- Every domain operation is executed within a group context.
+- Group context is always derived server-side.
 
 ---
 
@@ -28,7 +28,7 @@ If a design or implementation violates an invariant, **the design is wrong**.
 
 - The backend is the single source of truth.
 - Clients (mobile/web) may never:
-  - choose a household
+  - choose a group
   - enforce business rules
   - bypass validation
 - All authorization and scoping is enforced server-side.
@@ -39,20 +39,20 @@ If a design or implementation violates an invariant, **the design is wrong**.
 
 ---
 
-## 3. Household context is derived server‑side
+## 3. Group context is derived server‑side
 
-- Clients never send `householdId` explicitly in requests.
-- Household context is resolved server‑side from membership data.
-- If household context is missing or ambiguous, scoped endpoints are rejected.
+- Clients never send `groupId` explicitly in requests.
+- Group context is resolved server‑side from membership data.
+- If group context is missing or ambiguous, scoped endpoints are rejected.
 
 **Implication:**
-- JWT does **not** need to carry household context.
-- Active household selection is a separate, explicit step (not implemented yet).
+- JWT does **not** need to carry group context.
+- Active group selection is a separate, explicit step (not implemented yet).
 
 **Transitional note (temporary):**
-- Some endpoints still accept `householdId` in the URL path.
+- Some endpoints still accept `groupId` in the URL path.
 - This is temporarily allowed only when **validated against server‑derived context**.
-- The long‑term goal is full server‑derived scoping with no client‑provided householdId.
+- The long‑term goal is full server‑derived scoping with no client‑provided groupId.
 
 ---
 
@@ -173,7 +173,7 @@ Transactions are defined at the `ApplicationService` boundary.
 
 ---
 
-## 14. A household must always have an owner
+## 14. A group must always have an owner
 
-- A household cannot be left without an OWNER.
+- A group cannot be left without an OWNER.
 - Removing the last OWNER is forbidden.

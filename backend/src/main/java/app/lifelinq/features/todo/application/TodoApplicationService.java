@@ -42,7 +42,7 @@ public class TodoApplicationService {
 
     @Transactional
     public UUID createTodo(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             String text,
             TodoScope scope,
@@ -54,7 +54,7 @@ public class TodoApplicationService {
     ) {
         userProvisioning.ensureUserExists(actorUserId);
         CreateTodoResult result = createTodoUseCase.execute(
-                new CreateTodoCommand(householdId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
+                new CreateTodoCommand(groupId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
         );
         return result.getTodoId();
     }
@@ -93,14 +93,14 @@ public class TodoApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<Todo> listTodos(UUID householdId, TodoStatus status) {
-        ListTodosResult result = listTodosUseCase.execute(new TodoQuery(householdId, status));
+    public List<Todo> listTodos(UUID groupId, TodoStatus status) {
+        ListTodosResult result = listTodosUseCase.execute(new TodoQuery(groupId, status));
         return result.getTodos();
     }
 
     @Transactional(readOnly = true)
-    public List<Todo> listTodosForMonth(UUID householdId, int year, int month) {
-        ListTodosResult result = listTodosForMonthUseCase.execute(new TodoMonthQuery(householdId, year, month));
+    public List<Todo> listTodosForMonth(UUID groupId, int year, int month) {
+        ListTodosResult result = listTodosForMonthUseCase.execute(new TodoMonthQuery(groupId, year, month));
         return result.getTodos();
     }
 }

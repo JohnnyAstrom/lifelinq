@@ -11,7 +11,7 @@ final class WeekPlanMapper {
     WeekPlanEntity toEntity(WeekPlan weekPlan) {
         WeekPlanEntity entity = new WeekPlanEntity(
                 weekPlan.getId(),
-                weekPlan.getHouseholdId(),
+                weekPlan.getGroupId(),
                 weekPlan.getYear(),
                 weekPlan.getIsoWeek(),
                 weekPlan.getCreatedAt()
@@ -37,7 +37,7 @@ final class WeekPlanMapper {
         }
         return new WeekPlan(
                 entity.getId(),
-                entity.getHouseholdId(),
+                entity.getGroupId(),
                 entity.getYear(),
                 entity.getIsoWeek(),
                 entity.getCreatedAt(),

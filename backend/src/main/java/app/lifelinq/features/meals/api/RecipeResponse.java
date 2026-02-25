@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record RecipeResponse(
         UUID recipeId,
-        UUID householdId,
+        UUID groupId,
         String name,
         Instant createdAt,
         List<IngredientResponse> ingredients

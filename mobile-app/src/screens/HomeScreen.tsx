@@ -28,9 +28,9 @@ export function HomeScreen({
   const todos = useTodos(token, 'OPEN');
   const strings = {
     appName: 'LifeLinq',
-    tagline: 'Your household, in sync.',
+    tagline: 'Your group, in sync.',
     userLabel: 'User',
-    householdLabel: 'Household',
+    groupLabel: 'Group',
     notLinked: 'Not linked',
     todosTitle: 'Todos',
     todosSubtitle: 'Keep the day on track',

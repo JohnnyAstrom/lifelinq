@@ -1,9 +1,9 @@
 # LifeLinq – System Overview
 
-LifeLinq is a **household-first life assistant**.
+LifeLinq is a **group-first life assistant**.
 
 Its purpose is to reduce mental load by acting as a shared external memory for everyday life.
-The system is designed around how real households function, not around idealized productivity workflows.
+The system is designed around how real groups function, not around idealized productivity workflows.
 
 LifeLinq is **mobile-first**, designed to be carried with you, not managed from a desktop.
 
@@ -36,7 +36,7 @@ Characteristics:
 - items may be scheduled on dates/times
 - fast switching between daily, weekly, and monthly views is core UX
 - optional calendar sync (e.g. Google Calendar) for scheduled items (planned)
-- assignment is coordination only; any household member may assign or clear it
+- assignment is coordination only; any group member may assign or clear it
 - completion is distinct from deletion (done vs intentionally removed)
 
 This domain exists to **offload memory**, not to manage projects.
@@ -98,8 +98,8 @@ This domain prioritizes **retrievability over structure**.
 ### Documents roadmap
 
 - **V0 (now)**: metadata-first records (title, notes, date, category, tags, external link). No file storage.
-- **V0.5 (future)**: local attachments for the creator, visible to the household as "stored locally by X".
-- **V1 (future)**: cloud attachments with compression, previews, and household sharing.
+- **V0.5 (future)**: local attachments for the creator, visible to the group as "stored locally by X".
+- **V1 (future)**: cloud attachments with compression, previews, and group sharing.
 
 ---
 
@@ -111,11 +111,11 @@ This domain prioritizes **retrievability over structure**.
 - **Todos**: list view and calendar view.
 - **Meals**: week view as primary, with day and month for detail/overview.
 - **Shopping**: simple lists with items toggled between "to buy" and "bought".
-- **Documents**: household archive for receipts, warranties, contracts, and bills.
+- **Documents**: group archive for receipts, warranties, contracts, and bills.
 
 ### System intent
 
-- Household-first data ownership.
+- Group-first data ownership.
 - Backend-enforced scoping and rules.
 - Bilingual by default (Swedish + English).
 
@@ -136,10 +136,10 @@ It aims to support them.
 
 ## Core design principles
 
-- **Household-first**: all data belongs to a household, not an individual user
+- **Group-first**: all data belongs to a group, not an individual user
 - **Low friction**: it must be easier to add something than to remember it
 - **Tolerance for messiness**: real life is incomplete and inconsistent
-- **Shared by default**: multiple people collaborate in the same household
+- **Shared by default**: multiple people collaborate in the same group
 - **Backend authority**: all business rules live server-side
 - **Bilingual by default**: full support for Swedish and English from the start
 

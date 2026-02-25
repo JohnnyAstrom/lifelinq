@@ -89,12 +89,12 @@ class CompleteTodoUseCaseTest {
         }
 
         @Override
-        public java.util.List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+        public java.util.List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter) {
             return new java.util.ArrayList<>(store.values());
         }
 
         @Override
-        public java.util.List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
+        public java.util.List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new java.util.ArrayList<>();
         }
     }

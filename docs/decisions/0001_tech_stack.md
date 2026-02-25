@@ -8,7 +8,7 @@ Accepted
 ## Context
 
 LifeLinq requires a stable, long-lived technology stack that supports:
-- shared household data
+- shared group data
 - strong consistency
 - mobile-first usage
 - long-term maintainability
@@ -42,7 +42,7 @@ The following technology stack is used:
 ### PostgreSQL
 
 - strong consistency guarantees
-- relational model fits household ownership
+- relational model fits group ownership
 - mature and well-supported
 
 ---

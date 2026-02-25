@@ -9,27 +9,27 @@ import java.util.UUID;
 
 public final class ShoppingList {
     private final UUID id;
-    private final UUID householdId;
+    private final UUID groupId;
     private String name;
     private int orderIndex;
     private final Instant createdAt;
     private final List<ShoppingItem> items;
 
-    public ShoppingList(UUID id, UUID householdId, String name, Instant createdAt) {
-        this(id, householdId, name, 0, createdAt, List.of());
+    public ShoppingList(UUID id, UUID groupId, String name, Instant createdAt) {
+        this(id, groupId, name, 0, createdAt, List.of());
     }
 
-    public ShoppingList(UUID id, UUID householdId, String name, int orderIndex, Instant createdAt) {
-        this(id, householdId, name, orderIndex, createdAt, List.of());
+    public ShoppingList(UUID id, UUID groupId, String name, int orderIndex, Instant createdAt) {
+        this(id, groupId, name, orderIndex, createdAt, List.of());
     }
 
-    public ShoppingList(UUID id, UUID householdId, String name, Instant createdAt, List<ShoppingItem> items) {
-        this(id, householdId, name, 0, createdAt, items);
+    public ShoppingList(UUID id, UUID groupId, String name, Instant createdAt, List<ShoppingItem> items) {
+        this(id, groupId, name, 0, createdAt, items);
     }
 
     public ShoppingList(
             UUID id,
-            UUID householdId,
+            UUID groupId,
             String name,
             int orderIndex,
             Instant createdAt,
@@ -38,8 +38,8 @@ public final class ShoppingList {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
-        if (householdId == null) {
-            throw new IllegalArgumentException("householdId must not be null");
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
         }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
@@ -54,7 +54,7 @@ public final class ShoppingList {
             throw new IllegalArgumentException("items must not be null");
         }
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.name = name;
         this.orderIndex = orderIndex;
         this.createdAt = createdAt;
@@ -168,8 +168,8 @@ public final class ShoppingList {
         return id;
     }
 
-    public UUID getHouseholdId() {
-        return householdId;
+    public UUID getGroupId() {
+        return groupId;
     }
 
     public String getName() {

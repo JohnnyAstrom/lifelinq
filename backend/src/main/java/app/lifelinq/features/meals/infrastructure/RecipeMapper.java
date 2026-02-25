@@ -8,7 +8,7 @@ final class RecipeMapper {
     RecipeEntity toEntity(Recipe recipe) {
         RecipeEntity entity = new RecipeEntity(
                 recipe.getId(),
-                recipe.getHouseholdId(),
+                recipe.getGroupId(),
                 recipe.getName(),
                 recipe.getCreatedAt()
         );
@@ -38,7 +38,7 @@ final class RecipeMapper {
         }
         return new Recipe(
                 entity.getId(),
-                entity.getHouseholdId(),
+                entity.getGroupId(),
                 entity.getName(),
                 entity.getCreatedAt(),
                 ingredients

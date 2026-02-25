@@ -8,7 +8,7 @@ final class DocumentMapper {
     DocumentEntity toEntity(DocumentItem item) {
         return new DocumentEntity(
                 item.getId(),
-                item.getHouseholdId(),
+                item.getGroupId(),
                 item.getCreatedByUserId(),
                 item.getTitle(),
                 item.getNotes(),
@@ -23,7 +23,7 @@ final class DocumentMapper {
     DocumentItem toDomain(DocumentEntity entity) {
         return new DocumentItem(
                 entity.getId(),
-                entity.getHouseholdId(),
+                entity.getGroupId(),
                 entity.getCreatedByUserId(),
                 entity.getTitle(),
                 entity.getNotes(),

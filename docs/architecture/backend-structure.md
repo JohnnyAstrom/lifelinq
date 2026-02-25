@@ -49,7 +49,7 @@ Each feature represents a real-world capability of the system.
 Current core features:
 
 - auth
-- household
+- group
 - todo
 - shopping
 - meals
@@ -119,7 +119,7 @@ It must not:
 Use cases live in `features/<feature>/application` and are plain classes without Spring annotations.
 Inputs are simple command objects (passive data‑carriers) and validation happens inside the use case.
 Use cases compose domain objects and return minimal results needed by callers.
-Example: `CreateHouseholdUseCase` builds a `Household` and an owner `Membership`, then returns only `householdId`.
+Example: `CreateGroupUseCase` builds a `Group` and an owner `Membership`, then returns only `groupId`.
 Tests are plain unit tests under `src/test/java` and do not require Spring or database configuration.
 
 ---
@@ -151,7 +151,7 @@ Infrastructure:
 - is replaceable without affecting domain or application code
 
 Wiring note (current pattern):
-Manual wiring lives in `infrastructure` via a clearly named factory (e.g. `HouseholdInMemoryWiring`).
+Manual wiring lives in `infrastructure` via a clearly named factory (e.g. `GroupInMemoryWiring`).
 Persistence adapters implement ports and are not exposed through getters.
 Application use cases depend only on ports and abstractions, never on adapter internals.
 Wiring is a technical responsibility, separate from both domain and use cases.

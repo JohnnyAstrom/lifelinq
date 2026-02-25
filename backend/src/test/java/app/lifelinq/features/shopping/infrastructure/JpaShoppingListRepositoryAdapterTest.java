@@ -28,10 +28,10 @@ class JpaShoppingListRepositoryAdapterTest {
 
     @Test
     void savesAndLoadsShoppingListRoundTrip() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
         Instant createdAt = Instant.now();
-        ShoppingList list = new ShoppingList(listId, householdId, "Groceries", 3, createdAt);
+        ShoppingList list = new ShoppingList(listId, groupId, "Groceries", 3, createdAt);
         UUID itemId = UUID.randomUUID();
         Instant itemCreatedAt = createdAt.plusSeconds(5);
         list.addItem(itemId, "milk", new BigDecimal("2"), ShoppingUnit.DL, itemCreatedAt);
@@ -44,7 +44,7 @@ class JpaShoppingListRepositoryAdapterTest {
         assertTrue(loaded.isPresent());
         ShoppingList loadedList = loaded.get();
         assertEquals(listId, loadedList.getId());
-        assertEquals(householdId, loadedList.getHouseholdId());
+        assertEquals(groupId, loadedList.getGroupId());
         assertEquals("Groceries", loadedList.getName());
         assertEquals(3, loadedList.getOrderIndex());
         long diffNanos = Math.abs(Duration.between(createdAt, loadedList.getCreatedAt()).toNanos());
@@ -62,12 +62,12 @@ class JpaShoppingListRepositoryAdapterTest {
     }
 
     @Test
-    void findsByHouseholdId() {
-        UUID householdId = UUID.randomUUID();
-        ShoppingList list = new ShoppingList(UUID.randomUUID(), householdId, "Groceries", Instant.now());
+    void findsByGroupId() {
+        UUID groupId = UUID.randomUUID();
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), groupId, "Groceries", Instant.now());
         repository.save(list);
 
-        List<ShoppingList> lists = repository.findByHouseholdId(householdId);
+        List<ShoppingList> lists = repository.findByGroupId(groupId);
         assertEquals(1, lists.size());
         assertEquals(list.getId(), lists.get(0).getId());
     }

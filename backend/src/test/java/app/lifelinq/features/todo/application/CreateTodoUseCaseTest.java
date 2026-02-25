@@ -36,7 +36,7 @@ class CreateTodoUseCaseTest {
     }
 
     @Test
-    void requiresHouseholdId() {
+    void requiresGroupId() {
         CreateTodoUseCase useCase = new CreateTodoUseCase(new InMemoryTodoRepository());
         CreateTodoCommand command = new CreateTodoCommand(null, "Buy milk");
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
@@ -53,10 +53,10 @@ class CreateTodoUseCaseTest {
     void createsWeekScopedTodo() {
         InMemoryTodoRepository todoRepository = new InMemoryTodoRepository();
         CreateTodoUseCase useCase = new CreateTodoUseCase(todoRepository);
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
 
         CreateTodoResult result = useCase.execute(new CreateTodoCommand(
-                householdId,
+                groupId,
                 "Week goal",
                 TodoScope.WEEK,
                 null,
@@ -92,12 +92,12 @@ class CreateTodoUseCaseTest {
         }
 
         @Override
-        public List<Todo> listByHousehold(UUID householdId, TodoStatus statusFilter) {
+        public List<Todo> listByGroup(UUID groupId, TodoStatus statusFilter) {
             return new ArrayList<>(saved);
         }
 
         @Override
-        public List<Todo> listForMonth(UUID householdId, int year, int month, LocalDate startDate, LocalDate endDate) {
+        public List<Todo> listForMonth(UUID groupId, int year, int month, LocalDate startDate, LocalDate endDate) {
             return new ArrayList<>();
         }
     }

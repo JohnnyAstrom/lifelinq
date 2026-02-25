@@ -11,7 +11,7 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 ## Core behavior
 
 - Multiple shopping lists are supported.
-- Shopping lists have an explicit household-level display order.
+- Shopping lists have an explicit group-level display order.
 - Lists can be removed entirely.
 - Manual add must be fast and low-friction.
 - New manual items are inserted at the top of the open list (newest first by default).
@@ -24,12 +24,12 @@ Shopping is a separate feature from Meals, with an explicit integration point.
 
 ## Data shape (conceptual)
 
-- `ShoppingList`: `name`, `householdId`
+- `ShoppingList`: `name`, `groupId`
 - `ShoppingItem`: `name`, `status`, `shoppingListId`, `quantity` (optional), `unit` (optional)
 
 ## Decisions
 
-Decision: Household → ShoppingLists → ShoppingItems.
+Decision: Group → ShoppingLists → ShoppingItems.
 Rationale: Supports multiple lists while keeping ownership clear and bounded.
 Consequences: Every item belongs to exactly one list.
 
@@ -66,11 +66,11 @@ Consequences: Endpoints accept `listId` for list and item mutations.
 - Item name must be unique within a list (case-insensitive, normalized).
 - Name is normalized in ApplicationService before uniqueness checks.
 
-### Household scoping
+### Group scoping
 
-- List is household-scoped.
-- Item inherits household through its list.
-- All mutations must verify list belongs to current household.
+- List is group-scoped.
+- Item inherits group through its list.
+- All mutations must verify list belongs to current group.
 
 ### Invariants
 
@@ -80,7 +80,7 @@ Consequences: Endpoints accept `listId` for list and item mutations.
 - Item name must be unique within its list (case-insensitive, normalized).
 - Item must belong to the list being mutated.
 - Toggle is only allowed within the owning list.
-- List and item household scope must match the request context.
+- List and item group scope must match the request context.
 - Quantity and unit are optional, but when one is present the other must be present.
 
 ### Status representation
@@ -102,18 +102,18 @@ Consequences: Endpoints accept `listId` for list and item mutations.
 
 ## UX principles
 
-- Shared by default (household list, not personal).
+- Shared by default (group list, not personal).
 - Avoid duplication where possible.
 - Optimize for quick in-store use.
 
 ## API (Current)
 
-- `DELETE /shopping-lists/{listId}` removes one household-scoped shopping list.
+- `DELETE /shopping-lists/{listId}` removes one group-scoped shopping list.
 - Returns `204` on successful delete.
-- Returns `404` when the list does not exist in the current household scope.
+- Returns `404` when the list does not exist in the current group scope.
 - `PATCH /shopping-lists/{listId}` updates the list name.
 - Returns `200` with the updated list payload.
-- `PATCH /shopping-lists/{listId}/order` moves a list one step (`UP` or `DOWN`) within household order.
+- `PATCH /shopping-lists/{listId}/order` moves a list one step (`UP` or `DOWN`) within group order.
 - Returns `204` on success (including boundary no-op when already first/last).
 - `PATCH /shopping-lists/{listId}/items/{itemId}/order` moves one open item one step (`UP` or `DOWN`) within that list.
 - Returns `204` on success (including boundary no-op when already first/last among open items).

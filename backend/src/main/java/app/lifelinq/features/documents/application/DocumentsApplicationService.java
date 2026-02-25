@@ -33,7 +33,7 @@ public final class DocumentsApplicationService {
     }
 
     public UUID createDocument(
-            UUID householdId,
+            UUID groupId,
             UUID actorUserId,
             String title,
             String notes,
@@ -44,7 +44,7 @@ public final class DocumentsApplicationService {
     ) {
         CreateDocumentItemResult result = createDocumentItemUseCase.execute(
                 new CreateDocumentItemCommand(
-                        householdId,
+                        groupId,
                         actorUserId,
                         title,
                         notes,
@@ -58,12 +58,12 @@ public final class DocumentsApplicationService {
         return result.getItemId();
     }
 
-    public List<DocumentItem> listDocuments(UUID householdId, Optional<String> q) {
-        return listDocumentsUseCase.execute(householdId, q);
+    public List<DocumentItem> listDocuments(UUID groupId, Optional<String> q) {
+        return listDocumentsUseCase.execute(groupId, q);
     }
 
-    public boolean deleteDocument(UUID householdId, UUID documentId) {
-        return deleteDocumentItemUseCase.execute(householdId, documentId);
+    public boolean deleteDocument(UUID groupId, UUID documentId) {
+        return deleteDocumentItemUseCase.execute(groupId, documentId);
     }
 
     public static DocumentsApplicationService create(DocumentRepository documentRepository) {

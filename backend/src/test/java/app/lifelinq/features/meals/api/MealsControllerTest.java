@@ -9,9 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextFilter;
-import app.lifelinq.features.household.application.HouseholdApplicationServiceTestFactory;
-import app.lifelinq.features.household.domain.Membership;
-import app.lifelinq.features.household.domain.MembershipRepository;
+import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
+import app.lifelinq.features.group.domain.Membership;
+import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.MealsShoppingAccessDeniedException;
@@ -52,7 +52,7 @@ class MealsControllerTest {
                 .setControllerAdvice(new MealsExceptionHandler())
                 .addFilters(new RequestContextFilter(
                         new JwtVerifier(SECRET),
-                        HouseholdApplicationServiceTestFactory.createForContextResolution(membershipRepository)
+                        GroupApplicationServiceTestFactory.createForContextResolution(membershipRepository)
                 ))
                 .build();
     }
@@ -69,15 +69,15 @@ class MealsControllerTest {
 
     @Test
     void addReturns200WithValidToken() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(mealsApplicationService.addOrReplaceMeal(
-                householdId,
+                groupId,
                 userId,
                 2025,
                 10,
@@ -99,7 +99,7 @@ class MealsControllerTest {
                 .andExpect(status().isOk());
 
         verify(mealsApplicationService).addOrReplaceMeal(
-                householdId,
+                groupId,
                 userId,
                 2025,
                 10,
@@ -112,14 +112,14 @@ class MealsControllerTest {
 
     @Test
     void removeReturns404WhenMealMissing() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealNotFoundException("Meal not found"))
                 .when(mealsApplicationService)
-                .removeMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER);
+                .removeMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER);
 
         mockMvc.perform(delete("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token))
@@ -128,16 +128,16 @@ class MealsControllerTest {
 
     @Test
     void addReturns403WhenShoppingListNotOwned() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID targetListId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealsShoppingAccessDeniedException("Access denied"))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
@@ -148,16 +148,16 @@ class MealsControllerTest {
 
     @Test
     void addReturns404WhenShoppingListMissing() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID targetListId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealsShoppingListNotFoundException("list not found: " + targetListId))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
@@ -168,16 +168,16 @@ class MealsControllerTest {
 
     @Test
     void addReturns409WhenShoppingItemNameDuplicate() throws Exception {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
         UUID targetListId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new MealsShoppingDuplicateItemException("item name must be unique within list: pasta"))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
@@ -187,16 +187,16 @@ class MealsControllerTest {
     }
 
     @Test
-    void addReturns404WhenRecipeMissingInHousehold() throws Exception {
-        UUID householdId = UUID.randomUUID();
+    void addReturns404WhenRecipeMissingInGroup() throws Exception {
+        UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
-        membershipRepository.withMembership(userId, householdId);
+        membershipRepository.withMembership(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         Mockito.doThrow(new RecipeNotFoundException(recipeId))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(householdId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, null);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, null);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
@@ -231,8 +231,8 @@ class MealsControllerTest {
     private static final class FakeMembershipRepository implements MembershipRepository {
         private final Map<UUID, List<UUID>> byUser = new HashMap<>();
 
-        FakeMembershipRepository withMembership(UUID userId, UUID householdId) {
-            byUser.put(userId, List.of(householdId));
+        FakeMembershipRepository withMembership(UUID userId, UUID groupId) {
+            byUser.put(userId, List.of(groupId));
             return this;
         }
 
@@ -242,17 +242,17 @@ class MealsControllerTest {
         }
 
         @Override
-        public List<Membership> findByHouseholdId(UUID householdId) {
+        public List<Membership> findByGroupId(UUID groupId) {
             throw new UnsupportedOperationException("not used");
         }
 
         @Override
-        public List<UUID> findHouseholdIdsByUserId(UUID userId) {
+        public List<UUID> findGroupIdsByUserId(UUID userId) {
             return byUser.getOrDefault(userId, List.of());
         }
 
         @Override
-        public boolean deleteByHouseholdIdAndUserId(UUID householdId, UUID userId) {
+        public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             throw new UnsupportedOperationException("not used");
         }
     }

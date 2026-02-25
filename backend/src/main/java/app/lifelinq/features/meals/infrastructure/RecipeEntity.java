@@ -26,7 +26,7 @@ public class RecipeEntity {
     private UUID id;
 
     @Column(name = "household_id", nullable = false)
-    private UUID householdId;
+    private UUID groupId;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -41,9 +41,9 @@ public class RecipeEntity {
     protected RecipeEntity() {
     }
 
-    RecipeEntity(UUID id, UUID householdId, String name, Instant createdAt) {
+    RecipeEntity(UUID id, UUID groupId, String name, Instant createdAt) {
         this.id = id;
-        this.householdId = householdId;
+        this.groupId = groupId;
         this.name = name;
         this.createdAt = createdAt;
     }
@@ -52,8 +52,8 @@ public class RecipeEntity {
         return id;
     }
 
-    UUID getHouseholdId() {
-        return householdId;
+    UUID getGroupId() {
+        return groupId;
     }
 
     String getName() {

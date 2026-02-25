@@ -20,12 +20,12 @@ class JpaDocumentRepositoryAdapterTest {
     private DocumentJpaRepository repository;
 
     @Test
-    void search_matches_notes_only_and_is_household_scoped() {
-        UUID householdId = UUID.randomUUID();
-        UUID otherHouseholdId = UUID.randomUUID();
+    void search_matches_notes_only_and_is_group_scoped() {
+        UUID groupId = UUID.randomUUID();
+        UUID otherGroupId = UUID.randomUUID();
         repository.save(new DocumentEntity(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 UUID.randomUUID(),
                 "Warranty",
                 "Kitchen FRIDGE papers",
@@ -37,7 +37,7 @@ class JpaDocumentRepositoryAdapterTest {
         ));
         repository.save(new DocumentEntity(
                 UUID.randomUUID(),
-                otherHouseholdId,
+                otherGroupId,
                 UUID.randomUUID(),
                 "Other",
                 "fridge copy",
@@ -49,19 +49,19 @@ class JpaDocumentRepositoryAdapterTest {
         ));
 
         JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
-        List<DocumentItem> items = adapter.findByHouseholdId(householdId, Optional.of("ridg"));
+        List<DocumentItem> items = adapter.findByGroupId(groupId, Optional.of("ridg"));
 
         assertThat(items).hasSize(1);
-        assertThat(items.get(0).getHouseholdId()).isEqualTo(householdId);
+        assertThat(items.get(0).getGroupId()).isEqualTo(groupId);
         assertThat(items.get(0).getNotes()).contains("FRIDGE");
     }
 
     @Test
     void returns_created_at_desc_for_list_and_search() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         repository.save(new DocumentEntity(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 UUID.randomUUID(),
                 "Older",
                 "invoice",
@@ -73,7 +73,7 @@ class JpaDocumentRepositoryAdapterTest {
         ));
         repository.save(new DocumentEntity(
                 UUID.randomUUID(),
-                householdId,
+                groupId,
                 UUID.randomUUID(),
                 "Newer",
                 "invoice",
@@ -85,8 +85,8 @@ class JpaDocumentRepositoryAdapterTest {
         ));
 
         JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
-        List<DocumentItem> listItems = adapter.findByHouseholdId(householdId, Optional.empty());
-        List<DocumentItem> searchItems = adapter.findByHouseholdId(householdId, Optional.of("invoice"));
+        List<DocumentItem> listItems = adapter.findByGroupId(groupId, Optional.empty());
+        List<DocumentItem> searchItems = adapter.findByGroupId(groupId, Optional.of("invoice"));
 
         assertThat(listItems).extracting(DocumentItem::getTitle).containsExactly("Newer", "Older");
         assertThat(searchItems).extracting(DocumentItem::getTitle).containsExactly("Newer", "Older");
@@ -94,14 +94,14 @@ class JpaDocumentRepositoryAdapterTest {
 
     @Test
     void applies_id_asc_tie_breaker_when_created_at_is_identical() {
-        UUID householdId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
         Instant sameCreatedAt = Instant.parse("2026-02-12T10:00:00Z");
         UUID lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         UUID higherId = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
         repository.save(new DocumentEntity(
                 higherId,
-                householdId,
+                groupId,
                 UUID.randomUUID(),
                 "Invoice B",
                 "invoice note",
@@ -113,7 +113,7 @@ class JpaDocumentRepositoryAdapterTest {
         ));
         repository.save(new DocumentEntity(
                 lowerId,
-                householdId,
+                groupId,
                 UUID.randomUUID(),
                 "Invoice A",
                 "invoice note",
@@ -125,23 +125,23 @@ class JpaDocumentRepositoryAdapterTest {
         ));
 
         JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
-        List<DocumentItem> listItems = adapter.findByHouseholdId(householdId, Optional.empty());
-        List<DocumentItem> searchItems = adapter.findByHouseholdId(householdId, Optional.of("invoice"));
+        List<DocumentItem> listItems = adapter.findByGroupId(groupId, Optional.empty());
+        List<DocumentItem> searchItems = adapter.findByGroupId(groupId, Optional.of("invoice"));
 
         assertThat(listItems).extracting(DocumentItem::getId).containsExactly(lowerId, higherId);
         assertThat(searchItems).extracting(DocumentItem::getId).containsExactly(lowerId, higherId);
     }
 
     @Test
-    void deletes_document_only_within_same_household() {
-        UUID householdId = UUID.randomUUID();
-        UUID otherHouseholdId = UUID.randomUUID();
+    void deletes_document_only_within_same_group() {
+        UUID groupId = UUID.randomUUID();
+        UUID otherGroupId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
         UUID otherId = UUID.randomUUID();
 
         repository.save(new DocumentEntity(
                 targetId,
-                householdId,
+                groupId,
                 UUID.randomUUID(),
                 "Target",
                 null,
@@ -153,7 +153,7 @@ class JpaDocumentRepositoryAdapterTest {
         ));
         repository.save(new DocumentEntity(
                 otherId,
-                otherHouseholdId,
+                otherGroupId,
                 UUID.randomUUID(),
                 "Other",
                 null,
@@ -166,7 +166,7 @@ class JpaDocumentRepositoryAdapterTest {
 
         JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
 
-        boolean deleted = adapter.deleteByIdAndHouseholdId(targetId, householdId);
+        boolean deleted = adapter.deleteByIdAndGroupId(targetId, groupId);
 
         assertThat(deleted).isTrue();
         assertThat(repository.findById(targetId)).isEmpty();
@@ -174,16 +174,16 @@ class JpaDocumentRepositoryAdapterTest {
     }
 
     @Test
-    void does_not_delete_document_from_other_household() {
-        UUID householdId = UUID.randomUUID();
-        UUID otherHouseholdId = UUID.randomUUID();
+    void does_not_delete_document_from_other_group() {
+        UUID groupId = UUID.randomUUID();
+        UUID otherGroupId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
 
         repository.save(new DocumentEntity(
                 targetId,
-                otherHouseholdId,
+                otherGroupId,
                 UUID.randomUUID(),
-                "Other household",
+                "Other group",
                 null,
                 null,
                 null,
@@ -194,7 +194,7 @@ class JpaDocumentRepositoryAdapterTest {
 
         JpaDocumentRepositoryAdapter adapter = new JpaDocumentRepositoryAdapter(repository, new DocumentMapper());
 
-        boolean deleted = adapter.deleteByIdAndHouseholdId(targetId, householdId);
+        boolean deleted = adapter.deleteByIdAndGroupId(targetId, groupId);
 
         assertThat(deleted).isFalse();
         assertThat(repository.findById(targetId)).isPresent();

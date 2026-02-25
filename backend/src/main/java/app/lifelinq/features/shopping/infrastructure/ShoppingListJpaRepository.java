@@ -12,5 +12,5 @@ public interface ShoppingListJpaRepository extends JpaRepository<ShoppingListEnt
     Optional<ShoppingListEntity> findById(UUID id);
 
     @EntityGraph(attributePaths = "items")
-    List<ShoppingListEntity> findByHouseholdId(UUID householdId);
+    List<ShoppingListEntity> findByGroupId(UUID groupId);
 }

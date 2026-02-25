@@ -17,7 +17,7 @@ class TodoTest {
     }
 
     @Test
-    void requiresHouseholdId() {
+    void requiresGroupId() {
         assertThrows(IllegalArgumentException.class, () -> new Todo(UUID.randomUUID(), null, "Task"));
     }
 
