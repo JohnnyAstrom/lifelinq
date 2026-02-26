@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
   type KeyboardTypeOptions,
+  type RefreshControlProps,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -21,7 +22,7 @@ type ScreenProps = {
   children: React.ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
-  refreshControl?: React.ReactElement;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
   stickyHeaderIndices?: number[];
 };
 
@@ -197,8 +198,10 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
   return <Text style={textStyles.h3}>{children}</Text>;
 }
 
-export function Subtle({ children }: { children: React.ReactNode }) {
-  return <Text style={textStyles.subtle}>{children}</Text>;
+export function Subtle(
+  { children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }
+) {
+  return <Text style={[textStyles.subtle, style]}>{children}</Text>;
 }
 
 type TopBarProps = {
