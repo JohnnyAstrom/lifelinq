@@ -106,6 +106,28 @@ class MeControllerTest {
     }
 
     @Test
+    void returnsMembershipsWithNullActiveGroupWhenNoActiveGroupSelected() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        userRepository.withUser(userId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+        when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
+                userId,
+                null,
+                List.of(new UserMembershipView(groupId, "MEMBER"))
+        ));
+
+        mockMvc.perform(get("/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(userId.toString()))
+                .andExpect(jsonPath("$.activeGroupId").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.memberships.length()").value(1))
+                .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
+                .andExpect(jsonPath("$.memberships[0].role").value("MEMBER"));
+    }
+
+    @Test
     void deleteMeReturns401WhenContextMissing() throws Exception {
         mockMvc.perform(delete("/me")
                         .contentType(MediaType.APPLICATION_JSON))

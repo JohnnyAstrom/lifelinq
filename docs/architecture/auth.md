@@ -20,9 +20,9 @@ Groups own data.
 
 ---
 
-## CURRENT: Minimal request scoping (implemented)
+## CURRENT: Request scoping (Phase 2 implemented)
 
-The backend currently derives request context from a **JWT Bearer token**:
+The backend derives request identity from a **JWT Bearer token** and derives operational group context from persisted user state.
 
 See `docs/architecture/context-model.md` for the canonical context model and current-vs-intended scoping behavior.
 
@@ -32,32 +32,42 @@ See `docs/architecture/context-model.md` for the canonical context model and cur
 
 Tokens are **validated for signature and expiration**. If missing or invalid, the request is rejected with **401**.
 
-After validation, the server resolves **group context**:
-- If the user has exactly one group membership → use it.
-- If the user has none → continue with `groupId = null` (endpoints requiring scope return 401).
-- If the user has multiple → return **401** (active group selection not implemented yet).
+Request scoping is split into two filters:
+- `AuthenticationFilter` (`JWT -> SecurityContext`)
+- `GroupContextFilter` (`UserRepository -> activeGroupId -> RequestContext`)
 
-This is a **minimal scoping layer** only:
-- no OAuth flow
-- no refresh tokens
-- minimal user persistence only (ensure user exists)
+There is no implicit membership-based group resolution in the filter chain.
 
-## Current identity endpoint (minimal)
+Current scoping behavior:
+- `userId` comes from JWT.
+- `groupId` comes from persisted `User.activeGroupId`.
+- Scoped endpoints return **409** if `activeGroupId` is missing (`NoActiveGroupSelected`).
 
-`GET /me` returns the current request context (userId and groupId).
+This is the current explicit active-group scoping model.
+
+## Current identity endpoint
+
+`GET /me` returns the current authenticated user context:
+- `userId`
+- `activeGroupId` (nullable)
+- `memberships`
+
 If there is no authenticated context, the endpoint returns **401**.
+
+`PUT /me/active-group` sets the active group for the authenticated user.
+- Returns **200** with updated `/me` payload on success.
+- Returns **401** if there is no authenticated context.
+- Returns **409** if the selected group is not a membership of the current user.
+
+`activeGroupId` may be `null` even when memberships exist.
+In that case `/me` must reflect that state accurately, and scoped endpoints return **409** until an active group is selected.
 
 `DELETE /me` deletes the authenticated user account.
 - Returns **204** on success.
 - Returns **401** if there is no authenticated context.
 - Returns **409** if deletion is blocked by group governance (the user is the sole `ADMIN` in one or more groups with more than one member).
 
-### Scoping note (Phase 1 limitation)
-
-`DELETE /me` currently passes through `RequestContextFilter` like other authenticated endpoints.
-This means it can be blocked with **401** if group resolution is ambiguous (for example, the user belongs to multiple groups and no active group selection exists yet).
-
-This is a known Phase 1 limitation and will be addressed in Phase 2 via explicit active-group selection (or a user-scoped bypass for `DELETE /me`).
+`DELETE /me` does not depend on implicit group resolution and is no longer blocked by multi-group ambiguity.
 
 ---
 
@@ -69,6 +79,8 @@ LifeLinq currently supports a **minimal OAuth2 login**:
 - On successful OAuth2 login, the backend:
   - derives a deterministic internal `userId` from provider + subject
   - ensures the user exists
+  - ensures a default group membership exists (default group name: `Personal`)
+  - sets `activeGroupId` if missing
   - issues a JWT (access token)
 
 This is intentionally minimal and does **not** include refresh tokens or session management.
@@ -126,20 +138,19 @@ Tokens contain:
 
 Tokens do not contain:
 - business data
-- group context (current)
-- roles or permissions (current)
+- group context
+- roles or permissions
 
 ---
 
 ## Group context
 
-Clients never choose a group.
+Clients may request an active-group change, but the backend validates and applies it.
 
-Group context is always:
-- derived server-side from membership
-- validated server-side
-
-Switching groups requires an explicit active-group selection (not implemented yet).
+Group context is:
+- stored as `User.activeGroupId`
+- hydrated server-side into request context
+- validated server-side for scoped operations
 
 ---
 
@@ -155,7 +166,7 @@ Switching groups requires an explicit active-group selection (not implemented ye
 ## Summary
 
 Authentication establishes identity.
-Authorization establishes context.
+Authorization uses membership + role checks within the active group context.
 
 Both are enforced strictly to protect shared group data.
 
@@ -185,6 +196,6 @@ Invite tokens:
 
 ---
 
-## JWT‑based request scoping (minimal)
+## Request scoping summary (current)
 
-This is the **current** request‑scoping mechanism described above.
+The current request-scoping model is the explicit active-group model described above.

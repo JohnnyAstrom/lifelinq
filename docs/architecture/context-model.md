@@ -24,20 +24,21 @@ It does not replace the detailed group or auth documentation.
 
 ## Current Implementation
 
-Today, the active context model is implemented through the group membership model.
+The active context model is now explicit and persisted on the user.
 
 - **Membership model:** users and groups are many-to-many via memberships.
 - **Current context type:** group is the only context type used for domain scoping.
-- **Implicit resolution:** request context is derived in backend request scoping/filtering.
-- **Client assumption:** frontend currently assumes `0` or `1` active group context.
+- **Context source:** active request context is derived from persisted `User.activeGroupId`.
+- **Request scoping:** backend filter chain separates identity and context hydration.
 
-Current behavior (minimal scoping):
+Current behavior (Phase 2):
 
-- **0 memberships:** no active group context; onboarding or group creation is required.
-- **1 membership:** that group becomes the active context for the request.
-- **>1 memberships:** request is rejected with `401` (ambiguous context; active selection not implemented).
+- **AuthenticationFilter:** validates JWT and establishes authenticated `userId`.
+- **GroupContextFilter:** loads the user and hydrates `RequestContext.groupId` from `User.activeGroupId`.
+- **Scoped endpoints:** require a non-null active group and return `409` if no active group is selected.
+- **`/me`:** returns the memberships list and current `activeGroupId` (which may be `null`).
 
-This is a temporary, minimal scoping model and should be treated as transitional behavior.
+`0` memberships is now an edge case rather than the normal onboarding path, because first login provisioning creates a default group and membership and sets `activeGroupId`.
 
 ---
 

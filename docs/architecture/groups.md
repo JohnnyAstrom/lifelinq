@@ -66,10 +66,9 @@ See `docs/architecture/context-model.md` for the canonical active-context/scopin
 
 At any given time:
 - exactly one group can be used for scoped operations
-- the active group is resolved server‑side from membership data
+- the active group is taken from persisted `User.activeGroupId`
 
-If the user has multiple groups, active group selection is required
-(not implemented yet).
+If `activeGroupId` is missing while memberships exist, scoped endpoints return `409` until an active group is selected.
 
 ---
 
@@ -81,6 +80,7 @@ Invitations:
 - are token-based
 - are time-limited
 - grant membership upon acceptance
+- switch the user’s active group to the invited group upon successful acceptance (Phase 2)
 
 ## Decisions
 
