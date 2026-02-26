@@ -8,13 +8,13 @@ Accepted (2026-02-26)
 
 Implicit membership-based group resolution previously existed.
 It caused ambiguity for multi-group users.
-`401` responses occurred due to context uncertainty.
+`401` responses occurred due to ambiguous operational context rather than authentication failure.
 Identity and context were previously coupled.
 `DELETE /me` and other user-scoped operations could fail due to group ambiguity.
 
 ## Decisions
 
-- Identity (JWT) establishes `userId` only.
+- Identity (JWT) establishes `userId` only and is independent of operational context.
 - Operational context is derived exclusively from persisted `User.activeGroupId`.
 - Implicit membership-based group resolution is removed.
 - Filters are split into:
@@ -30,6 +30,7 @@ Identity and context were previously coupled.
 - Identity and context are decoupled.
 - Governance logic is independent from scoping ambiguity.
 - Filters are technical and non-orchestrating.
+- Filter separation is enforced via ArchUnit to prevent regression.
 - Context is explicit and user-controlled.
 
 ## Non-Goals
