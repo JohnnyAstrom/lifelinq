@@ -61,7 +61,10 @@ public class GroupPersistenceConfig {
     }
 
     @Bean
-    public UserGroupMembershipLookup userGroupMembershipLookup(MembershipRepository membershipRepository) {
-        return new UserGroupMembershipLookupAdapter(membershipRepository);
+    public UserGroupMembershipLookup userGroupMembershipLookup(
+            MembershipRepository membershipRepository,
+            GroupRepository groupRepository
+    ) {
+        return new UserGroupMembershipLookupAdapter(membershipRepository, groupRepository);
     }
 }

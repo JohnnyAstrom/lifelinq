@@ -113,7 +113,7 @@ public class AuthApplicationService {
         UUID activeGroupId = userActiveGroupRead.getActiveGroupId(userId);
         List<UserMembershipView> memberships = new ArrayList<>();
         for (var membership : userGroupMembershipLookup.listMemberships(userId)) {
-            memberships.add(new UserMembershipView(membership.groupId(), membership.role()));
+            memberships.add(new UserMembershipView(membership.groupId(), membership.groupName(), membership.role()));
         }
         return new UserContextView(userId, activeGroupId, memberships);
     }

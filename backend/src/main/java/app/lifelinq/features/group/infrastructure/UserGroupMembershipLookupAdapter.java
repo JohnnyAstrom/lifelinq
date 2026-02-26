@@ -2,6 +2,7 @@ package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.group.contract.UserGroupMembershipSummary;
+import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import java.util.ArrayList;
@@ -10,12 +11,17 @@ import java.util.UUID;
 
 public final class UserGroupMembershipLookupAdapter implements UserGroupMembershipLookup {
     private final MembershipRepository membershipRepository;
+    private final GroupRepository groupRepository;
 
-    public UserGroupMembershipLookupAdapter(MembershipRepository membershipRepository) {
+    public UserGroupMembershipLookupAdapter(MembershipRepository membershipRepository, GroupRepository groupRepository) {
         if (membershipRepository == null) {
             throw new IllegalArgumentException("membershipRepository must not be null");
         }
+        if (groupRepository == null) {
+            throw new IllegalArgumentException("groupRepository must not be null");
+        }
         this.membershipRepository = membershipRepository;
+        this.groupRepository = groupRepository;
     }
 
     @Override
@@ -38,8 +44,12 @@ public final class UserGroupMembershipLookupAdapter implements UserGroupMembersh
         }
         List<UserGroupMembershipSummary> summaries = new ArrayList<>();
         for (Membership membership : membershipRepository.findByUserId(userId)) {
+            String groupName = groupRepository.findById(membership.getGroupId())
+                    .map(group -> group.getName())
+                    .orElse(null);
             summaries.add(new UserGroupMembershipSummary(
                     membership.getGroupId(),
+                    groupName,
                     membership.getRole().name()
             ));
         }

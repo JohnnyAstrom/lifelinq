@@ -72,7 +72,7 @@ class MeControllerTest {
         when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
                 userId,
                 groupId,
-                List.of(new UserMembershipView(groupId, "ADMIN"))
+                List.of(new UserMembershipView(groupId, "Personal", "ADMIN"))
         ));
 
         mockMvc.perform(get("/me")
@@ -81,6 +81,7 @@ class MeControllerTest {
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.activeGroupId").value(groupId.toString()))
                 .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
+                .andExpect(jsonPath("$.memberships[0].groupName").value("Personal"))
                 .andExpect(jsonPath("$.memberships[0].role").value("ADMIN"));
 
         verify(authApplicationService).getMe(userId);
@@ -114,7 +115,7 @@ class MeControllerTest {
         when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
                 userId,
                 null,
-                List.of(new UserMembershipView(groupId, "MEMBER"))
+                List.of(new UserMembershipView(groupId, "Community", "MEMBER"))
         ));
 
         mockMvc.perform(get("/me")
@@ -124,6 +125,7 @@ class MeControllerTest {
                 .andExpect(jsonPath("$.activeGroupId").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.memberships.length()").value(1))
                 .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
+                .andExpect(jsonPath("$.memberships[0].groupName").value("Community"))
                 .andExpect(jsonPath("$.memberships[0].role").value("MEMBER"));
     }
 
@@ -178,8 +180,8 @@ class MeControllerTest {
                         userId,
                         selectedGroupId,
                         List.of(
-                                new UserMembershipView(currentGroupId, "MEMBER"),
-                                new UserMembershipView(selectedGroupId, "ADMIN")
+                                new UserMembershipView(currentGroupId, "Old Group", "MEMBER"),
+                                new UserMembershipView(selectedGroupId, "Personal", "ADMIN")
                         )
                 ));
 

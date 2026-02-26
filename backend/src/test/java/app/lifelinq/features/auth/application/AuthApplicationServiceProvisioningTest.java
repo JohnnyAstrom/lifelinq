@@ -122,7 +122,7 @@ class AuthApplicationServiceProvisioningTest {
             if (groupId == null) {
                 return List.of();
             }
-            return List.of(new UserGroupMembershipSummary(groupId, "ADMIN"));
+            return List.of(new UserGroupMembershipSummary(groupId, "Personal", "ADMIN"));
         }
 
         private boolean hasProvisionedGroup(UUID userId) {

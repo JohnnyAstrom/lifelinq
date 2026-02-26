@@ -60,7 +60,7 @@ public class MeController {
     private MeResponse toResponse(UserContextView view) {
         List<MembershipItemResponse> memberships = new ArrayList<>();
         for (UserMembershipView membership : view.memberships()) {
-            memberships.add(new MembershipItemResponse(membership.groupId(), membership.role()));
+            memberships.add(new MembershipItemResponse(membership.groupId(), membership.groupName(), membership.role()));
         }
         return new MeResponse(view.userId(), view.activeGroupId(), memberships);
     }
@@ -79,10 +79,12 @@ public class MeController {
 
     private static final class MembershipItemResponse {
         private final UUID groupId;
+        private final String groupName;
         private final String role;
 
-        private MembershipItemResponse(UUID groupId, String role) {
+        private MembershipItemResponse(UUID groupId, String groupName, String role) {
             this.groupId = groupId;
+            this.groupName = groupName;
             this.role = role;
         }
 
@@ -92,6 +94,10 @@ public class MeController {
 
         public String getRole() {
             return role;
+        }
+
+        public String getGroupName() {
+            return groupName;
         }
     }
 
