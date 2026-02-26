@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
+import { handleScopedApiError } from '../../../shared/api/handleScopedApiError';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { completeTodo, createTodo, deleteTodo, fetchTodos, fetchTodosForMonth, TodoResponse, updateTodo } from '../api/todoApi';
 
@@ -9,10 +10,15 @@ type CalendarMonthQuery = {
   month: number;
 };
 
+type ScopedTodoOptions = {
+  onContextInvalidated?: () => void | Promise<void>;
+};
+
 export function useTodos(
   token: string | null,
   status: 'OPEN' | 'COMPLETED' | 'ALL' = 'OPEN',
-  calendarMonthQuery?: CalendarMonthQuery
+  calendarMonthQuery?: CalendarMonthQuery,
+  scopedOptions?: ScopedTodoOptions
 ) {
   const [items, setItems] = useState<TodoResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +47,9 @@ export function useTodos(
         setItems(result);
       }
     } catch (err) {
+      await handleScopedApiError(err, {
+        onContextInvalidated: scopedOptions?.onContextInvalidated,
+      });
       await handleApiError(err);
       setError(formatApiError(err));
     } finally {
@@ -68,6 +77,9 @@ export function useTodos(
       await load();
       return true;
     } catch (err) {
+      await handleScopedApiError(err, {
+        onContextInvalidated: scopedOptions?.onContextInvalidated,
+      });
       await handleApiError(err);
       setError(formatApiError(err));
       return false;
@@ -84,6 +96,9 @@ export function useTodos(
       await load();
       return true;
     } catch (err) {
+      await handleScopedApiError(err, {
+        onContextInvalidated: scopedOptions?.onContextInvalidated,
+      });
       await handleApiError(err);
       setError(formatApiError(err));
       return false;
@@ -111,6 +126,9 @@ export function useTodos(
       await load();
       return true;
     } catch (err) {
+      await handleScopedApiError(err, {
+        onContextInvalidated: scopedOptions?.onContextInvalidated,
+      });
       await handleApiError(err);
       setError(formatApiError(err));
       return false;
@@ -127,6 +145,9 @@ export function useTodos(
       await load();
       return true;
     } catch (err) {
+      await handleScopedApiError(err, {
+        onContextInvalidated: scopedOptions?.onContextInvalidated,
+      });
       await handleApiError(err);
       setError(formatApiError(err));
       return false;
