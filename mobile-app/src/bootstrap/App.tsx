@@ -10,6 +10,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { CreateGroupScreen } from '../features/group/screens/CreateGroupScreen';
 import { GroupMembersScreen } from '../features/group/screens/GroupMembersScreen';
+import { SelectActiveGroupScreen } from '../features/group/screens/SelectActiveGroupScreen';
 import { TodoListScreen } from '../features/todo/screens/TodoListScreen';
 import { MealsWeekScreen } from '../features/meals/screens/MealsWeekScreen';
 import { ShoppingListsScreen } from '../features/shopping/screens/ShoppingListsScreen';
@@ -99,6 +100,13 @@ function AppShell() {
     );
   }
 
+  // Type narrowing for downstream screens: authenticated flow should always have a token.
+  if (!token) {
+    return (
+      <SplashScreen />
+    );
+  }
+
   if (me.loading) {
     return (
       <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
@@ -132,13 +140,25 @@ function AppShell() {
     );
   }
 
-  if (!me.data.groupId) {
+  if (me.data.memberships.length === 0) {
     return (
       <CreateGroupScreen
         token={token}
         onCreated={async () => {
           me.reload();
           setScreen('home');
+        }}
+      />
+    );
+  }
+
+  if (me.data.activeGroupId == null) {
+    return (
+      <SelectActiveGroupScreen
+        token={token}
+        memberships={me.data.memberships}
+        onSelected={() => {
+          me.reload();
         }}
       />
     );
@@ -237,6 +257,9 @@ function AppShell() {
       <HomeScreen
         token={token}
         me={me.data}
+        onSwitchedGroup={() => {
+          me.reload();
+        }}
         onCreateTodo={() => {
           setScreen('todos');
         }}
