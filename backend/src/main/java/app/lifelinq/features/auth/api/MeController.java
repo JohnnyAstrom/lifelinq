@@ -62,7 +62,7 @@ public class MeController {
         for (UserMembershipView membership : view.memberships()) {
             memberships.add(new MembershipItemResponse(membership.groupId(), membership.groupName(), membership.role()));
         }
-        return new MeResponse(view.userId(), view.activeGroupId(), memberships);
+        return new MeResponse(view.userId(), view.activeGroupId(), view.firstName(), view.lastName(), memberships);
     }
 
     public static final class SetActiveGroupRequest {
@@ -104,11 +104,15 @@ public class MeController {
     private static final class MeResponse {
         private final UUID userId;
         private final UUID activeGroupId;
+        private final String firstName;
+        private final String lastName;
         private final List<MembershipItemResponse> memberships;
 
-        private MeResponse(UUID userId, UUID activeGroupId, List<MembershipItemResponse> memberships) {
+        private MeResponse(UUID userId, UUID activeGroupId, String firstName, String lastName, List<MembershipItemResponse> memberships) {
             this.userId = userId;
             this.activeGroupId = activeGroupId;
+            this.firstName = firstName;
+            this.lastName = lastName;
             this.memberships = memberships;
         }
 
@@ -118,6 +122,14 @@ public class MeController {
 
         public UUID getActiveGroupId() {
             return activeGroupId;
+        }
+
+        public String getFirstName() {
+            return firstName;
+        }
+
+        public String getLastName() {
+            return lastName;
         }
 
         public List<MembershipItemResponse> getMemberships() {

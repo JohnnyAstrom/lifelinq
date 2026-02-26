@@ -71,6 +71,7 @@ class AuthApplicationServiceProvisioningTest {
                     userApplicationService,
                     userApplicationService,
                     userApplicationService,
+                    userApplicationService,
                     userDefaultGroupProvisioning,
                     userDefaultGroupProvisioning,
                     new JwtSigner("test-secret", 300, null, null,

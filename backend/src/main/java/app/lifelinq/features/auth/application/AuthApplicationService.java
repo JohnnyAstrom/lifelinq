@@ -8,6 +8,7 @@ import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
+import app.lifelinq.features.user.contract.UserProfileRead;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ public class AuthApplicationService {
     private final UserAccountDeletion userAccountDeletion;
     private final UserActiveGroupSelection userActiveGroupSelection;
     private final UserActiveGroupRead userActiveGroupRead;
+    private final UserProfileRead userProfileRead;
     private final UserDefaultGroupProvisioning userDefaultGroupProvisioning;
     private final UserGroupMembershipLookup userGroupMembershipLookup;
     private final JwtSigner jwtSigner;
@@ -29,6 +31,7 @@ public class AuthApplicationService {
             UserAccountDeletion userAccountDeletion,
             UserActiveGroupSelection userActiveGroupSelection,
             UserActiveGroupRead userActiveGroupRead,
+            UserProfileRead userProfileRead,
             UserDefaultGroupProvisioning userDefaultGroupProvisioning,
             UserGroupMembershipLookup userGroupMembershipLookup,
             JwtSigner jwtSigner
@@ -45,6 +48,9 @@ public class AuthApplicationService {
         if (userActiveGroupRead == null) {
             throw new IllegalArgumentException("userActiveGroupRead must not be null");
         }
+        if (userProfileRead == null) {
+            throw new IllegalArgumentException("userProfileRead must not be null");
+        }
         if (userDefaultGroupProvisioning == null) {
             throw new IllegalArgumentException("userDefaultGroupProvisioning must not be null");
         }
@@ -58,6 +64,7 @@ public class AuthApplicationService {
         this.userAccountDeletion = userAccountDeletion;
         this.userActiveGroupSelection = userActiveGroupSelection;
         this.userActiveGroupRead = userActiveGroupRead;
+        this.userProfileRead = userProfileRead;
         this.userDefaultGroupProvisioning = userDefaultGroupProvisioning;
         this.userGroupMembershipLookup = userGroupMembershipLookup;
         this.jwtSigner = jwtSigner;
@@ -111,10 +118,11 @@ public class AuthApplicationService {
 
     private UserContextView buildUserContext(UUID userId) {
         UUID activeGroupId = userActiveGroupRead.getActiveGroupId(userId);
+        var profile = userProfileRead.getProfile(userId);
         List<UserMembershipView> memberships = new ArrayList<>();
         for (var membership : userGroupMembershipLookup.listMemberships(userId)) {
             memberships.add(new UserMembershipView(membership.groupId(), membership.groupName(), membership.role()));
         }
-        return new UserContextView(userId, activeGroupId, memberships);
+        return new UserContextView(userId, activeGroupId, profile.firstName(), profile.lastName(), memberships);
     }
 }

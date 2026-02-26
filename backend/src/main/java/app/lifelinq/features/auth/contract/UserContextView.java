@@ -6,6 +6,8 @@ import java.util.UUID;
 public record UserContextView(
         UUID userId,
         UUID activeGroupId,
+        String firstName,
+        String lastName,
         List<UserMembershipView> memberships
 ) {
 }

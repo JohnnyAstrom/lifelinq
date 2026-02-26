@@ -72,6 +72,8 @@ class MeControllerTest {
         when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
                 userId,
                 groupId,
+                null,
+                null,
                 List.of(new UserMembershipView(groupId, "Personal", "ADMIN"))
         ));
 
@@ -80,6 +82,8 @@ class MeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.activeGroupId").value(groupId.toString()))
+                .andExpect(jsonPath("$.firstName").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.lastName").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
                 .andExpect(jsonPath("$.memberships[0].groupName").value("Personal"))
                 .andExpect(jsonPath("$.memberships[0].role").value("ADMIN"));
@@ -95,6 +99,8 @@ class MeControllerTest {
         when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
                 userId,
                 null,
+                null,
+                null,
                 List.of()
         ));
 
@@ -103,6 +109,8 @@ class MeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.activeGroupId").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.firstName").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.lastName").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.memberships").isArray());
     }
 
@@ -115,6 +123,8 @@ class MeControllerTest {
         when(authApplicationService.getMe(userId)).thenReturn(new UserContextView(
                 userId,
                 null,
+                null,
+                null,
                 List.of(new UserMembershipView(groupId, "Community", "MEMBER"))
         ));
 
@@ -123,6 +133,8 @@ class MeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.activeGroupId").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.firstName").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.lastName").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.memberships.length()").value(1))
                 .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
                 .andExpect(jsonPath("$.memberships[0].groupName").value("Community"))
@@ -179,6 +191,8 @@ class MeControllerTest {
                 .thenReturn(new UserContextView(
                         userId,
                         selectedGroupId,
+                        null,
+                        null,
                         List.of(
                                 new UserMembershipView(currentGroupId, "Old Group", "MEMBER"),
                                 new UserMembershipView(selectedGroupId, "Personal", "ADMIN")

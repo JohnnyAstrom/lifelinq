@@ -7,6 +7,7 @@ import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
+import app.lifelinq.features.user.contract.UserProfileRead;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,7 @@ public class AuthApplicationConfig {
             UserAccountDeletion userAccountDeletion,
             UserActiveGroupSelection userActiveGroupSelection,
             UserActiveGroupRead userActiveGroupRead,
+            UserProfileRead userProfileRead,
             UserDefaultGroupProvisioning userDefaultGroupProvisioning,
             UserGroupMembershipLookup userGroupMembershipLookup,
             JwtSigner jwtSigner
@@ -29,6 +31,7 @@ public class AuthApplicationConfig {
                 userAccountDeletion,
                 userActiveGroupSelection,
                 userActiveGroupRead,
+                userProfileRead,
                 userDefaultGroupProvisioning,
                 userGroupMembershipLookup,
                 jwtSigner
