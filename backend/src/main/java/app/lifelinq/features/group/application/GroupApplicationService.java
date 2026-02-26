@@ -28,7 +28,6 @@ public class GroupApplicationService {
     private final RevokeInvitationUseCase revokeInvitationUseCase;
     private final MembershipRepository membershipRepository;
     private final UserProvisioning userProvisioning;
-    private final ResolveGroupForUserUseCase resolveGroupForUserUseCase;
     private final Clock clock;
 
     public GroupApplicationService(
@@ -41,7 +40,6 @@ public class GroupApplicationService {
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             UserProvisioning userProvisioning,
-            ResolveGroupForUserUseCase resolveGroupForUserUseCase,
             Clock clock
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
@@ -53,7 +51,6 @@ public class GroupApplicationService {
         this.revokeInvitationUseCase = revokeInvitationUseCase;
         this.membershipRepository = membershipRepository;
         this.userProvisioning = userProvisioning;
-        this.resolveGroupForUserUseCase = resolveGroupForUserUseCase;
         this.clock = clock;
     }
 
@@ -136,11 +133,6 @@ public class GroupApplicationService {
         return result.getMembers();
     }
 
-    // Context resolution (scoping only, no business mutation).
-    public java.util.Optional<UUID> resolveGroupForUser(UUID userId) {
-        return resolveGroupForUserUseCase.resolveForUser(userId);
-    }
-
     public static GroupApplicationService create(
             GroupRepository groupRepository,
             MembershipRepository membershipRepository,
@@ -149,8 +141,6 @@ public class GroupApplicationService {
             UserProvisioning userProvisioning,
             Clock clock
     ) {
-        ResolveGroupForUserUseCase resolveGroupForUserUseCase =
-                new ResolveGroupForUserUseCase(membershipRepository);
         return new GroupApplicationService(
                 new AcceptInvitationUseCase(invitationRepository, membershipRepository),
                 new CreateGroupUseCase(groupRepository, membershipRepository),
@@ -161,7 +151,6 @@ public class GroupApplicationService {
                 new RevokeInvitationUseCase(invitationRepository),
                 membershipRepository,
                 userProvisioning,
-                resolveGroupForUserUseCase,
                 clock
         );
     }

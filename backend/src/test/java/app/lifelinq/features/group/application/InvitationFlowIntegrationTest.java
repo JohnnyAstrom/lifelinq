@@ -87,8 +87,6 @@ class InvitationFlowIntegrationTest {
 
         Clock clock = Clock.fixed(Instant.parse("2026-02-12T00:00:00Z"), ZoneOffset.UTC);
 
-        ResolveGroupForUserUseCase resolveGroupForUserUseCase =
-                new ResolveGroupForUserUseCase(membershipRepository);
         groupApplicationService = new GroupApplicationService(
                 acceptInvitationUseCase,
                 createGroupUseCase,
@@ -99,7 +97,6 @@ class InvitationFlowIntegrationTest {
                 revokeInvitationUseCase,
                 membershipRepository,
                 userApplicationService,
-                resolveGroupForUserUseCase,
                 clock
         );
     }

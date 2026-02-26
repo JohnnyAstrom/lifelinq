@@ -35,13 +35,6 @@ public class GroupApplicationConfig {
     }
 
     @Bean
-    public ResolveGroupForUserUseCase resolveGroupForUserUseCase(
-            MembershipRepository membershipRepository
-    ) {
-        return new ResolveGroupForUserUseCase(membershipRepository);
-    }
-
-    @Bean
     public RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase(
             MembershipRepository membershipRepository
     ) {
@@ -75,7 +68,6 @@ public class GroupApplicationConfig {
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             UserProvisioning userProvisioning,
-            ResolveGroupForUserUseCase resolveGroupForUserUseCase,
             Clock clock
     ) {
         return new GroupApplicationService(
@@ -88,7 +80,6 @@ public class GroupApplicationConfig {
                 revokeInvitationUseCase,
                 membershipRepository,
                 userProvisioning,
-                resolveGroupForUserUseCase,
                 clock
         );
     }
