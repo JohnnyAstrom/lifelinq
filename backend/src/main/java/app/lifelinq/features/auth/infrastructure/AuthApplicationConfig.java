@@ -2,6 +2,7 @@ package app.lifelinq.features.auth.infrastructure;
 
 import app.lifelinq.config.JwtSigner;
 import app.lifelinq.features.auth.application.AuthApplicationService;
+import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
@@ -19,6 +20,7 @@ public class AuthApplicationConfig {
             UserAccountDeletion userAccountDeletion,
             UserActiveGroupSelection userActiveGroupSelection,
             UserActiveGroupRead userActiveGroupRead,
+            UserDefaultGroupProvisioning userDefaultGroupProvisioning,
             UserGroupMembershipLookup userGroupMembershipLookup,
             JwtSigner jwtSigner
     ) {
@@ -27,6 +29,7 @@ public class AuthApplicationConfig {
                 userAccountDeletion,
                 userActiveGroupSelection,
                 userActiveGroupRead,
+                userDefaultGroupProvisioning,
                 userGroupMembershipLookup,
                 jwtSigner
         );

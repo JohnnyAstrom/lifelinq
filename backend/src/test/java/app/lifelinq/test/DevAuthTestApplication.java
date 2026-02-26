@@ -8,6 +8,7 @@ import app.lifelinq.features.auth.infrastructure.AuthApplicationConfig;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
+import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.group.contract.UserGroupMembershipSummary;
 import app.lifelinq.features.group.contract.UserGroupMembershipView;
@@ -103,6 +104,12 @@ public class DevAuthTestApplication {
                 return List.of();
             }
         };
+    }
+
+    @Bean
+    public UserDefaultGroupProvisioning userDefaultGroupProvisioning() {
+        return userId -> UUID.nameUUIDFromBytes(("personal-group:" + userId)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
 }

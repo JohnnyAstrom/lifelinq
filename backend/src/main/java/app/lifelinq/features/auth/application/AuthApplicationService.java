@@ -3,6 +3,7 @@ package app.lifelinq.features.auth.application;
 import app.lifelinq.config.JwtSigner;
 import app.lifelinq.features.auth.contract.UserContextView;
 import app.lifelinq.features.auth.contract.UserMembershipView;
+import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
@@ -12,12 +13,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 public class AuthApplicationService {
     private final UserProvisioning userProvisioning;
     private final UserAccountDeletion userAccountDeletion;
     private final UserActiveGroupSelection userActiveGroupSelection;
     private final UserActiveGroupRead userActiveGroupRead;
+    private final UserDefaultGroupProvisioning userDefaultGroupProvisioning;
     private final UserGroupMembershipLookup userGroupMembershipLookup;
     private final JwtSigner jwtSigner;
 
@@ -26,6 +29,7 @@ public class AuthApplicationService {
             UserAccountDeletion userAccountDeletion,
             UserActiveGroupSelection userActiveGroupSelection,
             UserActiveGroupRead userActiveGroupRead,
+            UserDefaultGroupProvisioning userDefaultGroupProvisioning,
             UserGroupMembershipLookup userGroupMembershipLookup,
             JwtSigner jwtSigner
     ) {
@@ -41,6 +45,9 @@ public class AuthApplicationService {
         if (userActiveGroupRead == null) {
             throw new IllegalArgumentException("userActiveGroupRead must not be null");
         }
+        if (userDefaultGroupProvisioning == null) {
+            throw new IllegalArgumentException("userDefaultGroupProvisioning must not be null");
+        }
         if (userGroupMembershipLookup == null) {
             throw new IllegalArgumentException("userGroupMembershipLookup must not be null");
         }
@@ -51,6 +58,7 @@ public class AuthApplicationService {
         this.userAccountDeletion = userAccountDeletion;
         this.userActiveGroupSelection = userActiveGroupSelection;
         this.userActiveGroupRead = userActiveGroupRead;
+        this.userDefaultGroupProvisioning = userDefaultGroupProvisioning;
         this.userGroupMembershipLookup = userGroupMembershipLookup;
         this.jwtSigner = jwtSigner;
     }
@@ -60,7 +68,19 @@ public class AuthApplicationService {
             throw new IllegalArgumentException("email must not be blank");
         }
         UUID userId = UUID.nameUUIDFromBytes(email.trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
+        return ensureProvisionedAndSignToken(userId);
+    }
+
+    @Transactional
+    public String ensureProvisionedAndSignToken(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
         userProvisioning.ensureUserExists(userId);
+        UUID groupId = userDefaultGroupProvisioning.ensureDefaultGroupProvisioned(userId);
+        if (userActiveGroupRead.getActiveGroupId(userId) == null) {
+            userActiveGroupSelection.setActiveGroup(userId, groupId);
+        }
         return jwtSigner.sign(userId);
     }
 

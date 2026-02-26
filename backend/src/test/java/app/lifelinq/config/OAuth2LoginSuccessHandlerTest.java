@@ -2,22 +2,19 @@ package app.lifelinq.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import app.lifelinq.features.auth.application.AuthApplicationService;
 import app.lifelinq.features.user.application.UserApplicationService;
-import app.lifelinq.features.user.application.UserApplicationServiceTestFactory;
-import app.lifelinq.features.user.domain.User;
-import app.lifelinq.features.user.domain.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -29,14 +26,14 @@ class OAuth2LoginSuccessHandlerTest {
     private static final String SECRET = "test-secret";
 
     @Test
-    void issuesTokenAndEnsuresUserExists() throws Exception {
-        RecordingUserRepository userRepository = new RecordingUserRepository();
-        UserApplicationService userApplicationService = UserApplicationServiceTestFactory.create(userRepository);
-        JwtSigner signer = new JwtSigner(SECRET, 300, null, null, Clock.fixed(Instant.now(), ZoneOffset.UTC));
+    void issuesTokenViaAuthOrchestrator() throws Exception {
+        AuthApplicationService authApplicationService = Mockito.mock(AuthApplicationService.class);
         ObjectMapper objectMapper = new ObjectMapper();
+        String expectedJwt = "signed.jwt.token";
+        UUID expectedUserId = OAuth2LoginSuccessHandler.deterministicUserId("google", "provider-sub");
+        when(authApplicationService.ensureProvisionedAndSignToken(expectedUserId)).thenReturn(expectedJwt);
         OAuth2LoginSuccessHandler handler = new OAuth2LoginSuccessHandler(
-                userApplicationService,
-                signer,
+                authApplicationService,
                 objectMapper
         );
 
@@ -66,31 +63,7 @@ class OAuth2LoginSuccessHandlerTest {
         String token = payload.get("token");
         assertNotNull(token);
 
-        UUID expectedUserId = OAuth2LoginSuccessHandler.deterministicUserId("google", "provider-sub");
-        assertEquals(expectedUserId, userRepository.lastSavedUserId);
-
-        JwtClaims claims = new JwtVerifier(SECRET).verify(token);
-        assertEquals(expectedUserId, claims.getUserId());
-    }
-
-    private static final class RecordingUserRepository implements UserRepository {
-        private final Map<UUID, User> store = new HashMap<>();
-        private UUID lastSavedUserId;
-
-        @Override
-        public Optional<User> findById(UUID id) {
-            return Optional.ofNullable(store.get(id));
-        }
-
-        @Override
-        public void save(User user) {
-            lastSavedUserId = user.getId();
-            store.put(user.getId(), user);
-        }
-
-        @Override
-        public void deleteById(UUID id) {
-            store.remove(id);
-        }
+        assertEquals(expectedJwt, token);
+        verify(authApplicationService).ensureProvisionedAndSignToken(expectedUserId);
     }
 }

@@ -1,6 +1,6 @@
 package app.lifelinq.config;
 
-import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.auth.application.AuthApplicationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,17 +17,14 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
-    private final UserApplicationService userApplicationService;
-    private final JwtSigner jwtSigner;
+    private final AuthApplicationService authApplicationService;
     private final ObjectMapper objectMapper;
 
     public OAuth2LoginSuccessHandler(
-            UserApplicationService userApplicationService,
-            JwtSigner jwtSigner,
+            AuthApplicationService authApplicationService,
             ObjectMapper objectMapper
     ) {
-        this.userApplicationService = userApplicationService;
-        this.jwtSigner = jwtSigner;
+        this.authApplicationService = authApplicationService;
         this.objectMapper = objectMapper;
     }
 
@@ -46,9 +43,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String subject = resolveSubject(user);
         UUID userId = deterministicUserId(provider, subject);
 
-        userApplicationService.ensureUserExists(userId);
-
-        String jwt = jwtSigner.sign(userId);
+        String jwt = authApplicationService.ensureProvisionedAndSignToken(userId);
         Map<String, String> payload = new HashMap<>();
         payload.put("token", jwt);
         response.setStatus(HttpServletResponse.SC_OK);

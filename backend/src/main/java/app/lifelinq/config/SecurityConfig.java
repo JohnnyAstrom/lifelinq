@@ -1,6 +1,6 @@
 package app.lifelinq.config;
 
-import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.auth.application.AuthApplicationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
@@ -51,11 +51,10 @@ public class SecurityConfig {
 
     @Bean
     public OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler(
-            UserApplicationService userApplicationService,
-            JwtSigner jwtSigner,
+            AuthApplicationService authApplicationService,
             ObjectMapper objectMapper
     ) {
-        return new OAuth2LoginSuccessHandler(userApplicationService, jwtSigner, objectMapper);
+        return new OAuth2LoginSuccessHandler(authApplicationService, objectMapper);
     }
 
     @Bean
