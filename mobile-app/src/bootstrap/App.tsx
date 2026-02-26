@@ -9,7 +9,7 @@ import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { CreateGroupScreen } from '../features/group/screens/CreateGroupScreen';
-import { GroupMembersScreen } from '../features/group/screens/GroupMembersScreen';
+import { GroupDetailsScreen } from '../features/group/screens/GroupDetailsScreen';
 import { SelectActiveGroupScreen } from '../features/group/screens/SelectActiveGroupScreen';
 import { TodoListScreen } from '../features/todo/screens/TodoListScreen';
 import { MealsWeekScreen } from '../features/meals/screens/MealsWeekScreen';
@@ -177,8 +177,9 @@ function AppShell() {
 
   if (screen === 'members') {
     return (
-      <GroupMembersScreen
+      <GroupDetailsScreen
         token={token}
+        me={me.data}
         onDone={() => {
           setScreen('settings');
         }}
@@ -238,6 +239,10 @@ function AppShell() {
     return (
       <SettingsScreen
         token={token}
+        me={me.data}
+        onSwitchedGroup={() => {
+          me.reload();
+        }}
         onDone={() => {
           setScreen('home');
         }}
@@ -256,7 +261,6 @@ function AppShell() {
     return (
       <HomeScreen
         token={token}
-        me={me.data}
         onSwitchedGroup={() => {
           me.reload();
         }}

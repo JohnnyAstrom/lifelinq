@@ -2,6 +2,7 @@ import { fetchJson } from '../../../shared/api/client';
 
 export type MeMembership = {
   groupId: string;
+  groupName: string | null;
   role: 'ADMIN' | 'MEMBER';
 };
 

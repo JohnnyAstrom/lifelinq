@@ -23,6 +23,7 @@ export function SelectActiveGroupScreen({ token, memberships, onSelected }: Prop
     noGroups: 'No memberships available.',
     select: 'Select',
     selecting: 'Selecting...',
+    unknownGroup: 'Unknown group',
   };
 
   async function handleSelect(groupId: string) {
@@ -59,7 +60,7 @@ export function SelectActiveGroupScreen({ token, memberships, onSelected }: Prop
               return (
                 <View key={membership.groupId} style={styles.row}>
                   <View style={styles.texts}>
-                    <Text style={styles.groupId}>{membership.groupId}</Text>
+                    <Text style={styles.groupName}>{membership.groupName ?? strings.unknownGroup}</Text>
                     <Subtle>{membership.role}</Subtle>
                   </View>
                   <AppButton
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: theme.spacing.xs,
   },
-  groupId: {
+  groupName: {
     ...textStyles.body,
   },
   error: {

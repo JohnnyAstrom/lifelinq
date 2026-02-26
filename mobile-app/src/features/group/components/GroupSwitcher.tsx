@@ -20,10 +20,15 @@ export function GroupSwitcher({ token, me, onSwitched }: Props) {
   const strings = {
     title: 'Active group',
     noneSelected: 'No active group selected',
+    unknownGroup: 'Unknown group',
     availableGroups: 'Available groups',
     select: 'Switch',
     switching: 'Switching...',
   };
+
+  if (me.memberships.length <= 1) {
+    return null;
+  }
 
   async function handleSwitch(groupId: string) {
     if (switchingGroupId) {
@@ -42,11 +47,16 @@ export function GroupSwitcher({ token, me, onSwitched }: Props) {
     }
   }
 
+  const activeMembership = me.activeGroupId == null
+    ? null
+    : me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null;
+  const activeGroupName = activeMembership?.groupName ?? strings.unknownGroup;
+
   return (
     <AppCard style={styles.card}>
       <Text style={textStyles.h3}>{strings.title}</Text>
       <Text style={styles.activeValue}>
-        {me.activeGroupId ?? strings.noneSelected}
+        {me.activeGroupId ? activeGroupName : strings.noneSelected}
       </Text>
       <Subtle>{strings.availableGroups}</Subtle>
 
@@ -56,10 +66,11 @@ export function GroupSwitcher({ token, me, onSwitched }: Props) {
         {me.memberships.map((membership) => {
           const isActive = membership.groupId === me.activeGroupId;
           const isSwitching = switchingGroupId === membership.groupId;
+          const label = membership.groupName?.trim() || strings.unknownGroup;
           return (
             <View key={membership.groupId} style={styles.row}>
               <View style={styles.rowTexts}>
-                <Text style={styles.groupId}>{membership.groupId}</Text>
+                <Text style={styles.groupLabel}>{label}</Text>
                 <Subtle>{membership.role}{isActive ? ' • Active' : ''}</Subtle>
               </View>
               <AppButton
@@ -101,7 +112,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: theme.spacing.xs,
   },
-  groupId: {
+  groupLabel: {
     ...textStyles.body,
   },
   error: {

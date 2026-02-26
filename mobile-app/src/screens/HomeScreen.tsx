@@ -1,13 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { MeResponse } from '../features/auth/api/meApi';
-import { GroupSwitcher } from '../features/group/components/GroupSwitcher';
 import { useTodos } from '../features/todo/hooks/useTodos';
 import { AppButton, AppCard, AppScreen, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
   token: string;
-  me: MeResponse;
   onSwitchedGroup: () => void;
   onCreateTodo: () => void;
   onCreateShopping: () => void;
@@ -19,7 +16,6 @@ type Props = {
 
 export function HomeScreen({
   token,
-  me,
   onSwitchedGroup,
   onCreateTodo,
   onCreateShopping,
@@ -96,8 +92,6 @@ export function HomeScreen({
             </View>
           )}
         </AppCard>
-
-        <GroupSwitcher token={token} me={me} onSwitched={onSwitchedGroup} />
 
         <AppCard>
           <Text style={textStyles.h3}>{strings.sectionTitle}</Text>
