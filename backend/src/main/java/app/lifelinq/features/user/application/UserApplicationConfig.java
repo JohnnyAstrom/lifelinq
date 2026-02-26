@@ -22,11 +22,22 @@ public class UserApplicationConfig {
     }
 
     @Bean
+    public UpdateUserProfileUseCase updateUserProfileUseCase(UserRepository userRepository) {
+        return new UpdateUserProfileUseCase(userRepository);
+    }
+
+    @Bean
     public UserApplicationService userApplicationService(
             EnsureUserExistsUseCase ensureUserExistsUseCase,
             DeleteAccountUseCase deleteAccountUseCase,
+            UpdateUserProfileUseCase updateUserProfileUseCase,
             UserRepository userRepository
     ) {
-        return new UserApplicationService(ensureUserExistsUseCase, deleteAccountUseCase, userRepository);
+        return new UserApplicationService(
+                ensureUserExistsUseCase,
+                deleteAccountUseCase,
+                updateUserProfileUseCase,
+                userRepository
+        );
     }
 }

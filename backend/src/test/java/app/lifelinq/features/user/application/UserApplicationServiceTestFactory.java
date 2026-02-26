@@ -28,6 +28,7 @@ public final class UserApplicationServiceTestFactory {
         return new UserApplicationService(
                 new EnsureUserExistsUseCase(userRepository),
                 new DeleteAccountUseCase(noOpGovernancePort, userRepository),
+                new UpdateUserProfileUseCase(userRepository),
                 userRepository
         );
     }

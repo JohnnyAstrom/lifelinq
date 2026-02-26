@@ -39,6 +39,7 @@ class UserApplicationServiceDeleteAccountTest {
         UserApplicationService service = new UserApplicationService(
                 new EnsureUserExistsUseCase(userRepository),
                 deleteAccountUseCase,
+                new UpdateUserProfileUseCase(userRepository),
                 userRepository
         );
 

@@ -3,6 +3,8 @@ package app.lifelinq.features.user.application;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
+import app.lifelinq.features.user.contract.UserProfileRead;
+import app.lifelinq.features.user.contract.UserProfileView;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.domain.UserRepository;
 import java.util.UUID;
@@ -12,14 +14,17 @@ public class UserApplicationService implements
         UserProvisioning,
         UserAccountDeletion,
         UserActiveGroupSelection,
-        UserActiveGroupRead {
+        UserActiveGroupRead,
+        UserProfileRead {
     private final EnsureUserExistsUseCase ensureUserExistsUseCase;
     private final DeleteAccountUseCase deleteAccountUseCase;
+    private final UpdateUserProfileUseCase updateUserProfileUseCase;
     private final UserRepository userRepository;
 
     public UserApplicationService(
             EnsureUserExistsUseCase ensureUserExistsUseCase,
             DeleteAccountUseCase deleteAccountUseCase,
+            UpdateUserProfileUseCase updateUserProfileUseCase,
             UserRepository userRepository
     ) {
         if (ensureUserExistsUseCase == null) {
@@ -28,11 +33,15 @@ public class UserApplicationService implements
         if (deleteAccountUseCase == null) {
             throw new IllegalArgumentException("deleteAccountUseCase must not be null");
         }
+        if (updateUserProfileUseCase == null) {
+            throw new IllegalArgumentException("updateUserProfileUseCase must not be null");
+        }
         if (userRepository == null) {
             throw new IllegalArgumentException("userRepository must not be null");
         }
         this.ensureUserExistsUseCase = ensureUserExistsUseCase;
         this.deleteAccountUseCase = deleteAccountUseCase;
+        this.updateUserProfileUseCase = updateUserProfileUseCase;
         this.userRepository = userRepository;
     }
 
@@ -76,5 +85,20 @@ public class UserApplicationService implements
         return userRepository.findById(userId)
                 .map(app.lifelinq.features.user.domain.User::getActiveGroupId)
                 .orElse(null);
+    }
+
+    @Override
+    public UserProfileView getProfile(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found"));
+        return new UserProfileView(user.getFirstName(), user.getLastName());
+    }
+
+    @Transactional
+    public void updateProfile(UUID userId, String firstName, String lastName) {
+        updateUserProfileUseCase.execute(userId, firstName, lastName);
     }
 }

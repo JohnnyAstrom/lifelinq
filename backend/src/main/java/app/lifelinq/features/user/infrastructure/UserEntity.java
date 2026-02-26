@@ -16,16 +16,28 @@ public class UserEntity {
     @Column(name = "active_group_id")
     private UUID activeGroupId;
 
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
+
     protected UserEntity() {
     }
 
     public UserEntity(UUID id) {
-        this(id, null);
+        this(id, null, null, null);
     }
 
     public UserEntity(UUID id, UUID activeGroupId) {
+        this(id, activeGroupId, null, null);
+    }
+
+    public UserEntity(UUID id, UUID activeGroupId, String firstName, String lastName) {
         this.id = id;
         this.activeGroupId = activeGroupId;
+        this.firstName = firstName;
+        this.lastName = lastName;
     }
 
     public UUID getId() {
@@ -34,5 +46,13 @@ public class UserEntity {
 
     public UUID getActiveGroupId() {
         return activeGroupId;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
     }
 }
