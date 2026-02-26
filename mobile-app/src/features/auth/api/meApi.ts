@@ -9,6 +9,8 @@ export type MeMembership = {
 export type MeResponse = {
   userId: string;
   activeGroupId: string | null;
+  firstName: string | null;
+  lastName: string | null;
   memberships: MeMembership[];
 };
 
@@ -22,6 +24,21 @@ export async function setActiveGroup(token: string, groupId: string): Promise<vo
     {
       method: 'PUT',
       body: JSON.stringify({ activeGroupId: groupId }),
+    },
+    { token }
+  );
+}
+
+export async function updateProfile(
+  token: string,
+  firstName: string,
+  lastName: string
+): Promise<void> {
+  await fetchJson<void>(
+    '/me/profile',
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ firstName, lastName }),
     },
     { token }
   );

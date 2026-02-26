@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
+import { CompleteProfileScreen } from '../features/auth/screens/CompleteProfileScreen';
 import { CreateGroupScreen } from '../features/group/screens/CreateGroupScreen';
 import { GroupDetailsScreen } from '../features/group/screens/GroupDetailsScreen';
 import { SelectActiveGroupScreen } from '../features/group/screens/SelectActiveGroupScreen';
@@ -137,6 +138,23 @@ function AppShell() {
           <Subtle>{strings.loadingProfileSubtitle}</Subtle>
         </AppCard>
       </AppScreen>
+    );
+  }
+
+  const hasCompletedProfile =
+    !!me.data.firstName?.trim() &&
+    !!me.data.lastName?.trim();
+
+  if (!hasCompletedProfile) {
+    return (
+      <CompleteProfileScreen
+        token={token}
+        initialFirstName={me.data.firstName}
+        initialLastName={me.data.lastName}
+        onCompleted={() => {
+          me.reload();
+        }}
+      />
     );
   }
 
