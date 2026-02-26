@@ -20,7 +20,7 @@ export async function setActiveGroup(token: string, groupId: string): Promise<vo
     '/me/active-group',
     {
       method: 'PUT',
-      body: JSON.stringify({ groupId }),
+      body: JSON.stringify({ activeGroupId: groupId }),
     },
     { token }
   );
