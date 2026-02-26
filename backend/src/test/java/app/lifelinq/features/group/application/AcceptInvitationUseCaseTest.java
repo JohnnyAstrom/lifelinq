@@ -69,6 +69,36 @@ class AcceptInvitationUseCaseTest {
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
     }
 
+    @Test
+    void repeatedAcceptIsIdempotentWhenMembershipAlreadyExists() {
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                groupId,
+                "test@example.com",
+                "token-repeat",
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+        invitationRepository.save(invitation);
+
+        AcceptInvitationUseCase useCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
+        AcceptInvitationCommand command = new AcceptInvitationCommand(
+                "token-repeat",
+                userId,
+                Instant.parse("2025-12-31T00:00:00Z")
+        );
+
+        useCase.execute(command);
+        AcceptInvitationResult result = useCase.execute(command);
+
+        assertEquals(groupId, result.getGroupId());
+        assertEquals(1, membershipRepository.findByGroupId(groupId).size());
+        assertEquals(InvitationStatus.REVOKED, invitationRepository.findByToken("token-repeat").orElseThrow().getStatus());
+    }
+
     private static final class InMemoryInvitationRepository implements InvitationRepository {
         private final List<Invitation> saved = new ArrayList<>();
 
@@ -136,7 +166,13 @@ class AcceptInvitationUseCaseTest {
 
         @Override
         public List<Membership> findByGroupId(UUID groupId) {
-            return List.of();
+            List<Membership> result = new ArrayList<>();
+            for (Membership membership : saved) {
+                if (membership.getGroupId().equals(groupId)) {
+                    result.add(membership);
+                }
+            }
+            return result;
         }
 
         @Override

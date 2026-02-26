@@ -97,12 +97,15 @@ class GroupApplicationServiceGovernanceTest {
         InvitationRepository invitationRepository = new StubInvitationRepository();
         UserProvisioning userProvisioning = userId -> {
         };
+        var userActiveGroupSelection = (app.lifelinq.features.user.contract.UserActiveGroupSelection) (userId, groupId) -> {
+        };
         return GroupApplicationService.create(
                 groupRepository,
                 membershipRepository,
                 invitationRepository,
                 () -> "token",
                 userProvisioning,
+                userActiveGroupSelection,
                 Clock.fixed(Instant.parse("2026-02-25T00:00:00Z"), ZoneOffset.UTC)
         );
     }

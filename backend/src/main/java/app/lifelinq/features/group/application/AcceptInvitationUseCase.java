@@ -41,6 +41,14 @@ final class AcceptInvitationUseCase {
         Invitation invitation = invitationRepository.findByToken(command.getToken())
                 .orElseThrow(() -> new IllegalArgumentException("invitation not found"));
 
+        if (isAlreadyMember(invitation.getGroupId(), command.getUserId())) {
+            if (invitation.isActive(command.getNow())) {
+                invitation.revoke();
+                invitationRepository.save(invitation);
+            }
+            return new AcceptInvitationResult(invitation.getGroupId(), command.getUserId());
+        }
+
         if (!invitation.isActive(command.getNow())) {
             throw new IllegalStateException("invitation is not active");
         }
@@ -56,5 +64,14 @@ final class AcceptInvitationUseCase {
         invitationRepository.save(invitation);
 
         return new AcceptInvitationResult(invitation.getGroupId(), command.getUserId());
+    }
+
+    private boolean isAlreadyMember(java.util.UUID groupId, java.util.UUID userId) {
+        for (Membership membership : membershipRepository.findByGroupId(groupId)) {
+            if (membership.getGroupId().equals(groupId) && membership.getUserId().equals(userId)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

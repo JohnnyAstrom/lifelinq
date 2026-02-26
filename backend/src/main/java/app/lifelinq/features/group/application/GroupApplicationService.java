@@ -8,6 +8,7 @@ import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.user.contract.UserProvisioning;
+import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import java.time.Clock;
 import java.time.Duration;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
@@ -31,6 +32,7 @@ public class GroupApplicationService {
     private final MembershipRepository membershipRepository;
     private final GroupRepository groupRepository;
     private final UserProvisioning userProvisioning;
+    private final UserActiveGroupSelection userActiveGroupSelection;
     private final Clock clock;
 
     public GroupApplicationService(
@@ -44,6 +46,7 @@ public class GroupApplicationService {
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
             UserProvisioning userProvisioning,
+            UserActiveGroupSelection userActiveGroupSelection,
             Clock clock
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
@@ -56,6 +59,7 @@ public class GroupApplicationService {
         this.membershipRepository = membershipRepository;
         this.groupRepository = groupRepository;
         this.userProvisioning = userProvisioning;
+        this.userActiveGroupSelection = userActiveGroupSelection;
         this.clock = clock;
     }
 
@@ -64,6 +68,7 @@ public class GroupApplicationService {
         userProvisioning.ensureUserExists(userId);
         AcceptInvitationCommand command = new AcceptInvitationCommand(token, userId, clock.instant());
         AcceptInvitationResult result = acceptInvitationUseCase.execute(command);
+        userActiveGroupSelection.setActiveGroup(userId, result.getGroupId());
         return new MembershipId(result.getGroupId(), result.getUserId());
     }
 
@@ -168,6 +173,7 @@ public class GroupApplicationService {
             InvitationRepository invitationRepository,
             InvitationTokenGenerator tokenGenerator,
             UserProvisioning userProvisioning,
+            UserActiveGroupSelection userActiveGroupSelection,
             Clock clock
     ) {
         return new GroupApplicationService(
@@ -181,6 +187,7 @@ public class GroupApplicationService {
                 membershipRepository,
                 groupRepository,
                 userProvisioning,
+                userActiveGroupSelection,
                 clock
         );
     }

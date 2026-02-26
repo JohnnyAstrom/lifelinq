@@ -16,8 +16,10 @@ class GroupInMemoryWiringTest {
 
     @Test
     void createsApplicationService() {
+        var userService = UserApplicationServiceTestFactory.create(new InMemoryUserRepository());
         GroupApplicationService service = GroupInMemoryWiring.createApplicationService(
-                UserApplicationServiceTestFactory.create(new InMemoryUserRepository())
+                userService,
+                userService
         );
 
         assertNotNull(service);

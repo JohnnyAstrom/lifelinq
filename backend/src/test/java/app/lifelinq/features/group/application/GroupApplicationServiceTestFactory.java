@@ -23,12 +23,14 @@ public final class GroupApplicationServiceTestFactory {
         GroupRepository groupRepository = new StubGroupRepository();
         InvitationRepository invitationRepository = new StubInvitationRepository();
         InvitationTokenGenerator tokenGenerator = () -> "test-token";
+        var userService = UserApplicationServiceTestFactory.create(new InMemoryUserRepository());
         return GroupApplicationService.create(
                 groupRepository,
                 membershipRepository,
                 invitationRepository,
                 tokenGenerator,
-                UserApplicationServiceTestFactory.create(new InMemoryUserRepository()),
+                userService,
+                userService,
                 Clock.systemUTC()
         );
     }

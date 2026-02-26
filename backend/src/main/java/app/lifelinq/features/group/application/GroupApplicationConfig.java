@@ -7,6 +7,7 @@ import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.infrastructure.UserDefaultGroupProvisioningAdapter;
 import app.lifelinq.features.user.contract.UserProvisioning;
+import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -71,6 +72,7 @@ public class GroupApplicationConfig {
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
             UserProvisioning userProvisioning,
+            UserActiveGroupSelection userActiveGroupSelection,
             Clock clock
     ) {
         return new GroupApplicationService(
@@ -84,6 +86,7 @@ public class GroupApplicationConfig {
                 membershipRepository,
                 groupRepository,
                 userProvisioning,
+                userActiveGroupSelection,
                 clock
         );
     }

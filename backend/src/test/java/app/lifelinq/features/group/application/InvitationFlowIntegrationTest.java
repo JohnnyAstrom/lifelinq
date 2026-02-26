@@ -50,6 +50,7 @@ class InvitationFlowIntegrationTest {
     private InvitationJpaRepository invitationJpaRepository;
 
     private GroupApplicationService groupApplicationService;
+    private FakeUserRepository userRepository;
 
     @BeforeEach
     void setUp() {
@@ -65,7 +66,7 @@ class InvitationFlowIntegrationTest {
                 invitationJpaRepository,
                 new InvitationMapper()
         );
-        UserRepository userRepository = new FakeUserRepository();
+        userRepository = new FakeUserRepository();
         UserApplicationService userApplicationService = UserApplicationServiceTestFactory.create(userRepository);
 
         CreateGroupUseCase createGroupUseCase = new CreateGroupUseCase(
@@ -97,6 +98,7 @@ class InvitationFlowIntegrationTest {
                 revokeInvitationUseCase,
                 membershipRepository,
                 groupRepository,
+                userApplicationService,
                 userApplicationService,
                 clock
         );
@@ -143,5 +145,30 @@ class InvitationFlowIntegrationTest {
                 && m.getRole() == GroupRole.ADMIN));
         assertTrue(memberships.stream().anyMatch(m -> m.getUserId().equals(invitedUserId)
                 && m.getRole() == GroupRole.MEMBER));
+        assertEquals(groupId, userRepository.findById(invitedUserId).orElseThrow().getActiveGroupId());
+    }
+
+    @Test
+    void repeatedAcceptInvitationIsSafeAndDoesNotDuplicateMembership() {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID invitedUserId = UUID.randomUUID();
+
+        UUID groupId = groupApplicationService.createGroup("Home", ownerUserId);
+        CreateInvitationOutput output = groupApplicationService.createInvitation(
+                groupId,
+                ownerUserId,
+                "Invitee@Example.com",
+                Duration.ofDays(3)
+        );
+
+        groupApplicationService.acceptInvitation(output.token(), invitedUserId);
+        groupApplicationService.acceptInvitation(output.token(), invitedUserId);
+
+        List<Membership> memberships = groupApplicationService.listMembers(groupId);
+        long invitedMemberships = memberships.stream()
+                .filter(m -> m.getUserId().equals(invitedUserId))
+                .count();
+        assertEquals(1L, invitedMemberships);
+        assertEquals(groupId, userRepository.findById(invitedUserId).orElseThrow().getActiveGroupId());
     }
 }

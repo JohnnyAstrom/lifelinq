@@ -58,12 +58,15 @@ class UserDefaultGroupProvisioningAdapterTest {
     ) {
         UserProvisioning noOpUserProvisioning = userId -> {
         };
+        var noOpActiveGroupSelection = (app.lifelinq.features.user.contract.UserActiveGroupSelection) (userId, groupId) -> {
+        };
         GroupApplicationService service = GroupApplicationService.create(
                 groupRepository,
                 membershipRepository,
                 new InMemoryInvitationRepository(),
                 new InMemoryInvitationTokenGenerator(),
                 noOpUserProvisioning,
+                noOpActiveGroupSelection,
                 Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)
         );
         return new UserDefaultGroupProvisioningAdapter(service);
