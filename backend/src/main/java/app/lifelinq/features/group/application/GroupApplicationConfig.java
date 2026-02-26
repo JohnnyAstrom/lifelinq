@@ -4,6 +4,8 @@ import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
+import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
+import app.lifelinq.features.group.infrastructure.UserDefaultGroupProvisioningAdapter;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
@@ -67,6 +69,7 @@ public class GroupApplicationConfig {
             CreateInvitationUseCase createInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
+            GroupRepository groupRepository,
             UserProvisioning userProvisioning,
             Clock clock
     ) {
@@ -79,6 +82,7 @@ public class GroupApplicationConfig {
                 createInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,
+                groupRepository,
                 userProvisioning,
                 clock
         );
@@ -108,5 +112,12 @@ public class GroupApplicationConfig {
             MembershipRepository membershipRepository
     ) {
         return new EnsureGroupMemberUseCaseImpl(membershipRepository);
+    }
+
+    @Bean
+    public UserDefaultGroupProvisioning userDefaultGroupProvisioning(
+            GroupApplicationService groupApplicationService
+    ) {
+        return new UserDefaultGroupProvisioningAdapter(groupApplicationService);
     }
 }

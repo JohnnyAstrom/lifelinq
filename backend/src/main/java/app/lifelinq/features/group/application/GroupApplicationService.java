@@ -10,14 +10,16 @@ import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
+import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 public class GroupApplicationService {
     private static final Duration DEFAULT_INVITATION_TTL = Duration.ofDays(7);
+    static final String DEFAULT_GROUP_NAME = "Personal";
 
     private final AcceptInvitationUseCase acceptInvitationUseCase;
     private final CreateGroupUseCase createGroupUseCase;
@@ -27,6 +29,7 @@ public class GroupApplicationService {
     private final CreateInvitationUseCase createInvitationUseCase;
     private final RevokeInvitationUseCase revokeInvitationUseCase;
     private final MembershipRepository membershipRepository;
+    private final GroupRepository groupRepository;
     private final UserProvisioning userProvisioning;
     private final Clock clock;
 
@@ -39,6 +42,7 @@ public class GroupApplicationService {
             CreateInvitationUseCase createInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
+            GroupRepository groupRepository,
             UserProvisioning userProvisioning,
             Clock clock
     ) {
@@ -50,6 +54,7 @@ public class GroupApplicationService {
         this.createInvitationUseCase = createInvitationUseCase;
         this.revokeInvitationUseCase = revokeInvitationUseCase;
         this.membershipRepository = membershipRepository;
+        this.groupRepository = groupRepository;
         this.userProvisioning = userProvisioning;
         this.clock = clock;
     }
@@ -133,6 +138,30 @@ public class GroupApplicationService {
         return result.getMembers();
     }
 
+    @Transactional
+    public UUID ensureDefaultGroupProvisioned(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        UUID defaultGroupId = defaultGroupIdFor(userId);
+        List<Membership> memberships = membershipRepository.findByUserId(userId);
+        for (Membership membership : memberships) {
+            if (defaultGroupId.equals(membership.getGroupId())) {
+                return defaultGroupId;
+            }
+        }
+        if (!memberships.isEmpty()) {
+            return memberships.stream()
+                    .map(Membership::getGroupId)
+                    .sorted(Comparator.comparing(UUID::toString))
+                    .findFirst()
+                    .orElseThrow();
+        }
+        groupRepository.save(new app.lifelinq.features.group.domain.Group(defaultGroupId, DEFAULT_GROUP_NAME));
+        membershipRepository.save(new Membership(defaultGroupId, userId, GroupRole.ADMIN));
+        return defaultGroupId;
+    }
+
     public static GroupApplicationService create(
             GroupRepository groupRepository,
             MembershipRepository membershipRepository,
@@ -150,6 +179,7 @@ public class GroupApplicationService {
                 new CreateInvitationUseCase(invitationRepository, tokenGenerator),
                 new RevokeInvitationUseCase(invitationRepository),
                 membershipRepository,
+                groupRepository,
                 userProvisioning,
                 clock
         );
@@ -219,6 +249,10 @@ public class GroupApplicationService {
             return null;
         }
         return email.trim().toLowerCase();
+    }
+
+    static UUID defaultGroupIdFor(UUID userId) {
+        return UUID.nameUUIDFromBytes(("personal-group:" + userId).getBytes(StandardCharsets.UTF_8));
     }
 
 }

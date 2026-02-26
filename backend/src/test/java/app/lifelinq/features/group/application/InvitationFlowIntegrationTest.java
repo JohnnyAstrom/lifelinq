@@ -96,6 +96,7 @@ class InvitationFlowIntegrationTest {
                 createInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,
+                groupRepository,
                 userApplicationService,
                 clock
         );
