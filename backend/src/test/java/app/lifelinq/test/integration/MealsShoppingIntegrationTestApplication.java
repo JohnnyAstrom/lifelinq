@@ -1,6 +1,6 @@
 package app.lifelinq.test.integration;
 
-import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.group.infrastructure.GroupJpaRepository;
 import app.lifelinq.features.group.infrastructure.GroupPersistenceConfig;

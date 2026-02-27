@@ -1,9 +1,9 @@
 package app.lifelinq.features.shopping.infrastructure;
 
-import app.lifelinq.features.meals.application.MealsShoppingPort;
-import app.lifelinq.features.meals.application.MealsShoppingAccessDeniedException;
-import app.lifelinq.features.meals.application.MealsShoppingDuplicateItemException;
-import app.lifelinq.features.meals.application.MealsShoppingListNotFoundException;
+import app.lifelinq.features.meals.contract.MealsShoppingPort;
+import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
+import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
+import app.lifelinq.features.meals.contract.MealsShoppingListNotFoundException;
 import app.lifelinq.features.shopping.application.AccessDeniedException;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.domain.DuplicateShoppingItemNameException;

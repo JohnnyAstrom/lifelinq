@@ -1,6 +1,6 @@
 package app.lifelinq.features.group.api;
 
-import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

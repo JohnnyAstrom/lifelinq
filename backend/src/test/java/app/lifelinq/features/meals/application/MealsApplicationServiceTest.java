@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.contract.IngredientInput;
+import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.Recipe;

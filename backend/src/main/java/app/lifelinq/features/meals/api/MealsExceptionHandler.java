@@ -2,9 +2,9 @@ package app.lifelinq.features.meals.api;
 
 import app.lifelinq.features.meals.application.MealsAccessDeniedException;
 import app.lifelinq.features.meals.application.MealNotFoundException;
-import app.lifelinq.features.meals.application.MealsShoppingAccessDeniedException;
-import app.lifelinq.features.meals.application.MealsShoppingDuplicateItemException;
-import app.lifelinq.features.meals.application.MealsShoppingListNotFoundException;
+import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
+import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
+import app.lifelinq.features.meals.contract.MealsShoppingListNotFoundException;
 import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

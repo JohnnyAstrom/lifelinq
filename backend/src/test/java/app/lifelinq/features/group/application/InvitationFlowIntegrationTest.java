@@ -100,6 +100,7 @@ class InvitationFlowIntegrationTest {
                 groupRepository,
                 userApplicationService,
                 userApplicationService,
+                userApplicationService,
                 clock
         );
     }
@@ -139,12 +140,12 @@ class InvitationFlowIntegrationTest {
 
         groupApplicationService.acceptInvitation(output.token(), invitedUserId);
 
-        List<Membership> memberships = groupApplicationService.listMembers(groupId);
+        List<GroupMemberView> memberships = groupApplicationService.listMembers(groupId);
         assertEquals(2, memberships.size());
-        assertTrue(memberships.stream().anyMatch(m -> m.getUserId().equals(ownerUserId)
-                && m.getRole() == GroupRole.ADMIN));
-        assertTrue(memberships.stream().anyMatch(m -> m.getUserId().equals(invitedUserId)
-                && m.getRole() == GroupRole.MEMBER));
+        assertTrue(memberships.stream().anyMatch(m -> m.userId().equals(ownerUserId)
+                && m.role() == GroupRole.ADMIN));
+        assertTrue(memberships.stream().anyMatch(m -> m.userId().equals(invitedUserId)
+                && m.role() == GroupRole.MEMBER));
         assertEquals(groupId, userRepository.findById(invitedUserId).orElseThrow().getActiveGroupId());
     }
 
@@ -164,9 +165,9 @@ class InvitationFlowIntegrationTest {
         groupApplicationService.acceptInvitation(output.token(), invitedUserId);
         groupApplicationService.acceptInvitation(output.token(), invitedUserId);
 
-        List<Membership> memberships = groupApplicationService.listMembers(groupId);
+        List<GroupMemberView> memberships = groupApplicationService.listMembers(groupId);
         long invitedMemberships = memberships.stream()
-                .filter(m -> m.getUserId().equals(invitedUserId))
+                .filter(m -> m.userId().equals(invitedUserId))
                 .count();
         assertEquals(1L, invitedMemberships);
         assertEquals(groupId, userRepository.findById(invitedUserId).orElseThrow().getActiveGroupId());

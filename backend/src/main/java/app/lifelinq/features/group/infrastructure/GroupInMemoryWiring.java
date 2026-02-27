@@ -2,6 +2,7 @@ package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
+import app.lifelinq.features.user.contract.UserProfileRead;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import java.time.Clock;
 
@@ -11,7 +12,8 @@ public final class GroupInMemoryWiring {
 
     public static GroupApplicationService createApplicationService(
             UserProvisioning userProvisioning,
-            UserActiveGroupSelection userActiveGroupSelection
+            UserActiveGroupSelection userActiveGroupSelection,
+            UserProfileRead userProfileRead
     ) {
         GroupPersistenceAdapter adapter = new GroupPersistenceAdapter();
         InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
@@ -23,6 +25,7 @@ public final class GroupInMemoryWiring {
                 tokenGenerator,
                 userProvisioning,
                 userActiveGroupSelection,
+                userProfileRead,
                 Clock.systemUTC()
         );
     }

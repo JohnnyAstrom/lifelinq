@@ -13,6 +13,7 @@ import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.user.contract.UserProvisioning;
+import app.lifelinq.features.user.contract.UserProfileView;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -99,6 +100,8 @@ class GroupApplicationServiceGovernanceTest {
         };
         var userActiveGroupSelection = (app.lifelinq.features.user.contract.UserActiveGroupSelection) (userId, groupId) -> {
         };
+        var userProfileRead = (app.lifelinq.features.user.contract.UserProfileRead) userId ->
+                new UserProfileView(null, null);
         return GroupApplicationService.create(
                 groupRepository,
                 membershipRepository,
@@ -106,6 +109,7 @@ class GroupApplicationServiceGovernanceTest {
                 () -> "token",
                 userProvisioning,
                 userActiveGroupSelection,
+                userProfileRead,
                 Clock.fixed(Instant.parse("2026-02-25T00:00:00Z"), ZoneOffset.UTC)
         );
     }

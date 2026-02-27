@@ -1,11 +1,12 @@
 package app.lifelinq.features.meals.application;
 
-import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
+import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.WeekPlanView;

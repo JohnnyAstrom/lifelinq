@@ -1,4 +1,4 @@
-package app.lifelinq.features.meals.application;
+package app.lifelinq.features.meals.contract;
 
 import java.math.BigDecimal;
 import java.util.UUID;

@@ -1,5 +1,6 @@
 package app.lifelinq.features.group.application;
 
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipRepository;

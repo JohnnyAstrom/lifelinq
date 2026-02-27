@@ -2,7 +2,8 @@ package app.lifelinq.features.group.api;
 
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.features.group.application.GroupApplicationService;
-import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.application.GroupMemberView;
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
@@ -153,10 +154,10 @@ public class GroupController {
         return ResponseEntity.noContent().build();
     }
 
-    private List<MemberItemResponse> toResponseItems(List<Membership> memberships) {
+    private List<MemberItemResponse> toResponseItems(List<GroupMemberView> memberships) {
         List<MemberItemResponse> items = new ArrayList<>();
-        for (Membership membership : memberships) {
-            items.add(new MemberItemResponse(membership.getUserId(), membership.getRole()));
+        for (GroupMemberView membership : memberships) {
+            items.add(new MemberItemResponse(membership.userId(), membership.role(), membership.displayName()));
         }
         return items;
     }

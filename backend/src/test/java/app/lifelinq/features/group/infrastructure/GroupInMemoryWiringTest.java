@@ -19,6 +19,7 @@ class GroupInMemoryWiringTest {
         var userService = UserApplicationServiceTestFactory.create(new InMemoryUserRepository());
         GroupApplicationService service = GroupInMemoryWiring.createApplicationService(
                 userService,
+                userService,
                 userService
         );
 

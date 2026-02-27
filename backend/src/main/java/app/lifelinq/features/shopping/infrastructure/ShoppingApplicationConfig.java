@@ -1,6 +1,6 @@
 package app.lifelinq.features.shopping.infrastructure;
 
-import app.lifelinq.features.meals.application.MealsShoppingPort;
+import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;

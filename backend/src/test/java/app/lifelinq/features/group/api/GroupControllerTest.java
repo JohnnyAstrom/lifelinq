@@ -14,9 +14,10 @@ import app.lifelinq.config.GroupContextFilter;
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextExceptionHandler;
 import app.lifelinq.test.FakeActiveGroupUserRepository;
-import app.lifelinq.features.group.application.AccessDeniedException;
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.application.AdminRemovalConflictException;
 import app.lifelinq.features.group.application.GroupApplicationService;
+import app.lifelinq.features.group.application.GroupMemberView;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
@@ -356,13 +357,34 @@ class GroupControllerTest {
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(groupApplicationService.listMembers(groupId)).thenReturn(List.of(
-                new Membership(groupId, userId, GroupRole.ADMIN)
+                new GroupMemberView(userId, GroupRole.ADMIN, "Alice Admin")
         ));
 
         mockMvc.perform(get("/groups/members")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.members[0].role").value("ADMIN"));
+                .andExpect(jsonPath("$.members[0].role").value("ADMIN"))
+                .andExpect(jsonPath("$.members[0].displayName").value("Alice Admin"));
+
+        verify(groupApplicationService).listMembers(groupId);
+    }
+
+    @Test
+    void listMembersReturnsNullDisplayNameWhenProfileMissing() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(groupApplicationService.listMembers(groupId)).thenReturn(List.of(
+                new GroupMemberView(userId, GroupRole.MEMBER, null)
+        ));
+
+        mockMvc.perform(get("/groups/members")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.members[0].role").value("MEMBER"))
+                .andExpect(jsonPath("$.members[0].displayName").value(org.hamcrest.Matchers.nullValue()));
 
         verify(groupApplicationService).listMembers(groupId);
     }

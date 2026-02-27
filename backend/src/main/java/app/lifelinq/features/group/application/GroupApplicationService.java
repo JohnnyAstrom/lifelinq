@@ -1,5 +1,7 @@
 package app.lifelinq.features.group.application;
 
+import app.lifelinq.features.group.contract.AccessDeniedException;
+import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
 import app.lifelinq.features.group.domain.MembershipRepository;
@@ -9,9 +11,10 @@ import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
+import app.lifelinq.features.user.contract.UserProfileRead;
+import app.lifelinq.features.user.contract.UserProfileView;
 import java.time.Clock;
 import java.time.Duration;
-import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
@@ -33,6 +36,7 @@ public class GroupApplicationService {
     private final GroupRepository groupRepository;
     private final UserProvisioning userProvisioning;
     private final UserActiveGroupSelection userActiveGroupSelection;
+    private final UserProfileRead userProfileRead;
     private final Clock clock;
 
     public GroupApplicationService(
@@ -47,6 +51,7 @@ public class GroupApplicationService {
             GroupRepository groupRepository,
             UserProvisioning userProvisioning,
             UserActiveGroupSelection userActiveGroupSelection,
+            UserProfileRead userProfileRead,
             Clock clock
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
@@ -60,6 +65,7 @@ public class GroupApplicationService {
         this.groupRepository = groupRepository;
         this.userProvisioning = userProvisioning;
         this.userActiveGroupSelection = userActiveGroupSelection;
+        this.userProfileRead = userProfileRead;
         this.clock = clock;
     }
 
@@ -136,11 +142,13 @@ public class GroupApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<Membership> listMembers(UUID groupId) {
+    public List<GroupMemberView> listMembers(UUID groupId) {
         ListGroupMembersResult result = listGroupMembersUseCase.execute(
                 new ListGroupMembersCommand(groupId)
         );
-        return result.getMembers();
+        return result.getMembers().stream()
+                .map(this::toGroupMemberView)
+                .toList();
     }
 
     @Transactional
@@ -174,6 +182,7 @@ public class GroupApplicationService {
             InvitationTokenGenerator tokenGenerator,
             UserProvisioning userProvisioning,
             UserActiveGroupSelection userActiveGroupSelection,
+            UserProfileRead userProfileRead,
             Clock clock
     ) {
         return new GroupApplicationService(
@@ -188,8 +197,22 @@ public class GroupApplicationService {
                 groupRepository,
                 userProvisioning,
                 userActiveGroupSelection,
+                userProfileRead,
                 clock
         );
+    }
+
+    private GroupMemberView toGroupMemberView(Membership membership) {
+        UserProfileView profile = userProfileRead.getProfile(membership.getUserId());
+        String displayName = null;
+        if (profile != null
+                && profile.firstName() != null
+                && profile.lastName() != null
+                && !profile.firstName().isBlank()
+                && !profile.lastName().isBlank()) {
+            displayName = profile.firstName() + " " + profile.lastName();
+        }
+        return new GroupMemberView(membership.getUserId(), membership.getRole(), displayName);
     }
 
     private void ensureAdmin(UUID groupId, UUID actorUserId) {

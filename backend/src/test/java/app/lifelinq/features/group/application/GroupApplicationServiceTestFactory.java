@@ -31,6 +31,7 @@ public final class GroupApplicationServiceTestFactory {
                 tokenGenerator,
                 userService,
                 userService,
+                userService,
                 Clock.systemUTC()
         );
     }

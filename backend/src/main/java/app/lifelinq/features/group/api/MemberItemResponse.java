@@ -6,10 +6,12 @@ import java.util.UUID;
 public final class MemberItemResponse {
     private final UUID userId;
     private final GroupRole role;
+    private final String displayName;
 
-    public MemberItemResponse(UUID userId, GroupRole role) {
+    public MemberItemResponse(UUID userId, GroupRole role, String displayName) {
         this.userId = userId;
         this.role = role;
+        this.displayName = displayName;
     }
 
     public UUID getUserId() {
@@ -18,5 +20,9 @@ public final class MemberItemResponse {
 
     public GroupRole getRole() {
         return role;
+    }
+
+    public String getDisplayName() {
+        return displayName;
     }
 }

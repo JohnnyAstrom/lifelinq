@@ -9,6 +9,7 @@ import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.user.contract.UserProvisioning;
+import app.lifelinq.features.user.contract.UserProfileView;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -60,6 +61,8 @@ class UserDefaultGroupProvisioningAdapterTest {
         };
         var noOpActiveGroupSelection = (app.lifelinq.features.user.contract.UserActiveGroupSelection) (userId, groupId) -> {
         };
+        var noOpUserProfileRead = (app.lifelinq.features.user.contract.UserProfileRead) userId ->
+                new UserProfileView(null, null);
         GroupApplicationService service = GroupApplicationService.create(
                 groupRepository,
                 membershipRepository,
@@ -67,6 +70,7 @@ class UserDefaultGroupProvisioningAdapterTest {
                 new InMemoryInvitationTokenGenerator(),
                 noOpUserProvisioning,
                 noOpActiveGroupSelection,
+                noOpUserProfileRead,
                 Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)
         );
         return new UserDefaultGroupProvisioningAdapter(service);
