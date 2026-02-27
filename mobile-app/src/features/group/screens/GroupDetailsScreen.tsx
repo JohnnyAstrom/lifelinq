@@ -30,7 +30,7 @@ export function GroupDetailsScreen({ token, me, onDone }: Props) {
     noMembers: 'No members yet.',
     unknownMemberName: 'Member',
     inviteMember: 'Invite Member',
-    inviteHint: 'Invite flow uses existing group endpoints and will be added here.',
+    inviteHint: 'Coming soon',
     noInviteHint: 'Only admins can invite members.',
     back: 'Back',
   };
@@ -63,7 +63,7 @@ export function GroupDetailsScreen({ token, me, onDone }: Props) {
           </View>
           {isAdmin ? (
             <>
-              <AppButton title={strings.inviteMember} onPress={() => {}} fullWidth />
+              <AppButton title={strings.inviteMember} onPress={() => {}} disabled fullWidth />
               <Subtle>{strings.inviteHint}</Subtle>
             </>
           ) : (
@@ -82,7 +82,11 @@ export function GroupDetailsScreen({ token, me, onDone }: Props) {
             {members.items.map((member, index) => (
               <View key={member.userId} style={styles.memberRow}>
                 <View style={styles.memberTexts}>
-                  <Text style={styles.memberName}>{`${strings.unknownMemberName} ${index + 1}`}</Text>
+                  <Text style={styles.memberName}>
+                    {member.displayName && member.displayName.trim().length > 0
+                      ? member.displayName
+                      : member.userId}
+                  </Text>
                   <Subtle>{member.userId}</Subtle>
                 </View>
                 <Text style={styles.memberRole}>{member.role}</Text>

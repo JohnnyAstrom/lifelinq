@@ -2,6 +2,7 @@ import { fetchJson } from '../../../shared/api/client';
 
 export type MemberItemResponse = {
   userId: string;
+  displayName: string | null;
   role: 'ADMIN' | 'MEMBER';
 };
 
