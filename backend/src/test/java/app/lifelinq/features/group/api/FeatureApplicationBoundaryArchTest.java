@@ -1,7 +1,6 @@
 package app.lifelinq.features.group.api;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaPackage;
@@ -18,16 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 class FeatureApplicationBoundaryArchTest {
 
     @ArchTest
-    static final ArchRule controllersShouldNotDependOnUseCases =
-            noClasses().that().resideInAPackage("..features..api..")
-                    .and().areAnnotatedWith(RestController.class)
-                    .should().dependOnClassesThat().haveSimpleNameEndingWith("UseCase");
-
-    @ArchTest
-    static final ArchRule controllersShouldOnlyDependOnOwnApplicationService =
+    static final ArchRule controllersShouldOnlyDependOnOwnFeatureApplication =
             classes().that().resideInAPackage("..features..api..")
                     .and().areAnnotatedWith(RestController.class)
-                    .should(new ArchCondition<>("depend only on their own ApplicationService from application layer") {
+                    .should(new ArchCondition<>("depend only on own feature application package and not on domain/infrastructure") {
                         @Override
                         public void check(JavaClass javaClass, ConditionEvents events) {
                             String feature = featureName(javaClass.getPackage());
@@ -39,28 +32,44 @@ class FeatureApplicationBoundaryArchTest {
                                 return;
                             }
 
+                            String sameFeatureBase = "app.lifelinq.features." + feature + ".";
+                            String sameFeatureApplication = sameFeatureBase + "application.";
+                            String sameFeatureDomain = sameFeatureBase + "domain.";
+                            String sameFeatureInfrastructure = sameFeatureBase + "infrastructure.";
+
                             for (Dependency dependency : javaClass.getDirectDependenciesFromSelf()) {
                                 JavaClass target = dependency.getTargetClass();
                                 String targetPackage = target.getPackageName();
                                 if (!targetPackage.startsWith("app.lifelinq.features.")) {
                                     continue;
                                 }
-                                if (!targetPackage.contains(".application")) {
+
+                                boolean sameFeature = targetPackage.startsWith(sameFeatureBase);
+                                boolean targetIsDomain = targetPackage.startsWith(sameFeatureDomain);
+                                boolean targetIsInfrastructure = targetPackage.startsWith(sameFeatureInfrastructure);
+
+                                if (sameFeature) {
+                                    if (targetIsDomain || targetIsInfrastructure) {
+                                        events.add(SimpleConditionEvent.violated(
+                                                javaClass,
+                                                javaClass.getName() + " depends on " + target.getName()
+                                                        + " but controllers must not depend on own domain/infrastructure"
+                                        ));
+                                    }
                                     continue;
                                 }
 
-                                boolean sameFeature = targetPackage.startsWith(
-                                        "app.lifelinq.features." + feature + ".application"
-                                );
-                                boolean isApplicationService = target.getSimpleName().endsWith("ApplicationService");
-
-                                if (!sameFeature || !isApplicationService) {
+                                if (targetPackage.contains(".api.")
+                                        || targetPackage.contains(".application.")
+                                        || targetPackage.contains(".domain.")
+                                        || targetPackage.contains(".infrastructure.")) {
                                     events.add(SimpleConditionEvent.violated(
                                             javaClass,
                                             javaClass.getName() + " depends on " + target.getName()
-                                                    + " but controllers may only depend on their own ApplicationService"
+                                                    + " but controllers must not depend on other features' api/application/domain/infrastructure"
                                     ));
                                 }
+
                             }
                         }
                     });
