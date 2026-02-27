@@ -1,48 +1,45 @@
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MeResponse } from '../features/auth/api/meApi';
-import { GroupSwitcher } from '../features/group/components/GroupSwitcher';
-import { useGroupMembers } from '../features/group/hooks/useGroupMembers';
 import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { AppButton, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
+import { AppButton, AppCard, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles } from '../shared/ui/theme';
 import { theme } from '../shared/ui/theme';
 
 type Props = {
-  token: string;
   me: MeResponse;
-  onSwitchedGroup: () => void;
   onDone: () => void;
-  onManageMembers: () => void;
+  onManagePlace: () => void;
+  onSwitchPlace: () => void;
   onLogout: () => void;
 };
 
-export function SettingsScreen({ token, me, onSwitchedGroup, onDone, onManageMembers: _onManageMembers, onLogout }: Props) {
-  const members = useGroupMembers(token);
-  const [isRenaming, setIsRenaming] = useState(false);
+export function SettingsScreen({ me, onDone, onManagePlace, onSwitchPlace, onLogout }: Props) {
   const activeMembership = me.activeGroupId
     ? me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null
     : null;
-  const canInvite = activeMembership?.role === 'ADMIN';
-  const currentSpaceName = activeMembership?.groupName ?? 'My space';
-  const [draftSpaceName, setDraftSpaceName] = useState(currentSpaceName);
-
-  useEffect(() => {
-    setDraftSpaceName(currentSpaceName);
-  }, [currentSpaceName]);
+  const currentPlaceName = activeMembership?.groupName?.trim() || 'My place';
 
   const strings = {
     title: 'Settings',
-    subtitle: 'Manage your account and app.',
-    rename: 'Rename',
-    save: 'Save',
-    cancel: 'Cancel',
-    membersTitle: 'Members',
-    inviteSomeone: 'Invite someone',
-    unknownMemberName: 'Someone',
+    subtitle: 'Your account and app.',
     accountTitle: 'Account',
+    profile: 'Profile',
+    notifications: 'Notifications',
+    privacy: 'Privacy',
+    currentPlaceTitle: 'Current place',
+    switchPlace: 'Switch place',
+    createNewPlace: 'Create new place',
+    appTitle: 'App',
+    appearance: 'Appearance',
+    accessibility: 'Accessibility',
+    about: 'About',
+    version: 'Version',
+    versionValue: 'v0.1.0',
     logout: 'Log out',
-    back: 'Back',
+    logoutTitle: 'Log out?',
+    logoutMessage: 'Do you want to log out now?',
+    cancel: 'Cancel',
+    confirmLogout: 'Log out',
   };
 
   useAppBackHandler({
@@ -55,78 +52,76 @@ export function SettingsScreen({ token, me, onSwitchedGroup, onDone, onManageMem
       <TopBar
         title={strings.title}
         subtitle={strings.subtitle}
-        left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+        right={<BackIconButton onPress={onDone} />}
       />
 
       <View style={styles.contentOffset}>
         <View style={styles.section}>
-          <Pressable
-            style={styles.spaceNameRow}
-            onPress={() => setIsRenaming((prev) => !prev)}
-            accessibilityRole="button"
-            accessibilityLabel={strings.rename}
-          >
-            <Text style={styles.spaceName}>{draftSpaceName.trim() || currentSpaceName}</Text>
-            <Subtle style={styles.renameIcon}>✎</Subtle>
-          </Pressable>
-
-          {isRenaming ? (
-            <View style={styles.renameEditor}>
-              <AppInput
-                value={draftSpaceName}
-                onChangeText={setDraftSpaceName}
-                placeholder={currentSpaceName}
-              />
-              <View style={styles.renameActions}>
-                <AppButton
-                  title={strings.save}
-                  variant="ghost"
-                  onPress={() => setIsRenaming(false)}
-                />
-                <AppButton
-                  title={strings.cancel}
-                  variant="ghost"
-                  onPress={() => {
-                    setDraftSpaceName(currentSpaceName);
-                    setIsRenaming(false);
-                  }}
-                />
-              </View>
-            </View>
-          ) : null}
-
-          {members.items.length > 1 ? (
-            <>
-              <SectionTitle>{strings.membersTitle}</SectionTitle>
-              <View style={styles.memberList}>
-                {members.items.map((member) => (
-                  <Text key={member.userId} style={styles.memberName}>
-                    {member.displayName && member.displayName.trim().length > 0
-                      ? member.displayName
-                      : strings.unknownMemberName}
-                  </Text>
-                ))}
-              </View>
-            </>
-          ) : null}
-
-          {canInvite ? (
-            <AppButton title={strings.inviteSomeone} onPress={() => {}} fullWidth />
-          ) : null}
+          <SectionTitle>{strings.accountTitle}</SectionTitle>
+          <AppCard>
+            <SettingRow label={strings.profile} />
+            <SettingRow label={strings.notifications} disabled />
+            <SettingRow label={strings.privacy} disabled />
+          </AppCard>
         </View>
 
-        {me.memberships.length > 1 ? (
-          <View style={styles.section}>
-            <GroupSwitcher token={token} me={me} onSwitched={onSwitchedGroup} />
-          </View>
-        ) : null}
+        <View style={styles.section}>
+          <SectionTitle>{strings.currentPlaceTitle}</SectionTitle>
+          <AppCard>
+            <SettingRow label={currentPlaceName} onPress={onManagePlace} />
+            {me.memberships.length > 1 ? (
+              <SettingRow label={strings.switchPlace} onPress={onSwitchPlace} />
+            ) : null}
+            <SettingRow label={strings.createNewPlace} disabled />
+          </AppCard>
+        </View>
 
         <View style={styles.section}>
-          <SectionTitle>{strings.accountTitle}</SectionTitle>
-          <AppButton title={strings.logout} onPress={onLogout} variant="ghost" fullWidth />
+          <SectionTitle>{strings.appTitle}</SectionTitle>
+          <AppCard>
+            <SettingRow label={strings.appearance} disabled />
+            <SettingRow label={strings.accessibility} disabled />
+            <SettingRow label={strings.about} />
+            <View style={styles.versionRow}>
+              <Text style={styles.rowLabel}>{strings.version}</Text>
+              <Subtle>{strings.versionValue}</Subtle>
+            </View>
+          </AppCard>
+        </View>
+
+        <View style={styles.logoutSection}>
+          <AppButton
+            title={strings.logout}
+            onPress={() => {
+              Alert.alert(strings.logoutTitle, strings.logoutMessage, [
+                { text: strings.cancel, style: 'cancel' },
+                { text: strings.confirmLogout, style: 'destructive', onPress: onLogout },
+              ]);
+            }}
+            variant="ghost"
+            fullWidth
+          />
         </View>
       </View>
     </AppScreen>
+  );
+}
+
+function SettingRow({ label, onPress, disabled }: { label: string; onPress?: () => void; disabled?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || !onPress}
+      style={({ pressed }) => [
+        styles.settingRow,
+        (disabled || !onPress) ? styles.settingRowDisabled : null,
+        pressed ? styles.settingRowPressed : null,
+      ]}
+      accessibilityRole="button"
+    >
+      <Text style={styles.rowLabel}>{label}</Text>
+      {onPress && !disabled ? <Text style={styles.chevron}>→</Text> : null}
+    </Pressable>
   );
 }
 
@@ -138,28 +133,33 @@ const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.sm,
   },
-  spaceNameRow: {
+  settingRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  spaceName: {
-    ...textStyles.h2,
+  settingRowDisabled: {
+    opacity: 0.5,
   },
-  renameIcon: {
-    lineHeight: 18,
+  settingRowPressed: {
+    opacity: 0.8,
   },
-  renameEditor: {
-    gap: theme.spacing.sm,
+  rowLabel: {
+    ...textStyles.body,
   },
-  renameActions: {
+  versionRow: {
     flexDirection: 'row',
-    gap: theme.spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: theme.spacing.sm,
   },
-  memberList: {
-    gap: theme.spacing.xs,
+  logoutSection: {
+    marginTop: theme.spacing.lg,
   },
-  memberName: {
+  chevron: {
     ...textStyles.body,
   },
 });

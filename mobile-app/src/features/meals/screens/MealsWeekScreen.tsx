@@ -24,6 +24,7 @@ import { useMealsWorkflow } from '../hooks/useMealsWorkflow';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import {
   AppButton,
+  BackIconButton,
   AppCard,
   AppChip,
   AppInput,
@@ -222,7 +223,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         <TopBar
           title={strings.title}
           subtitle={strings.subtitle}
-          left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+          right={<BackIconButton onPress={onDone} />}
         />
 
         <View style={styles.contentOffset}>

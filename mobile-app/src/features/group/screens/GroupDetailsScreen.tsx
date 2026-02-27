@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { MeResponse } from '../../auth/api/meApi';
 import { useGroupMembers } from '../hooks/useGroupMembers';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
-import { AppButton, AppCard, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
+import { AppButton, AppCard, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
@@ -13,6 +15,10 @@ type Props = {
 
 export function GroupDetailsScreen({ token, me, onDone }: Props) {
   const members = useGroupMembers(token);
+  const [showInviteSheet, setShowInviteSheet] = useState(false);
+  const [showAddExistingUserForm, setShowAddExistingUserForm] = useState(false);
+  const [inviteUserId, setInviteUserId] = useState('');
+  const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
   const activeMembership = me.activeGroupId
     ? me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null
     : null;
@@ -20,81 +26,143 @@ export function GroupDetailsScreen({ token, me, onDone }: Props) {
   const currentGroupName = activeMembership?.groupName ?? 'Unknown group';
   const isAdmin = currentRole === 'ADMIN';
   const strings = {
-    title: 'Manage group',
-    subtitle: 'View current group details and members.',
-    detailsTitle: 'Current group',
-    nameLabel: 'Group',
-    roleLabel: 'Your role',
+    identityTitle: 'Space',
     membersTitle: 'Members',
+    collaborationTitle: 'Collaboration',
     loadingMembers: 'Loading members...',
-    noMembers: 'No members yet.',
-    unknownMemberName: 'Member',
-    inviteMember: 'Invite Member',
-    inviteHint: 'Coming soon',
-    noInviteHint: 'Only admins can invite members.',
+    inviteMember: 'Invite someone',
+    inviteTitle: 'Invite someone',
+    addExistingUser: 'Add existing user',
+    lifeLinqIdLabel: 'LifeLinq ID',
+    lifeLinqIdPlaceholder: 'Enter LifeLinq ID',
+    add: 'Add',
+    close: 'Close',
     back: 'Back',
+    unnamedSpace: 'My space',
   };
+  const memberNames = members.items
+    .map((member) => member.displayName?.trim() ?? '')
+    .filter((name) => name.length > 0);
 
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
+    isOverlayOpen: showInviteSheet,
+    onCloseOverlay: () => {
+      setShowInviteSheet(false);
+      setShowAddExistingUserForm(false);
+      setInviteUserId('');
+    },
   });
+
+  async function handleAddExistingUser() {
+    const userId = inviteUserId.trim();
+    if (!userId || isSubmittingInvite) {
+      return;
+    }
+    setIsSubmittingInvite(true);
+    try {
+      await members.add(userId);
+      await members.reload();
+      setShowInviteSheet(false);
+      setShowAddExistingUserForm(false);
+      setInviteUserId('');
+    } finally {
+      setIsSubmittingInvite(false);
+    }
+  }
 
   return (
     <AppScreen>
       <TopBar
-        title={strings.title}
-        subtitle={strings.subtitle}
-        left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+        title={currentGroupName || strings.unnamedSpace}
+        right={<BackIconButton onPress={onDone} />}
       />
 
       <View style={styles.contentOffset}>
         <AppCard>
-          <SectionTitle>{strings.detailsTitle}</SectionTitle>
-          <View style={styles.metaList}>
-            <View>
-              <Subtle>{strings.nameLabel}</Subtle>
-              <Text style={styles.metaValue}>{currentGroupName}</Text>
-            </View>
-            <View>
-              <Subtle>{strings.roleLabel}</Subtle>
-              <Text style={styles.metaValue}>{currentRole}</Text>
-            </View>
-          </View>
-          {isAdmin ? (
-            <>
-              <AppButton title={strings.inviteMember} onPress={() => {}} disabled fullWidth />
-              <Subtle>{strings.inviteHint}</Subtle>
-            </>
-          ) : (
-            <Subtle>{strings.noInviteHint}</Subtle>
-          )}
+          <SectionTitle>{strings.identityTitle}</SectionTitle>
+          <Text style={styles.spaceName}>{currentGroupName || strings.unnamedSpace}</Text>
         </AppCard>
 
-        <AppCard>
-          <SectionTitle>{strings.membersTitle}</SectionTitle>
-          {members.loading ? <Subtle>{strings.loadingMembers}</Subtle> : null}
-          {members.error ? <Text style={styles.error}>{members.error}</Text> : null}
-          {members.items.length === 0 && !members.loading ? (
-            <Subtle>{strings.noMembers}</Subtle>
-          ) : null}
-          <View style={styles.list}>
-            {members.items.map((member, index) => (
-              <View key={member.userId} style={styles.memberRow}>
-                <View style={styles.memberTexts}>
-                  <Text style={styles.memberName}>
-                    {member.displayName && member.displayName.trim().length > 0
-                      ? member.displayName
-                      : member.userId}
-                  </Text>
-                  <Subtle>{member.userId}</Subtle>
+        {members.items.length > 1 ? (
+          <AppCard>
+            <SectionTitle>{strings.membersTitle}</SectionTitle>
+            {members.loading ? <Subtle>{strings.loadingMembers}</Subtle> : null}
+            {members.error ? <Text style={styles.error}>{members.error}</Text> : null}
+            <View style={styles.list}>
+              {memberNames.map((name) => (
+                <View key={name} style={styles.memberRow}>
+                  <Text style={styles.memberName}>{name}</Text>
                 </View>
-                <Text style={styles.memberRole}>{member.role}</Text>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          </AppCard>
+        ) : null}
+
+        <AppCard>
+          <SectionTitle>{strings.collaborationTitle}</SectionTitle>
+          {isAdmin ? (
+            <AppButton
+              title={strings.inviteMember}
+              onPress={() => {
+                setShowInviteSheet(true);
+                setShowAddExistingUserForm(false);
+                setInviteUserId('');
+              }}
+              fullWidth
+            />
+          ) : null}
         </AppCard>
       </View>
+
+      {showInviteSheet ? (
+        <OverlaySheet
+          onClose={() => {
+            setShowInviteSheet(false);
+            setShowAddExistingUserForm(false);
+            setInviteUserId('');
+          }}
+          sheetStyle={styles.sheet}
+        >
+          <View style={styles.sheetContent}>
+            <SectionTitle>{strings.inviteTitle}</SectionTitle>
+            {!showAddExistingUserForm ? (
+              <AppButton
+                title={strings.addExistingUser}
+                onPress={() => setShowAddExistingUserForm(true)}
+                fullWidth
+              />
+            ) : (
+              <View style={styles.addUserForm}>
+                <Subtle>{strings.lifeLinqIdLabel}</Subtle>
+                <AppInput
+                  value={inviteUserId}
+                  onChangeText={setInviteUserId}
+                  placeholder={strings.lifeLinqIdPlaceholder}
+                />
+                <AppButton
+                  title={isSubmittingInvite ? `${strings.add}...` : strings.add}
+                  onPress={() => void handleAddExistingUser()}
+                  disabled={isSubmittingInvite || inviteUserId.trim().length === 0}
+                  fullWidth
+                />
+                {members.error ? <Text style={styles.error}>{members.error}</Text> : null}
+              </View>
+            )}
+            <AppButton
+              title={strings.close}
+              onPress={() => {
+                setShowInviteSheet(false);
+                setShowAddExistingUserForm(false);
+                setInviteUserId('');
+              }}
+              variant="ghost"
+              fullWidth
+            />
+          </View>
+        </OverlaySheet>
+      ) : null}
     </AppScreen>
   );
 }
@@ -104,41 +172,39 @@ const styles = StyleSheet.create({
     paddingTop: 90,
     gap: theme.spacing.md,
   },
-  metaList: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
-  metaValue: {
-    ...textStyles.body,
-  },
   list: {
     gap: theme.spacing.sm,
     marginTop: theme.spacing.sm,
   },
+  spaceName: {
+    ...textStyles.body,
+    marginTop: theme.spacing.sm,
+  },
   memberRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: theme.spacing.sm,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surfaceAlt,
-    gap: theme.spacing.sm,
-  },
-  memberTexts: {
-    flex: 1,
-    gap: theme.spacing.xs,
   },
   memberName: {
     ...textStyles.body,
   },
-  memberRole: {
-    ...textStyles.subtle,
-  },
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
+  },
+  sheet: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+  },
+  sheetContent: {
+    gap: theme.spacing.md,
+  },
+  addUserForm: {
+    gap: theme.spacing.sm,
   },
 });

@@ -18,6 +18,8 @@ import { ShoppingListsScreen } from '../features/shopping/screens/ShoppingListsS
 import { ShoppingListDetailScreen } from '../features/shopping/screens/ShoppingListDetailScreen';
 import { DocumentsScreen } from '../features/documents/screens/DocumentsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { ManagePlaceScreen } from '../screens/ManagePlaceScreen';
+import { SpacesScreen } from '../screens/SpacesScreen';
 import { AppCard, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
@@ -30,6 +32,8 @@ type Screen =
   | 'shopping-detail'
   | 'meals'
   | 'settings'
+  | 'manage-place'
+  | 'spaces'
   | 'documents';
 
 export default function App() {
@@ -199,7 +203,7 @@ function AppShell() {
         token={token}
         me={me.data}
         onDone={() => {
-          setScreen('settings');
+          setScreen('spaces');
         }}
       />
     );
@@ -256,16 +260,15 @@ function AppShell() {
   if (screen === 'settings') {
     return (
       <SettingsScreen
-        token={token}
         me={me.data}
-        onSwitchedGroup={() => {
-          me.reload();
-        }}
         onDone={() => {
           setScreen('home');
         }}
-        onManageMembers={() => {
-          setScreen('members');
+        onManagePlace={() => {
+          setScreen('manage-place');
+        }}
+        onSwitchPlace={() => {
+          setScreen('home');
         }}
         onLogout={async () => {
           await logout();
@@ -275,10 +278,48 @@ function AppShell() {
     );
   }
 
+  if (screen === 'manage-place') {
+    return (
+      <ManagePlaceScreen
+        token={token}
+        me={me.data}
+        onDone={() => {
+          setScreen('settings');
+        }}
+      />
+    );
+  }
+
+  if (screen === 'spaces') {
+    return (
+      <SpacesScreen
+        me={me.data}
+        onDone={() => {
+          setScreen('settings');
+        }}
+        onOpenSpace={() => {
+          setScreen('members');
+        }}
+      />
+    );
+  }
+
   if (screen === 'home') {
+    const currentMe = me.data;
+    if (!currentMe) {
+      return <SplashScreen />;
+    }
+    const activeMembership = currentMe.activeGroupId
+      ? currentMe.memberships.find((membership) => membership.groupId === currentMe.activeGroupId) ?? null
+      : null;
+    const currentSpaceName = activeMembership?.groupName ?? 'My space';
+
     return (
       <HomeScreen
         token={token}
+        spaceName={currentSpaceName}
+        memberships={currentMe.memberships}
+        activeGroupId={currentMe.activeGroupId}
         onSwitchedGroup={() => {
           me.reload();
         }}
@@ -296,10 +337,6 @@ function AppShell() {
         }}
         onSettings={() => {
           setScreen('settings');
-        }}
-        onLogout={async () => {
-          await logout();
-          setScreen('login');
         }}
       />
     );

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useGroupMembers } from '../hooks/useGroupMembers';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
-import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { AppButton, AppCard, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
@@ -46,7 +46,7 @@ export function GroupMembersScreen({ token, onDone }: Props) {
       <TopBar
         title={strings.title}
         subtitle={strings.subtitle}
-        left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+        right={<BackIconButton onPress={onDone} />}
       />
 
       <View style={styles.contentOffset}>

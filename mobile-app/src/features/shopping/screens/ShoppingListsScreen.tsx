@@ -18,7 +18,7 @@ import { useShoppingListsWorkflow } from '../hooks/useShoppingListsWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
-import { AppButton, AppCard, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { AppButton, AppCard, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
@@ -258,7 +258,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
       <TopBar
         title={strings.title}
         subtitle={strings.subtitle}
-        left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+        right={<BackIconButton onPress={onDone} />}
       />
 
       <View style={styles.contentOffset}>

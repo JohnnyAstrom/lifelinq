@@ -18,10 +18,10 @@ export function GroupSwitcher({ token, me, onSwitched }: Props) {
   const [error, setError] = useState<string | null>(null);
   const { handleApiError } = useAuth();
   const strings = {
-    title: 'Active group',
-    noneSelected: 'No active group selected',
-    unknownGroup: 'Unknown group',
-    availableGroups: 'Available groups',
+    title: 'Switch space',
+    noneSelected: 'No space selected',
+    unknownGroup: 'Unnamed space',
+    current: 'Current',
     select: 'Switch',
     switching: 'Switching...',
   };
@@ -58,7 +58,6 @@ export function GroupSwitcher({ token, me, onSwitched }: Props) {
       <Text style={styles.activeValue}>
         {me.activeGroupId ? activeGroupName : strings.noneSelected}
       </Text>
-      <Subtle>{strings.availableGroups}</Subtle>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -71,7 +70,7 @@ export function GroupSwitcher({ token, me, onSwitched }: Props) {
             <View key={membership.groupId} style={styles.row}>
               <View style={styles.rowTexts}>
                 <Text style={styles.groupLabel}>{label}</Text>
-                <Subtle>{membership.role}{isActive ? ' • Active' : ''}</Subtle>
+                {isActive ? <Subtle>{strings.current}</Subtle> : null}
               </View>
               <AppButton
                 title={isSwitching ? strings.switching : strings.select}

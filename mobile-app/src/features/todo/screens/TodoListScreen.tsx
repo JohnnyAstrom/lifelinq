@@ -48,6 +48,7 @@ import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import {
   AppButton,
+  BackIconButton,
   AppCard,
   AppChip,
   AppInput,
@@ -726,7 +727,7 @@ export function TodoListScreen({ token, onDone }: Props) {
         <TopBar
           title={strings.title}
           subtitle={strings.subtitle}
-          left={<AppButton title={strings.back} onPress={onDone} variant="ghost" />}
+          right={<BackIconButton onPress={onDone} />}
         />
 
         <ScrollView

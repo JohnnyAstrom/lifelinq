@@ -21,7 +21,7 @@ import { useShoppingLists } from '../hooks/useShoppingLists';
 import { formatItemMeta, formatItemTitle } from '../utils/shoppingFormatting';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../api/shoppingApi';
-import { AppButton, AppCard, AppChip, AppInput, AppScreen, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { AppButton, AppCard, AppChip, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
@@ -326,7 +326,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     <AppScreen scroll={false} contentStyle={styles.screenContent}>
       <TopBar
         title={selected ? selected.name : strings.titleFallback}
-        left={<AppButton title={strings.back} onPress={onBack} variant="ghost" />}
+        right={<BackIconButton onPress={onBack} />}
       />
 
       <View style={styles.mainLayout}>

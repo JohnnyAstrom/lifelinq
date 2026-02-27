@@ -1,4 +1,5 @@
 import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   LayoutChangeEvent,
   KeyboardAvoidingView,
@@ -139,6 +140,22 @@ export function AppChip({ label, active, onPress, style, textStyle }: ChipProps)
   );
 }
 
+export function BackIconButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      style={({ pressed }) => [
+        styles.iconButton,
+        pressed ? styles.iconButtonPressed : null,
+      ]}
+    >
+      <Ionicons name="arrow-back-circle-outline" size={29} color={theme.colors.text} />
+    </Pressable>
+  );
+}
+
 type InputProps = {
   value: string;
   placeholder?: string;
@@ -214,12 +231,12 @@ type TopBarProps = {
 export function TopBar({ title, subtitle, left, right }: TopBarProps) {
   return (
     <View style={styles.topBar}>
-      <View style={styles.topBarSide}>{left}</View>
+      {left ? <View style={[styles.topBarSide, styles.topBarSideLeft]}>{left}</View> : null}
       <View style={styles.topBarCenter}>
         <Text style={textStyles.h2}>{title}</Text>
         {subtitle ? <Text style={textStyles.subtle}>{subtitle}</Text> : null}
       </View>
-      <View style={styles.topBarSide}>{right}</View>
+      {right ? <View style={[styles.topBarSide, styles.topBarSideRight]}>{right}</View> : null}
     </View>
   );
 }
@@ -308,6 +325,16 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconButtonPressed: {
+    opacity: 0.75,
+  },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 14,
@@ -359,7 +386,14 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   topBarSide: {
-    minWidth: 64,
+    minWidth: 0,
+  },
+  topBarSideLeft: {
+    marginRight: theme.spacing.sm,
+  },
+  topBarSideRight: {
+    marginLeft: theme.spacing.sm,
+    alignItems: 'flex-end',
   },
   topBarCenter: {
     flex: 1,
