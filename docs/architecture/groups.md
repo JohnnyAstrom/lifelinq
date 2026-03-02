@@ -56,6 +56,36 @@ Current governance rules:
   - deletes groups that become empty
   - deletes the user account
 
+## Place governance (current)
+
+Current place-governance operations are context-driven and use the active group from request context:
+
+- `PATCH /me/place` - rename current place (ADMIN only, non-blank name)
+- `POST /me/place/leave` - leave current place
+- `DELETE /me/place` - delete current place (ADMIN only)
+
+Policy rules:
+
+- Default (`Personal`) place is account-bound:
+  - may be renamed
+  - cannot be left
+  - cannot be deleted
+  - is removed only during account deletion
+- Leaving current place is blocked when:
+  - it is default place
+  - user has only one place
+  - user is sole `ADMIN` while other members exist
+- If the last member leaves, the place is deleted.
+- After leave:
+  - if user has remaining memberships, `activeGroupId` is switched to another membership
+  - otherwise default place is provisioned and activated
+- Deleting current place is blocked when:
+  - actor is not `ADMIN`
+  - place is default
+  - actor has only one place
+- Deleting place removes the place and all memberships transactionally.
+- For affected users, if `activeGroupId` pointed to the deleted place, it is cleared (`null`).
+
 ---
 
 ## Multiple groups
@@ -103,6 +133,11 @@ Expiry evaluation: expired is derived when status is ACTIVE and now > expiresAt
 Default TTL applied in ApplicationService when expiresAt is not provided
 Invitee email is normalized (trim + lowercase) in ApplicationService before duplicate checks  
 Time policy (clock/now) is owned by ApplicationService and passed into the use case
+Invitation usage model:
+- `maxUses` (default `1`)
+- `usageCount` (default `0`)
+- acceptance is rejected when `usageCount >= maxUses`
+- successful acceptance increments `usageCount`
 
 ### Rationale
 

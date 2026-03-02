@@ -69,6 +69,11 @@ In that case `/me` must reflect that state accurately, and scoped endpoints retu
 
 `DELETE /me` does not depend on implicit group resolution and is no longer blocked by multi-group ambiguity.
 
+Place governance endpoints are context-driven and scoped by persisted `activeGroupId`:
+- `PATCH /me/place` (rename current place)
+- `POST /me/place/leave` (leave current place)
+- `DELETE /me/place` (delete current place)
+
 ---
 
 ## CURRENT: Minimal OAuth2 login (implemented)
