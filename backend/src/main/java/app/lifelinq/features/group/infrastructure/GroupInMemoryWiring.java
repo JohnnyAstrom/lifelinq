@@ -1,6 +1,7 @@
 package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.application.GroupApplicationService;
+import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import app.lifelinq.features.user.contract.UserProfileRead;
 import app.lifelinq.features.user.contract.UserProvisioning;
@@ -12,6 +13,7 @@ public final class GroupInMemoryWiring {
 
     public static GroupApplicationService createApplicationService(
             UserProvisioning userProvisioning,
+            UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead
     ) {
@@ -24,6 +26,7 @@ public final class GroupInMemoryWiring {
                 invitationRepository,
                 tokenGenerator,
                 userProvisioning,
+                userActiveGroupRead,
                 userActiveGroupSelection,
                 userProfileRead,
                 Clock.systemUTC()

@@ -14,5 +14,7 @@ public interface MembershipRepository {
 
     boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId);
 
+    void deleteByGroupId(UUID groupId);
+
     void deleteByUserId(UUID userId);
 }

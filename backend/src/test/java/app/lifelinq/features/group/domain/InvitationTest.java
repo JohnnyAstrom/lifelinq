@@ -64,4 +64,36 @@ class InvitationTest {
         );
         assertThrows(IllegalStateException.class, invitation::revoke);
     }
+
+    @Test
+    void registerAcceptanceIncrementsUsageCount() {
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "test@example.com",
+                "token",
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        invitation.registerAcceptance(Instant.parse("2025-12-31T00:00:00Z"));
+
+        assertEquals(1, invitation.getUsageCount());
+    }
+
+    @Test
+    void registerAcceptanceThrowsWhenMaxUsesReached() {
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "test@example.com",
+                "token",
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+        invitation.registerAcceptance(Instant.parse("2025-12-31T00:00:00Z"));
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> invitation.registerAcceptance(Instant.parse("2025-12-31T01:00:00Z"))
+        );
+    }
 }

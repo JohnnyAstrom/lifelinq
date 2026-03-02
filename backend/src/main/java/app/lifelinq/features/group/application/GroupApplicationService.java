@@ -10,6 +10,7 @@ import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.user.contract.UserProvisioning;
+import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import app.lifelinq.features.user.contract.UserProfileRead;
 import app.lifelinq.features.user.contract.UserProfileView;
@@ -35,6 +36,7 @@ public class GroupApplicationService {
     private final MembershipRepository membershipRepository;
     private final GroupRepository groupRepository;
     private final UserProvisioning userProvisioning;
+    private final UserActiveGroupRead userActiveGroupRead;
     private final UserActiveGroupSelection userActiveGroupSelection;
     private final UserProfileRead userProfileRead;
     private final Clock clock;
@@ -50,6 +52,7 @@ public class GroupApplicationService {
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
             UserProvisioning userProvisioning,
+            UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
             Clock clock
@@ -64,6 +67,10 @@ public class GroupApplicationService {
         this.membershipRepository = membershipRepository;
         this.groupRepository = groupRepository;
         this.userProvisioning = userProvisioning;
+        if (userActiveGroupRead == null) {
+            throw new IllegalArgumentException("userActiveGroupRead must not be null");
+        }
+        this.userActiveGroupRead = userActiveGroupRead;
         this.userActiveGroupSelection = userActiveGroupSelection;
         this.userProfileRead = userProfileRead;
         this.clock = clock;
@@ -118,6 +125,84 @@ public class GroupApplicationService {
         CreateGroupCommand command = new CreateGroupCommand(name, ownerUserId);
         CreateGroupResult result = createGroupUseCase.execute(command);
         return result.getGroupId();
+    }
+
+    @Transactional
+    public void renameCurrentPlace(UUID groupId, UUID actorUserId, String name) {
+        userProvisioning.ensureUserExists(actorUserId);
+        ensureAdmin(groupId, actorUserId);
+        String normalizedName = normalizePlaceName(name);
+        var existing = groupRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("group not found"));
+        groupRepository.save(new app.lifelinq.features.group.domain.Group(existing.getId(), normalizedName));
+    }
+
+    @Transactional
+    public void leaveCurrentPlace(UUID groupId, UUID actorUserId) {
+        userProvisioning.ensureUserExists(actorUserId);
+        ensureNotDefaultPlace(groupId, actorUserId);
+
+        List<Membership> userMemberships = membershipRepository.findByUserId(actorUserId);
+        if (userMemberships.size() <= 1) {
+            throw new IllegalStateException("cannot leave your only place");
+        }
+
+        List<Membership> groupMemberships = membershipRepository.findByGroupId(groupId);
+        ensureActorIsMember(groupId, actorUserId, groupMemberships);
+        ensureNotBlockedLastAdminRemoval(actorUserId, groupMemberships);
+
+        RemoveMemberFromGroupResult result = removeMemberFromGroupUseCase.execute(
+                new RemoveMemberFromGroupCommand(groupId, actorUserId)
+        );
+        if (!result.isRemoved()) {
+            throw new IllegalStateException("membership not found");
+        }
+
+        if (groupMemberships.size() == 1) {
+            groupRepository.deleteById(groupId);
+        }
+
+        List<Membership> remainingMemberships = membershipRepository.findByUserId(actorUserId);
+        if (!remainingMemberships.isEmpty()) {
+            UUID nextGroupId = remainingMemberships.stream()
+                    .map(Membership::getGroupId)
+                    .sorted(Comparator.comparing(UUID::toString))
+                    .findFirst()
+                    .orElseThrow();
+            userActiveGroupSelection.setActiveGroup(actorUserId, nextGroupId);
+            return;
+        }
+
+        UUID defaultGroupId = ensureDefaultGroupProvisioned(actorUserId);
+        userActiveGroupSelection.setActiveGroup(actorUserId, defaultGroupId);
+    }
+
+    @Transactional
+    public void deleteCurrentPlace(UUID groupId, UUID actorUserId) {
+        userProvisioning.ensureUserExists(actorUserId);
+        ensureAdmin(groupId, actorUserId);
+        ensureNotDefaultPlace(groupId, actorUserId);
+
+        List<Membership> actorMemberships = membershipRepository.findByUserId(actorUserId);
+        if (actorMemberships.size() <= 1) {
+            throw new IllegalStateException("cannot delete your only place");
+        }
+
+        List<Membership> groupMemberships = membershipRepository.findByGroupId(groupId);
+        List<UUID> affectedUserIds = groupMemberships.stream()
+                .map(Membership::getUserId)
+                .distinct()
+                .toList();
+
+        for (UUID userId : affectedUserIds) {
+            UUID activeGroupId = userActiveGroupRead.getActiveGroupId(userId);
+            if (groupId.equals(activeGroupId)) {
+                userActiveGroupSelection.clearActiveGroup(userId);
+            }
+        }
+
+        membershipRepository.deleteByGroupId(groupId);
+        groupRepository.deleteById(groupId);
     }
 
     @Transactional
@@ -181,6 +266,7 @@ public class GroupApplicationService {
             InvitationRepository invitationRepository,
             InvitationTokenGenerator tokenGenerator,
             UserProvisioning userProvisioning,
+            UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
             Clock clock
@@ -196,6 +282,7 @@ public class GroupApplicationService {
                 membershipRepository,
                 groupRepository,
                 userProvisioning,
+                userActiveGroupRead,
                 userActiveGroupSelection,
                 userProfileRead,
                 clock
@@ -226,6 +313,15 @@ public class GroupApplicationService {
                     return;
                 }
                 throw new AccessDeniedException("Only admins can perform this action");
+            }
+        }
+        throw new AccessDeniedException("Actor is not a member of the group");
+    }
+
+    private void ensureActorIsMember(UUID groupId, UUID actorUserId, List<Membership> memberships) {
+        for (Membership membership : memberships) {
+            if (membership.getGroupId().equals(groupId) && membership.getUserId().equals(actorUserId)) {
+                return;
             }
         }
         throw new AccessDeniedException("Actor is not a member of the group");
@@ -279,6 +375,19 @@ public class GroupApplicationService {
             return null;
         }
         return email.trim().toLowerCase();
+    }
+
+    private String normalizePlaceName(String placeName) {
+        if (placeName == null || placeName.trim().isEmpty()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        return placeName.trim();
+    }
+
+    private void ensureNotDefaultPlace(UUID groupId, UUID actorUserId) {
+        if (defaultGroupIdFor(actorUserId).equals(groupId)) {
+            throw new IllegalStateException("default place cannot be modified with this operation");
+        }
     }
 
     static UUID defaultGroupIdFor(UUID userId) {

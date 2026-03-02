@@ -7,6 +7,7 @@ import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.infrastructure.UserDefaultGroupProvisioningAdapter;
 import app.lifelinq.features.user.contract.UserProvisioning;
+import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import app.lifelinq.features.user.contract.UserProfileRead;
 import java.time.Clock;
@@ -73,6 +74,7 @@ public class GroupApplicationConfig {
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
             UserProvisioning userProvisioning,
+            UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
             Clock clock
@@ -88,6 +90,7 @@ public class GroupApplicationConfig {
                 membershipRepository,
                 groupRepository,
                 userProvisioning,
+                userActiveGroupRead,
                 userActiveGroupSelection,
                 userProfileRead,
                 clock

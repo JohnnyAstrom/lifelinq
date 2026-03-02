@@ -132,6 +132,11 @@ class CreateGroupUseCaseTest {
         }
 
         @Override
+        public void deleteByGroupId(UUID groupId) {
+            saved.removeIf(membership -> groupId.equals(membership.getGroupId()));
+        }
+
+        @Override
         public void deleteByUserId(UUID userId) {
             saved.removeIf(membership -> userId.equals(membership.getUserId()));
         }

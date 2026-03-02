@@ -20,6 +20,7 @@ class GroupInMemoryWiringTest {
         GroupApplicationService service = GroupInMemoryWiring.createApplicationService(
                 userService,
                 userService,
+                userService,
                 userService
         );
 

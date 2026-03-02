@@ -108,6 +108,7 @@ class GroupApplicationServiceGovernanceTest {
                 invitationRepository,
                 () -> "token",
                 userProvisioning,
+                (userId) -> null,
                 userActiveGroupSelection,
                 userProfileRead,
                 Clock.fixed(Instant.parse("2026-02-25T00:00:00Z"), ZoneOffset.UTC)
@@ -166,6 +167,11 @@ class GroupApplicationServiceGovernanceTest {
                 }
             }
             return false;
+        }
+
+        @Override
+        public void deleteByGroupId(UUID groupId) {
+            memberships.removeIf(membership -> membership.getGroupId().equals(groupId));
         }
 
         @Override

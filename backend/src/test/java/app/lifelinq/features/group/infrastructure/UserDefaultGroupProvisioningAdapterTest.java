@@ -69,6 +69,7 @@ class UserDefaultGroupProvisioningAdapterTest {
                 new InMemoryInvitationRepository(),
                 new InMemoryInvitationTokenGenerator(),
                 noOpUserProvisioning,
+                (userId) -> null,
                 noOpActiveGroupSelection,
                 noOpUserProfileRead,
                 Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)

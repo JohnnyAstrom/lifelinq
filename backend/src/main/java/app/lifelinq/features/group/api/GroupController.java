@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -154,11 +155,56 @@ public class GroupController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/me/place")
+    public ResponseEntity<?> renameCurrentPlace(@RequestBody RenamePlaceRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (request == null) {
+            return ResponseEntity.badRequest().body("name must not be blank");
+        }
+        groupApplicationService.renameCurrentPlace(context.getGroupId(), context.getUserId(), request.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/place/leave")
+    public ResponseEntity<?> leaveCurrentPlace() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        groupApplicationService.leaveCurrentPlace(context.getGroupId(), context.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/me/place")
+    public ResponseEntity<?> deleteCurrentPlace() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        groupApplicationService.deleteCurrentPlace(context.getGroupId(), context.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
     private List<MemberItemResponse> toResponseItems(List<GroupMemberView> memberships) {
         List<MemberItemResponse> items = new ArrayList<>();
         for (GroupMemberView membership : memberships) {
             items.add(new MemberItemResponse(membership.userId(), membership.role(), membership.displayName()));
         }
         return items;
+    }
+
+    public static final class RenamePlaceRequest {
+        private String name;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
     }
 }

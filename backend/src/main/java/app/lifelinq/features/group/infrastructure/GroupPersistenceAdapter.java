@@ -60,6 +60,11 @@ public final class GroupPersistenceAdapter
     }
 
     @Override
+    public void deleteByGroupId(UUID groupId) {
+        membershipRepository.deleteByGroupId(groupId);
+    }
+
+    @Override
     public void deleteByUserId(UUID userId) {
         membershipRepository.deleteByUserId(userId);
     }

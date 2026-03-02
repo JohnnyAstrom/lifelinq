@@ -8,6 +8,7 @@ import java.util.UUID;
 
 final class CreateInvitationUseCase {
     private static final int MAX_TOKEN_ATTEMPTS = 5;
+    private static final int DEFAULT_MAX_USES = 1;
 
     private final InvitationRepository invitationRepository;
     private final InvitationTokenGenerator tokenGenerator;
@@ -49,7 +50,7 @@ final class CreateInvitationUseCase {
                         command.getGroupId(),
                         command.getInviteeEmail()
                 )
-                .filter(existing -> existing.isActive(command.getNow()))
+                .filter(existing -> existing.isAcceptAllowed(command.getNow()))
                 .ifPresent(existing -> {
                     throw new IllegalStateException("active invitation already exists");
                 });
@@ -59,7 +60,8 @@ final class CreateInvitationUseCase {
                 command.getGroupId(),
                 command.getInviteeEmail(),
                 token,
-                expiresAt
+                expiresAt,
+                DEFAULT_MAX_USES
         );
 
         invitationRepository.save(invitation);

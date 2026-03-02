@@ -14,6 +14,8 @@ public final class InvitationMapper {
                 invitation.getInviteeEmail(),
                 invitation.getToken(),
                 invitation.getExpiresAt(),
+                invitation.getMaxUses(),
+                invitation.getUsageCount(),
                 invitation.getStatus()
         );
     }
@@ -28,6 +30,8 @@ public final class InvitationMapper {
                 entity.getInviteeEmail(),
                 entity.getToken(),
                 entity.getExpiresAt(),
+                entity.getMaxUses(),
+                entity.getUsageCount(),
                 entity.getStatus()
         );
     }

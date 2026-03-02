@@ -78,6 +78,14 @@ public final class JpaMembershipRepositoryAdapter implements MembershipRepositor
     }
 
     @Override
+    public void deleteByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        membershipJpaRepository.deleteByIdGroupId(groupId);
+    }
+
+    @Override
     public void deleteByUserId(UUID userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");

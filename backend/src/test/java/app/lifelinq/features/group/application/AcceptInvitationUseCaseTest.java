@@ -43,7 +43,8 @@ class AcceptInvitationUseCaseTest {
         assertEquals(invitation.getGroupId(), result.getGroupId());
         assertEquals(1, membershipRepository.saved.size());
         assertEquals(GroupRole.MEMBER, membershipRepository.saved.get(0).getRole());
-        assertEquals(InvitationStatus.REVOKED, invitationRepository.saved.get(0).getStatus());
+        assertEquals(1, invitationRepository.saved.get(0).getUsageCount());
+        assertEquals(1, invitationRepository.saved.get(0).getMaxUses());
     }
 
     @Test
@@ -70,7 +71,7 @@ class AcceptInvitationUseCaseTest {
     }
 
     @Test
-    void repeatedAcceptIsIdempotentWhenMembershipAlreadyExists() {
+    void repeatedAcceptFailsWhenUsageLimitReached() {
         InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
         InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
         UUID groupId = UUID.randomUUID();
@@ -92,11 +93,10 @@ class AcceptInvitationUseCaseTest {
         );
 
         useCase.execute(command);
-        AcceptInvitationResult result = useCase.execute(command);
+        assertThrows(IllegalStateException.class, () -> useCase.execute(command));
 
-        assertEquals(groupId, result.getGroupId());
         assertEquals(1, membershipRepository.findByGroupId(groupId).size());
-        assertEquals(InvitationStatus.REVOKED, invitationRepository.findByToken("token-repeat").orElseThrow().getStatus());
+        assertEquals(1, invitationRepository.findByToken("token-repeat").orElseThrow().getUsageCount());
     }
 
     private static final class InMemoryInvitationRepository implements InvitationRepository {
@@ -188,6 +188,10 @@ class AcceptInvitationUseCaseTest {
         @Override
         public boolean deleteByGroupIdAndUserId(UUID groupId, UUID userId) {
             return false;
+        }
+
+        @Override
+        public void deleteByGroupId(UUID groupId) {
         }
 
         @Override

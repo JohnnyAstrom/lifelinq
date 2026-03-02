@@ -32,6 +32,7 @@ public final class GroupApplicationServiceTestFactory {
                 userService,
                 userService,
                 userService,
+                userService,
                 Clock.systemUTC()
         );
     }

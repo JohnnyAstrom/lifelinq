@@ -34,6 +34,12 @@ public class InvitationEntity {
     @Column(nullable = false)
     private Instant expiresAt;
 
+    @Column(nullable = false)
+    private int maxUses;
+
+    @Column(nullable = false)
+    private int usageCount;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InvitationStatus status;
@@ -47,6 +53,8 @@ public class InvitationEntity {
             String inviteeEmail,
             String token,
             Instant expiresAt,
+            int maxUses,
+            int usageCount,
             InvitationStatus status
     ) {
         this.id = id;
@@ -54,6 +62,8 @@ public class InvitationEntity {
         this.inviteeEmail = inviteeEmail;
         this.token = token;
         this.expiresAt = expiresAt;
+        this.maxUses = maxUses;
+        this.usageCount = usageCount;
         this.status = status;
     }
 
@@ -75,6 +85,14 @@ public class InvitationEntity {
 
     public Instant getExpiresAt() {
         return expiresAt;
+    }
+
+    public int getMaxUses() {
+        return maxUses;
+    }
+
+    public int getUsageCount() {
+        return usageCount;
     }
 
     public InvitationStatus getStatus() {

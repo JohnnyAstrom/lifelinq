@@ -4,6 +4,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -493,6 +494,65 @@ class GroupControllerTest {
                 .andExpect(status().isOk());
 
         verify(groupApplicationService).removeMember(groupId, actorUserId, targetUserId);
+    }
+
+    @Test
+    void renameCurrentPlaceReturns409WhenNoActiveGroupSelected() throws Exception {
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(patch("/me/place")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Family\"}"))
+                .andExpect(status().isConflict());
+
+        verifyNoInteractions(groupApplicationService);
+    }
+
+    @Test
+    void renameCurrentPlaceSucceedsWhenContextAvailable() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(patch("/me/place")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Family\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(groupApplicationService).renameCurrentPlace(groupId, userId, "Family");
+    }
+
+    @Test
+    void leaveCurrentPlaceSucceedsWhenContextAvailable() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post("/me/place/leave")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        verify(groupApplicationService).leaveCurrentPlace(groupId, userId);
+    }
+
+    @Test
+    void deleteCurrentPlaceSucceedsWhenContextAvailable() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(delete("/me/place")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        verify(groupApplicationService).deleteCurrentPlace(groupId, userId);
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {

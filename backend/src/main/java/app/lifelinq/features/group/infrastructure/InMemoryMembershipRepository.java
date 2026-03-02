@@ -79,6 +79,14 @@ public final class InMemoryMembershipRepository implements MembershipRepository 
     }
 
     @Override
+    public void deleteByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        memberships.removeIf(membership -> groupId.equals(membership.getGroupId()));
+    }
+
+    @Override
     public void deleteByUserId(UUID userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");

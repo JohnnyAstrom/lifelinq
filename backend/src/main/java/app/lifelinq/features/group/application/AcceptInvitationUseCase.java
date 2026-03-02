@@ -41,26 +41,30 @@ final class AcceptInvitationUseCase {
         Invitation invitation = invitationRepository.findByToken(command.getToken())
                 .orElseThrow(() -> new IllegalArgumentException("invitation not found"));
 
-        if (isAlreadyMember(invitation.getGroupId(), command.getUserId())) {
-            if (invitation.isActive(command.getNow())) {
-                invitation.revoke();
-                invitationRepository.save(invitation);
-            }
-            return new AcceptInvitationResult(invitation.getGroupId(), command.getUserId());
+        if (invitation.getStatus() == app.lifelinq.features.group.domain.InvitationStatus.REVOKED) {
+            throw new IllegalStateException("invitation is revoked");
+        }
+        if (invitation.isExpired(command.getNow())) {
+            throw new IllegalStateException("invitation is expired");
+        }
+        if (invitation.getUsageCount() >= invitation.getMaxUses()) {
+            throw new IllegalStateException("invitation has reached max uses");
         }
 
-        if (!invitation.isActive(command.getNow())) {
-            throw new IllegalStateException("invitation is not active");
+        invitation.registerAcceptance(command.getNow());
+        if (invitation.getUsageCount() >= invitation.getMaxUses()) {
+            invitation.revoke();
         }
-        invitation.revoke();
 
-        Membership membership = new Membership(
-                invitation.getGroupId(),
-                command.getUserId(),
-                GroupRole.MEMBER
-        );
+        if (!isAlreadyMember(invitation.getGroupId(), command.getUserId())) {
+            Membership membership = new Membership(
+                    invitation.getGroupId(),
+                    command.getUserId(),
+                    GroupRole.MEMBER
+            );
 
-        membershipRepository.save(membership);
+            membershipRepository.save(membership);
+        }
         invitationRepository.save(invitation);
 
         return new AcceptInvitationResult(invitation.getGroupId(), command.getUserId());

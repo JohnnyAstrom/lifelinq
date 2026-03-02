@@ -69,12 +69,20 @@ public class UserApplicationService implements
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }
-        if (groupId == null) {
-            throw new IllegalArgumentException("groupId must not be null");
-        }
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("user not found"));
         userRepository.save(user.withActiveGroupId(groupId));
+    }
+
+    @Transactional
+    @Override
+    public void clearActiveGroup(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found"));
+        userRepository.save(user.withActiveGroupId(null));
     }
 
     @Override
