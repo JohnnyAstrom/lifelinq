@@ -1,22 +1,15 @@
-import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { setActiveGroup, type MeMembership } from '../features/auth/api/meApi';
 import { useTodos } from '../features/todo/hooks/useTodos';
 import { useGroupMembers } from '../features/group/hooks/useGroupMembers';
-import { formatApiError } from '../shared/api/client';
-import { useAuth } from '../shared/auth/AuthContext';
-import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { OverlaySheet } from '../shared/ui/OverlaySheet';
 import { AppCard, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
   token: string;
   spaceName?: string;
-  memberships: MeMembership[];
-  activeGroupId: string | null;
-  onSwitchedGroup: () => void;
+  onContextInvalidated: () => void;
+  onOpenSwitchSheet: () => void;
   onCreateTodo: () => void;
   onCreateShopping: () => void;
   onMeals: () => void;
@@ -27,9 +20,8 @@ type Props = {
 export function HomeScreen({
   token,
   spaceName,
-  memberships,
-  activeGroupId,
-  onSwitchedGroup,
+  onContextInvalidated,
+  onOpenSwitchSheet,
   onCreateTodo,
   onCreateShopping,
   onMeals,
@@ -37,16 +29,11 @@ export function HomeScreen({
   onSettings,
 }: Props) {
   const todos = useTodos(token, 'OPEN', undefined, {
-    onContextInvalidated: onSwitchedGroup,
+    onContextInvalidated,
   });
   const members = useGroupMembers(token);
-  const { handleApiError } = useAuth();
-  const [showSwitchSheet, setShowSwitchSheet] = useState(false);
-  const [switchingGroupId, setSwitchingGroupId] = useState<string | null>(null);
-  const [switchError, setSwitchError] = useState<string | null>(null);
   const strings = {
     unnamedSpace: 'My space',
-    createNewPlace: 'Create new place',
     todosTitle: 'Todos',
     todosSubtitle: 'Keep the day on track',
     mealsTitle: 'Meals',
@@ -76,35 +63,11 @@ export function HomeScreen({
     ? 'Only you'
     : `${members.items.length} members`;
 
-  useAppBackHandler({
-    isOverlayOpen: showSwitchSheet,
-    onCloseOverlay: () => setShowSwitchSheet(false),
-  });
-
-  async function handleSwitch(groupId: string) {
-    if (switchingGroupId || groupId === activeGroupId) {
-      setShowSwitchSheet(false);
-      return;
-    }
-    setSwitchError(null);
-    setSwitchingGroupId(groupId);
-    try {
-      await setActiveGroup(token, groupId);
-      await Promise.resolve(onSwitchedGroup());
-      setShowSwitchSheet(false);
-    } catch (err) {
-      await handleApiError(err);
-      setSwitchError(formatApiError(err));
-    } finally {
-      setSwitchingGroupId(null);
-    }
-  }
-
   return (
     <AppScreen scroll={false}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => setShowSwitchSheet(true)}
+          onPress={onOpenSwitchSheet}
           accessibilityRole="button"
           style={({ pressed }) => [styles.headerTextBlock, pressed ? styles.spaceNamePressed : null]}
         >
@@ -162,43 +125,6 @@ export function HomeScreen({
           </View>
         </AppCard>
       </View>
-
-      {showSwitchSheet ? (
-        <OverlaySheet onClose={() => setShowSwitchSheet(false)} sheetStyle={styles.sheet}>
-          <View style={styles.sheetContent}>
-            <Subtle>Switch place</Subtle>
-            {switchError ? <Text style={styles.error}>{switchError}</Text> : null}
-            <View style={styles.switchList}>
-              {memberships.map((membership) => {
-                const isActive = membership.groupId === activeGroupId;
-                const isSwitching = switchingGroupId === membership.groupId;
-                const label = membership.groupName?.trim() || strings.unnamedSpace;
-                return (
-                  <Pressable
-                    key={membership.groupId}
-                    onPress={() => {
-                      void handleSwitch(membership.groupId);
-                    }}
-                    disabled={!!switchingGroupId}
-                    style={({ pressed }) => [
-                      styles.switchRow,
-                      isActive ? styles.switchRowActive : null,
-                      pressed ? styles.switchRowPressed : null,
-                    ]}
-                  >
-                    <Text style={styles.switchRowLabel}>{label}</Text>
-                    {isActive ? <Ionicons name="checkmark" size={18} color={theme.colors.text} /> : null}
-                    {isSwitching ? <Subtle>…</Subtle> : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Pressable style={styles.createPlaceRow} disabled>
-              <Subtle>{strings.createNewPlace}</Subtle>
-            </Pressable>
-          </View>
-        </OverlaySheet>
-      ) : null}
     </AppScreen>
   );
 }
@@ -349,50 +275,5 @@ const styles = StyleSheet.create({
   },
   settingsIconButtonPressed: {
     opacity: 0.75,
-  },
-  sheet: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl + theme.spacing.md,
-  },
-  sheetContent: {
-    gap: theme.spacing.md,
-  },
-  switchList: {
-    gap: theme.spacing.xs,
-  },
-  switchRow: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceAlt,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
-  },
-  switchRowActive: {
-    borderColor: theme.colors.borderStrong,
-  },
-  switchRowPressed: {
-    opacity: 0.85,
-  },
-  switchRowLabel: {
-    ...textStyles.body,
-    flex: 1,
-  },
-  createPlaceRow: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    opacity: 0.6,
-  },
-  error: {
-    color: theme.colors.danger,
-    fontFamily: theme.typography.body,
   },
 });

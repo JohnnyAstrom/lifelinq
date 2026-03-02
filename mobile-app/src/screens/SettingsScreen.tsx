@@ -10,10 +10,11 @@ type Props = {
   onDone: () => void;
   onManagePlace: () => void;
   onSwitchPlace: () => void;
+  onCreatePlace: () => void;
   onLogout: () => void;
 };
 
-export function SettingsScreen({ me, onDone, onManagePlace, onSwitchPlace, onLogout }: Props) {
+export function SettingsScreen({ me, onDone, onManagePlace, onSwitchPlace, onCreatePlace, onLogout }: Props) {
   const activeMembership = me.activeGroupId
     ? me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null
     : null;
@@ -72,7 +73,7 @@ export function SettingsScreen({ me, onDone, onManagePlace, onSwitchPlace, onLog
             {me.memberships.length > 1 ? (
               <SettingRow label={strings.switchPlace} onPress={onSwitchPlace} />
             ) : null}
-            <SettingRow label={strings.createNewPlace} disabled />
+            <SettingRow label={strings.createNewPlace} onPress={onCreatePlace} />
           </AppCard>
         </View>
 
