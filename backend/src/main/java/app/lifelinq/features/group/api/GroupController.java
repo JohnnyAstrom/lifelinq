@@ -138,6 +138,29 @@ public class GroupController {
         ));
     }
 
+    @PostMapping("/groups/invitations/link")
+    public ResponseEntity<?> createLinkInvitation(@RequestBody(required = false) CreateLinkInvitationRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        Duration ttl = request == null || request.getTtlSeconds() == null
+                ? null
+                : Duration.ofSeconds(request.getTtlSeconds());
+        Integer maxUses = request == null ? null : request.getMaxUses();
+        CreateInvitationOutput result = groupApplicationService.createLinkInvitation(
+                context.getGroupId(),
+                context.getUserId(),
+                ttl,
+                maxUses
+        );
+        return ResponseEntity.status(201).body(new CreateInvitationResponse(
+                result.invitationId(),
+                result.token(),
+                result.expiresAt()
+        ));
+    }
+
     @DeleteMapping("/groups/invitations/{invitationId}")
     public ResponseEntity<?> revokeInvitation(@PathVariable UUID invitationId) {
         RequestContext context = ApiScoping.getContext();

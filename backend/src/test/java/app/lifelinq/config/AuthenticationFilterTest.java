@@ -99,6 +99,37 @@ class AuthenticationFilterTest {
         assertEquals(userId.toString(), auth.getPrincipal());
     }
 
+    @Test
+    void skipsAuthForInvitePreviewPath() throws Exception {
+        AuthenticationFilter filter = new AuthenticationFilter(new JwtVerifier(SECRET));
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/invite/token-123");
+        Mockito.when(request.getMethod()).thenReturn("GET");
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void doesNotSkipAuthForNonGetInvitePath() throws Exception {
+        AuthenticationFilter filter = new AuthenticationFilter(new JwtVerifier(SECRET));
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/invite/token-123");
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        filter.doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verifyNoInteractions(chain);
+    }
+
     private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(

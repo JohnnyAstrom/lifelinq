@@ -6,7 +6,9 @@ import java.util.UUID;
 public final class Invitation {
     private final UUID id;
     private final UUID groupId;
+    private final InvitationType type;
     private final String inviteeEmail;
+    private final String inviterDisplayName;
     private final String token;
     private final Instant expiresAt;
     private final int maxUses;
@@ -16,7 +18,9 @@ public final class Invitation {
     private Invitation(
             UUID id,
             UUID groupId,
+            InvitationType type,
             String inviteeEmail,
+            String inviterDisplayName,
             String token,
             Instant expiresAt,
             int maxUses,
@@ -29,8 +33,14 @@ public final class Invitation {
         if (groupId == null) {
             throw new IllegalArgumentException("groupId must not be null");
         }
-        if (inviteeEmail == null || inviteeEmail.isBlank()) {
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        if (type == InvitationType.EMAIL && (inviteeEmail == null || inviteeEmail.isBlank())) {
             throw new IllegalArgumentException("inviteeEmail must not be blank");
+        }
+        if (type == InvitationType.LINK && inviteeEmail != null) {
+            throw new IllegalArgumentException("inviteeEmail must be null for LINK invitations");
         }
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("token must not be blank");
@@ -52,7 +62,9 @@ public final class Invitation {
         }
         this.id = id;
         this.groupId = groupId;
+        this.type = type;
         this.inviteeEmail = inviteeEmail;
+        this.inviterDisplayName = inviterDisplayName;
         this.token = token;
         this.expiresAt = expiresAt;
         this.maxUses = maxUses;
@@ -67,7 +79,7 @@ public final class Invitation {
             String token,
             Instant expiresAt
     ) {
-        return new Invitation(id, groupId, inviteeEmail, token, expiresAt, 1, 0, InvitationStatus.ACTIVE);
+        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, expiresAt, 1, 0, InvitationStatus.ACTIVE);
     }
 
     public static Invitation createActive(
@@ -78,7 +90,54 @@ public final class Invitation {
             Instant expiresAt,
             int maxUses
     ) {
-        return new Invitation(id, groupId, inviteeEmail, token, expiresAt, maxUses, 0, InvitationStatus.ACTIVE);
+        return new Invitation(
+                id,
+                groupId,
+                InvitationType.EMAIL,
+                inviteeEmail,
+                null,
+                token,
+                expiresAt,
+                maxUses,
+                0,
+                InvitationStatus.ACTIVE
+        );
+    }
+
+    public static Invitation createActive(
+            UUID id,
+            UUID groupId,
+            InvitationType type,
+            String inviteeEmail,
+            String inviterDisplayName,
+            String token,
+            Instant expiresAt,
+            int maxUses
+    ) {
+        return new Invitation(
+                id,
+                groupId,
+                type,
+                inviteeEmail,
+                inviterDisplayName,
+                token,
+                expiresAt,
+                maxUses,
+                0,
+                InvitationStatus.ACTIVE
+        );
+    }
+
+    public static Invitation createActive(
+            UUID id,
+            UUID groupId,
+            InvitationType type,
+            String inviteeEmail,
+            String token,
+            Instant expiresAt,
+            int maxUses
+    ) {
+        return createActive(id, groupId, type, inviteeEmail, null, token, expiresAt, maxUses);
     }
 
     public static Invitation rehydrate(
@@ -90,7 +149,7 @@ public final class Invitation {
             InvitationStatus status
     ) {
         int usageCount = status == InvitationStatus.REVOKED ? 1 : 0;
-        return new Invitation(id, groupId, inviteeEmail, token, expiresAt, 1, usageCount, status);
+        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, expiresAt, 1, usageCount, status);
     }
 
     public static Invitation rehydrate(
@@ -103,7 +162,47 @@ public final class Invitation {
             int usageCount,
             InvitationStatus status
     ) {
-        return new Invitation(id, groupId, inviteeEmail, token, expiresAt, maxUses, usageCount, status);
+        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, expiresAt, maxUses, usageCount, status);
+    }
+
+    public static Invitation rehydrate(
+            UUID id,
+            UUID groupId,
+            InvitationType type,
+            String inviteeEmail,
+            String inviterDisplayName,
+            String token,
+            Instant expiresAt,
+            int maxUses,
+            int usageCount,
+            InvitationStatus status
+    ) {
+        return new Invitation(
+                id,
+                groupId,
+                type,
+                inviteeEmail,
+                inviterDisplayName,
+                token,
+                expiresAt,
+                maxUses,
+                usageCount,
+                status
+        );
+    }
+
+    public static Invitation rehydrate(
+            UUID id,
+            UUID groupId,
+            InvitationType type,
+            String inviteeEmail,
+            String token,
+            Instant expiresAt,
+            int maxUses,
+            int usageCount,
+            InvitationStatus status
+    ) {
+        return rehydrate(id, groupId, type, inviteeEmail, null, token, expiresAt, maxUses, usageCount, status);
     }
 
     public UUID getId() {
@@ -114,8 +213,16 @@ public final class Invitation {
         return groupId;
     }
 
+    public InvitationType getType() {
+        return type;
+    }
+
     public String getInviteeEmail() {
         return inviteeEmail;
+    }
+
+    public String getInviterDisplayName() {
+        return inviterDisplayName;
     }
 
     public String getToken() {

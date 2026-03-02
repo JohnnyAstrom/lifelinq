@@ -1,6 +1,7 @@
 package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.domain.InvitationStatus;
+import app.lifelinq.features.group.domain.InvitationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,8 +26,15 @@ public class InvitationEntity {
     @Column(name = "household_id", nullable = false)
     private UUID groupId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private InvitationType type;
+
+    @Column(nullable = true)
     private String inviteeEmail;
+
+    @Column(nullable = true)
+    private String inviterDisplayName;
 
     @Column(nullable = false, unique = true)
     private String token;
@@ -50,7 +58,9 @@ public class InvitationEntity {
     public InvitationEntity(
             UUID id,
             UUID groupId,
+            InvitationType type,
             String inviteeEmail,
+            String inviterDisplayName,
             String token,
             Instant expiresAt,
             int maxUses,
@@ -59,7 +69,9 @@ public class InvitationEntity {
     ) {
         this.id = id;
         this.groupId = groupId;
+        this.type = type;
         this.inviteeEmail = inviteeEmail;
+        this.inviterDisplayName = inviterDisplayName;
         this.token = token;
         this.expiresAt = expiresAt;
         this.maxUses = maxUses;
@@ -77,6 +89,14 @@ public class InvitationEntity {
 
     public String getInviteeEmail() {
         return inviteeEmail;
+    }
+
+    public String getInviterDisplayName() {
+        return inviterDisplayName;
+    }
+
+    public InvitationType getType() {
+        return type;
     }
 
     public String getToken() {

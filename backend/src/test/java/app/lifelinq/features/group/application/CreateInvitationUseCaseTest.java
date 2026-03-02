@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import app.lifelinq.features.group.domain.Invitation;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.InvitationStatus;
+import app.lifelinq.features.group.domain.InvitationType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,9 +26,12 @@ class CreateInvitationUseCaseTest {
 
         CreateInvitationCommand command = new CreateInvitationCommand(
                 UUID.randomUUID(),
+                InvitationType.EMAIL,
                 "test@example.com",
+                "Alex Doe",
                 Instant.parse("2026-01-01T00:00:00Z"),
-                Duration.ofDays(2)
+                Duration.ofDays(2),
+                1
         );
 
         CreateInvitationResult result = useCase.execute(command);
@@ -37,6 +41,7 @@ class CreateInvitationUseCaseTest {
         assertEquals(Instant.parse("2026-01-03T00:00:00Z"), result.getExpiresAt());
         assertEquals(1, repository.saved.size());
         assertEquals(InvitationStatus.ACTIVE, repository.saved.get(0).getStatus());
+        assertEquals("Alex Doe", repository.saved.get(0).getInviterDisplayName());
     }
 
     @Test
@@ -50,9 +55,11 @@ class CreateInvitationUseCaseTest {
         CreateInvitationUseCase useCase = new CreateInvitationUseCase(new InMemoryInvitationRepository(), new FixedTokenGenerator("t"));
         CreateInvitationCommand command = new CreateInvitationCommand(
                 UUID.randomUUID(),
+                InvitationType.EMAIL,
                 "test@example.com",
                 Instant.parse("2026-01-01T00:00:00Z"),
-                Duration.ZERO
+                Duration.ZERO,
+                1
         );
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(command));
     }
@@ -76,14 +83,71 @@ class CreateInvitationUseCaseTest {
 
         CreateInvitationCommand command = new CreateInvitationCommand(
                 UUID.randomUUID(),
+                InvitationType.EMAIL,
                 "test@example.com",
                 Instant.parse("2026-01-01T00:00:00Z"),
-                Duration.ofDays(1)
+                Duration.ofDays(1),
+                1
         );
 
         CreateInvitationResult result = useCase.execute(command);
 
         assertEquals("token-2", result.getToken());
+    }
+
+    @Test
+    void createsLinkInvitationWithoutEmail() {
+        InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
+        FixedTokenGenerator tokenGenerator = new FixedTokenGenerator("link-token");
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(repository, tokenGenerator);
+
+        CreateInvitationCommand command = new CreateInvitationCommand(
+                UUID.randomUUID(),
+                InvitationType.LINK,
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofDays(2),
+                1
+        );
+
+        CreateInvitationResult result = useCase.execute(command);
+
+        assertNotNull(result.getInvitationId());
+        assertEquals("link-token", result.getToken());
+        assertEquals(1, repository.saved.size());
+        assertEquals(InvitationType.LINK, repository.saved.get(0).getType());
+        assertEquals(null, repository.saved.get(0).getInviteeEmail());
+    }
+
+    @Test
+    void returnsExistingActiveLinkPerGroup() {
+        InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
+        UUID groupId = UUID.randomUUID();
+        repository.saved.add(Invitation.createActive(
+                UUID.randomUUID(),
+                groupId,
+                InvitationType.LINK,
+                null,
+                "existing-link-token",
+                Instant.parse("2026-01-03T00:00:00Z"),
+                1
+        ));
+        FixedTokenGenerator tokenGenerator = new FixedTokenGenerator("new-token-ignored");
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(repository, tokenGenerator);
+
+        CreateInvitationCommand command = new CreateInvitationCommand(
+                groupId,
+                InvitationType.LINK,
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofDays(2),
+                1
+        );
+
+        CreateInvitationResult result = useCase.execute(command);
+
+        assertEquals("existing-link-token", result.getToken());
+        assertEquals(1, repository.saved.size());
     }
 
     private static final class InMemoryInvitationRepository implements InvitationRepository {

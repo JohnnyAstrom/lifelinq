@@ -7,6 +7,7 @@ import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.Invitation;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.InvitationStatus;
+import app.lifelinq.features.group.domain.InvitationType;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import java.time.Instant;
@@ -97,6 +98,67 @@ class AcceptInvitationUseCaseTest {
 
         assertEquals(1, membershipRepository.findByGroupId(groupId).size());
         assertEquals(1, invitationRepository.findByToken("token-repeat").orElseThrow().getUsageCount());
+    }
+
+    @Test
+    void acceptsLinkInvitationAndCreatesMembership() {
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                InvitationType.LINK,
+                null,
+                "token-link",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                1
+        );
+        invitationRepository.save(invitation);
+
+        AcceptInvitationUseCase useCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
+        AcceptInvitationResult result = useCase.execute(new AcceptInvitationCommand(
+                "token-link",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        ));
+
+        assertEquals(invitation.getGroupId(), result.getGroupId());
+        assertEquals(1, membershipRepository.saved.size());
+        assertEquals(1, invitationRepository.findByToken("token-link").orElseThrow().getUsageCount());
+    }
+
+    @Test
+    void linkInvitationRespectsExhaustionWithMaxUses() {
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                InvitationType.LINK,
+                null,
+                "token-link-exhaust",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                2
+        );
+        invitationRepository.save(invitation);
+
+        AcceptInvitationUseCase useCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
+        useCase.execute(new AcceptInvitationCommand(
+                "token-link-exhaust",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        ));
+        useCase.execute(new AcceptInvitationCommand(
+                "token-link-exhaust",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        ));
+
+        assertThrows(IllegalStateException.class, () -> useCase.execute(new AcceptInvitationCommand(
+                "token-link-exhaust",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        )));
     }
 
     private static final class InMemoryInvitationRepository implements InvitationRepository {

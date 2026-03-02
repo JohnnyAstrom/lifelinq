@@ -59,6 +59,16 @@ class AuthApplicationServiceProvisioningTest {
         assertEquals(2, fixture.userDefaultGroupProvisioning.callsFor(userId));
     }
 
+    @Test
+    void provisioningPassesInitialPlaceNameToGroupProvisioningContract() {
+        TestFixture fixture = new TestFixture();
+        UUID userId = UUID.randomUUID();
+
+        fixture.authApplicationService.ensureProvisionedAndSignToken(userId, "My Place");
+
+        assertEquals("My Place", fixture.userDefaultGroupProvisioning.lastInitialPlaceNameFor(userId));
+    }
+
     private static final class TestFixture {
         private final InMemoryUserRepository userRepository = new InMemoryUserRepository();
         private final FakeUserDefaultGroupProvisioning userDefaultGroupProvisioning = new FakeUserDefaultGroupProvisioning();
@@ -104,10 +114,12 @@ class AuthApplicationServiceProvisioningTest {
             UserGroupMembershipLookup {
         private final Map<UUID, UUID> defaultGroupsByUser = new HashMap<>();
         private final Map<UUID, Integer> callsByUser = new HashMap<>();
+        private final Map<UUID, String> initialPlaceNamesByUser = new HashMap<>();
 
         @Override
-        public UUID ensureDefaultGroupProvisioned(UUID userId) {
+        public UUID ensureDefaultGroupProvisioned(UUID userId, String initialPlaceName) {
             callsByUser.merge(userId, 1, Integer::sum);
+            initialPlaceNamesByUser.put(userId, initialPlaceName);
             return defaultGroupsByUser.computeIfAbsent(userId, id ->
                     UUID.nameUUIDFromBytes(("personal-group:" + id).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         }
@@ -132,6 +144,10 @@ class AuthApplicationServiceProvisioningTest {
 
         private int callsFor(UUID userId) {
             return callsByUser.getOrDefault(userId, 0);
+        }
+
+        private String lastInitialPlaceNameFor(UUID userId) {
+            return initialPlaceNamesByUser.get(userId);
         }
     }
 }

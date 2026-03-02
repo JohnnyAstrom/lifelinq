@@ -2,13 +2,13 @@ package app.lifelinq.features.group.application;
 
 import app.lifelinq.features.group.domain.Invitation;
 import app.lifelinq.features.group.domain.InvitationRepository;
+import app.lifelinq.features.group.domain.InvitationType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
 final class CreateInvitationUseCase {
     private static final int MAX_TOKEN_ATTEMPTS = 5;
-    private static final int DEFAULT_MAX_USES = 1;
 
     private final InvitationRepository invitationRepository;
     private final InvitationTokenGenerator tokenGenerator;
@@ -34,8 +34,15 @@ final class CreateInvitationUseCase {
         if (command.getGroupId() == null) {
             throw new IllegalArgumentException("groupId must not be null");
         }
-        if (command.getInviteeEmail() == null || command.getInviteeEmail().isBlank()) {
+        if (command.getType() == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        if (command.getType() == InvitationType.EMAIL
+                && (command.getInviteeEmail() == null || command.getInviteeEmail().isBlank())) {
             throw new IllegalArgumentException("inviteeEmail must not be blank");
+        }
+        if (command.getType() == InvitationType.LINK && command.getInviteeEmail() != null) {
+            throw new IllegalArgumentException("inviteeEmail must be null for LINK invitations");
         }
         if (command.getNow() == null) {
             throw new IllegalArgumentException("now must not be null");
@@ -44,24 +51,36 @@ final class CreateInvitationUseCase {
         if (ttl == null || ttl.isZero() || ttl.isNegative()) {
             throw new IllegalArgumentException("ttl must be positive");
         }
+        if (command.getMaxUses() <= 0) {
+            throw new IllegalArgumentException("maxUses must be > 0");
+        }
 
         Instant expiresAt = command.getNow().plus(ttl);
-        invitationRepository.findActiveByGroupIdAndInviteeEmail(
-                        command.getGroupId(),
-                        command.getInviteeEmail()
-                )
-                .filter(existing -> existing.isAcceptAllowed(command.getNow()))
-                .ifPresent(existing -> {
-                    throw new IllegalStateException("active invitation already exists");
-                });
+        if (command.getType() == InvitationType.EMAIL) {
+            invitationRepository.findActiveByGroupIdAndInviteeEmail(
+                            command.getGroupId(),
+                            command.getInviteeEmail()
+                    )
+                    .filter(existing -> existing.isAcceptAllowed(command.getNow()))
+                    .ifPresent(existing -> {
+                        throw new IllegalStateException("active invitation already exists");
+                    });
+        } else {
+            Invitation activeLink = findActiveLink(command.getGroupId(), command.getNow());
+            if (activeLink != null) {
+                return new CreateInvitationResult(activeLink.getId(), activeLink.getToken(), activeLink.getExpiresAt());
+            }
+        }
         String token = generateUniqueToken();
         Invitation invitation = Invitation.createActive(
                 UUID.randomUUID(),
                 command.getGroupId(),
+                command.getType(),
                 command.getInviteeEmail(),
+                command.getInviterDisplayName(),
                 token,
                 expiresAt,
-                DEFAULT_MAX_USES
+                command.getMaxUses()
         );
 
         invitationRepository.save(invitation);
@@ -80,5 +99,16 @@ final class CreateInvitationUseCase {
             }
         }
         throw new IllegalStateException("could not generate a unique token");
+    }
+
+    private Invitation findActiveLink(UUID groupId, Instant now) {
+        for (Invitation invitation : invitationRepository.findActive()) {
+            if (invitation.getType() == InvitationType.LINK
+                    && groupId.equals(invitation.getGroupId())
+                    && invitation.isAcceptAllowed(now)) {
+                return invitation;
+            }
+        }
+        return null;
     }
 }

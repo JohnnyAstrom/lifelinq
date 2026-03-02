@@ -1,6 +1,7 @@
 package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.domain.Invitation;
+import app.lifelinq.features.group.domain.InvitationType;
 
 public final class InvitationMapper {
 
@@ -11,7 +12,9 @@ public final class InvitationMapper {
         return new InvitationEntity(
                 invitation.getId(),
                 invitation.getGroupId(),
+                invitation.getType(),
                 invitation.getInviteeEmail(),
+                invitation.getInviterDisplayName(),
                 invitation.getToken(),
                 invitation.getExpiresAt(),
                 invitation.getMaxUses(),
@@ -27,7 +30,9 @@ public final class InvitationMapper {
         return Invitation.rehydrate(
                 entity.getId(),
                 entity.getGroupId(),
+                entity.getType() == null ? InvitationType.EMAIL : entity.getType(),
                 entity.getInviteeEmail(),
+                entity.getInviterDisplayName(),
                 entity.getToken(),
                 entity.getExpiresAt(),
                 entity.getMaxUses(),

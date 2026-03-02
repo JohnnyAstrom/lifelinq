@@ -63,6 +63,14 @@ public class GroupApplicationConfig {
     }
 
     @Bean
+    public PreviewInvitationUseCase previewInvitationUseCase(
+            InvitationRepository invitationRepository,
+            GroupRepository groupRepository
+    ) {
+        return new PreviewInvitationUseCase(invitationRepository, groupRepository);
+    }
+
+    @Bean
     public GroupApplicationService groupApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
             CreateGroupUseCase createGroupUseCase,
@@ -70,6 +78,7 @@ public class GroupApplicationConfig {
             ListGroupMembersUseCase listGroupMembersUseCase,
             RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase,
             CreateInvitationUseCase createInvitationUseCase,
+            PreviewInvitationUseCase previewInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
@@ -86,6 +95,7 @@ public class GroupApplicationConfig {
                 listGroupMembersUseCase,
                 removeMemberFromGroupUseCase,
                 createInvitationUseCase,
+                previewInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,
                 groupRepository,

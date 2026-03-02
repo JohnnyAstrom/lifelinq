@@ -199,6 +199,11 @@ Invite tokens:
 - do **not** create sessions
 - are **not** used for API authorization
 
+Public invite preview contract:
+- `/invite/**` is a public **GET-only** SSR preview namespace
+- it is read-only by design and must not perform state changes
+- invitation acceptance remains a separate mutation flow outside `/invite/**`
+
 ---
 
 ## Request scoping summary (current)

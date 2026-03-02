@@ -110,7 +110,17 @@ Invitations:
 - are token-based
 - are time-limited
 - grant membership upon acceptance
-- switch the user’s active group to the invited group upon successful acceptance (Phase 2)
+- switch the user's active group to the invited group upon successful acceptance (Phase 2)
+- support two types:
+  - `EMAIL` (targeted invite, requires invitee email)
+  - `LINK` (open invite, no invitee email)
+- support public, non-mutating preview via `GET /invite/{token}` (server-rendered HTML)
+
+Invite web namespace contract:
+- `/invite/**` is public **GET-only**
+- it is an SSR preview gateway, not an accept/mutation API
+- it must remain strictly read-only (no writes, counters, or touch-style persistence)
+- accept/mutation endpoints must never live under `/invite/**`
 
 ## Decisions
 
@@ -138,6 +148,10 @@ Invitation usage model:
 - `usageCount` (default `0`)
 - acceptance is rejected when `usageCount >= maxUses`
 - successful acceptance increments `usageCount`
+- `inviterDisplayName` is stored as a nullable snapshot at creation time (used for read-only preview copy)
+- default endpoint behavior:
+  - `POST /groups/invitations` creates `EMAIL` invitations
+  - `POST /groups/invitations/link` creates `LINK` invitations
 
 ### Rationale
 

@@ -15,7 +15,7 @@ public final class UserDefaultGroupProvisioningAdapter implements UserDefaultGro
     }
 
     @Override
-    public UUID ensureDefaultGroupProvisioned(UUID userId) {
-        return groupApplicationService.ensureDefaultGroupProvisioned(userId);
+    public UUID ensureDefaultGroupProvisioned(UUID userId, String initialPlaceName) {
+        return groupApplicationService.ensureDefaultGroupProvisioned(userId, initialPlaceName);
     }
 }

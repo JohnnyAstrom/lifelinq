@@ -74,7 +74,7 @@ class MeControllerTest {
                 groupId,
                 null,
                 null,
-                List.of(new UserMembershipView(groupId, "Personal", "ADMIN"))
+                List.of(new UserMembershipView(groupId, "Personal", "ADMIN", true))
         ));
 
         mockMvc.perform(get("/me")
@@ -86,7 +86,8 @@ class MeControllerTest {
                 .andExpect(jsonPath("$.lastName").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
                 .andExpect(jsonPath("$.memberships[0].groupName").value("Personal"))
-                .andExpect(jsonPath("$.memberships[0].role").value("ADMIN"));
+                .andExpect(jsonPath("$.memberships[0].role").value("ADMIN"))
+                .andExpect(jsonPath("$.memberships[0].isDefault").value(true));
 
         verify(authApplicationService).getMe(userId);
     }
@@ -125,7 +126,7 @@ class MeControllerTest {
                 null,
                 null,
                 null,
-                List.of(new UserMembershipView(groupId, "Community", "MEMBER"))
+                List.of(new UserMembershipView(groupId, "Community", "MEMBER", false))
         ));
 
         mockMvc.perform(get("/me")
@@ -138,7 +139,8 @@ class MeControllerTest {
                 .andExpect(jsonPath("$.memberships.length()").value(1))
                 .andExpect(jsonPath("$.memberships[0].groupId").value(groupId.toString()))
                 .andExpect(jsonPath("$.memberships[0].groupName").value("Community"))
-                .andExpect(jsonPath("$.memberships[0].role").value("MEMBER"));
+                .andExpect(jsonPath("$.memberships[0].role").value("MEMBER"))
+                .andExpect(jsonPath("$.memberships[0].isDefault").value(false));
     }
 
     @Test
@@ -194,8 +196,8 @@ class MeControllerTest {
                         null,
                         null,
                         List.of(
-                                new UserMembershipView(currentGroupId, "Old Group", "MEMBER"),
-                                new UserMembershipView(selectedGroupId, "Personal", "ADMIN")
+                                new UserMembershipView(currentGroupId, "Old Group", "MEMBER", false),
+                                new UserMembershipView(selectedGroupId, "Personal", "ADMIN", true)
                         )
                 ));
 

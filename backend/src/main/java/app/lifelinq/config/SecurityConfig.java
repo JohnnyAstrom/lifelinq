@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/login/**", "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/invite/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/dev/token", "/auth/dev-login")
                         .access((authentication, context) ->
                                 new org.springframework.security.authorization.AuthorizationDecision(devAuthEnabled))

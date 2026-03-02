@@ -8,6 +8,7 @@ import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.GroupRepository;
+import app.lifelinq.features.group.domain.InvitationType;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
@@ -24,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 public class GroupApplicationService {
     private static final Duration DEFAULT_INVITATION_TTL = Duration.ofDays(7);
+    private static final int DEFAULT_INVITATION_MAX_USES = 1;
+    private static final int MAX_PLACE_NAME_LENGTH = 50;
     static final String DEFAULT_GROUP_NAME = "Personal";
 
     private final AcceptInvitationUseCase acceptInvitationUseCase;
@@ -32,6 +35,7 @@ public class GroupApplicationService {
     private final ListGroupMembersUseCase listGroupMembersUseCase;
     private final RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase;
     private final CreateInvitationUseCase createInvitationUseCase;
+    private final PreviewInvitationUseCase previewInvitationUseCase;
     private final RevokeInvitationUseCase revokeInvitationUseCase;
     private final MembershipRepository membershipRepository;
     private final GroupRepository groupRepository;
@@ -48,6 +52,7 @@ public class GroupApplicationService {
             ListGroupMembersUseCase listGroupMembersUseCase,
             RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase,
             CreateInvitationUseCase createInvitationUseCase,
+            PreviewInvitationUseCase previewInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
@@ -63,6 +68,7 @@ public class GroupApplicationService {
         this.listGroupMembersUseCase = listGroupMembersUseCase;
         this.removeMemberFromGroupUseCase = removeMemberFromGroupUseCase;
         this.createInvitationUseCase = createInvitationUseCase;
+        this.previewInvitationUseCase = previewInvitationUseCase;
         this.revokeInvitationUseCase = revokeInvitationUseCase;
         this.membershipRepository = membershipRepository;
         this.groupRepository = groupRepository;
@@ -95,12 +101,44 @@ public class GroupApplicationService {
         userProvisioning.ensureUserExists(actorUserId);
         ensureAdmin(groupId, actorUserId);
         String normalizedEmail = normalizeEmail(inviteeEmail);
+        String inviterDisplayName = actorDisplayName(actorUserId);
         Duration effectiveTtl = ttl == null ? DEFAULT_INVITATION_TTL : ttl;
         CreateInvitationCommand command = new CreateInvitationCommand(
                 groupId,
+                InvitationType.EMAIL,
                 normalizedEmail,
+                inviterDisplayName,
                 clock.instant(),
-                effectiveTtl
+                effectiveTtl,
+                DEFAULT_INVITATION_MAX_USES
+        );
+        CreateInvitationResult result = createInvitationUseCase.execute(command);
+        return new CreateInvitationOutput(
+                result.getInvitationId(),
+                result.getToken(),
+                result.getExpiresAt()
+        );
+    }
+
+    @Transactional
+    public CreateInvitationOutput createLinkInvitation(
+            UUID groupId,
+            UUID actorUserId,
+            Duration ttl,
+            Integer maxUses
+    ) {
+        userProvisioning.ensureUserExists(actorUserId);
+        ensureAdmin(groupId, actorUserId);
+        Duration effectiveTtl = ttl == null ? DEFAULT_INVITATION_TTL : ttl;
+        int effectiveMaxUses = maxUses == null ? DEFAULT_INVITATION_MAX_USES : maxUses;
+        CreateInvitationCommand command = new CreateInvitationCommand(
+                groupId,
+                InvitationType.LINK,
+                null,
+                null,
+                clock.instant(),
+                effectiveTtl,
+                effectiveMaxUses
         );
         CreateInvitationResult result = createInvitationUseCase.execute(command);
         return new CreateInvitationOutput(
@@ -117,6 +155,11 @@ public class GroupApplicationService {
         RevokeInvitationCommand command = new RevokeInvitationCommand(invitationId, clock.instant());
         RevokeInvitationResult result = revokeInvitationUseCase.execute(command);
         return result.isRevoked();
+    }
+
+    @Transactional(readOnly = true)
+    public PreviewInvitationResult previewInvitation(String token) {
+        return previewInvitationUseCase.execute(new PreviewInvitationCommand(token, clock.instant()));
     }
 
     @Transactional
@@ -238,6 +281,11 @@ public class GroupApplicationService {
 
     @Transactional
     public UUID ensureDefaultGroupProvisioned(UUID userId) {
+        return ensureDefaultGroupProvisioned(userId, null);
+    }
+
+    @Transactional
+    public UUID ensureDefaultGroupProvisioned(UUID userId, String initialPlaceName) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }
@@ -255,7 +303,8 @@ public class GroupApplicationService {
                     .findFirst()
                     .orElseThrow();
         }
-        groupRepository.save(new app.lifelinq.features.group.domain.Group(defaultGroupId, DEFAULT_GROUP_NAME));
+        String groupName = normalizeInitialPlaceName(initialPlaceName);
+        groupRepository.save(new app.lifelinq.features.group.domain.Group(defaultGroupId, groupName));
         membershipRepository.save(new Membership(defaultGroupId, userId, GroupRole.ADMIN));
         return defaultGroupId;
     }
@@ -278,6 +327,7 @@ public class GroupApplicationService {
                 new ListGroupMembersUseCase(membershipRepository),
                 new RemoveMemberFromGroupUseCase(membershipRepository),
                 new CreateInvitationUseCase(invitationRepository, tokenGenerator),
+                new PreviewInvitationUseCase(invitationRepository, groupRepository),
                 new RevokeInvitationUseCase(invitationRepository),
                 membershipRepository,
                 groupRepository,
@@ -290,16 +340,20 @@ public class GroupApplicationService {
     }
 
     private GroupMemberView toGroupMemberView(Membership membership) {
-        UserProfileView profile = userProfileRead.getProfile(membership.getUserId());
-        String displayName = null;
-        if (profile != null
-                && profile.firstName() != null
-                && profile.lastName() != null
-                && !profile.firstName().isBlank()
-                && !profile.lastName().isBlank()) {
-            displayName = profile.firstName() + " " + profile.lastName();
-        }
+        String displayName = actorDisplayName(membership.getUserId());
         return new GroupMemberView(membership.getUserId(), membership.getRole(), displayName);
+    }
+
+    private String actorDisplayName(UUID userId) {
+        UserProfileView profile = userProfileRead.getProfile(userId);
+        if (profile == null
+                || profile.firstName() == null
+                || profile.lastName() == null
+                || profile.firstName().isBlank()
+                || profile.lastName().isBlank()) {
+            return null;
+        }
+        return profile.firstName() + " " + profile.lastName();
     }
 
     private void ensureAdmin(UUID groupId, UUID actorUserId) {
@@ -382,6 +436,20 @@ public class GroupApplicationService {
             throw new IllegalArgumentException("name must not be blank");
         }
         return placeName.trim();
+    }
+
+    private String normalizeInitialPlaceName(String initialPlaceName) {
+        if (initialPlaceName == null) {
+            return DEFAULT_GROUP_NAME;
+        }
+        String normalized = initialPlaceName.trim();
+        if (normalized.isEmpty()) {
+            return DEFAULT_GROUP_NAME;
+        }
+        if (normalized.length() > MAX_PLACE_NAME_LENGTH) {
+            throw new IllegalArgumentException("initialPlaceName must be at most " + MAX_PLACE_NAME_LENGTH + " characters");
+        }
+        return normalized;
     }
 
     private void ensureNotDefaultPlace(UUID groupId, UUID actorUserId) {

@@ -60,7 +60,12 @@ public class MeController {
     private MeResponse toResponse(UserContextView view) {
         List<MembershipItemResponse> memberships = new ArrayList<>();
         for (UserMembershipView membership : view.memberships()) {
-            memberships.add(new MembershipItemResponse(membership.groupId(), membership.groupName(), membership.role()));
+            memberships.add(new MembershipItemResponse(
+                    membership.groupId(),
+                    membership.groupName(),
+                    membership.role(),
+                    membership.isDefault()
+            ));
         }
         return new MeResponse(view.userId(), view.activeGroupId(), view.firstName(), view.lastName(), memberships);
     }
@@ -81,11 +86,13 @@ public class MeController {
         private final UUID groupId;
         private final String groupName;
         private final String role;
+        private final boolean isDefault;
 
-        private MembershipItemResponse(UUID groupId, String groupName, String role) {
+        private MembershipItemResponse(UUID groupId, String groupName, String role, boolean isDefault) {
             this.groupId = groupId;
             this.groupName = groupName;
             this.role = role;
+            this.isDefault = isDefault;
         }
 
         public UUID getGroupId() {
@@ -98,6 +105,10 @@ public class MeController {
 
         public String getGroupName() {
             return groupName;
+        }
+
+        public boolean getIsDefault() {
+            return isDefault;
         }
     }
 

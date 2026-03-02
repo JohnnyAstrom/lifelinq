@@ -22,11 +22,11 @@ public class DevLoginController {
         if (request == null || request.email() == null || request.email().isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        String token = authApplicationService.devLogin(request.email());
+        String token = authApplicationService.devLogin(request.email(), request.initialPlaceName());
         return ResponseEntity.ok(new DevLoginResponse(token));
     }
 
-    public record DevLoginRequest(String email) {}
+    public record DevLoginRequest(String email, String initialPlaceName) {}
 
     public record DevLoginResponse(String token) {}
 }

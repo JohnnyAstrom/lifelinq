@@ -224,6 +224,46 @@ class GroupControllerTest {
     }
 
     @Test
+    void createLinkInvitationReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(post("/groups/invitations/link")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(groupApplicationService);
+    }
+
+    @Test
+    void createLinkInvitationSucceeds() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId, groupId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        UUID invitationId = UUID.randomUUID();
+        Instant expiresAt = Instant.now().plusSeconds(3600);
+        CreateInvitationOutput result = new CreateInvitationOutput(
+                invitationId,
+                "invite-link-token",
+                expiresAt
+        );
+
+        when(groupApplicationService.createLinkInvitation(
+                Mockito.eq(groupId),
+                Mockito.eq(actorUserId),
+                Mockito.isNull(),
+                Mockito.isNull()
+        )).thenReturn(result);
+
+        mockMvc.perform(post("/groups/invitations/link")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.token").value("invite-link-token"));
+    }
+
+    @Test
     void revokeInvitationReturns401WhenContextMissing() throws Exception {
         mockMvc.perform(delete("/groups/invitations/" + UUID.randomUUID()))
                 .andExpect(status().isUnauthorized());

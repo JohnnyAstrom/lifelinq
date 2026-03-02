@@ -71,20 +71,29 @@ public class AuthApplicationService {
     }
 
     public String devLogin(String email) {
+        return devLogin(email, null);
+    }
+
+    public String devLogin(String email, String initialPlaceName) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("email must not be blank");
         }
         UUID userId = UUID.nameUUIDFromBytes(email.trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
-        return ensureProvisionedAndSignToken(userId);
+        return ensureProvisionedAndSignToken(userId, initialPlaceName);
     }
 
     @Transactional
     public String ensureProvisionedAndSignToken(UUID userId) {
+        return ensureProvisionedAndSignToken(userId, null);
+    }
+
+    @Transactional
+    public String ensureProvisionedAndSignToken(UUID userId, String initialPlaceName) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }
         userProvisioning.ensureUserExists(userId);
-        UUID groupId = userDefaultGroupProvisioning.ensureDefaultGroupProvisioned(userId);
+        UUID groupId = userDefaultGroupProvisioning.ensureDefaultGroupProvisioned(userId, initialPlaceName);
         if (userActiveGroupRead.getActiveGroupId(userId) == null) {
             userActiveGroupSelection.setActiveGroup(userId, groupId);
         }
@@ -118,11 +127,21 @@ public class AuthApplicationService {
 
     private UserContextView buildUserContext(UUID userId) {
         UUID activeGroupId = userActiveGroupRead.getActiveGroupId(userId);
+        UUID defaultGroupId = defaultGroupIdFor(userId);
         var profile = userProfileRead.getProfile(userId);
         List<UserMembershipView> memberships = new ArrayList<>();
         for (var membership : userGroupMembershipLookup.listMemberships(userId)) {
-            memberships.add(new UserMembershipView(membership.groupId(), membership.groupName(), membership.role()));
+            memberships.add(new UserMembershipView(
+                    membership.groupId(),
+                    membership.groupName(),
+                    membership.role(),
+                    membership.groupId().equals(defaultGroupId)
+            ));
         }
         return new UserContextView(userId, activeGroupId, profile.firstName(), profile.lastName(), memberships);
+    }
+
+    private UUID defaultGroupIdFor(UUID userId) {
+        return UUID.nameUUIDFromBytes(("personal-group:" + userId).getBytes(StandardCharsets.UTF_8));
     }
 }

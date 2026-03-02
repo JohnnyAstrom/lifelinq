@@ -96,4 +96,36 @@ class InvitationTest {
                 () -> invitation.registerAcceptance(Instant.parse("2025-12-31T01:00:00Z"))
         );
     }
+
+    @Test
+    void linkInvitationRequiresNullEmail() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> Invitation.createActive(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        InvitationType.LINK,
+                        "test@example.com",
+                        "token",
+                        Instant.parse("2026-01-01T00:00:00Z"),
+                        1
+                )
+        );
+    }
+
+    @Test
+    void emailInvitationRequiresNonBlankEmail() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> Invitation.createActive(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        InvitationType.EMAIL,
+                        "   ",
+                        "token",
+                        Instant.parse("2026-01-01T00:00:00Z"),
+                        1
+                )
+        );
+    }
 }

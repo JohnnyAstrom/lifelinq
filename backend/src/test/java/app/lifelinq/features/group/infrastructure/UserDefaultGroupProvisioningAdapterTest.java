@@ -10,6 +10,7 @@ import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserProfileView;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -34,6 +35,58 @@ class UserDefaultGroupProvisioningAdapterTest {
         assertEquals(1, memberships.size());
         assertEquals(groupId, memberships.get(0).getGroupId());
         assertEquals(GroupRole.ADMIN, memberships.get(0).getRole());
+    }
+
+    @Test
+    void firstProvisioningUsesProvidedInitialPlaceName() {
+        InMemoryGroupRepository groupRepository = new InMemoryGroupRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        UserDefaultGroupProvisioning adapter = adapter(groupRepository, membershipRepository);
+        UUID userId = UUID.randomUUID();
+
+        UUID groupId = adapter.ensureDefaultGroupProvisioned(userId, "My Place");
+
+        assertEquals("My Place", groupRepository.findById(groupId).orElseThrow().getName());
+    }
+
+    @Test
+    void subsequentProvisioningIgnoresInitialPlaceNameAndDoesNotRename() {
+        InMemoryGroupRepository groupRepository = new InMemoryGroupRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        UserDefaultGroupProvisioning adapter = adapter(groupRepository, membershipRepository);
+        UUID userId = UUID.randomUUID();
+
+        UUID groupId = adapter.ensureDefaultGroupProvisioned(userId, "First Name");
+        UUID second = adapter.ensureDefaultGroupProvisioned(userId, "Second Name");
+
+        assertEquals(groupId, second);
+        assertEquals("First Name", groupRepository.findById(groupId).orElseThrow().getName());
+    }
+
+    @Test
+    void blankInitialPlaceNameFallsBackToDefaultGroupName() {
+        InMemoryGroupRepository groupRepository = new InMemoryGroupRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        UserDefaultGroupProvisioning adapter = adapter(groupRepository, membershipRepository);
+        UUID userId = UUID.randomUUID();
+
+        UUID groupId = adapter.ensureDefaultGroupProvisioned(userId, "   ");
+
+        assertEquals("Personal", groupRepository.findById(groupId).orElseThrow().getName());
+    }
+
+    @Test
+    void deterministicIdIsUnaffectedByInitialPlaceName() {
+        InMemoryGroupRepository groupRepository = new InMemoryGroupRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        UserDefaultGroupProvisioning adapter = adapter(groupRepository, membershipRepository);
+        UUID userId = UUID.randomUUID();
+        UUID expectedDefaultGroupId = UUID.nameUUIDFromBytes(("personal-group:" + userId).getBytes(StandardCharsets.UTF_8));
+
+        UUID groupId = adapter.ensureDefaultGroupProvisioned(userId, "Custom Name");
+
+        assertEquals(expectedDefaultGroupId, groupId);
+        assertTrue(groupRepository.findById(expectedDefaultGroupId).isPresent());
     }
 
     @Test

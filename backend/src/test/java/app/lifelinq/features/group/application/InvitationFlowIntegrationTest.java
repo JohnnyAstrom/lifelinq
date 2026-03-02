@@ -86,6 +86,10 @@ class InvitationFlowIntegrationTest {
                 membershipRepository
         );
         RevokeInvitationUseCase revokeInvitationUseCase = new RevokeInvitationUseCase(invitationRepository);
+        PreviewInvitationUseCase previewInvitationUseCase = new PreviewInvitationUseCase(
+                invitationRepository,
+                groupRepository
+        );
 
         Clock clock = Clock.fixed(Instant.parse("2026-02-12T00:00:00Z"), ZoneOffset.UTC);
 
@@ -96,6 +100,7 @@ class InvitationFlowIntegrationTest {
                 listGroupMembersUseCase,
                 removeMemberFromGroupUseCase,
                 createInvitationUseCase,
+                previewInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,
                 groupRepository,

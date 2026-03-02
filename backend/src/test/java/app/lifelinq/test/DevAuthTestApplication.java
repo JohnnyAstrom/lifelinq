@@ -108,7 +108,7 @@ public class DevAuthTestApplication {
 
     @Bean
     public UserDefaultGroupProvisioning userDefaultGroupProvisioning() {
-        return userId -> UUID.nameUUIDFromBytes(("personal-group:" + userId)
+        return (userId, initialPlaceName) -> UUID.nameUUIDFromBytes(("personal-group:" + userId)
                 .getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 

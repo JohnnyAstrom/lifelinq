@@ -24,7 +24,15 @@ public final class GroupContextFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return "/dev/token".equals(path) || "/auth/dev-login".equals(path);
+        if (path == null) {
+            return false;
+        }
+        if ("/dev/token".equals(path) || "/auth/dev-login".equals(path)) {
+            return true;
+        }
+        String method = request.getMethod();
+        boolean invitePath = "/invite".equals(path) || path.startsWith("/invite/");
+        return "GET".equalsIgnoreCase(method) && invitePath;
     }
 
     @Override
