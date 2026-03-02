@@ -55,6 +55,8 @@ export function LoginScreen({ onLoggedIn }: Props) {
               placeholder={strings.emailPlaceholder}
               onChangeText={setEmail}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
             />
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}

@@ -1,11 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
-import { setActiveGroup } from '../features/auth/api/meApi';
+import { setActiveGroup, updateProfile } from '../features/auth/api/meApi';
+import { acceptInvitation, renameCurrentPlace } from '../features/group/api/groupApi';
 import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
@@ -22,10 +23,11 @@ import { CreatePlaceScreen } from '../screens/CreatePlaceScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ManagePlaceScreen } from '../screens/ManagePlaceScreen';
 import { SpacesScreen } from '../screens/SpacesScreen';
+import { AcceptInviteScreen } from '../screens/AcceptInviteScreen';
 import { AppToast } from '../shared/ui/AppToast';
 import { formatApiError } from '../shared/api/client';
-import { OverlaySheet } from '../shared/ui/OverlaySheet';
-import { AppCard, AppScreen, Subtle } from '../shared/ui/components';
+import { ActionSheet } from '../shared/ui/ActionSheet';
+import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Screen =
@@ -40,7 +42,8 @@ type Screen =
   | 'createPlace'
   | 'manage-place'
   | 'spaces'
-  | 'documents';
+  | 'documents'
+  | 'accept-invite';
 
 export default function App() {
   return (
@@ -78,10 +81,15 @@ function SplashScreen() {
 function AppShell() {
   const { token, isAuthenticated, isInitializing, login, logout, handleApiError } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
+  const [acceptInviteToken, setAcceptInviteToken] = useState<string | null>(null);
   const [activeShoppingListId, setActiveShoppingListId] = useState<string | null>(null);
   const [switchSheetOpen, setSwitchSheetOpen] = useState(false);
   const [switchingGroupId, setSwitchingGroupId] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const [joinSheetOpen, setJoinSheetOpen] = useState(false);
+  const [joinTokenInput, setJoinTokenInput] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; key: number } | null>(null);
   const me = useMe(token);
   const strings = {
@@ -117,6 +125,46 @@ function AppShell() {
   function openSwitchSheet() {
     setSwitchError(null);
     setSwitchSheetOpen(true);
+  }
+
+  function openJoinSheet() {
+    setJoinError(null);
+    setJoinTokenInput('');
+    setJoinSheetOpen(true);
+  }
+
+  function closeJoinSheet() {
+    if (joinLoading) {
+      return;
+    }
+    setJoinSheetOpen(false);
+    setJoinError(null);
+  }
+
+  async function handleJoinPlaceSubmit() {
+    const normalizedToken = joinTokenInput.trim();
+    if (!token || !normalizedToken || joinLoading) {
+      return;
+    }
+    setJoinError(null);
+    setJoinLoading(true);
+    try {
+      await acceptInvitation(token, normalizedToken);
+      const updatedMe = await me.reload();
+      const activeMembership = updatedMe?.activeGroupId
+        ? updatedMe.memberships.find((membership) => membership.groupId === updatedMe.activeGroupId) ?? null
+        : null;
+      const placeName = activeMembership?.groupName?.trim() || 'My space';
+      showToast(`You joined ${placeName}.`);
+      setJoinSheetOpen(false);
+      setJoinTokenInput('');
+      setScreen('home');
+    } catch (err) {
+      await handleApiError(err);
+      setJoinError('This invitation is invalid or expired.');
+    } finally {
+      setJoinLoading(false);
+    }
   }
 
   async function handleSwitchPlaceSelection(groupId: string) {
@@ -197,17 +245,37 @@ function AppShell() {
       </AppScreen>
     );
   }
+  const meData = me.data;
 
   const hasCompletedProfile =
-    !!me.data.firstName?.trim() &&
-    !!me.data.lastName?.trim();
+    !!meData.firstName?.trim() &&
+    !!meData.lastName?.trim();
+
+  const activeMembershipForProfile = meData.activeGroupId
+    ? meData.memberships.find((membership) => membership.groupId === meData.activeGroupId) ?? null
+    : null;
 
   if (!hasCompletedProfile) {
     return (
       <CompleteProfileScreen
         token={token}
-        initialFirstName={me.data.firstName}
-        initialLastName={me.data.lastName}
+        initialFirstName={meData.firstName}
+        initialLastName={meData.lastName}
+        initialPlaceName="Personal"
+        onSubmitProfile={async (firstName, lastName, initialPlaceName) => {
+          await updateProfile(token, firstName, lastName);
+
+          if (initialPlaceName == null || activeMembershipForProfile?.isDefault !== true) {
+            return;
+          }
+
+          const currentPlaceName = activeMembershipForProfile.groupName?.trim() ?? '';
+          if (currentPlaceName === initialPlaceName) {
+            return;
+          }
+
+          await renameCurrentPlace(token, initialPlaceName);
+        }}
         onCompleted={() => {
           me.reload();
         }}
@@ -243,7 +311,7 @@ function AppShell() {
   const activeGroupId = me.data.activeGroupId;
   const shouldRenderSwitchSheet = switchSheetOpen && switchItems.length > 1;
   const switchSheet = shouldRenderSwitchSheet ? (
-    <OverlaySheet onClose={() => setSwitchSheetOpen(false)} sheetStyle={styles.switchSheet}>
+    <ActionSheet visible={switchSheetOpen} onClose={() => setSwitchSheetOpen(false)} presentation="compact">
       <View style={styles.switchSheetContent}>
         <Subtle>Switch place</Subtle>
         {switchError ? <Text style={styles.switchError}>{switchError}</Text> : null}
@@ -273,8 +341,44 @@ function AppShell() {
           })}
         </View>
       </View>
-    </OverlaySheet>
+    </ActionSheet>
   ) : null;
+
+  const joinSheet = (
+    <ActionSheet visible={joinSheetOpen} onClose={closeJoinSheet} presentation="standard">
+      <View style={styles.joinSheetContent}>
+        <Text style={textStyles.h3}>Join a place</Text>
+        <AppInput
+          value={joinTokenInput}
+          onChangeText={setJoinTokenInput}
+          placeholder="Paste invitation code"
+          returnKeyType="done"
+          onSubmitEditing={() => {
+            void handleJoinPlaceSubmit();
+          }}
+        />
+        {joinLoading ? <Subtle>Joining...</Subtle> : null}
+        {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
+        <View style={styles.joinActions}>
+          <AppButton
+            title={joinLoading ? 'Joining...' : 'Join'}
+            onPress={() => {
+              void handleJoinPlaceSubmit();
+            }}
+            disabled={joinLoading}
+            fullWidth
+          />
+          <AppButton
+            title="Cancel"
+            onPress={closeJoinSheet}
+            variant="ghost"
+            disabled={joinLoading}
+            fullWidth
+          />
+        </View>
+      </View>
+    </ActionSheet>
+  );
 
   const toastOverlay = (
     <AppToast
@@ -284,8 +388,10 @@ function AppShell() {
     />
   );
 
+  let screenContent: ReactNode;
+
   if (screen === 'todos') {
-    return (
+    screenContent = (
       <TodoListScreen
         token={token}
         onDone={() => {
@@ -293,10 +399,8 @@ function AppShell() {
         }}
       />
     );
-  }
-
-  if (screen === 'members') {
-    return (
+  } else if (screen === 'members') {
+    screenContent = (
       <GroupDetailsScreen
         token={token}
         me={me.data}
@@ -305,10 +409,8 @@ function AppShell() {
         }}
       />
     );
-  }
-
-  if (screen === 'shopping') {
-    return (
+  } else if (screen === 'shopping') {
+    screenContent = (
       <ShoppingListsScreen
         token={token}
         onSelectList={(listId) => {
@@ -320,10 +422,8 @@ function AppShell() {
         }}
       />
     );
-  }
-
-  if (screen === 'shopping-detail' && activeShoppingListId) {
-    return (
+  } else if (screen === 'shopping-detail' && activeShoppingListId) {
+    screenContent = (
       <ShoppingListDetailScreen
         token={token}
         listId={activeShoppingListId}
@@ -332,10 +432,8 @@ function AppShell() {
         }}
       />
     );
-  }
-
-  if (screen === 'meals') {
-    return (
+  } else if (screen === 'meals') {
+    screenContent = (
       <MealsWeekScreen
         token={token}
         onDone={() => {
@@ -343,46 +441,37 @@ function AppShell() {
         }}
       />
     );
-  }
-
-  if (screen === 'documents') {
-    return (
+  } else if (screen === 'documents') {
+    screenContent = (
       <DocumentsScreen
         onDone={() => {
           setScreen('home');
         }}
       />
     );
-  }
-
-  if (screen === 'settings') {
-    return (
-      <>
-        <SettingsScreen
-          me={me.data}
-          onDone={() => {
-            setScreen('home');
-          }}
-          onManagePlace={() => {
-            setScreen('manage-place');
-          }}
-          onSwitchPlace={openSwitchSheet}
-          onCreatePlace={() => {
-            setScreen('createPlace');
-          }}
-          onLogout={async () => {
-            await logout();
-            setScreen('login');
-          }}
-        />
-        {switchSheet}
-        {toastOverlay}
-      </>
+  } else if (screen === 'settings') {
+    screenContent = (
+      <SettingsScreen
+        me={me.data}
+        onDone={() => {
+          setScreen('home');
+        }}
+        onManagePlace={() => {
+          setScreen('manage-place');
+        }}
+        onSwitchPlace={openSwitchSheet}
+        onCreatePlace={() => {
+          setScreen('createPlace');
+        }}
+        onJoinPlace={openJoinSheet}
+        onLogout={async () => {
+          await logout();
+          setScreen('login');
+        }}
+      />
     );
-  }
-
-  if (screen === 'createPlace') {
-    return (
+  } else if (screen === 'createPlace') {
+    screenContent = (
       <CreatePlaceScreen
         token={token}
         onDone={() => {
@@ -394,22 +483,51 @@ function AppShell() {
         }}
       />
     );
-  }
+  } else if (screen === 'manage-place') {
+    const meData = me.data;
+    const activeMembership = meData.activeGroupId
+      ? meData.memberships.find((membership) => membership.groupId === meData.activeGroupId) ?? null
+      : null;
+    const isDefaultGroupAction = activeMembership?.isDefault === true;
 
-  if (screen === 'manage-place') {
-    return (
+    screenContent = (
       <ManagePlaceScreen
         token={token}
-        me={me.data}
+        me={meData}
+        onPlaceRenamed={async () => {
+          await me.reload();
+          showToast('Place renamed.');
+        }}
+        onPlaceLeft={async (oldPlaceName) => {
+          if (isDefaultGroupAction) {
+            if (__DEV__) {
+              console.warn('Blocked default place side effects for leave callback.');
+            }
+            return;
+          }
+          await me.reload();
+          setScreen('settings');
+          showToast(`You left ${oldPlaceName}.`);
+        }}
+        onPlaceDeleted={async (_oldPlaceName) => {
+          if (isDefaultGroupAction) {
+            if (__DEV__) {
+              console.warn('Blocked default place side effects for delete callback.');
+            }
+            return;
+          }
+          await me.reload();
+          setScreen('settings');
+          showToast('Place deleted.');
+        }}
+        onShowToast={showToast}
         onDone={() => {
           setScreen('settings');
         }}
       />
     );
-  }
-
-  if (screen === 'spaces') {
-    return (
+  } else if (screen === 'spaces') {
+    screenContent = (
       <SpacesScreen
         me={me.data}
         onDone={() => {
@@ -420,59 +538,80 @@ function AppShell() {
         }}
       />
     );
-  }
-
-  if (screen === 'home') {
+  } else if (screen === 'home') {
     const activeMembership = activeGroupId
       ? switchItems.find((membership) => membership.groupId === activeGroupId) ?? null
       : null;
     const currentSpaceName = activeMembership?.groupName ?? 'My space';
 
-    return (
-      <>
-        <HomeScreen
-          token={token}
-          spaceName={currentSpaceName}
-          onContextInvalidated={() => {
-            me.reload();
-          }}
-          onOpenSwitchSheet={openSwitchSheet}
-          onCreateTodo={() => {
-            setScreen('todos');
-          }}
-          onCreateShopping={() => {
-            setScreen('shopping');
-          }}
-          onMeals={() => {
-            setScreen('meals');
-          }}
-          onDocuments={() => {
-            setScreen('documents');
-          }}
-          onSettings={() => {
-            setScreen('settings');
-          }}
-        />
-        {switchSheet}
-        {toastOverlay}
-      </>
+    screenContent = (
+      <HomeScreen
+        token={token}
+        spaceName={currentSpaceName}
+        onContextInvalidated={() => {
+          me.reload();
+        }}
+        onOpenSwitchSheet={openSwitchSheet}
+        onCreateTodo={() => {
+          setScreen('todos');
+        }}
+        onCreateShopping={() => {
+          setScreen('shopping');
+        }}
+        onMeals={() => {
+          setScreen('meals');
+        }}
+        onDocuments={() => {
+          setScreen('documents');
+        }}
+        onSettings={() => {
+          setScreen('settings');
+        }}
+      />
+    );
+  } else if (screen === 'accept-invite') {
+    screenContent = (
+      <AcceptInviteScreen
+        token={token}
+        inviteToken={acceptInviteToken}
+        onAccepted={async () => {
+          const updatedMe = await me.reload();
+          const activeMembership = updatedMe?.activeGroupId
+            ? updatedMe.memberships.find((membership) => membership.groupId === updatedMe.activeGroupId) ?? null
+            : null;
+          const placeName = activeMembership?.groupName?.trim() || 'My space';
+          showToast(`You joined ${placeName}.`);
+          setAcceptInviteToken(null);
+          setScreen('home');
+        }}
+        onBackHome={() => {
+          setAcceptInviteToken(null);
+          setScreen('home');
+        }}
+      />
+    );
+  } else {
+    screenContent = (
+      <View>
+        <Text>{strings.unknownScreen}</Text>
+      </View>
     );
   }
 
   return (
-    <View>
-      <Text>{strings.unknownScreen}</Text>
-    </View>
+    <>
+      {screenContent}
+      {switchSheet}
+      {joinSheet}
+      {toastOverlay}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  switchSheet: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl + theme.spacing.xl + theme.spacing.md,
-  },
   switchSheetContent: {
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
     gap: theme.spacing.md,
   },
   switchList: {
@@ -504,6 +643,16 @@ const styles = StyleSheet.create({
     ...textStyles.body,
   },
   switchError: {
+    color: theme.colors.danger,
+    fontFamily: theme.typography.body,
+  },
+  joinSheetContent: {
+    gap: theme.spacing.md,
+  },
+  joinActions: {
+    gap: theme.spacing.sm,
+  },
+  joinError: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
   },

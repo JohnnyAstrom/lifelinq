@@ -4,6 +4,7 @@ export type MeMembership = {
   groupId: string;
   groupName: string | null;
   role: 'ADMIN' | 'MEMBER';
+  isDefault: boolean;
 };
 
 export type MeResponse = {

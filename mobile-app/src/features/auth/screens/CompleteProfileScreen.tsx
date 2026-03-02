@@ -7,9 +7,15 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 import { updateProfile } from '../api/meApi';
 
 type Props = {
-  token: string;
+  token?: string;
   initialFirstName?: string | null;
   initialLastName?: string | null;
+  initialPlaceName?: string | null;
+  onSubmitProfile?: (
+    firstName: string,
+    lastName: string,
+    initialPlaceName: string | null
+  ) => Promise<void>;
   onCompleted: () => void;
 };
 
@@ -17,13 +23,19 @@ export function CompleteProfileScreen({
   token,
   initialFirstName,
   initialLastName,
+  initialPlaceName,
+  onSubmitProfile,
   onCompleted,
 }: Props) {
   const [firstName, setFirstName] = useState(initialFirstName ?? '');
   const [lastName, setLastName] = useState(initialLastName ?? '');
+  const [placeName, setPlaceName] = useState(initialPlaceName ?? 'Personal');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { handleApiError } = useAuth();
+  const strings = {
+    placeNameLabel: 'What should we call your place?',
+  };
 
   async function handleSubmit() {
     if (loading) {
@@ -32,7 +44,16 @@ export function CompleteProfileScreen({
     setLoading(true);
     setError(null);
     try {
-      await updateProfile(token, firstName, lastName);
+      const trimmedPlaceName = placeName.trim();
+      const normalizedPlaceName = trimmedPlaceName.length > 0 ? trimmedPlaceName : null;
+      if (onSubmitProfile) {
+        await onSubmitProfile(firstName, lastName, normalizedPlaceName);
+      } else {
+        if (!token) {
+          throw new Error('Missing token for profile update');
+        }
+        await updateProfile(token, firstName, lastName);
+      }
       await Promise.resolve(onCompleted());
     } catch (err) {
       await handleApiError(err);
@@ -60,6 +81,13 @@ export function CompleteProfileScreen({
             value={lastName}
             onChangeText={setLastName}
             placeholder="Last name"
+            returnKeyType="next"
+          />
+          <Text style={textStyles.subtle}>{strings.placeNameLabel}</Text>
+          <AppInput
+            value={placeName}
+            onChangeText={setPlaceName}
+            placeholder="Personal"
             returnKeyType="done"
             onSubmitEditing={handleSubmit}
           />

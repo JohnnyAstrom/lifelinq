@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from './theme';
 
@@ -47,11 +47,13 @@ export function AppToast({ message, toastKey, onDone, durationMs = 2000 }: Props
   }
 
   return (
-    <View pointerEvents="none" style={[styles.host, { bottom: insets.bottom + 20 }]}>
-      <Animated.View style={[styles.toast, { opacity }]}>
-        <Text style={styles.text}>{message}</Text>
-      </Animated.View>
-    </View>
+    <Modal visible transparent animationType="none" onRequestClose={() => undefined}>
+      <View pointerEvents="none" style={[styles.host, { bottom: insets.bottom + 20 }]}>
+        <Animated.View style={[styles.toast, { opacity }]}>
+          <Text style={styles.text}>{message}</Text>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -61,7 +63,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 10000,
+    elevation: 10000,
   },
   toast: {
     maxWidth: '88%',
