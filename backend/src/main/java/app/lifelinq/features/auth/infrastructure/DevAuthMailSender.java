@@ -9,7 +9,7 @@ public final class DevAuthMailSender implements AuthMailSender {
 
     @Override
     public void sendMagicLink(String email, String verifyUrl) {
-        log.info("Magic link login requested for {}", email);
+        log.info("Magic link login requested for {} -> {}", email, verifyUrl);
     }
 }
 
