@@ -3,6 +3,12 @@ package app.lifelinq.features.auth.application;
 import app.lifelinq.config.JwtSigner;
 import app.lifelinq.features.auth.contract.UserContextView;
 import app.lifelinq.features.auth.contract.UserMembershipView;
+import app.lifelinq.features.auth.domain.AuthIdentity;
+import app.lifelinq.features.auth.domain.AuthIdentityRepository;
+import app.lifelinq.features.auth.domain.AuthProvider;
+import app.lifelinq.features.auth.domain.AuthMailSender;
+import app.lifelinq.features.auth.domain.MagicLinkChallengeRepository;
+import app.lifelinq.features.auth.domain.MagicLinkTokenGenerator;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
@@ -11,8 +17,12 @@ import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import app.lifelinq.features.user.contract.UserProfileRead;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +34,14 @@ public class AuthApplicationService {
     private final UserProfileRead userProfileRead;
     private final UserDefaultGroupProvisioning userDefaultGroupProvisioning;
     private final UserGroupMembershipLookup userGroupMembershipLookup;
+    private final AuthIdentityRepository authIdentityRepository;
+    private final StartMagicLinkLoginUseCase startMagicLinkLoginUseCase;
+    private final VerifyMagicLinkUseCase verifyMagicLinkUseCase;
     private final JwtSigner jwtSigner;
+    private final Clock clock;
+    private final Duration magicLinkTtl;
+    private final String magicLinkVerifyBaseUrl;
+    private final String magicLinkCompleteBaseUrl;
 
     public AuthApplicationService(
             UserProvisioning userProvisioning,
@@ -34,7 +51,15 @@ public class AuthApplicationService {
             UserProfileRead userProfileRead,
             UserDefaultGroupProvisioning userDefaultGroupProvisioning,
             UserGroupMembershipLookup userGroupMembershipLookup,
-            JwtSigner jwtSigner
+            AuthIdentityRepository authIdentityRepository,
+            MagicLinkChallengeRepository magicLinkChallengeRepository,
+            MagicLinkTokenGenerator magicLinkTokenGenerator,
+            AuthMailSender authMailSender,
+            JwtSigner jwtSigner,
+            Clock clock,
+            Duration magicLinkTtl,
+            String magicLinkVerifyBaseUrl,
+            String magicLinkCompleteBaseUrl
     ) {
         if (userProvisioning == null) {
             throw new IllegalArgumentException("userProvisioning must not be null");
@@ -60,6 +85,30 @@ public class AuthApplicationService {
         if (jwtSigner == null) {
             throw new IllegalArgumentException("jwtSigner must not be null");
         }
+        if (authIdentityRepository == null) {
+            throw new IllegalArgumentException("authIdentityRepository must not be null");
+        }
+        if (magicLinkChallengeRepository == null) {
+            throw new IllegalArgumentException("magicLinkChallengeRepository must not be null");
+        }
+        if (magicLinkTokenGenerator == null) {
+            throw new IllegalArgumentException("magicLinkTokenGenerator must not be null");
+        }
+        if (authMailSender == null) {
+            throw new IllegalArgumentException("authMailSender must not be null");
+        }
+        if (clock == null) {
+            throw new IllegalArgumentException("clock must not be null");
+        }
+        if (magicLinkTtl == null || magicLinkTtl.isZero() || magicLinkTtl.isNegative()) {
+            throw new IllegalArgumentException("magicLinkTtl must be positive");
+        }
+        if (magicLinkVerifyBaseUrl == null || magicLinkVerifyBaseUrl.isBlank()) {
+            throw new IllegalArgumentException("magicLinkVerifyBaseUrl must not be blank");
+        }
+        if (magicLinkCompleteBaseUrl == null || magicLinkCompleteBaseUrl.isBlank()) {
+            throw new IllegalArgumentException("magicLinkCompleteBaseUrl must not be blank");
+        }
         this.userProvisioning = userProvisioning;
         this.userAccountDeletion = userAccountDeletion;
         this.userActiveGroupSelection = userActiveGroupSelection;
@@ -67,7 +116,18 @@ public class AuthApplicationService {
         this.userProfileRead = userProfileRead;
         this.userDefaultGroupProvisioning = userDefaultGroupProvisioning;
         this.userGroupMembershipLookup = userGroupMembershipLookup;
+        this.authIdentityRepository = authIdentityRepository;
+        this.startMagicLinkLoginUseCase = new StartMagicLinkLoginUseCase(
+                magicLinkChallengeRepository,
+                magicLinkTokenGenerator,
+                authMailSender
+        );
+        this.verifyMagicLinkUseCase = new VerifyMagicLinkUseCase(magicLinkChallengeRepository);
         this.jwtSigner = jwtSigner;
+        this.clock = clock;
+        this.magicLinkTtl = magicLinkTtl;
+        this.magicLinkVerifyBaseUrl = trimTrailingSlash(magicLinkVerifyBaseUrl);
+        this.magicLinkCompleteBaseUrl = magicLinkCompleteBaseUrl;
     }
 
     public String devLogin(String email) {
@@ -78,8 +138,27 @@ public class AuthApplicationService {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("email must not be blank");
         }
-        UUID userId = UUID.nameUUIDFromBytes(email.trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
+        UUID userId = deterministicEmailUserId(normalizeEmail(email));
         return ensureProvisionedAndSignToken(userId, initialPlaceName);
+    }
+
+    @Transactional
+    public void startMagicLinkLogin(String email) {
+        startMagicLinkLoginUseCase.execute(new StartMagicLinkLoginCommand(
+                email,
+                clock.instant(),
+                magicLinkTtl,
+                magicLinkVerifyBaseUrl
+        ));
+    }
+
+    @Transactional
+    public String verifyMagicLinkAndBuildRedirect(String token) {
+        VerifiedMagicLinkResult verified = verifyMagicLinkUseCase.execute(new VerifyMagicLinkCommand(token, clock.instant()));
+        UUID userId = resolveOrCreateEmailIdentity(verified.getNormalizedEmail());
+        String jwt = ensureProvisionedAndSignToken(userId);
+        String encodedJwt = URLEncoder.encode(jwt, StandardCharsets.UTF_8);
+        return magicLinkCompleteBaseUrl + "#token=" + encodedJwt;
     }
 
     @Transactional
@@ -143,5 +222,32 @@ public class AuthApplicationService {
 
     private UUID defaultGroupIdFor(UUID userId) {
         return UUID.nameUUIDFromBytes(("personal-group:" + userId).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private UUID resolveOrCreateEmailIdentity(String normalizedEmail) {
+        return authIdentityRepository.findByProviderAndSubject(AuthProvider.EMAIL, normalizedEmail)
+                .map(AuthIdentity::getUserId)
+                .orElseGet(() -> {
+                    UUID userId = deterministicEmailUserId(normalizedEmail);
+                    authIdentityRepository.save(new AuthIdentity(
+                            UUID.randomUUID(),
+                            AuthProvider.EMAIL,
+                            normalizedEmail,
+                            userId
+                    ));
+                    return userId;
+                });
+    }
+
+    private UUID deterministicEmailUserId(String normalizedEmail) {
+        return UUID.nameUUIDFromBytes(normalizedEmail.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String trimTrailingSlash(String value) {
+        return value.replaceAll("/+$", "");
     }
 }

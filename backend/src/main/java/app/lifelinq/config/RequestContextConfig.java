@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
 import app.lifelinq.features.user.domain.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Clock;
 
 @Configuration
 public class RequestContextConfig {
@@ -31,7 +32,12 @@ public class RequestContextConfig {
             @Value("${lifelinq.jwt.issuer:}") String issuer,
             @Value("${lifelinq.jwt.audience:}") String audience
     ) {
-        return new JwtSigner(secret, ttlSeconds, issuer, audience, java.time.Clock.systemUTC());
+        return new JwtSigner(secret, ttlSeconds, issuer, audience, clock());
+    }
+
+    @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
     }
 
     @Bean

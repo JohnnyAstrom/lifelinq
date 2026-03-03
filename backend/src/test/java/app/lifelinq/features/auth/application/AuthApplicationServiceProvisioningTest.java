@@ -5,6 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.config.JwtSigner;
+import app.lifelinq.features.auth.domain.AuthIdentity;
+import app.lifelinq.features.auth.domain.AuthIdentityRepository;
+import app.lifelinq.features.auth.domain.AuthMailSender;
+import app.lifelinq.features.auth.domain.AuthProvider;
+import app.lifelinq.features.auth.domain.MagicLinkChallenge;
+import app.lifelinq.features.auth.domain.MagicLinkChallengeRepository;
+import app.lifelinq.features.auth.domain.MagicLinkTokenGenerator;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.group.contract.UserGroupMembershipSummary;
@@ -84,8 +91,17 @@ class AuthApplicationServiceProvisioningTest {
                     userApplicationService,
                     userDefaultGroupProvisioning,
                     userDefaultGroupProvisioning,
+                    new InMemoryAuthIdentityRepository(),
+                    new InMemoryMagicLinkChallengeRepository(),
+                    () -> "magic-token",
+                    (email, verifyUrl) -> {
+                    },
                     new JwtSigner("test-secret", 300, null, null,
-                            Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC))
+                            Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)),
+                    Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC),
+                    java.time.Duration.ofMinutes(15),
+                    "http://localhost:8080/auth/magic/verify",
+                    "mobileapp://auth/complete"
             );
         }
     }
@@ -148,6 +164,39 @@ class AuthApplicationServiceProvisioningTest {
 
         private String lastInitialPlaceNameFor(UUID userId) {
             return initialPlaceNamesByUser.get(userId);
+        }
+    }
+
+    private static final class InMemoryAuthIdentityRepository implements AuthIdentityRepository {
+        private final Map<String, AuthIdentity> byKey = new HashMap<>();
+
+        @Override
+        public Optional<AuthIdentity> findByProviderAndSubject(AuthProvider provider, String subject) {
+            return Optional.ofNullable(byKey.get(provider.name() + ":" + subject));
+        }
+
+        @Override
+        public void save(AuthIdentity identity) {
+            byKey.put(identity.getProvider().name() + ":" + identity.getSubject(), identity);
+        }
+    }
+
+    private static final class InMemoryMagicLinkChallengeRepository implements MagicLinkChallengeRepository {
+        private final Map<String, MagicLinkChallenge> byToken = new HashMap<>();
+
+        @Override
+        public Optional<MagicLinkChallenge> findByToken(String token) {
+            return Optional.ofNullable(byToken.get(token));
+        }
+
+        @Override
+        public boolean existsByToken(String token) {
+            return byToken.containsKey(token);
+        }
+
+        @Override
+        public void save(MagicLinkChallenge challenge) {
+            byToken.put(challenge.getToken(), challenge);
         }
     }
 }
