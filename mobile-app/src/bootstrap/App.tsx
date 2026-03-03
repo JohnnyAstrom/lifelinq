@@ -1,13 +1,13 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
+import { PendingInviteProvider, usePendingInvite } from '../shared/invite/PendingInviteContext';
 import { setActiveGroup, updateProfile } from '../features/auth/api/meApi';
 import { acceptInvitation, createGroup, renameCurrentPlace } from '../features/group/api/groupApi';
-import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { CompleteProfileScreen } from '../features/auth/screens/CompleteProfileScreen';
@@ -24,13 +24,12 @@ import { ManagePlaceScreen } from '../screens/ManagePlaceScreen';
 import { SpacesScreen } from '../screens/SpacesScreen';
 import { AcceptInviteScreen } from '../screens/AcceptInviteScreen';
 import { AppToast } from '../shared/ui/AppToast';
-import { formatApiError } from '../shared/api/client';
+import { ApiError, formatApiError } from '../shared/api/client';
 import { ActionSheet } from '../shared/ui/ActionSheet';
 import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Screen =
-  | 'login'
   | 'home'
   | 'todos'
   | 'members'
@@ -51,7 +50,9 @@ export default function App() {
           <BottomSheetModalProvider>
             <View style={{ flex: 1 }}>
               <AuthProvider>
-                <AppShell />
+                <PendingInviteProvider>
+                  <AppShell />
+                </PendingInviteProvider>
               </AuthProvider>
             </View>
           </BottomSheetModalProvider>
@@ -61,24 +62,201 @@ export default function App() {
   );
 }
 
-function SplashScreen() {
-  const strings = {
-    title: 'Loading app',
-    subtitle: 'Initializing your workspace...',
-  };
+function HydratingSplashScreen() {
   return (
-    <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
-      <AppCard>
-        <Text style={textStyles.h3}>{strings.title}</Text>
-        <Subtle>{strings.subtitle}</Subtle>
-      </AppCard>
+    <AppScreen scroll={false} contentStyle={{ justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator color={theme.colors.primary} />
     </AppScreen>
   );
 }
 
+function parseAuthCompleteUrl(url: string): { token?: string; error?: string } | null {
+  const [base, fragment = ''] = url.split('#', 2);
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  if (normalizedBase !== 'mobileapp://auth/complete') {
+    return null;
+  }
+  const params = new URLSearchParams(fragment);
+  const token = params.get('token')?.trim();
+  const error = params.get('error')?.trim();
+  if (token) {
+    return { token };
+  }
+  if (error) {
+    return { error };
+  }
+  return null;
+}
+
+function parseInviteUrl(url: string): { token: string } | null {
+  const [baseWithPath, queryAndMaybeFragment = ''] = url.split('?', 2);
+  const normalizedBase = baseWithPath.endsWith('/') ? baseWithPath.slice(0, -1) : baseWithPath;
+  if (normalizedBase !== 'mobileapp://invite') {
+    return null;
+  }
+  const query = queryAndMaybeFragment.split('#', 1)[0];
+  const params = new URLSearchParams(query);
+  const token = params.get('token')?.trim();
+  if (!token) {
+    return null;
+  }
+  return { token };
+}
+
 function AppShell() {
-  const { token, isAuthenticated, isInitializing, login, logout, handleApiError } = useAuth();
-  const [screen, setScreen] = useState<Screen>('login');
+  const { status, token, reloadMe, login } = useAuth();
+  const { pendingInviteToken, setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const lastHandledUrlRef = useRef<string | null>(null);
+  const tokenInFlightRef = useRef<string | null>(null);
+  const previousStatusRef = useRef(status);
+  const autoAcceptInFlightRef = useRef<string | null>(null);
+  const lastAutoAcceptedTokenRef = useRef<string | null>(null);
+
+  const handleIncomingUrl = useCallback(
+    async (url: string | null | undefined) => {
+      if (!url || lastHandledUrlRef.current === url) {
+        return;
+      }
+      const parsed = parseAuthCompleteUrl(url);
+      if (parsed) {
+        lastHandledUrlRef.current = url;
+        if (parsed.token) {
+          if (tokenInFlightRef.current === parsed.token) {
+            return;
+          }
+          tokenInFlightRef.current = parsed.token;
+          setAuthError(null);
+          try {
+            await login(parsed.token);
+          } finally {
+            tokenInFlightRef.current = null;
+          }
+          return;
+        }
+        if (parsed.error) {
+          setAuthError('Magic link is invalid or expired.');
+        }
+        return;
+      }
+
+      const invite = parseInviteUrl(url);
+      if (invite) {
+        lastHandledUrlRef.current = url;
+        setInviteError(null);
+        setPendingInviteToken(invite.token);
+      }
+    },
+    [login, setPendingInviteToken]
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (!active) {
+        return;
+      }
+      void handleIncomingUrl(initialUrl);
+    })();
+
+    const subscription = Linking.addEventListener('url', (event) => {
+      void handleIncomingUrl(event.url);
+    });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [handleIncomingUrl]);
+
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+    previousStatusRef.current = status;
+
+    const transitionedToAuthenticated = previousStatus === 'unauthenticated' && status === 'authenticated';
+    if (!transitionedToAuthenticated || !pendingInviteToken || !token) {
+      return;
+    }
+    if (autoAcceptInFlightRef.current === pendingInviteToken) {
+      return;
+    }
+    if (lastAutoAcceptedTokenRef.current === pendingInviteToken) {
+      return;
+    }
+
+    let cancelled = false;
+    autoAcceptInFlightRef.current = pendingInviteToken;
+
+    (async () => {
+      try {
+        await acceptInvitation(token, pendingInviteToken);
+        if (cancelled) {
+          return;
+        }
+        lastAutoAcceptedTokenRef.current = pendingInviteToken;
+        clearPendingInviteToken();
+        await reloadMe();
+        setInviteError(null);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        clearPendingInviteToken();
+        if (err instanceof ApiError && err.status === 409) {
+          await reloadMe();
+          setInviteError(null);
+          return;
+        }
+        setInviteError('Invitation could not be accepted.');
+      } finally {
+        if (!cancelled) {
+          autoAcceptInFlightRef.current = null;
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      autoAcceptInFlightRef.current = null;
+    };
+  }, [status, pendingInviteToken, token, clearPendingInviteToken, reloadMe]);
+
+  if (status === 'hydrating') {
+    return <HydratingSplashScreen />;
+  }
+
+  if (status === 'unauthenticated') {
+    return (
+      <AuthStack
+        onLoggedIn={login}
+        authError={authError}
+        onClearAuthError={() => setAuthError(null)}
+      />
+    );
+  }
+
+  return <AppStack />;
+}
+
+function AuthStack({
+  onLoggedIn,
+  authError,
+  onClearAuthError,
+}: {
+  onLoggedIn: (token: string) => Promise<void>;
+  authError: string | null;
+  onClearAuthError: () => void;
+}) {
+  return <LoginScreen onLoggedIn={onLoggedIn} authError={authError} onClearAuthError={onClearAuthError} />;
+}
+
+function AppStack() {
+  const { token, me, meLoading, meError, reloadMe, logout, handleApiError } = useAuth();
+  const { setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
+  const [screen, setScreen] = useState<Screen>('home');
   const [acceptInviteToken, setAcceptInviteToken] = useState<string | null>(null);
   const [activeShoppingListId, setActiveShoppingListId] = useState<string | null>(null);
   const [switchSheetOpen, setSwitchSheetOpen] = useState(false);
@@ -94,19 +272,12 @@ function AppShell() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [pendingCreatedGroupId, setPendingCreatedGroupId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; key: number } | null>(null);
-  const me = useMe(token);
   const strings = {
     loadingProfileTitle: 'Loading your profile',
     loadingProfileSubtitle: 'Please wait a moment.',
     genericErrorTitle: 'Something went wrong',
     unknownScreen: 'Unknown screen',
   };
-
-  useEffect(() => {
-    if (isAuthenticated && screen === 'login') {
-      setScreen('home');
-    }
-  }, [isAuthenticated, screen]);
 
   function showToast(message: string) {
     setToast((prev) => ({ message, key: (prev?.key ?? 0) + 1 }));
@@ -117,7 +288,7 @@ function AppShell() {
       return;
     }
     await setActiveGroup(token, groupId);
-    const updatedMe = await me.reload();
+    const updatedMe = await reloadMe();
     const activeMembership = updatedMe?.activeGroupId
       ? updatedMe.memberships.find((membership) => membership.groupId === updatedMe.activeGroupId) ?? null
       : null;
@@ -164,16 +335,18 @@ function AppShell() {
     if (!token || !normalizedToken || joinLoading) {
       return;
     }
+    setPendingInviteToken(normalizedToken);
     setJoinError(null);
     setJoinLoading(true);
     try {
       await acceptInvitation(token, normalizedToken);
-      const updatedMe = await me.reload();
+      const updatedMe = await reloadMe();
       const activeMembership = updatedMe?.activeGroupId
         ? updatedMe.memberships.find((membership) => membership.groupId === updatedMe.activeGroupId) ?? null
         : null;
       const placeName = activeMembership?.groupName?.trim() || 'My space';
       showToast(`You joined ${placeName}.`);
+      clearPendingInviteToken();
       setJoinSheetOpen(false);
       setJoinTokenInput('');
       setScreen('home');
@@ -189,7 +362,7 @@ function AppShell() {
     if (switchingGroupId) {
       return;
     }
-    if (groupId === me.data?.activeGroupId) {
+    if (groupId === me?.activeGroupId) {
       setSwitchSheetOpen(false);
       return;
     }
@@ -253,32 +426,11 @@ function AppShell() {
     }
   }
 
-  if (isInitializing) {
-    return (
-      <SplashScreen />
-    );
-  }
-
-  if (!isAuthenticated) {
-    // Keep LoginScreen as the top-level screen to avoid flex layout collapse.
-    return (
-      <LoginScreen
-        onLoggedIn={async (value) => {
-          await login(value);
-          setScreen('home');
-        }}
-      />
-    );
-  }
-
-  // Type narrowing for downstream screens: authenticated flow should always have a token.
   if (!token) {
-    return (
-      <SplashScreen />
-    );
+    return <HydratingSplashScreen />;
   }
 
-  if (me.loading) {
+  if (meLoading) {
     return (
       <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
         <AppCard>
@@ -289,18 +441,18 @@ function AppShell() {
     );
   }
 
-  if (me.error) {
+  if (meError) {
     return (
       <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
         <AppCard>
           <Text style={textStyles.h3}>{strings.genericErrorTitle}</Text>
-          <Text style={{ color: theme.colors.danger }}>{me.error}</Text>
+          <Text style={{ color: theme.colors.danger }}>{meError}</Text>
         </AppCard>
       </AppScreen>
     );
   }
 
-  if (!me.data) {
+  if (!me) {
     return (
       <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
         <AppCard>
@@ -310,7 +462,7 @@ function AppShell() {
       </AppScreen>
     );
   }
-  const meData = me.data;
+  const meData = me;
 
   const hasCompletedProfile =
     !!meData.firstName?.trim() &&
@@ -342,38 +494,38 @@ function AppShell() {
           await renameCurrentPlace(token, initialPlaceName);
         }}
         onCompleted={() => {
-          me.reload();
+          reloadMe();
         }}
       />
     );
   }
 
-  if (me.data.memberships.length === 0) {
+  if (me.memberships.length === 0) {
     return (
       <CreateGroupScreen
         token={token}
         onCreated={async () => {
-          me.reload();
+          reloadMe();
           setScreen('home');
         }}
       />
     );
   }
 
-  if (me.data.activeGroupId == null) {
+  if (me.activeGroupId == null) {
     return (
       <SelectActiveGroupScreen
         token={token}
-        memberships={me.data.memberships}
+        memberships={me.memberships}
         onSelected={() => {
-          me.reload();
+          reloadMe();
         }}
       />
     );
   }
 
-  const switchItems = me.data.memberships;
-  const activeGroupId = me.data.activeGroupId;
+  const switchItems = me.memberships;
+  const activeGroupId = me.activeGroupId;
   const shouldRenderSwitchSheet = switchSheetOpen && switchItems.length > 1;
   const switchSheet = shouldRenderSwitchSheet ? (
     <ActionSheet visible={switchSheetOpen} onClose={() => setSwitchSheetOpen(false)} presentation="compact">
@@ -514,7 +666,7 @@ function AppShell() {
     screenContent = (
       <GroupDetailsScreen
         token={token}
-        me={me.data}
+        me={me}
         onDone={() => {
           setScreen('spaces');
         }}
@@ -563,7 +715,7 @@ function AppShell() {
   } else if (screen === 'settings') {
     screenContent = (
       <SettingsScreen
-        me={me.data}
+        me={me}
         onDone={() => {
           setScreen('home');
         }}
@@ -574,13 +726,13 @@ function AppShell() {
         onCreatePlace={openCreateSheet}
         onJoinPlace={openJoinSheet}
         onLogout={async () => {
+          clearPendingInviteToken();
           await logout();
-          setScreen('login');
         }}
       />
     );
   } else if (screen === 'manage-place') {
-    const meData = me.data;
+    const meData = me;
     const activeMembership = meData.activeGroupId
       ? meData.memberships.find((membership) => membership.groupId === meData.activeGroupId) ?? null
       : null;
@@ -591,7 +743,7 @@ function AppShell() {
         token={token}
         me={meData}
         onPlaceRenamed={async () => {
-          await me.reload();
+          await reloadMe();
           showToast('Place renamed.');
         }}
         onPlaceLeft={async (oldPlaceName) => {
@@ -601,7 +753,7 @@ function AppShell() {
             }
             return;
           }
-          await me.reload();
+          await reloadMe();
           setScreen('settings');
           showToast(`You left ${oldPlaceName}.`);
         }}
@@ -612,7 +764,7 @@ function AppShell() {
             }
             return;
           }
-          await me.reload();
+          await reloadMe();
           setScreen('settings');
           showToast('Place deleted.');
         }}
@@ -625,7 +777,7 @@ function AppShell() {
   } else if (screen === 'spaces') {
     screenContent = (
       <SpacesScreen
-        me={me.data}
+        me={me}
         onDone={() => {
           setScreen('settings');
         }}
@@ -645,7 +797,7 @@ function AppShell() {
         token={token}
         spaceName={currentSpaceName}
         onContextInvalidated={() => {
-          me.reload();
+          reloadMe();
         }}
         onOpenSwitchSheet={openSwitchSheet}
         onCreateTodo={() => {
@@ -671,7 +823,7 @@ function AppShell() {
         token={token}
         inviteToken={acceptInviteToken}
         onAccepted={async () => {
-          const updatedMe = await me.reload();
+          const updatedMe = await reloadMe();
           const activeMembership = updatedMe?.activeGroupId
             ? updatedMe.memberships.find((membership) => membership.groupId === updatedMe.activeGroupId) ?? null
             : null;
@@ -764,3 +916,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
+

@@ -6,10 +6,12 @@ import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../../../shared
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
-  onLoggedIn: (token: string) => void;
+  onLoggedIn: (token: string) => Promise<void> | void;
+  authError?: string | null;
+  onClearAuthError?: () => void;
 };
 
-export function LoginScreen({ onLoggedIn }: Props) {
+export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +30,10 @@ export function LoginScreen({ onLoggedIn }: Props) {
     }
     setLoading(true);
     setError(null);
+    onClearAuthError?.();
     try {
       const response = await devLogin(email.trim());
-      onLoggedIn(response.token);
+      await Promise.resolve(onLoggedIn(response.token));
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -53,13 +56,18 @@ export function LoginScreen({ onLoggedIn }: Props) {
             <AppInput
               value={email}
               placeholder={strings.emailPlaceholder}
-              onChangeText={setEmail}
+              onChangeText={(value) => {
+                if (authError) {
+                  onClearAuthError?.();
+                }
+                setEmail(value);
+              }}
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleLogin}
             />
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
           <AppButton
             title={loading ? strings.loggingIn : strings.login}
             onPress={handleLogin}
