@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class AuthMagicLinkController {
     private static final String INVALID_LINK_ERROR = "invalid_or_expired";
+    private static final String REFERRER_POLICY_HEADER = "Referrer-Policy";
+    private static final String REFERRER_POLICY_VALUE = "no-referrer";
     private final AuthApplicationService authApplicationService;
     private final String completeBaseUrl;
 
@@ -39,10 +41,16 @@ public class AuthMagicLinkController {
     public ResponseEntity<Void> verify(@RequestParam("token") String token) {
         try {
             String redirectUrl = authApplicationService.verifyMagicLinkAndBuildRedirect(token);
-            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(redirectUrl)).build();
+            return ResponseEntity.status(HttpStatus.SEE_OTHER)
+                    .location(URI.create(redirectUrl))
+                    .header(REFERRER_POLICY_HEADER, REFERRER_POLICY_VALUE)
+                    .build();
         } catch (MagicLinkVerificationException | IllegalArgumentException ex) {
             String failureRedirect = completeBaseUrl + "#error=" + INVALID_LINK_ERROR;
-            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(failureRedirect)).build();
+            return ResponseEntity.status(HttpStatus.SEE_OTHER)
+                    .location(URI.create(failureRedirect))
+                    .header(REFERRER_POLICY_HEADER, REFERRER_POLICY_VALUE)
+                    .build();
         }
     }
 
@@ -58,4 +66,3 @@ public class AuthMagicLinkController {
         }
     }
 }
-

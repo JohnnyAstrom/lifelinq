@@ -59,7 +59,8 @@ class AuthMagicLinkControllerTest {
 
         mockMvc.perform(get("/auth/magic/verify").param("token", "abc"))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", "mobileapp://auth/complete#token=jwt-value"));
+                .andExpect(header().string("Location", "mobileapp://auth/complete#token=jwt-value"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"));
     }
 
     @Test
@@ -69,6 +70,7 @@ class AuthMagicLinkControllerTest {
 
         mockMvc.perform(get("/auth/magic/verify").param("token", "invalid-token"))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", "mobileapp://auth/complete#error=invalid_or_expired"));
+                .andExpect(header().string("Location", "mobileapp://auth/complete#error=invalid_or_expired"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"));
     }
 }
