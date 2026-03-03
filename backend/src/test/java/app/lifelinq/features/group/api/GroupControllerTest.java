@@ -21,6 +21,7 @@ import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupMemberView;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.GroupRole;
+import app.lifelinq.features.group.domain.Invitation;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
@@ -140,6 +141,64 @@ class GroupControllerTest {
                 Mockito.eq("invite-token"),
                 Mockito.eq(userId)
         );
+    }
+
+    @Test
+    void resolveInvitationCodeReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(post("/groups/invitations/resolve-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"K7M9XQ\"}"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(groupApplicationService);
+    }
+
+    @Test
+    void resolveInvitationCodeReturns404WhenCodeNotFound() throws Exception {
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(groupApplicationService.resolveInvitationCode("K7M9XQ"))
+                .thenReturn(java.util.Optional.empty());
+
+        mockMvc.perform(post("/groups/invitations/resolve-code")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"K7M9XQ\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void resolveInvitationCodeSucceeds() throws Exception {
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        Invitation result = Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                app.lifelinq.features.group.domain.InvitationType.LINK,
+                null,
+                null,
+                "token-1",
+                "K7M9XQ",
+                Instant.now().plusSeconds(3600),
+                null
+        );
+
+        when(groupApplicationService.resolveInvitationCode("K7M9XQ"))
+                .thenReturn(java.util.Optional.of(result));
+
+        mockMvc.perform(post("/groups/invitations/resolve-code")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"K7M9XQ\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invitationId").value(result.getId().toString()))
+                .andExpect(jsonPath("$.groupId").value(result.getGroupId().toString()))
+                .andExpect(jsonPath("$.type").value("LINK"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test

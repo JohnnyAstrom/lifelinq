@@ -111,7 +111,7 @@ class AcceptInvitationUseCaseTest {
                 null,
                 "token-link",
                 Instant.parse("2026-01-01T00:00:00Z"),
-                1
+                null
         );
         invitationRepository.save(invitation);
 
@@ -124,7 +124,8 @@ class AcceptInvitationUseCaseTest {
 
         assertEquals(invitation.getGroupId(), result.getGroupId());
         assertEquals(1, membershipRepository.saved.size());
-        assertEquals(1, invitationRepository.findByToken("token-link").orElseThrow().getUsageCount());
+        assertEquals(0, invitationRepository.findByToken("token-link").orElseThrow().getUsageCount());
+        assertEquals(null, invitationRepository.findByToken("token-link").orElseThrow().getMaxUses());
     }
 
     @Test
@@ -161,6 +162,39 @@ class AcceptInvitationUseCaseTest {
         )));
     }
 
+    @Test
+    void unlimitedLinkCanBeAcceptedMultipleTimesWithoutExhaustion() {
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                InvitationType.LINK,
+                null,
+                "token-link-unlimited",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                null
+        );
+        invitationRepository.save(invitation);
+
+        AcceptInvitationUseCase useCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
+        useCase.execute(new AcceptInvitationCommand(
+                "token-link-unlimited",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        ));
+        useCase.execute(new AcceptInvitationCommand(
+                "token-link-unlimited",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        ));
+
+        Invitation saved = invitationRepository.findByToken("token-link-unlimited").orElseThrow();
+        assertEquals(InvitationStatus.ACTIVE, saved.getStatus());
+        assertEquals(0, saved.getUsageCount());
+        assertEquals(null, saved.getMaxUses());
+    }
+
     private static final class InMemoryInvitationRepository implements InvitationRepository {
         private final List<Invitation> saved = new ArrayList<>();
 
@@ -190,8 +224,23 @@ class AcceptInvitationUseCaseTest {
         }
 
         @Override
+        public Optional<Invitation> findByShortCode(String shortCode) {
+            for (Invitation invitation : saved) {
+                if (shortCode.equals(invitation.getShortCode())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existsByToken(String token) {
             return findByToken(token).isPresent();
+        }
+
+        @Override
+        public boolean existsByShortCode(String shortCode) {
+            return findByShortCode(shortCode).isPresent();
         }
 
         @Override

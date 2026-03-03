@@ -30,6 +30,19 @@ public final class InMemoryInvitationRepository implements InvitationRepository 
     }
 
     @Override
+    public Optional<Invitation> findByShortCode(String shortCode) {
+        if (shortCode == null || shortCode.isBlank()) {
+            throw new IllegalArgumentException("shortCode must not be blank");
+        }
+        for (Invitation invitation : invitationsByToken.values()) {
+            if (shortCode.equals(invitation.getShortCode())) {
+                return Optional.of(invitation);
+            }
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<Invitation> findById(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
@@ -48,6 +61,19 @@ public final class InMemoryInvitationRepository implements InvitationRepository 
             throw new IllegalArgumentException("token must not be blank");
         }
         return invitationsByToken.containsKey(token);
+    }
+
+    @Override
+    public boolean existsByShortCode(String shortCode) {
+        if (shortCode == null || shortCode.isBlank()) {
+            throw new IllegalArgumentException("shortCode must not be blank");
+        }
+        for (Invitation invitation : invitationsByToken.values()) {
+            if (shortCode.equals(invitation.getShortCode())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

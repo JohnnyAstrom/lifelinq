@@ -22,7 +22,8 @@ class CreateInvitationUseCaseTest {
     void createsInvitationWithTokenAndExpiry() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
         FixedTokenGenerator tokenGenerator = new FixedTokenGenerator("token-1");
-        CreateInvitationUseCase useCase = new CreateInvitationUseCase(repository, tokenGenerator);
+        FixedShortCodeGenerator shortCodeGenerator = new FixedShortCodeGenerator("AB12CD");
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(repository, tokenGenerator, shortCodeGenerator);
 
         CreateInvitationCommand command = new CreateInvitationCommand(
                 UUID.randomUUID(),
@@ -42,17 +43,26 @@ class CreateInvitationUseCaseTest {
         assertEquals(1, repository.saved.size());
         assertEquals(InvitationStatus.ACTIVE, repository.saved.get(0).getStatus());
         assertEquals("Alex Doe", repository.saved.get(0).getInviterDisplayName());
+        assertEquals("AB12CD", repository.saved.get(0).getShortCode());
     }
 
     @Test
     void requiresCommand() {
-        CreateInvitationUseCase useCase = new CreateInvitationUseCase(new InMemoryInvitationRepository(), new FixedTokenGenerator("t"));
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(
+                new InMemoryInvitationRepository(),
+                new FixedTokenGenerator("token-1"),
+                new FixedShortCodeGenerator("AB12CD")
+        );
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
     }
 
     @Test
     void requiresPositiveTtl() {
-        CreateInvitationUseCase useCase = new CreateInvitationUseCase(new InMemoryInvitationRepository(), new FixedTokenGenerator("t"));
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(
+                new InMemoryInvitationRepository(),
+                new FixedTokenGenerator("token-1"),
+                new FixedShortCodeGenerator("AB12CD")
+        );
         CreateInvitationCommand command = new CreateInvitationCommand(
                 UUID.randomUUID(),
                 InvitationType.EMAIL,
@@ -78,7 +88,8 @@ class CreateInvitationUseCaseTest {
 
         CreateInvitationUseCase useCase = new CreateInvitationUseCase(
                 repository,
-                new SequenceTokenGenerator(List.of("token-1", "token-2"))
+                new SequenceTokenGenerator(List.of("token-1", "token-2")),
+                new FixedShortCodeGenerator("AB12CD")
         );
 
         CreateInvitationCommand command = new CreateInvitationCommand(
@@ -99,7 +110,8 @@ class CreateInvitationUseCaseTest {
     void createsLinkInvitationWithoutEmail() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
         FixedTokenGenerator tokenGenerator = new FixedTokenGenerator("link-token");
-        CreateInvitationUseCase useCase = new CreateInvitationUseCase(repository, tokenGenerator);
+        FixedShortCodeGenerator shortCodeGenerator = new FixedShortCodeGenerator("ZX90QP");
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(repository, tokenGenerator, shortCodeGenerator);
 
         CreateInvitationCommand command = new CreateInvitationCommand(
                 UUID.randomUUID(),
@@ -107,7 +119,7 @@ class CreateInvitationUseCaseTest {
                 null,
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofDays(2),
-                1
+                null
         );
 
         CreateInvitationResult result = useCase.execute(command);
@@ -117,6 +129,8 @@ class CreateInvitationUseCaseTest {
         assertEquals(1, repository.saved.size());
         assertEquals(InvitationType.LINK, repository.saved.get(0).getType());
         assertEquals(null, repository.saved.get(0).getInviteeEmail());
+        assertEquals(null, repository.saved.get(0).getMaxUses());
+        assertEquals("ZX90QP", repository.saved.get(0).getShortCode());
     }
 
     @Test
@@ -130,10 +144,14 @@ class CreateInvitationUseCaseTest {
                 null,
                 "existing-link-token",
                 Instant.parse("2026-01-03T00:00:00Z"),
-                1
+                null
         ));
         FixedTokenGenerator tokenGenerator = new FixedTokenGenerator("new-token-ignored");
-        CreateInvitationUseCase useCase = new CreateInvitationUseCase(repository, tokenGenerator);
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(
+                repository,
+                tokenGenerator,
+                new FixedShortCodeGenerator("CD34EF")
+        );
 
         CreateInvitationCommand command = new CreateInvitationCommand(
                 groupId,
@@ -141,13 +159,46 @@ class CreateInvitationUseCaseTest {
                 null,
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Duration.ofDays(2),
-                1
+                null
         );
 
         CreateInvitationResult result = useCase.execute(command);
 
         assertEquals("existing-link-token", result.getToken());
         assertEquals(1, repository.saved.size());
+    }
+
+    @Test
+    void retriesShortCodeGenerationOnCollision() {
+        InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
+        repository.saved.add(Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "test@example.com",
+                "existing-token",
+                "ABC123",
+                Instant.parse("2026-01-03T00:00:00Z"),
+                1
+        ));
+        CreateInvitationUseCase useCase = new CreateInvitationUseCase(
+                repository,
+                new FixedTokenGenerator("token-2"),
+                new SequenceShortCodeGenerator(List.of("ABC123", "DEF456"))
+        );
+
+        CreateInvitationCommand command = new CreateInvitationCommand(
+                UUID.randomUUID(),
+                InvitationType.EMAIL,
+                "new@example.com",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Duration.ofDays(1),
+                1
+        );
+
+        CreateInvitationResult result = useCase.execute(command);
+
+        assertEquals("token-2", result.getToken());
+        assertEquals("DEF456", repository.saved.get(1).getShortCode());
     }
 
     private static final class InMemoryInvitationRepository implements InvitationRepository {
@@ -179,8 +230,23 @@ class CreateInvitationUseCaseTest {
         }
 
         @Override
+        public Optional<Invitation> findByShortCode(String shortCode) {
+            for (Invitation invitation : saved) {
+                if (shortCode.equals(invitation.getShortCode())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existsByToken(String token) {
             return findByToken(token).isPresent();
+        }
+
+        @Override
+        public boolean existsByShortCode(String shortCode) {
+            return findByShortCode(shortCode).isPresent();
         }
 
         @Override
@@ -233,6 +299,35 @@ class CreateInvitationUseCaseTest {
             String token = tokens.get(index);
             index = Math.min(index + 1, tokens.size() - 1);
             return token;
+        }
+    }
+
+    private static final class FixedShortCodeGenerator implements InvitationShortCodeGenerator {
+        private final String shortCode;
+
+        private FixedShortCodeGenerator(String shortCode) {
+            this.shortCode = shortCode;
+        }
+
+        @Override
+        public String generate() {
+            return shortCode;
+        }
+    }
+
+    private static final class SequenceShortCodeGenerator implements InvitationShortCodeGenerator {
+        private final List<String> shortCodes;
+        private int index = 0;
+
+        private SequenceShortCodeGenerator(List<String> shortCodes) {
+            this.shortCodes = shortCodes;
+        }
+
+        @Override
+        public String generate() {
+            String shortCode = shortCodes.get(index);
+            index = Math.min(index + 1, shortCodes.size() - 1);
+            return shortCode;
         }
     }
 }

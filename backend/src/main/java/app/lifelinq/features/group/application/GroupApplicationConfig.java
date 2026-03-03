@@ -5,6 +5,7 @@ import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
+import app.lifelinq.features.group.infrastructure.InMemoryInvitationShortCodeGenerator;
 import app.lifelinq.features.group.infrastructure.UserDefaultGroupProvisioningAdapter;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
@@ -49,9 +50,10 @@ public class GroupApplicationConfig {
     @Bean
     public CreateInvitationUseCase createInvitationUseCase(
             InvitationRepository invitationRepository,
-            InvitationTokenGenerator tokenGenerator
+            InvitationTokenGenerator tokenGenerator,
+            InvitationShortCodeGenerator shortCodeGenerator
     ) {
-        return new CreateInvitationUseCase(invitationRepository, tokenGenerator);
+        return new CreateInvitationUseCase(invitationRepository, tokenGenerator, shortCodeGenerator);
     }
 
     @Bean
@@ -71,6 +73,13 @@ public class GroupApplicationConfig {
     }
 
     @Bean
+    public ResolveInvitationCodeUseCase resolveInvitationCodeUseCase(
+            InvitationRepository invitationRepository
+    ) {
+        return new ResolveInvitationCodeUseCase(invitationRepository);
+    }
+
+    @Bean
     public GroupApplicationService groupApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
             CreateGroupUseCase createGroupUseCase,
@@ -78,6 +87,7 @@ public class GroupApplicationConfig {
             ListGroupMembersUseCase listGroupMembersUseCase,
             RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase,
             CreateInvitationUseCase createInvitationUseCase,
+            ResolveInvitationCodeUseCase resolveInvitationCodeUseCase,
             PreviewInvitationUseCase previewInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
@@ -95,6 +105,7 @@ public class GroupApplicationConfig {
                 listGroupMembersUseCase,
                 removeMemberFromGroupUseCase,
                 createInvitationUseCase,
+                resolveInvitationCodeUseCase,
                 previewInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,
@@ -124,6 +135,11 @@ public class GroupApplicationConfig {
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    public InvitationShortCodeGenerator invitationShortCodeGenerator() {
+        return new InMemoryInvitationShortCodeGenerator();
     }
 
     @Bean

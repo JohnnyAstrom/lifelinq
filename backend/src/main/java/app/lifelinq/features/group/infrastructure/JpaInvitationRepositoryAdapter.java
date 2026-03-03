@@ -38,6 +38,14 @@ public final class JpaInvitationRepositoryAdapter implements InvitationRepositor
     }
 
     @Override
+    public Optional<Invitation> findByShortCode(String shortCode) {
+        if (shortCode == null || shortCode.isBlank()) {
+            throw new IllegalArgumentException("shortCode must not be blank");
+        }
+        return invitationJpaRepository.findByShortCode(shortCode).map(mapper::toDomain);
+    }
+
+    @Override
     public Optional<Invitation> findById(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
@@ -51,6 +59,14 @@ public final class JpaInvitationRepositoryAdapter implements InvitationRepositor
             throw new IllegalArgumentException("token must not be blank");
         }
         return invitationJpaRepository.existsByToken(token);
+    }
+
+    @Override
+    public boolean existsByShortCode(String shortCode) {
+        if (shortCode == null || shortCode.isBlank()) {
+            throw new IllegalArgumentException("shortCode must not be blank");
+        }
+        return invitationJpaRepository.existsByShortCode(shortCode);
     }
 
     @Override

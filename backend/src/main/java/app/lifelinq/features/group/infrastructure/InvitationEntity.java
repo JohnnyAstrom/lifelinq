@@ -39,11 +39,14 @@ public class InvitationEntity {
     @Column(nullable = false, unique = true)
     private String token;
 
+    @Column(nullable = true, unique = true, length = 6)
+    private String shortCode;
+
     @Column(nullable = false)
     private Instant expiresAt;
 
-    @Column(nullable = false)
-    private int maxUses;
+    @Column(nullable = true)
+    private Integer maxUses;
 
     @Column(nullable = false)
     private int usageCount;
@@ -62,8 +65,9 @@ public class InvitationEntity {
             String inviteeEmail,
             String inviterDisplayName,
             String token,
+            String shortCode,
             Instant expiresAt,
-            int maxUses,
+            Integer maxUses,
             int usageCount,
             InvitationStatus status
     ) {
@@ -73,6 +77,7 @@ public class InvitationEntity {
         this.inviteeEmail = inviteeEmail;
         this.inviterDisplayName = inviterDisplayName;
         this.token = token;
+        this.shortCode = shortCode;
         this.expiresAt = expiresAt;
         this.maxUses = maxUses;
         this.usageCount = usageCount;
@@ -103,11 +108,15 @@ public class InvitationEntity {
         return token;
     }
 
+    public String getShortCode() {
+        return shortCode;
+    }
+
     public Instant getExpiresAt() {
         return expiresAt;
     }
 
-    public int getMaxUses() {
+    public Integer getMaxUses() {
         return maxUses;
     }
 

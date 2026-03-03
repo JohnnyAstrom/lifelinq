@@ -23,17 +23,19 @@ public class InviteWebController {
     @ResponseBody
     public ResponseEntity<String> previewInvitation(@PathVariable String token) {
         PreviewInvitationResult preview = groupApplicationService.previewInvitation(token);
-        return ResponseEntity.ok(renderHtml(token, preview));
+        return ResponseEntity.ok(renderHtml(preview));
     }
 
-    private String renderHtml(String token, PreviewInvitationResult preview) {
+    private String renderHtml(PreviewInvitationResult preview) {
         InvitationCopy copy = resolveCopy(preview);
+        String escapedShortCode = preview.getShortCode() == null ? "" : escapeHtml(preview.getShortCode());
         String validExtras = preview.isValid()
                 ? """
                       <div class="button">Open in the app</div>
                       <div class="code-label">Invite code</div>
                       <div class="code-box">%s</div>
-                      """.formatted(escapeHtml(token))
+                      <button class="copy-button" onclick="navigator.clipboard.writeText('%s')">Copy</button>
+                      """.formatted(escapedShortCode, escapedShortCode)
                 : "";
         String placeBlock = preview.isValid()
                 ? """
@@ -135,6 +137,16 @@ public class InviteWebController {
                     font-size: 13px;
                     color: #999;
                     margin-top: 24px;
+                  }
+
+                  .copy-button {
+                    border: 1px solid #d0d5dd;
+                    background: #ffffff;
+                    color: #333;
+                    border-radius: 8px;
+                    padding: 8px 14px;
+                    font-size: 14px;
+                    cursor: pointer;
                   }
                 </style>
                 </head>

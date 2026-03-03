@@ -47,12 +47,12 @@ final class AcceptInvitationUseCase {
         if (invitation.isExpired(command.getNow())) {
             throw new IllegalStateException("invitation is expired");
         }
-        if (invitation.getUsageCount() >= invitation.getMaxUses()) {
+        if (invitation.getMaxUses() != null && invitation.getUsageCount() >= invitation.getMaxUses()) {
             throw new IllegalStateException("invitation has reached max uses");
         }
 
         invitation.registerAcceptance(command.getNow());
-        if (invitation.getUsageCount() >= invitation.getMaxUses()) {
+        if (invitation.getMaxUses() != null && invitation.getUsageCount() >= invitation.getMaxUses()) {
             invitation.revoke();
         }
 

@@ -8,6 +8,7 @@ public final class PreviewInvitationResult {
     private final PreviewInvitationReason reason;
     private final String placeName;
     private final String inviterDisplayName;
+    private final String shortCode;
     private final Instant expiresAt;
     private final InvitationType type;
 
@@ -16,6 +17,7 @@ public final class PreviewInvitationResult {
             PreviewInvitationReason reason,
             String placeName,
             String inviterDisplayName,
+            String shortCode,
             Instant expiresAt,
             InvitationType type
     ) {
@@ -23,6 +25,7 @@ public final class PreviewInvitationResult {
         this.reason = reason;
         this.placeName = placeName;
         this.inviterDisplayName = inviterDisplayName;
+        this.shortCode = shortCode;
         this.expiresAt = expiresAt;
         this.type = type;
     }
@@ -34,7 +37,18 @@ public final class PreviewInvitationResult {
             Instant expiresAt,
             InvitationType type
     ) {
-        this(valid, reason, placeName, null, expiresAt, type);
+        this(valid, reason, placeName, null, null, expiresAt, type);
+    }
+
+    public PreviewInvitationResult(
+            boolean valid,
+            PreviewInvitationReason reason,
+            String placeName,
+            String inviterDisplayName,
+            Instant expiresAt,
+            InvitationType type
+    ) {
+        this(valid, reason, placeName, inviterDisplayName, null, expiresAt, type);
     }
 
     public boolean isValid() {
@@ -51,6 +65,10 @@ public final class PreviewInvitationResult {
 
     public String getInviterDisplayName() {
         return inviterDisplayName;
+    }
+
+    public String getShortCode() {
+        return shortCode;
     }
 
     public Instant getExpiresAt() {

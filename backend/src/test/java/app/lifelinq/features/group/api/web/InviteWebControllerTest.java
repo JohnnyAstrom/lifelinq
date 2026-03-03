@@ -35,6 +35,7 @@ class InviteWebControllerTest {
                         PreviewInvitationReason.VALID,
                         "Family",
                         "Alex Doe",
+                        "K7M9XQ",
                         Instant.parse("2026-01-10T00:00:00Z"),
                         InvitationType.EMAIL
                 ));
@@ -46,7 +47,9 @@ class InviteWebControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Family")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Open the LifeLinq app to continue.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Invite code")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("invite-token")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("K7M9XQ")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("navigator.clipboard.writeText('K7M9XQ')")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("invite-token"))));
     }
 
     @Test
@@ -57,6 +60,7 @@ class InviteWebControllerTest {
                         PreviewInvitationReason.VALID,
                         "Family",
                         null,
+                        "K7M9XQ",
                         Instant.parse("2026-01-10T00:00:00Z"),
                         InvitationType.LINK
                 ));
@@ -68,7 +72,8 @@ class InviteWebControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Family")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("This is a shared invitation link.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Invite code")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("invite-token")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("K7M9XQ")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("invite-token"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Open in the app")));
     }
 
@@ -80,6 +85,7 @@ class InviteWebControllerTest {
                         PreviewInvitationReason.VALID,
                         "Family",
                         null,
+                        "K7M9XQ",
                         Instant.parse("2026-01-10T00:00:00Z"),
                         InvitationType.EMAIL
                 ));

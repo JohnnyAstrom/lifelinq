@@ -42,6 +42,7 @@ final class PreviewInvitationUseCase {
                     null,
                     null,
                     null,
+                    null,
                     null
             );
         }
@@ -57,6 +58,7 @@ final class PreviewInvitationUseCase {
                 reason,
                 placeName,
                 invitation.getInviterDisplayName(),
+                invitation.getShortCode(),
                 invitation.getExpiresAt(),
                 invitation.getType()
         );
@@ -69,7 +71,7 @@ final class PreviewInvitationUseCase {
         if (invitation.isExpired(now)) {
             return PreviewInvitationReason.EXPIRED;
         }
-        if (invitation.getUsageCount() >= invitation.getMaxUses()) {
+        if (invitation.getMaxUses() != null && invitation.getUsageCount() >= invitation.getMaxUses()) {
             return PreviewInvitationReason.EXHAUSTED;
         }
         return PreviewInvitationReason.VALID;

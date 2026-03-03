@@ -10,6 +10,7 @@ import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationType;
 import app.lifelinq.features.group.domain.InvitationRepository;
+import app.lifelinq.features.group.domain.Invitation;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
@@ -20,12 +21,13 @@ import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 public class GroupApplicationService {
     private static final Duration DEFAULT_INVITATION_TTL = Duration.ofDays(7);
-    private static final int DEFAULT_INVITATION_MAX_USES = 1;
+    private static final int DEFAULT_EMAIL_INVITATION_MAX_USES = 1;
     private static final int MAX_PLACE_NAME_LENGTH = 50;
     static final String DEFAULT_GROUP_NAME = "Personal";
 
@@ -35,6 +37,7 @@ public class GroupApplicationService {
     private final ListGroupMembersUseCase listGroupMembersUseCase;
     private final RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase;
     private final CreateInvitationUseCase createInvitationUseCase;
+    private final ResolveInvitationCodeUseCase resolveInvitationCodeUseCase;
     private final PreviewInvitationUseCase previewInvitationUseCase;
     private final RevokeInvitationUseCase revokeInvitationUseCase;
     private final MembershipRepository membershipRepository;
@@ -52,6 +55,7 @@ public class GroupApplicationService {
             ListGroupMembersUseCase listGroupMembersUseCase,
             RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase,
             CreateInvitationUseCase createInvitationUseCase,
+            ResolveInvitationCodeUseCase resolveInvitationCodeUseCase,
             PreviewInvitationUseCase previewInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
             MembershipRepository membershipRepository,
@@ -68,6 +72,7 @@ public class GroupApplicationService {
         this.listGroupMembersUseCase = listGroupMembersUseCase;
         this.removeMemberFromGroupUseCase = removeMemberFromGroupUseCase;
         this.createInvitationUseCase = createInvitationUseCase;
+        this.resolveInvitationCodeUseCase = resolveInvitationCodeUseCase;
         this.previewInvitationUseCase = previewInvitationUseCase;
         this.revokeInvitationUseCase = revokeInvitationUseCase;
         this.membershipRepository = membershipRepository;
@@ -110,7 +115,7 @@ public class GroupApplicationService {
                 inviterDisplayName,
                 clock.instant(),
                 effectiveTtl,
-                DEFAULT_INVITATION_MAX_USES
+                DEFAULT_EMAIL_INVITATION_MAX_USES
         );
         CreateInvitationResult result = createInvitationUseCase.execute(command);
         return new CreateInvitationOutput(
@@ -130,7 +135,6 @@ public class GroupApplicationService {
         userProvisioning.ensureUserExists(actorUserId);
         ensureAdmin(groupId, actorUserId);
         Duration effectiveTtl = ttl == null ? DEFAULT_INVITATION_TTL : ttl;
-        int effectiveMaxUses = maxUses == null ? DEFAULT_INVITATION_MAX_USES : maxUses;
         CreateInvitationCommand command = new CreateInvitationCommand(
                 groupId,
                 InvitationType.LINK,
@@ -138,7 +142,7 @@ public class GroupApplicationService {
                 null,
                 clock.instant(),
                 effectiveTtl,
-                effectiveMaxUses
+                maxUses
         );
         CreateInvitationResult result = createInvitationUseCase.execute(command);
         return new CreateInvitationOutput(
@@ -160,6 +164,11 @@ public class GroupApplicationService {
     @Transactional(readOnly = true)
     public PreviewInvitationResult previewInvitation(String token) {
         return previewInvitationUseCase.execute(new PreviewInvitationCommand(token, clock.instant()));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Invitation> resolveInvitationCode(String code) {
+        return resolveInvitationCodeUseCase.execute(new ResolveInvitationCodeCommand(code));
     }
 
     @Transactional
@@ -314,6 +323,7 @@ public class GroupApplicationService {
             MembershipRepository membershipRepository,
             InvitationRepository invitationRepository,
             InvitationTokenGenerator tokenGenerator,
+            InvitationShortCodeGenerator shortCodeGenerator,
             UserProvisioning userProvisioning,
             UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
@@ -326,7 +336,8 @@ public class GroupApplicationService {
                 new AddMemberToGroupUseCase(membershipRepository),
                 new ListGroupMembersUseCase(membershipRepository),
                 new RemoveMemberFromGroupUseCase(membershipRepository),
-                new CreateInvitationUseCase(invitationRepository, tokenGenerator),
+                new CreateInvitationUseCase(invitationRepository, tokenGenerator, shortCodeGenerator),
+                new ResolveInvitationCodeUseCase(invitationRepository),
                 new PreviewInvitationUseCase(invitationRepository, groupRepository),
                 new RevokeInvitationUseCase(invitationRepository),
                 membershipRepository,

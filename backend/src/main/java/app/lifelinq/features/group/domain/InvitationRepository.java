@@ -8,10 +8,12 @@ public interface InvitationRepository {
     void save(Invitation invitation);
 
     Optional<Invitation> findByToken(String token);
+    Optional<Invitation> findByShortCode(String shortCode);
 
     Optional<Invitation> findById(UUID id);
 
     boolean existsByToken(String token);
+    boolean existsByShortCode(String shortCode);
 
     List<Invitation> findActive();
 

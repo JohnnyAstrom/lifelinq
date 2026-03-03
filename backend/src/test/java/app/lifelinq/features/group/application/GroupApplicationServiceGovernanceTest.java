@@ -107,6 +107,7 @@ class GroupApplicationServiceGovernanceTest {
                 membershipRepository,
                 invitationRepository,
                 () -> "token",
+                () -> "ABC123",
                 userProvisioning,
                 (userId) -> null,
                 userActiveGroupSelection,
@@ -211,7 +212,17 @@ class GroupApplicationServiceGovernanceTest {
         }
 
         @Override
+        public Optional<Invitation> findByShortCode(String shortCode) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
         public boolean existsByToken(String token) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public boolean existsByShortCode(String shortCode) {
             throw new UnsupportedOperationException("not used");
         }
 

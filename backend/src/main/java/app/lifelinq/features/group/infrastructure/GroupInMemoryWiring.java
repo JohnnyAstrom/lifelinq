@@ -20,11 +20,13 @@ public final class GroupInMemoryWiring {
         GroupPersistenceAdapter adapter = new GroupPersistenceAdapter();
         InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
         InMemoryInvitationTokenGenerator tokenGenerator = new InMemoryInvitationTokenGenerator();
+        InMemoryInvitationShortCodeGenerator shortCodeGenerator = new InMemoryInvitationShortCodeGenerator();
         return GroupApplicationService.create(
                 adapter,
                 adapter,
                 invitationRepository,
                 tokenGenerator,
+                shortCodeGenerator,
                 userProvisioning,
                 userActiveGroupRead,
                 userActiveGroupSelection,

@@ -5,17 +5,21 @@ import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.InvitationType;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
 
 final class CreateInvitationUseCase {
     private static final int MAX_TOKEN_ATTEMPTS = 5;
+    private static final int MAX_SHORT_CODE_ATTEMPTS = 10;
 
     private final InvitationRepository invitationRepository;
     private final InvitationTokenGenerator tokenGenerator;
+    private final InvitationShortCodeGenerator shortCodeGenerator;
 
     public CreateInvitationUseCase(
             InvitationRepository invitationRepository,
-            InvitationTokenGenerator tokenGenerator
+            InvitationTokenGenerator tokenGenerator,
+            InvitationShortCodeGenerator shortCodeGenerator
     ) {
         if (invitationRepository == null) {
             throw new IllegalArgumentException("invitationRepository must not be null");
@@ -23,8 +27,12 @@ final class CreateInvitationUseCase {
         if (tokenGenerator == null) {
             throw new IllegalArgumentException("tokenGenerator must not be null");
         }
+        if (shortCodeGenerator == null) {
+            throw new IllegalArgumentException("shortCodeGenerator must not be null");
+        }
         this.invitationRepository = invitationRepository;
         this.tokenGenerator = tokenGenerator;
+        this.shortCodeGenerator = shortCodeGenerator;
     }
 
     public CreateInvitationResult execute(CreateInvitationCommand command) {
@@ -51,8 +59,12 @@ final class CreateInvitationUseCase {
         if (ttl == null || ttl.isZero() || ttl.isNegative()) {
             throw new IllegalArgumentException("ttl must be positive");
         }
-        if (command.getMaxUses() <= 0) {
-            throw new IllegalArgumentException("maxUses must be > 0");
+        if (command.getType() == InvitationType.EMAIL) {
+            if (command.getMaxUses() == null || command.getMaxUses() != 1) {
+                throw new IllegalArgumentException("EMAIL invitations must use maxUses = 1");
+            }
+        } else if (command.getMaxUses() != null && command.getMaxUses() <= 0) {
+            throw new IllegalArgumentException("maxUses must be > 0 when provided");
         }
 
         Instant expiresAt = command.getNow().plus(ttl);
@@ -72,6 +84,7 @@ final class CreateInvitationUseCase {
             }
         }
         String token = generateUniqueToken();
+        String shortCode = generateUniqueShortCode();
         Invitation invitation = Invitation.createActive(
                 UUID.randomUUID(),
                 command.getGroupId(),
@@ -79,6 +92,7 @@ final class CreateInvitationUseCase {
                 command.getInviteeEmail(),
                 command.getInviterDisplayName(),
                 token,
+                shortCode,
                 expiresAt,
                 command.getMaxUses()
         );
@@ -99,6 +113,20 @@ final class CreateInvitationUseCase {
             }
         }
         throw new IllegalStateException("could not generate a unique token");
+    }
+
+    private String generateUniqueShortCode() {
+        for (int attempt = 0; attempt < MAX_SHORT_CODE_ATTEMPTS; attempt++) {
+            String generated = shortCodeGenerator.generate();
+            if (generated == null || !generated.matches("^[A-Z0-9]{6}$")) {
+                throw new IllegalArgumentException("generated shortCode must match ^[A-Z0-9]{6}$");
+            }
+            String normalized = generated.toUpperCase(Locale.ROOT);
+            if (!invitationRepository.existsByShortCode(normalized)) {
+                return normalized;
+            }
+        }
+        throw new IllegalStateException("could not generate a unique shortCode");
     }
 
     private Invitation findActiveLink(UUID groupId, Instant now) {

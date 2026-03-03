@@ -8,8 +8,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface InvitationJpaRepository extends JpaRepository<InvitationEntity, UUID> {
     Optional<InvitationEntity> findByToken(String token);
+    Optional<InvitationEntity> findByShortCode(String shortCode);
 
     boolean existsByToken(String token);
+    boolean existsByShortCode(String shortCode);
 
     List<InvitationEntity> findByStatus(InvitationStatus status);
 

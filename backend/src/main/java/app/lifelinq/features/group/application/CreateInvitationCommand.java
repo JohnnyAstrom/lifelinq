@@ -12,7 +12,7 @@ public final class CreateInvitationCommand {
     private final String inviterDisplayName;
     private final Instant now;
     private final Duration ttl;
-    private final int maxUses;
+    private final Integer maxUses;
 
     public CreateInvitationCommand(
             UUID groupId,
@@ -21,7 +21,7 @@ public final class CreateInvitationCommand {
             String inviterDisplayName,
             Instant now,
             Duration ttl,
-            int maxUses
+            Integer maxUses
     ) {
         this.groupId = groupId;
         this.type = type;
@@ -38,7 +38,7 @@ public final class CreateInvitationCommand {
             String inviteeEmail,
             Instant now,
             Duration ttl,
-            int maxUses
+            Integer maxUses
     ) {
         this(groupId, type, inviteeEmail, null, now, ttl, maxUses);
     }
@@ -67,7 +67,7 @@ public final class CreateInvitationCommand {
         return ttl;
     }
 
-    public int getMaxUses() {
+    public Integer getMaxUses() {
         return maxUses;
     }
 }

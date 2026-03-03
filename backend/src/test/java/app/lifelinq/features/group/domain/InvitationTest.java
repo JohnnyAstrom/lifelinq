@@ -98,6 +98,24 @@ class InvitationTest {
     }
 
     @Test
+    void unlimitedLinkAcceptanceDoesNotIncrementUsage() {
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                InvitationType.LINK,
+                null,
+                "token",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                null
+        );
+
+        invitation.registerAcceptance(Instant.parse("2025-12-31T00:00:00Z"));
+
+        assertEquals(0, invitation.getUsageCount());
+        assertEquals(null, invitation.getMaxUses());
+    }
+
+    @Test
     void linkInvitationRequiresNullEmail() {
         assertThrows(
                 IllegalArgumentException.class,

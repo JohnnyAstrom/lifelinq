@@ -116,6 +116,28 @@ public class GroupController {
         ));
     }
 
+    @PostMapping("/groups/invitations/resolve-code")
+    public ResponseEntity<?> resolveInvitationCode(@RequestBody ResolveInvitationCodeRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        var result = groupApplicationService.resolveInvitationCode(
+                request == null ? null : request.getCode()
+        );
+        if (result.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var invitation = result.get();
+        return ResponseEntity.ok(new ResolveInvitationCodeResponse(
+                invitation.getId(),
+                invitation.getGroupId(),
+                invitation.getType(),
+                invitation.getStatus(),
+                invitation.getExpiresAt()
+        ));
+    }
+
     @PostMapping("/groups/invitations")
     public ResponseEntity<?> createInvitation(@RequestBody CreateInvitationRequest request) {
         RequestContext context = ApiScoping.getContext();

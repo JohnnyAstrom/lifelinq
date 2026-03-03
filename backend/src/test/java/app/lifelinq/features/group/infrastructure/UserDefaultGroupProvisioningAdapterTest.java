@@ -121,6 +121,7 @@ class UserDefaultGroupProvisioningAdapterTest {
                 membershipRepository,
                 new InMemoryInvitationRepository(),
                 new InMemoryInvitationTokenGenerator(),
+                new InMemoryInvitationShortCodeGenerator(),
                 noOpUserProvisioning,
                 (userId) -> null,
                 noOpActiveGroupSelection,

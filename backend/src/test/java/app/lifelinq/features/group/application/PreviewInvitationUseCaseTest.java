@@ -32,6 +32,7 @@ class PreviewInvitationUseCaseTest {
                 "test@example.com",
                 "Alex Doe",
                 "token-valid",
+                null,
                 Instant.parse("2026-01-10T00:00:00Z"),
                 2
         ));
@@ -145,6 +146,34 @@ class PreviewInvitationUseCaseTest {
         assertEquals(PreviewInvitationReason.EXHAUSTED, result.getReason());
     }
 
+    @Test
+    void unlimitedLinkIsNotExhausted() {
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
+        invitationRepository.save(Invitation.rehydrate(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                InvitationType.LINK,
+                null,
+                "token-unlimited",
+                Instant.parse("2026-01-10T00:00:00Z"),
+                null,
+                0,
+                InvitationStatus.ACTIVE
+        ));
+        PreviewInvitationUseCase useCase = new PreviewInvitationUseCase(
+                invitationRepository,
+                new InMemoryGroupRepository()
+        );
+
+        PreviewInvitationResult result = useCase.execute(new PreviewInvitationCommand(
+                "token-unlimited",
+                Instant.parse("2026-01-01T00:00:00Z")
+        ));
+
+        assertTrue(result.isValid());
+        assertEquals(PreviewInvitationReason.VALID, result.getReason());
+    }
+
     private static final class InMemoryInvitationRepository implements InvitationRepository {
         private final Map<String, Invitation> byToken = new HashMap<>();
 
@@ -164,8 +193,23 @@ class PreviewInvitationUseCaseTest {
         }
 
         @Override
+        public Optional<Invitation> findByShortCode(String shortCode) {
+            for (Invitation invitation : byToken.values()) {
+                if (shortCode.equals(invitation.getShortCode())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existsByToken(String token) {
             return byToken.containsKey(token);
+        }
+
+        @Override
+        public boolean existsByShortCode(String shortCode) {
+            return findByShortCode(shortCode).isPresent();
         }
 
         @Override

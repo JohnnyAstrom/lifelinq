@@ -17,7 +17,8 @@ final class GroupUseCases {
             GroupRepository groupRepository,
             MembershipRepository membershipRepository,
             InvitationRepository invitationRepository,
-            InvitationTokenGenerator tokenGenerator
+            InvitationTokenGenerator tokenGenerator,
+            InvitationShortCodeGenerator shortCodeGenerator
     ) {
         if (groupRepository == null) {
             throw new IllegalArgumentException("groupRepository must not be null");
@@ -31,11 +32,14 @@ final class GroupUseCases {
         if (tokenGenerator == null) {
             throw new IllegalArgumentException("tokenGenerator must not be null");
         }
+        if (shortCodeGenerator == null) {
+            throw new IllegalArgumentException("shortCodeGenerator must not be null");
+        }
         this.createGroupUseCase = new CreateGroupUseCase(groupRepository, membershipRepository);
         this.addMemberToGroupUseCase = new AddMemberToGroupUseCase(membershipRepository);
         this.listGroupMembersUseCase = new ListGroupMembersUseCase(membershipRepository);
         this.removeMemberFromGroupUseCase = new RemoveMemberFromGroupUseCase(membershipRepository);
-        this.createInvitationUseCase = new CreateInvitationUseCase(invitationRepository, tokenGenerator);
+        this.createInvitationUseCase = new CreateInvitationUseCase(invitationRepository, tokenGenerator, shortCodeGenerator);
         this.acceptInvitationUseCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
         this.expireInvitationsUseCase = new ExpireInvitationsUseCase(invitationRepository);
     }

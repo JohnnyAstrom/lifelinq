@@ -79,13 +79,15 @@ class InvitationFlowIntegrationTest {
         RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase = new RemoveMemberFromGroupUseCase(membershipRepository);
         CreateInvitationUseCase createInvitationUseCase = new CreateInvitationUseCase(
                 invitationRepository,
-                new InMemoryInvitationTokenGenerator()
+                new InMemoryInvitationTokenGenerator(),
+                new app.lifelinq.features.group.infrastructure.InMemoryInvitationShortCodeGenerator()
         );
         AcceptInvitationUseCase acceptInvitationUseCase = new AcceptInvitationUseCase(
                 invitationRepository,
                 membershipRepository
         );
         RevokeInvitationUseCase revokeInvitationUseCase = new RevokeInvitationUseCase(invitationRepository);
+        ResolveInvitationCodeUseCase resolveInvitationCodeUseCase = new ResolveInvitationCodeUseCase(invitationRepository);
         PreviewInvitationUseCase previewInvitationUseCase = new PreviewInvitationUseCase(
                 invitationRepository,
                 groupRepository
@@ -100,6 +102,7 @@ class InvitationFlowIntegrationTest {
                 listGroupMembersUseCase,
                 removeMemberFromGroupUseCase,
                 createInvitationUseCase,
+                resolveInvitationCodeUseCase,
                 previewInvitationUseCase,
                 revokeInvitationUseCase,
                 membershipRepository,

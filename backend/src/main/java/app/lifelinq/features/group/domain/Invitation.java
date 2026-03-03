@@ -10,8 +10,9 @@ public final class Invitation {
     private final String inviteeEmail;
     private final String inviterDisplayName;
     private final String token;
+    private final String shortCode;
     private final Instant expiresAt;
-    private final int maxUses;
+    private final Integer maxUses;
     private int usageCount;
     private InvitationStatus status;
 
@@ -22,8 +23,9 @@ public final class Invitation {
             String inviteeEmail,
             String inviterDisplayName,
             String token,
+            String shortCode,
             Instant expiresAt,
-            int maxUses,
+            Integer maxUses,
             int usageCount,
             InvitationStatus status
     ) {
@@ -45,17 +47,20 @@ public final class Invitation {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("token must not be blank");
         }
+        if (shortCode != null && !shortCode.matches("^[A-Z0-9]{6}$")) {
+            throw new IllegalArgumentException("shortCode must match ^[A-Z0-9]{6}$");
+        }
         if (expiresAt == null) {
             throw new IllegalArgumentException("expiresAt must not be null");
         }
-        if (maxUses <= 0) {
-            throw new IllegalArgumentException("maxUses must be > 0");
+        if (maxUses != null && maxUses <= 0) {
+            throw new IllegalArgumentException("maxUses must be > 0 when provided");
         }
         if (usageCount < 0) {
             throw new IllegalArgumentException("usageCount must be >= 0");
         }
-        if (usageCount > maxUses) {
-            throw new IllegalArgumentException("usageCount must be <= maxUses");
+        if (maxUses != null && usageCount > maxUses) {
+            throw new IllegalArgumentException("usageCount must be <= maxUses when maxUses is provided");
         }
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
@@ -66,6 +71,7 @@ public final class Invitation {
         this.inviteeEmail = inviteeEmail;
         this.inviterDisplayName = inviterDisplayName;
         this.token = token;
+        this.shortCode = shortCode;
         this.expiresAt = expiresAt;
         this.maxUses = maxUses;
         this.usageCount = usageCount;
@@ -79,7 +85,7 @@ public final class Invitation {
             String token,
             Instant expiresAt
     ) {
-        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, expiresAt, 1, 0, InvitationStatus.ACTIVE);
+        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, null, expiresAt, 1, 0, InvitationStatus.ACTIVE);
     }
 
     public static Invitation createActive(
@@ -88,7 +94,19 @@ public final class Invitation {
             String inviteeEmail,
             String token,
             Instant expiresAt,
-            int maxUses
+            Integer maxUses
+    ) {
+        return createActive(id, groupId, inviteeEmail, token, null, expiresAt, maxUses);
+    }
+
+    public static Invitation createActive(
+            UUID id,
+            UUID groupId,
+            String inviteeEmail,
+            String token,
+            String shortCode,
+            Instant expiresAt,
+            Integer maxUses
     ) {
         return new Invitation(
                 id,
@@ -97,6 +115,7 @@ public final class Invitation {
                 inviteeEmail,
                 null,
                 token,
+                shortCode,
                 expiresAt,
                 maxUses,
                 0,
@@ -111,8 +130,9 @@ public final class Invitation {
             String inviteeEmail,
             String inviterDisplayName,
             String token,
+            String shortCode,
             Instant expiresAt,
-            int maxUses
+            Integer maxUses
     ) {
         return new Invitation(
                 id,
@@ -121,6 +141,7 @@ public final class Invitation {
                 inviteeEmail,
                 inviterDisplayName,
                 token,
+                shortCode,
                 expiresAt,
                 maxUses,
                 0,
@@ -135,9 +156,9 @@ public final class Invitation {
             String inviteeEmail,
             String token,
             Instant expiresAt,
-            int maxUses
+            Integer maxUses
     ) {
-        return createActive(id, groupId, type, inviteeEmail, null, token, expiresAt, maxUses);
+        return createActive(id, groupId, type, inviteeEmail, null, token, null, expiresAt, maxUses);
     }
 
     public static Invitation rehydrate(
@@ -149,7 +170,7 @@ public final class Invitation {
             InvitationStatus status
     ) {
         int usageCount = status == InvitationStatus.REVOKED ? 1 : 0;
-        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, expiresAt, 1, usageCount, status);
+        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, null, expiresAt, 1, usageCount, status);
     }
 
     public static Invitation rehydrate(
@@ -158,11 +179,23 @@ public final class Invitation {
             String inviteeEmail,
             String token,
             Instant expiresAt,
-            int maxUses,
+            Integer maxUses,
             int usageCount,
             InvitationStatus status
     ) {
-        return new Invitation(id, groupId, InvitationType.EMAIL, inviteeEmail, null, token, expiresAt, maxUses, usageCount, status);
+        return new Invitation(
+                id,
+                groupId,
+                InvitationType.EMAIL,
+                inviteeEmail,
+                null,
+                token,
+                null,
+                expiresAt,
+                maxUses,
+                usageCount,
+                status
+        );
     }
 
     public static Invitation rehydrate(
@@ -172,8 +205,9 @@ public final class Invitation {
             String inviteeEmail,
             String inviterDisplayName,
             String token,
+            String shortCode,
             Instant expiresAt,
-            int maxUses,
+            Integer maxUses,
             int usageCount,
             InvitationStatus status
     ) {
@@ -184,6 +218,7 @@ public final class Invitation {
                 inviteeEmail,
                 inviterDisplayName,
                 token,
+                shortCode,
                 expiresAt,
                 maxUses,
                 usageCount,
@@ -198,11 +233,11 @@ public final class Invitation {
             String inviteeEmail,
             String token,
             Instant expiresAt,
-            int maxUses,
+            Integer maxUses,
             int usageCount,
             InvitationStatus status
     ) {
-        return rehydrate(id, groupId, type, inviteeEmail, null, token, expiresAt, maxUses, usageCount, status);
+        return rehydrate(id, groupId, type, inviteeEmail, null, token, null, expiresAt, maxUses, usageCount, status);
     }
 
     public UUID getId() {
@@ -229,6 +264,10 @@ public final class Invitation {
         return token;
     }
 
+    public String getShortCode() {
+        return shortCode;
+    }
+
     public Instant getExpiresAt() {
         return expiresAt;
     }
@@ -237,7 +276,7 @@ public final class Invitation {
         return status;
     }
 
-    public int getMaxUses() {
+    public Integer getMaxUses() {
         return maxUses;
     }
 
@@ -252,7 +291,7 @@ public final class Invitation {
     public boolean isAcceptAllowed(Instant now) {
         return status == InvitationStatus.ACTIVE
                 && !isExpired(now)
-                && usageCount < maxUses;
+                && (maxUses == null || usageCount < maxUses);
     }
 
     public boolean isExpired(Instant now) {
@@ -279,9 +318,11 @@ public final class Invitation {
         if (isExpired(now)) {
             throw new IllegalStateException("invitation is expired");
         }
-        if (usageCount >= maxUses) {
+        if (maxUses != null && usageCount >= maxUses) {
             throw new IllegalStateException("invitation has reached max uses");
         }
-        usageCount++;
+        if (maxUses != null) {
+            usageCount++;
+        }
     }
 }

@@ -23,12 +23,14 @@ public final class GroupApplicationServiceTestFactory {
         GroupRepository groupRepository = new StubGroupRepository();
         InvitationRepository invitationRepository = new StubInvitationRepository();
         InvitationTokenGenerator tokenGenerator = () -> "test-token";
+        InvitationShortCodeGenerator shortCodeGenerator = () -> "ABC123";
         var userService = UserApplicationServiceTestFactory.create(new InMemoryUserRepository());
         return GroupApplicationService.create(
                 groupRepository,
                 membershipRepository,
                 invitationRepository,
                 tokenGenerator,
+                shortCodeGenerator,
                 userService,
                 userService,
                 userService,
@@ -85,7 +87,17 @@ public final class GroupApplicationServiceTestFactory {
         }
 
         @Override
+        public Optional<Invitation> findByShortCode(String shortCode) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
         public boolean existsByToken(String token) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public boolean existsByShortCode(String shortCode) {
             throw new UnsupportedOperationException("not used");
         }
 

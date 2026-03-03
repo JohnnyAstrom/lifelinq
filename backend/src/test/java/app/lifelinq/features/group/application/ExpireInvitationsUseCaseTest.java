@@ -85,8 +85,23 @@ class ExpireInvitationsUseCaseTest {
         }
 
         @Override
+        public Optional<Invitation> findByShortCode(String shortCode) {
+            for (Invitation invitation : saved) {
+                if (shortCode.equals(invitation.getShortCode())) {
+                    return Optional.of(invitation);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
         public boolean existsByToken(String token) {
             return findByToken(token).isPresent();
+        }
+
+        @Override
+        public boolean existsByShortCode(String shortCode) {
+            return findByShortCode(shortCode).isPresent();
         }
 
         @Override
