@@ -133,11 +133,6 @@ public class GroupApplicationConfig {
     }
 
     @Bean
-    public Clock clock() {
-        return Clock.systemUTC();
-    }
-
-    @Bean
     public InvitationShortCodeGenerator invitationShortCodeGenerator() {
         return new InMemoryInvitationShortCodeGenerator();
     }
