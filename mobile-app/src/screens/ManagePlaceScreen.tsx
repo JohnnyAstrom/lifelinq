@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { MeResponse } from '../features/auth/api/meApi';
 import { createInvitationLink, deleteCurrentPlace, leaveCurrentPlace, renameCurrentPlace } from '../features/group/api/groupApi';
+import { WEB_BASE_URL } from '@/shared/config/web';
 import { useGroupMembers } from '../features/group/hooks/useGroupMembers';
 import { formatApiError } from '../shared/api/client';
 import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
@@ -163,7 +164,8 @@ export function ManagePlaceScreen({
     setInviteError(null);
     try {
       const invitation = await createInvitationLink(token);
-      setInviteUrl(`https://lifelinq.app/invite/${invitation.token}`);
+      // WEB_BASE_URL controls invite preview host per environment.
+      setInviteUrl(`${WEB_BASE_URL}/invite/${invitation.token}`);
     } catch (err) {
       setInviteError(formatApiError(err));
     } finally {
