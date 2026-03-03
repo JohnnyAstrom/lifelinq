@@ -38,6 +38,7 @@ public class AuthApplicationConfig {
             JwtSigner jwtSigner,
             Clock clock,
             @Value("${lifelinq.auth.magic.ttlSeconds:900}") long magicLinkTtlSeconds,
+            @Value("${lifelinq.auth.magic.maxTtlSeconds:3600}") long maxMagicLinkTtlSeconds,
             @Value("${lifelinq.auth.magic.verifyBaseUrl:http://localhost:8080/auth/magic/verify}") String magicVerifyBaseUrl,
             @Value("${lifelinq.auth.magic.completeBaseUrl:mobileapp://auth/complete}") String magicCompleteBaseUrl
     ) {
@@ -56,6 +57,7 @@ public class AuthApplicationConfig {
                 jwtSigner,
                 clock,
                 Duration.ofSeconds(magicLinkTtlSeconds),
+                Duration.ofSeconds(maxMagicLinkTtlSeconds),
                 magicVerifyBaseUrl,
                 magicCompleteBaseUrl
         );

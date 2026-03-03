@@ -2,6 +2,7 @@ package app.lifelinq.features.auth.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.config.JwtSigner;
@@ -76,6 +77,34 @@ class AuthApplicationServiceProvisioningTest {
         assertEquals("My Place", fixture.userDefaultGroupProvisioning.lastInitialPlaceNameFor(userId));
     }
 
+    @Test
+    void rejectsMagicLinkTtlAboveConfiguredMaximum() {
+        UserApplicationService userApplicationService = UserApplicationServiceTestFactory.create(new InMemoryUserRepository());
+        FakeUserDefaultGroupProvisioning provisioning = new FakeUserDefaultGroupProvisioning();
+
+        assertThrows(IllegalArgumentException.class, () -> new AuthApplicationService(
+                userApplicationService,
+                userApplicationService,
+                userApplicationService,
+                userApplicationService,
+                userApplicationService,
+                provisioning,
+                provisioning,
+                new InMemoryAuthIdentityRepository(),
+                new InMemoryMagicLinkChallengeRepository(),
+                () -> "magic-token",
+                (email, verifyUrl) -> {
+                },
+                new JwtSigner("test-secret", 300, null, null,
+                        Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)),
+                Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC),
+                java.time.Duration.ofHours(2),
+                java.time.Duration.ofHours(1),
+                "http://localhost:8080/auth/magic/verify",
+                "mobileapp://auth/complete"
+        ));
+    }
+
     private static final class TestFixture {
         private final InMemoryUserRepository userRepository = new InMemoryUserRepository();
         private final FakeUserDefaultGroupProvisioning userDefaultGroupProvisioning = new FakeUserDefaultGroupProvisioning();
@@ -100,6 +129,7 @@ class AuthApplicationServiceProvisioningTest {
                             Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)),
                     Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC),
                     java.time.Duration.ofMinutes(15),
+                    java.time.Duration.ofHours(1),
                     "http://localhost:8080/auth/magic/verify",
                     "mobileapp://auth/complete"
             );

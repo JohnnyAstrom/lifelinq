@@ -1,6 +1,6 @@
 package app.lifelinq.features.auth.api;
 
-import app.lifelinq.config.JwtSigner;
+import app.lifelinq.features.auth.application.AuthApplicationService;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @ConditionalOnProperty(name = "lifelinq.devAuth.enabled", havingValue = "true")
 public class DevTokenController {
-    private final JwtSigner jwtSigner;
+    private final AuthApplicationService authApplicationService;
 
-    public DevTokenController(JwtSigner jwtSigner) {
-        this.jwtSigner = jwtSigner;
+    public DevTokenController(AuthApplicationService authApplicationService) {
+        this.authApplicationService = authApplicationService;
     }
 
     // Development-only endpoint. Do not expose in production.
@@ -29,7 +29,7 @@ public class DevTokenController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().build();
         }
-        String token = jwtSigner.sign(userId);
+        String token = authApplicationService.signDevToken(userId);
         return ResponseEntity.ok(new DevTokenResponse(token));
     }
 

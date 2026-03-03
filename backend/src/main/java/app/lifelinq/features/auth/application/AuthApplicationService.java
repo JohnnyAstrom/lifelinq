@@ -40,6 +40,7 @@ public class AuthApplicationService {
     private final JwtSigner jwtSigner;
     private final Clock clock;
     private final Duration magicLinkTtl;
+    private final Duration maxMagicLinkTtl;
     private final String magicLinkVerifyBaseUrl;
     private final String magicLinkCompleteBaseUrl;
 
@@ -58,6 +59,7 @@ public class AuthApplicationService {
             JwtSigner jwtSigner,
             Clock clock,
             Duration magicLinkTtl,
+            Duration maxMagicLinkTtl,
             String magicLinkVerifyBaseUrl,
             String magicLinkCompleteBaseUrl
     ) {
@@ -103,6 +105,12 @@ public class AuthApplicationService {
         if (magicLinkTtl == null || magicLinkTtl.isZero() || magicLinkTtl.isNegative()) {
             throw new IllegalArgumentException("magicLinkTtl must be positive");
         }
+        if (maxMagicLinkTtl == null || maxMagicLinkTtl.isZero() || maxMagicLinkTtl.isNegative()) {
+            throw new IllegalArgumentException("maxMagicLinkTtl must be positive");
+        }
+        if (magicLinkTtl.compareTo(maxMagicLinkTtl) > 0) {
+            throw new IllegalArgumentException("magicLinkTtl must not exceed maxMagicLinkTtl");
+        }
         if (magicLinkVerifyBaseUrl == null || magicLinkVerifyBaseUrl.isBlank()) {
             throw new IllegalArgumentException("magicLinkVerifyBaseUrl must not be blank");
         }
@@ -126,6 +134,7 @@ public class AuthApplicationService {
         this.jwtSigner = jwtSigner;
         this.clock = clock;
         this.magicLinkTtl = magicLinkTtl;
+        this.maxMagicLinkTtl = maxMagicLinkTtl;
         this.magicLinkVerifyBaseUrl = trimTrailingSlash(magicLinkVerifyBaseUrl);
         this.magicLinkCompleteBaseUrl = magicLinkCompleteBaseUrl;
     }
@@ -144,6 +153,9 @@ public class AuthApplicationService {
 
     @Transactional
     public void startMagicLinkLogin(String email) {
+        if (magicLinkTtl.compareTo(maxMagicLinkTtl) > 0) {
+            throw new IllegalArgumentException("magic link ttl exceeds configured maximum");
+        }
         startMagicLinkLoginUseCase.execute(new StartMagicLinkLoginCommand(
                 email,
                 clock.instant(),
@@ -175,6 +187,13 @@ public class AuthApplicationService {
         UUID groupId = userDefaultGroupProvisioning.ensureDefaultGroupProvisioned(userId, initialPlaceName);
         if (userActiveGroupRead.getActiveGroupId(userId) == null) {
             userActiveGroupSelection.setActiveGroup(userId, groupId);
+        }
+        return jwtSigner.sign(userId);
+    }
+
+    public String signDevToken(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
         }
         return jwtSigner.sign(userId);
     }
