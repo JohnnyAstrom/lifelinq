@@ -4,7 +4,13 @@ import app.lifelinq.config.RequestContextConfig;
 import app.lifelinq.config.SecurityConfig;
 import app.lifelinq.features.auth.api.DevTokenController;
 import app.lifelinq.features.auth.api.MeController;
+import app.lifelinq.features.auth.domain.AuthIdentityRepository;
+import app.lifelinq.features.auth.domain.AuthMailSender;
+import app.lifelinq.features.auth.domain.MagicLinkChallengeRepository;
+import app.lifelinq.features.auth.domain.MagicLinkTokenGenerator;
 import app.lifelinq.features.auth.infrastructure.AuthApplicationConfig;
+import app.lifelinq.features.auth.infrastructure.InMemoryAuthIdentityRepository;
+import app.lifelinq.features.auth.infrastructure.InMemoryMagicLinkChallengeRepository;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
@@ -110,6 +116,27 @@ public class DevAuthTestApplication {
     public UserDefaultGroupProvisioning userDefaultGroupProvisioning() {
         return (userId, initialPlaceName) -> UUID.nameUUIDFromBytes(("personal-group:" + userId)
                 .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Bean
+    public AuthIdentityRepository authIdentityRepository() {
+        return new InMemoryAuthIdentityRepository();
+    }
+
+    @Bean
+    public MagicLinkChallengeRepository magicLinkChallengeRepository() {
+        return new InMemoryMagicLinkChallengeRepository();
+    }
+
+    @Bean
+    public MagicLinkTokenGenerator magicLinkTokenGenerator() {
+        return () -> UUID.randomUUID().toString();
+    }
+
+    @Bean
+    public AuthMailSender authMailSender() {
+        return (email, verifyUrl) -> {
+        };
     }
 
 }
