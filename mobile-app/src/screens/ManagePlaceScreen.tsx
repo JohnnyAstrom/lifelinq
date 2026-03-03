@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { MeResponse } from '../features/auth/api/meApi';
-import { createInvitationLink, deleteCurrentPlace, leaveCurrentPlace, renameCurrentPlace } from '../features/group/api/groupApi';
+import { createInvitationLink, deleteCurrentPlace, leaveCurrentPlace, renameCurrentPlace, revokeInvitation } from '../features/group/api/groupApi';
 import { WEB_BASE_URL } from '@/shared/config/web';
 import { useGroupMembers } from '../features/group/hooks/useGroupMembers';
 import { formatApiError } from '../shared/api/client';
@@ -30,6 +30,13 @@ export function ManagePlaceScreen({
   onPlaceDeleted,
   onShowToast,
 }: Props) {
+  type ActiveLinkInvite = {
+    invitationId: string;
+    token: string;
+    shortCode: string;
+    expiresAt: string;
+  };
+
   const members = useGroupMembers(token);
   const renameInputRef = useRef<TextInput>(null);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -42,10 +49,12 @@ export function ManagePlaceScreen({
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
+  const [activeInvite, setActiveInvite] = useState<ActiveLinkInvite | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [revokeInviteSheetOpen, setRevokeInviteSheetOpen] = useState(false);
+  const [revokeInviteSubmitting, setRevokeInviteSubmitting] = useState(false);
+  const [revokeInviteError, setRevokeInviteError] = useState<string | null>(null);
   const activeMembership = me.activeGroupId
     ? me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null
     : null;
@@ -66,6 +75,14 @@ export function ManagePlaceScreen({
     membersTitle: 'Members',
     loadingMembers: 'Loading members...',
     inviteSomeone: 'Invite someone',
+    activeInviteTitle: 'Active invite code',
+    activeInviteExpiry: 'Expires',
+    copyCode: 'Copy code',
+    revokeCode: 'Revoke code',
+    loadingInvite: 'Loading invite...',
+    noActiveInvite: 'No active invite code.',
+    revokeInviteTitle: 'Revoke this invite?',
+    revokeInviteBody: 'Anyone with this code will lose access to join.',
     leavePlace: 'Leave place',
     deletePlace: 'Delete place',
     leaveTitle: 'Leave this place?',
@@ -78,12 +95,7 @@ export function ManagePlaceScreen({
     saving: 'Saving...',
     renameValidationError: 'Name cannot be empty.',
     tapToRename: 'Tap to rename',
-    inviteTitle: 'Invite someone',
-    inviteByLink: 'Invite by link',
-    inviteByEmail: 'Invite by email',
-    comingSoon: 'Coming soon',
-    shareLinkTitle: 'Share this link',
-    copyLink: 'Copy link',
+    revoke: 'Revoke',
   };
 
   useAppBackHandler({
@@ -112,6 +124,15 @@ export function ManagePlaceScreen({
     }, 0);
     return () => clearTimeout(timer);
   }, [isEditingName, currentPlaceName]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setActiveInvite(null);
+      setInviteError(null);
+      return;
+    }
+    void refreshActiveInvite();
+  }, [isAdmin, token]);
 
   async function handleConfirmLeave() {
     if (leaveSubmitting) {
@@ -149,36 +170,81 @@ export function ManagePlaceScreen({
     }
   }
 
-  function openInviteSheet() {
-    setInviteError(null);
-    setInviteLoading(false);
-    setInviteUrl(null);
-    setInviteSheetOpen(true);
+  async function resolveShortCodeFromPreview(invitationToken: string): Promise<string | null> {
+    try {
+      const response = await fetch(`${WEB_BASE_URL}/invite/${invitationToken}`);
+      if (!response.ok) {
+        return null;
+      }
+      const html = await response.text();
+      const match = html.match(/<div class="code-box">([^<]+)<\/div>/i);
+      const code = match?.[1]?.trim() ?? null;
+      if (!code) {
+        return null;
+      }
+      return code;
+    } catch {
+      return null;
+    }
   }
 
-  async function handleInviteByLink() {
+  async function refreshActiveInvite() {
     if (inviteLoading) {
       return;
     }
-    setInviteLoading(true);
     setInviteError(null);
+    setInviteLoading(true);
     try {
       const invitation = await createInvitationLink(token);
-      // WEB_BASE_URL controls invite preview host per environment.
-      setInviteUrl(`${WEB_BASE_URL}/invite/${invitation.token}`);
+      const shortCode = await resolveShortCodeFromPreview(invitation.token);
+      setActiveInvite({
+        invitationId: invitation.invitationId,
+        token: invitation.token,
+        shortCode: shortCode ?? invitation.token.slice(0, 6).toUpperCase(),
+        expiresAt: invitation.expiresAt,
+      });
     } catch (err) {
       setInviteError(formatApiError(err));
+      setActiveInvite(null);
     } finally {
       setInviteLoading(false);
     }
   }
 
-  async function handleCopyInviteLink() {
-    if (!inviteUrl) {
+  async function handleCopyInviteCode() {
+    if (!activeInvite) {
       return;
     }
-    await Clipboard.setStringAsync(inviteUrl);
-    onShowToast('Link copied.');
+    await Clipboard.setStringAsync(activeInvite.shortCode);
+    onShowToast('Code copied.');
+  }
+
+  async function handleConfirmRevokeInvite() {
+    if (!activeInvite || revokeInviteSubmitting) {
+      return;
+    }
+    setRevokeInviteSubmitting(true);
+    setRevokeInviteError(null);
+    try {
+      await revokeInvitation(token, activeInvite.invitationId);
+      setActiveInvite(null);
+      setRevokeInviteSheetOpen(false);
+      setRevokeInviteError(null);
+      setInviteError(null);
+      onShowToast('Invite revoked.');
+    } catch (err) {
+      setRevokeInviteError(formatApiError(err));
+    } finally {
+      setRevokeInviteSubmitting(false);
+    }
+  }
+
+  function formatInviteExpiry(value: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toLocaleString();
   }
 
   function startRename() {
@@ -287,7 +353,53 @@ export function ManagePlaceScreen({
               <Text key={name} style={styles.memberName}>{name}</Text>
             ))}
           </View>
-          {isAdmin ? <AppButton title={strings.inviteSomeone} onPress={openInviteSheet} fullWidth /> : null}
+          {isAdmin ? (
+            <View style={styles.activeInviteBlock}>
+              <Text style={styles.activeInviteTitle}>{strings.activeInviteTitle}</Text>
+              {inviteLoading ? <Subtle>{strings.loadingInvite}</Subtle> : null}
+              {inviteError ? <Text style={styles.error}>{inviteError}</Text> : null}
+              {activeInvite ? (
+                <>
+                  <View style={styles.inviteCodeBox}>
+                    <Text style={styles.inviteCodeText}>{activeInvite.shortCode}</Text>
+                  </View>
+                  <Subtle>
+                    {strings.activeInviteExpiry}: {formatInviteExpiry(activeInvite.expiresAt)}
+                  </Subtle>
+                  <View style={styles.inviteActions}>
+                    <AppButton
+                      title={strings.copyCode}
+                      onPress={() => {
+                        void handleCopyInviteCode();
+                      }}
+                      variant="ghost"
+                      fullWidth
+                    />
+                    <AppButton
+                      title={strings.revokeCode}
+                      onPress={() => {
+                        setRevokeInviteError(null);
+                        setRevokeInviteSheetOpen(true);
+                      }}
+                      variant="ghost"
+                      fullWidth
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Subtle>{strings.noActiveInvite}</Subtle>
+                  <AppButton
+                    title={strings.inviteSomeone}
+                    onPress={() => {
+                      void refreshActiveInvite();
+                    }}
+                    fullWidth
+                  />
+                </>
+              )}
+            </View>
+          ) : null}
         </AppCard>
 
         {showGovernance ? (
@@ -402,56 +514,41 @@ export function ManagePlaceScreen({
         </View>
       </ActionSheet>
       <ActionSheet
-        visible={inviteSheetOpen}
+        visible={revokeInviteSheetOpen}
         onClose={() => {
-          if (inviteLoading) {
+          if (revokeInviteSubmitting) {
             return;
           }
-          setInviteSheetOpen(false);
-          setInviteError(null);
+          setRevokeInviteSheetOpen(false);
+          setRevokeInviteError(null);
         }}
         presentation="standard"
       >
         <View style={styles.confirmContent}>
-          {inviteUrl ? (
-            <>
-              <Text style={textStyles.h3}>{strings.shareLinkTitle}</Text>
-              <View style={styles.inviteUrlBox}>
-                <Text style={styles.inviteUrlText} selectable>{inviteUrl}</Text>
-              </View>
-              <AppButton
-                title={strings.copyLink}
-                onPress={() => {
-                  void handleCopyInviteLink();
-                }}
-                fullWidth
-              />
-            </>
-          ) : (
-            <>
-              <Text style={textStyles.h3}>{strings.inviteTitle}</Text>
-              {inviteError ? <Text style={styles.error}>{inviteError}</Text> : null}
-              <Pressable
-                onPress={() => {
-                  void handleInviteByLink();
-                }}
-                disabled={inviteLoading}
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.inviteOptionRow,
-                  pressed ? styles.inviteOptionPressed : null,
-                  inviteLoading ? styles.inviteOptionDisabled : null,
-                ]}
-              >
-                <Text style={styles.inviteOptionText}>{strings.inviteByLink}</Text>
-                {inviteLoading ? <Subtle>...</Subtle> : null}
-              </Pressable>
-              <View style={[styles.inviteOptionRow, styles.inviteOptionDisabled]}>
-                <Text style={styles.inviteOptionTextMuted}>{strings.inviteByEmail}</Text>
-                <Subtle>{strings.comingSoon}</Subtle>
-              </View>
-            </>
-          )}
+          <Text style={textStyles.h3}>{strings.revokeInviteTitle}</Text>
+          <Subtle>{strings.revokeInviteBody}</Subtle>
+          {revokeInviteError ? <Text style={styles.error}>{revokeInviteError}</Text> : null}
+          <View style={styles.confirmActions}>
+            <AppButton
+              title={strings.cancel}
+              onPress={() => {
+                setRevokeInviteSheetOpen(false);
+                setRevokeInviteError(null);
+              }}
+              variant="ghost"
+              disabled={revokeInviteSubmitting}
+              fullWidth
+            />
+            <AppButton
+              title={strings.revoke}
+              onPress={() => {
+                void handleConfirmRevokeInvite();
+              }}
+              variant="secondary"
+              disabled={revokeInviteSubmitting}
+              fullWidth
+            />
+          </View>
         </View>
       </ActionSheet>
     </AppScreen>
@@ -492,6 +589,30 @@ const styles = StyleSheet.create({
   memberName: {
     ...textStyles.body,
   },
+  activeInviteBlock: {
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
+  },
+  activeInviteTitle: {
+    ...textStyles.subtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  inviteCodeBox: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceAlt,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  inviteCodeText: {
+    ...textStyles.h3,
+    letterSpacing: 1.2,
+  },
+  inviteActions: {
+    gap: theme.spacing.sm,
+  },
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
@@ -501,42 +622,6 @@ const styles = StyleSheet.create({
   },
   confirmActions: {
     gap: theme.spacing.sm,
-  },
-  inviteOptionRow: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceAlt,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
-  },
-  inviteOptionText: {
-    ...textStyles.body,
-  },
-  inviteOptionTextMuted: {
-    ...textStyles.body,
-    color: theme.colors.subtle,
-  },
-  inviteOptionPressed: {
-    opacity: 0.85,
-  },
-  inviteOptionDisabled: {
-    opacity: 0.5,
-  },
-  inviteUrlBox: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceAlt,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-  },
-  inviteUrlText: {
-    ...textStyles.body,
   },
   deleteButton: {
     borderWidth: 1,

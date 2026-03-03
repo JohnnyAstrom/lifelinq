@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { devLogin } from '../api/devLoginApi';
 import { formatApiError } from '../../../shared/api/client';
-import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../../../shared/ui/components';
+import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
@@ -12,16 +13,20 @@ type Props = {
 };
 
 export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: Props) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const strings = {
-    title: 'Welcome back',
-    subtitle: 'Sign in with your dev email to continue.',
+    appName: 'LifeLinq',
+    title: 'Sign in',
+    subtitle: 'Use magic link to continue.',
     emailLabel: 'Email',
     emailPlaceholder: 'you@lifelinq.dev',
-    login: 'Login',
-    loggingIn: 'Logging in...',
+    login: 'Send magic link',
+    loggingIn: 'Sending...',
+    google: 'Continue with Google',
+    apple: 'Continue with Apple',
   };
 
   async function handleLogin() {
@@ -41,51 +46,123 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
     }
   }
 
+  const bottomInset = Math.max(insets.bottom, theme.spacing.md);
+
   return (
-    <AppScreen scroll={false} contentStyle={styles.container}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
-        style={styles.keyboardArea}
+        style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
-        keyboardVerticalOffset={Platform.OS === 'android' ? 24 : 0}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 12 : 0}
       >
-        <AppCard style={styles.card}>
-          <Text style={textStyles.h2}>{strings.title}</Text>
-          <Subtle>{strings.subtitle}</Subtle>
-          <View style={styles.field}>
-            <Text style={styles.label}>{strings.emailLabel}</Text>
-            <AppInput
-              value={email}
-              placeholder={strings.emailPlaceholder}
-              onChangeText={(value) => {
-                if (authError) {
-                  onClearAuthError?.();
-                }
-                setEmail(value);
-              }}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
+        <View style={styles.decorOne} />
+        <View style={styles.decorTwo} />
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View style={styles.header}>
+            <Text style={styles.logo}>{strings.appName}</Text>
+            <Text style={textStyles.h2}>{strings.title}</Text>
+            <Subtle>{strings.subtitle}</Subtle>
           </View>
-          {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
+
+          <AppCard style={styles.card}>
+            <View style={styles.field}>
+              <Text style={styles.label}>{strings.emailLabel}</Text>
+              <AppInput
+                value={email}
+                placeholder={strings.emailPlaceholder}
+                onChangeText={(value) => {
+                  if (authError) {
+                    onClearAuthError?.();
+                  }
+                  setEmail(value);
+                }}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+            </View>
+            {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
+            <View style={styles.providers}>
+              <AppButton
+                title={strings.google}
+                onPress={() => {}}
+                variant="ghost"
+                disabled
+                fullWidth
+              />
+              <AppButton
+                title={strings.apple}
+                onPress={() => {}}
+                variant="ghost"
+                disabled
+                fullWidth
+              />
+            </View>
+          </AppCard>
+        </ScrollView>
+
+        <View style={[styles.ctaContainer, { paddingBottom: bottomInset }]}>
           <AppButton
             title={loading ? strings.loggingIn : strings.login}
             onPress={handleLogin}
             disabled={!email.trim() || loading}
             fullWidth
           />
-        </AppCard>
+        </View>
       </KeyboardAvoidingView>
-    </AppScreen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
   },
-  keyboardArea: {
-    width: '100%',
+  keyboardContainer: {
+    flex: 1,
+  },
+  decorOne: {
+    position: 'absolute',
+    top: -120,
+    right: -80,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: theme.colors.accentSoft,
+    opacity: 0.5,
+  },
+  decorTwo: {
+    position: 'absolute',
+    bottom: -140,
+    left: -90,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: theme.colors.primarySoft,
+    opacity: 0.6,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: 140,
+    gap: theme.spacing.lg,
+  },
+  header: {
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  logo: {
+    ...textStyles.subtle,
+    fontFamily: theme.typography.heading,
+    letterSpacing: 0.4,
   },
   card: {
     gap: theme.spacing.md,
@@ -101,5 +178,16 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
+  },
+  providers: {
+    gap: theme.spacing.sm,
+  },
+  ctaContainer: {
+    position: 'absolute',
+    left: theme.spacing.lg,
+    right: theme.spacing.lg,
+    bottom: 0,
+    paddingTop: theme.spacing.sm,
+    backgroundColor: theme.colors.bg,
   },
 });

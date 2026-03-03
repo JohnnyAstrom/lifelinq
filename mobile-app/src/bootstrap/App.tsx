@@ -24,7 +24,7 @@ import { ManagePlaceScreen } from '../screens/ManagePlaceScreen';
 import { SpacesScreen } from '../screens/SpacesScreen';
 import { AcceptInviteScreen } from '../screens/AcceptInviteScreen';
 import { AppToast } from '../shared/ui/AppToast';
-import { ApiError, formatApiError } from '../shared/api/client';
+import { ApiError, UnauthorizedError, formatApiError } from '../shared/api/client';
 import { ActionSheet } from '../shared/ui/ActionSheet';
 import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
@@ -104,10 +104,11 @@ function parseInviteUrl(url: string): { token: string } | null {
 }
 
 function AppShell() {
-  const { status, token, reloadMe, login } = useAuth();
+  const { status, token, reloadMe, login, handleApiError } = useAuth();
   const { pendingInviteToken, setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
   const [authError, setAuthError] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [autoAccepting, setAutoAccepting] = useState(false);
   const lastHandledUrlRef = useRef<string | null>(null);
   const tokenInFlightRef = useRef<string | null>(null);
   const previousStatusRef = useRef(status);
@@ -123,6 +124,9 @@ function AppShell() {
       if (parsed) {
         lastHandledUrlRef.current = url;
         if (parsed.token) {
+          if (status === 'authenticated') {
+            return;
+          }
           if (tokenInFlightRef.current === parsed.token) {
             return;
           }
@@ -148,7 +152,7 @@ function AppShell() {
         setPendingInviteToken(invite.token);
       }
     },
-    [login, setPendingInviteToken]
+    [login, setPendingInviteToken, status]
   );
 
   useEffect(() => {
@@ -173,6 +177,15 @@ function AppShell() {
   }, [handleIncomingUrl]);
 
   useEffect(() => {
+    if (status !== 'unauthenticated') {
+      return;
+    }
+    clearPendingInviteToken();
+    setInviteError(null);
+    setAuthError(null);
+  }, [status, clearPendingInviteToken]);
+
+  useEffect(() => {
     const previousStatus = previousStatusRef.current;
     previousStatusRef.current = status;
 
@@ -189,6 +202,7 @@ function AppShell() {
 
     let cancelled = false;
     autoAcceptInFlightRef.current = pendingInviteToken;
+    setAutoAccepting(true);
 
     (async () => {
       try {
@@ -205,15 +219,20 @@ function AppShell() {
           return;
         }
         clearPendingInviteToken();
-        if (err instanceof ApiError && err.status === 409) {
-          await reloadMe();
+        if (err instanceof UnauthorizedError || (err instanceof ApiError && err.status === 401)) {
+          await handleApiError(err);
           setInviteError(null);
+          return;
+        }
+        if (err instanceof ApiError && err.status === 409) {
+          setInviteError('This invitation is invalid or expired.');
           return;
         }
         setInviteError('Invitation could not be accepted.');
       } finally {
         if (!cancelled) {
           autoAcceptInFlightRef.current = null;
+          setAutoAccepting(false);
         }
       }
     })();
@@ -221,8 +240,9 @@ function AppShell() {
     return () => {
       cancelled = true;
       autoAcceptInFlightRef.current = null;
+      setAutoAccepting(false);
     };
-  }, [status, pendingInviteToken, token, clearPendingInviteToken, reloadMe]);
+  }, [status, pendingInviteToken, token, clearPendingInviteToken, reloadMe, handleApiError]);
 
   if (status === 'hydrating') {
     return <HydratingSplashScreen />;
@@ -238,7 +258,14 @@ function AppShell() {
     );
   }
 
-  return <AppStack />;
+  return (
+    <AppStack
+      pendingInviteToken={pendingInviteToken}
+      inviteError={inviteError}
+      clearInviteError={() => setInviteError(null)}
+      autoAccepting={autoAccepting}
+    />
+  );
 }
 
 function AuthStack({
@@ -253,7 +280,17 @@ function AuthStack({
   return <LoginScreen onLoggedIn={onLoggedIn} authError={authError} onClearAuthError={onClearAuthError} />;
 }
 
-function AppStack() {
+function AppStack({
+  pendingInviteToken,
+  inviteError,
+  clearInviteError,
+  autoAccepting,
+}: {
+  pendingInviteToken: string | null;
+  inviteError: string | null;
+  clearInviteError: () => void;
+  autoAccepting: boolean;
+}) {
   const { token, me, meLoading, meError, reloadMe, logout, handleApiError } = useAuth();
   const { setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
   const [screen, setScreen] = useState<Screen>('home');
@@ -302,8 +339,9 @@ function AppStack() {
   }
 
   function openJoinSheet() {
+    clearInviteError();
     setJoinError(null);
-    setJoinTokenInput('');
+    setJoinTokenInput(pendingInviteToken ?? '');
     setJoinSheetOpen(true);
   }
 
@@ -318,6 +356,7 @@ function AppStack() {
     if (joinLoading) {
       return;
     }
+    clearInviteError();
     setJoinSheetOpen(false);
     setJoinError(null);
   }
@@ -349,10 +388,9 @@ function AppStack() {
       clearPendingInviteToken();
       setJoinSheetOpen(false);
       setJoinTokenInput('');
-      setScreen('home');
     } catch (err) {
       await handleApiError(err);
-      setJoinError('This invitation is invalid or expired.');
+      setJoinError('Could not join this place. Check the code and try again.');
     } finally {
       setJoinLoading(false);
     }
@@ -575,7 +613,7 @@ function AppStack() {
           }}
         />
         {joinLoading ? <Subtle>Joining...</Subtle> : null}
-        {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
+        {joinError || inviteError ? <Text style={styles.joinError}>{joinError ?? inviteError}</Text> : null}
         <View style={styles.joinActions}>
           <AppButton
             title={joinLoading ? 'Joining...' : 'Join'}
@@ -852,6 +890,13 @@ function AppStack() {
       {switchSheet}
       {joinSheet}
       {createSheet}
+      {autoAccepting ? (
+        <View style={styles.autoAcceptOverlay} pointerEvents="none">
+          <AppCard style={styles.autoAcceptCard}>
+            <Subtle>Joining place...</Subtle>
+          </AppCard>
+        </View>
+      ) : null}
       {toastOverlay}
     </>
   );
@@ -914,6 +959,17 @@ const styles = StyleSheet.create({
   createError: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
+  },
+  autoAcceptOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  autoAcceptCard: {
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
   },
 });
 

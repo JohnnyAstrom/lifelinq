@@ -84,3 +84,13 @@ export async function acceptInvitation(
     { token }
   );
 }
+
+export async function revokeInvitation(token: string, invitationId: string): Promise<void> {
+  await fetchJson<void>(
+    `/groups/invitations/${invitationId}`,
+    {
+      method: 'DELETE',
+    },
+    { token }
+  );
+}
