@@ -1,7 +1,8 @@
 import { fetchJson } from '../../../shared/api/client';
 
 export type DevLoginResponse = {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 };
 
 export async function devLogin(

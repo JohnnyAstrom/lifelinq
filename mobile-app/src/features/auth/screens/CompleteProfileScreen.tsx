@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
-import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../../../shared/ui/components';
+import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import { updateProfile } from '../api/meApi';
 
@@ -34,7 +35,11 @@ export function CompleteProfileScreen({
   const [error, setError] = useState<string | null>(null);
   const { handleApiError } = useAuth();
   const strings = {
+    title: 'Complete profile',
+    subtitle: 'Please add your first and last name to continue.',
     placeNameLabel: 'What should we call your place?',
+    save: 'Save profile',
+    saving: 'Saving...',
   };
 
   async function handleSubmit() {
@@ -64,44 +69,114 @@ export function CompleteProfileScreen({
   }
 
   return (
-    <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
-      <AppCard style={{ gap: theme.spacing.md }}>
-        <Text style={textStyles.h2}>Complete profile</Text>
-        <Subtle>Please add your first and last name to continue.</Subtle>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.decorOne} />
+        <View style={styles.decorTwo} />
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentInsetAdjustmentBehavior="always"
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.header}>
+            <Text style={textStyles.h2}>{strings.title}</Text>
+            <Subtle>{strings.subtitle}</Subtle>
+          </View>
 
-        <View style={{ gap: theme.spacing.sm }}>
-          <AppInput
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="First name"
-            autoFocus
-            returnKeyType="next"
-          />
-          <AppInput
-            value={lastName}
-            onChangeText={setLastName}
-            placeholder="Last name"
-            returnKeyType="next"
-          />
-          <Text style={textStyles.subtle}>{strings.placeNameLabel}</Text>
-          <AppInput
-            value={placeName}
-            onChangeText={setPlaceName}
-            placeholder="Personal"
-            returnKeyType="done"
-            onSubmitEditing={handleSubmit}
-          />
-        </View>
+          <AppCard style={styles.card}>
+            <View style={styles.fields}>
+              <AppInput
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="First name"
+                autoFocus
+                returnKeyType="next"
+              />
+              <AppInput
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Last name"
+                returnKeyType="next"
+              />
+              <Text style={textStyles.subtle}>{strings.placeNameLabel}</Text>
+              <AppInput
+                value={placeName}
+                onChangeText={setPlaceName}
+                placeholder="Personal"
+                returnKeyType="done"
+                onSubmitEditing={handleSubmit}
+              />
+            </View>
 
-        {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <AppButton
-          title={loading ? 'Saving...' : 'Save profile'}
-          onPress={handleSubmit}
-          disabled={loading}
-          fullWidth
-        />
-      </AppCard>
-    </AppScreen>
+            <View style={styles.primaryCta}>
+              <AppButton
+                title={loading ? strings.saving : strings.save}
+                onPress={handleSubmit}
+                disabled={loading}
+                fullWidth
+              />
+            </View>
+          </AppCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  decorOne: {
+    position: 'absolute',
+    top: -120,
+    right: -80,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: theme.colors.accentSoft,
+    opacity: 0.5,
+  },
+  decorTwo: {
+    position: 'absolute',
+    bottom: -140,
+    left: -90,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: theme.colors.primarySoft,
+    opacity: 0.6,
+  },
+  scrollContent: {
+    paddingTop: 48,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    gap: theme.spacing.lg,
+  },
+  header: {
+    gap: theme.spacing.xs,
+  },
+  card: {
+    gap: theme.spacing.md,
+  },
+  fields: {
+    gap: theme.spacing.sm,
+  },
+  error: {
+    color: theme.colors.danger,
+    fontFamily: theme.typography.body,
+  },
+  primaryCta: {
+    marginTop: theme.spacing.md,
+  },
+});

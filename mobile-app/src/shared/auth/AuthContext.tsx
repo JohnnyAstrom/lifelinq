@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { UnauthorizedError } from '../api/client';
-import { clearToken, getToken, setToken } from '../api/tokenStore';
+import { clearAuthTokens, getToken, setAuthTokens, setToken } from '../api/tokenStore';
 import { fetchMe, type MeResponse } from '../../features/auth/api/meApi';
 
 type AuthState = {
@@ -12,7 +12,7 @@ type AuthState = {
   meLoading: boolean;
   meError: string | null;
   reloadMe: () => Promise<MeResponse | null>;
-  login: (token: string) => Promise<void>;
+  login: (accessToken: string, refreshToken?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   handleApiError: (err: unknown) => Promise<void>;
 };
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStatus('authenticated');
       return response;
     } catch {
-      await clearToken();
+      await clearAuthTokens();
       setTokenState(null);
       setMe(null);
       setStatus('unauthenticated');
@@ -60,13 +60,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  async function login(newToken: string) {
-    await setToken(newToken);
-    await hydrateWithToken(newToken);
+  async function loginWithRefresh(newAccessToken: string, newRefreshToken?: string | null) {
+    if (newRefreshToken && newRefreshToken.trim()) {
+      await setAuthTokens(newAccessToken, newRefreshToken.trim());
+    } else {
+      await setToken(newAccessToken);
+    }
+    await hydrateWithToken(newAccessToken);
   }
 
   async function logout() {
-    await clearToken();
+    await clearAuthTokens();
     setTokenState(null);
     setMe(null);
     setMeError(null);
@@ -115,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       meLoading,
       meError,
       reloadMe,
-      login,
+      login: loginWithRefresh,
       logout,
       handleApiError,
     }),

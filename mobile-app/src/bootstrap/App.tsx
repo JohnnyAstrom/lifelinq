@@ -70,7 +70,7 @@ function HydratingSplashScreen() {
   );
 }
 
-function parseAuthCompleteUrl(url: string): { token?: string; error?: string } | null {
+function parseAuthCompleteUrl(url: string): { token?: string; refresh?: string; error?: string } | null {
   const [base, fragment = ''] = url.split('#', 2);
   const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
   if (normalizedBase !== 'mobileapp://auth/complete') {
@@ -78,9 +78,10 @@ function parseAuthCompleteUrl(url: string): { token?: string; error?: string } |
   }
   const params = new URLSearchParams(fragment);
   const token = params.get('token')?.trim();
+  const refresh = params.get('refresh')?.trim();
   const error = params.get('error')?.trim();
   if (token) {
-    return { token };
+    return { token, refresh };
   }
   if (error) {
     return { error };
@@ -133,7 +134,7 @@ function AppShell() {
           tokenInFlightRef.current = parsed.token;
           setAuthError(null);
           try {
-            await login(parsed.token);
+            await login(parsed.token, parsed.refresh ?? null);
           } finally {
             tokenInFlightRef.current = null;
           }
@@ -273,7 +274,7 @@ function AuthStack({
   authError,
   onClearAuthError,
 }: {
-  onLoggedIn: (token: string) => Promise<void>;
+  onLoggedIn: (accessToken: string, refreshToken?: string | null) => Promise<void>;
   authError: string | null;
   onClearAuthError: () => void;
 }) {

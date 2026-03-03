@@ -1,12 +1,13 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { getToken } from './tokenStore';
+import { getRefreshToken, getToken, setAuthTokens } from './tokenStore';
 
 export type ApiClientOptions = {
   token?: string | null;
 };
 
 const DEFAULT_BASE_URL = 'http://localhost:8080';
+let refreshInFlight: Promise<string | null> | null = null;
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -107,8 +108,34 @@ export async function fetchJson<T>(
   });
 
   if (response.status === 401) {
-    const text = await response.text();
-    throw new UnauthorizedError(text || 'Unauthorized');
+    const refreshedAccessToken = await tryRefreshAccessToken(baseUrl, path);
+    if (!refreshedAccessToken) {
+      const text = await response.text();
+      throw new UnauthorizedError(text || 'Unauthorized');
+    }
+    headers.Authorization = `Bearer ${refreshedAccessToken}`;
+    const retriedResponse = await fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers,
+    });
+    if (retriedResponse.status === 401) {
+      const text = await retriedResponse.text();
+      throw new UnauthorizedError(text || 'Unauthorized');
+    }
+    if (!retriedResponse.ok) {
+      const text = await retriedResponse.text();
+      const error = new ApiError(retriedResponse.status, text);
+      console.error('API error', {
+        url: `${baseUrl}${path}`,
+        status: retriedResponse.status,
+        body: text,
+      });
+      throw error;
+    }
+    if (retriedResponse.status === 204) {
+      return undefined as T;
+    }
+    return (await retriedResponse.json()) as T;
   }
 
   if (!response.ok) {
@@ -128,4 +155,115 @@ export async function fetchJson<T>(
   }
 
   return (await response.json()) as T;
+}
+
+export async function fetchText(
+  path: string,
+  options: RequestInit = {},
+  clientOptions: ApiClientOptions = {}
+): Promise<string> {
+  const baseUrl = resolveBaseUrl();
+  const headers: Record<string, string> = {
+    Accept: 'text/plain, text/html, */*',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const token = clientOptions.token ?? (await getToken());
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    const refreshedAccessToken = await tryRefreshAccessToken(baseUrl, path);
+    if (!refreshedAccessToken) {
+      const text = await response.text();
+      throw new UnauthorizedError(text || 'Unauthorized');
+    }
+    headers.Authorization = `Bearer ${refreshedAccessToken}`;
+    const retriedResponse = await fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers,
+    });
+    if (retriedResponse.status === 401) {
+      const text = await retriedResponse.text();
+      throw new UnauthorizedError(text || 'Unauthorized');
+    }
+    if (!retriedResponse.ok) {
+      const text = await retriedResponse.text();
+      const error = new ApiError(retriedResponse.status, text);
+      console.error('API error', {
+        url: `${baseUrl}${path}`,
+        status: retriedResponse.status,
+        body: text,
+      });
+      throw error;
+    }
+    return await retriedResponse.text();
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    const error = new ApiError(response.status, text);
+    console.error('API error', {
+      url: `${baseUrl}${path}`,
+      status: response.status,
+      body: text,
+    });
+    throw error;
+  }
+
+  return await response.text();
+}
+
+async function tryRefreshAccessToken(baseUrl: string, path: string): Promise<string | null> {
+  if (path === '/auth/refresh') {
+    return null;
+  }
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+  refreshInFlight = runRefreshAccessToken(baseUrl);
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+async function runRefreshAccessToken(baseUrl: string): Promise<string | null> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) {
+    return null;
+  }
+  const refreshResponse = await fetch(`${baseUrl}/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!refreshResponse.ok) {
+    return null;
+  }
+  const payload = (await refreshResponse.json()) as {
+    accessToken?: string;
+    refreshToken?: string;
+  };
+  const accessToken = payload.accessToken?.trim();
+  const rotatedRefreshToken = payload.refreshToken?.trim();
+  if (!accessToken || !rotatedRefreshToken) {
+    return null;
+  }
+  await setAuthTokens(accessToken, rotatedRefreshToken);
+  return accessToken;
 }

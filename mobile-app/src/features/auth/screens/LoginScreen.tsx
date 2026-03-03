@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { devLogin } from '../api/devLoginApi';
 import { formatApiError } from '../../../shared/api/client';
 import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
-  onLoggedIn: (token: string) => Promise<void> | void;
+  onLoggedIn: (accessToken: string, refreshToken?: string | null) => Promise<void> | void;
   authError?: string | null;
   onClearAuthError?: () => void;
 };
 
 export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: Props) {
-  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +37,7 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
     onClearAuthError?.();
     try {
       const response = await devLogin(email.trim());
-      await Promise.resolve(onLoggedIn(response.token));
+      await Promise.resolve(onLoggedIn(response.accessToken, response.refreshToken));
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -46,13 +45,11 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
     }
   }
 
-  const bottomInset = Math.max(insets.bottom, theme.spacing.md);
-
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'android' ? 12 : 0}
       >
         <View style={styles.decorOne} />
@@ -103,17 +100,16 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
                 fullWidth
               />
             </View>
+            <View style={styles.primaryCta}>
+              <AppButton
+                title={loading ? strings.loggingIn : strings.login}
+                onPress={handleLogin}
+                disabled={!email.trim() || loading}
+                fullWidth
+              />
+            </View>
           </AppCard>
         </ScrollView>
-
-        <View style={[styles.ctaContainer, { paddingBottom: bottomInset }]}>
-          <AppButton
-            title={loading ? strings.loggingIn : strings.login}
-            onPress={handleLogin}
-            disabled={!email.trim() || loading}
-            fullWidth
-          />
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -148,11 +144,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: 140,
+    paddingTop: 48,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
     gap: theme.spacing.lg,
   },
   header: {
@@ -182,12 +176,7 @@ const styles = StyleSheet.create({
   providers: {
     gap: theme.spacing.sm,
   },
-  ctaContainer: {
-    position: 'absolute',
-    left: theme.spacing.lg,
-    right: theme.spacing.lg,
-    bottom: 0,
-    paddingTop: theme.spacing.sm,
-    backgroundColor: theme.colors.bg,
+  primaryCta: {
+    marginTop: theme.spacing.md,
   },
 });
