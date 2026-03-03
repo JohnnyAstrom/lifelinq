@@ -7,6 +7,7 @@ export type CreateGroupResponse = {
 export type CreateInvitationResponse = {
   invitationId: string;
   token: string;
+  shortCode?: string | null;
   expiresAt: string;
 };
 
@@ -69,6 +70,33 @@ export async function createInvitationLink(token: string): Promise<CreateInvitat
     },
     { token }
   );
+}
+
+export async function getActiveInvitationLink(
+  token: string,
+  groupId: string
+): Promise<CreateInvitationResponse | null> {
+  const response = await fetchJson<{
+    invitationId: string | null;
+    token: string | null;
+    shortCode?: string | null;
+    expiresAt: string | null;
+  }>(
+    `/groups/${encodeURIComponent(groupId)}/invitations/active`,
+    {
+      method: 'GET',
+    },
+    { token }
+  );
+  if (!response.invitationId || !response.token || !response.expiresAt) {
+    return null;
+  }
+  return {
+    invitationId: response.invitationId,
+    token: response.token,
+    shortCode: response.shortCode ?? null,
+    expiresAt: response.expiresAt,
+  };
 }
 
 export async function acceptInvitation(
