@@ -170,4 +170,68 @@ class GroupContextFilterTest {
         verifyNoInteractions(chain);
         assertNull(RequestContextHolder.getCurrent());
     }
+
+    @Test
+    void skipsContextResolutionForMagicLinkStartPost() throws Exception {
+        GroupContextFilter filter = new GroupContextFilter(new FakeActiveGroupUserRepository());
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/start");
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(response);
+        assertNull(RequestContextHolder.getCurrent());
+    }
+
+    @Test
+    void doesNotSkipContextResolutionForMagicLinkStartGet() throws Exception {
+        GroupContextFilter filter = new GroupContextFilter(new FakeActiveGroupUserRepository());
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/start");
+        Mockito.when(request.getMethod()).thenReturn("GET");
+
+        filter.doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verifyNoInteractions(chain);
+        assertNull(RequestContextHolder.getCurrent());
+    }
+
+    @Test
+    void skipsContextResolutionForMagicLinkVerifyGet() throws Exception {
+        GroupContextFilter filter = new GroupContextFilter(new FakeActiveGroupUserRepository());
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/verify");
+        Mockito.when(request.getMethod()).thenReturn("GET");
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(response);
+        assertNull(RequestContextHolder.getCurrent());
+    }
+
+    @Test
+    void doesNotSkipContextResolutionForMagicLinkVerifyPost() throws Exception {
+        GroupContextFilter filter = new GroupContextFilter(new FakeActiveGroupUserRepository());
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/verify");
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        filter.doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verifyNoInteractions(chain);
+        assertNull(RequestContextHolder.getCurrent());
+    }
 }

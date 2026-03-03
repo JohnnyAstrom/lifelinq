@@ -130,6 +130,66 @@ class AuthenticationFilterTest {
         verifyNoInteractions(chain);
     }
 
+    @Test
+    void skipsAuthForMagicLinkStartPost() throws Exception {
+        AuthenticationFilter filter = new AuthenticationFilter(new JwtVerifier(SECRET));
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/start");
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(response);
+    }
+
+    @Test
+    void doesNotSkipAuthForMagicLinkStartGet() throws Exception {
+        AuthenticationFilter filter = new AuthenticationFilter(new JwtVerifier(SECRET));
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/start");
+        Mockito.when(request.getMethod()).thenReturn("GET");
+
+        filter.doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void skipsAuthForMagicLinkVerifyGet() throws Exception {
+        AuthenticationFilter filter = new AuthenticationFilter(new JwtVerifier(SECRET));
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/verify");
+        Mockito.when(request.getMethod()).thenReturn("GET");
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verifyNoInteractions(response);
+    }
+
+    @Test
+    void doesNotSkipAuthForMagicLinkVerifyPost() throws Exception {
+        AuthenticationFilter filter = new AuthenticationFilter(new JwtVerifier(SECRET));
+        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+        HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
+        FilterChain chain = Mockito.mock(FilterChain.class);
+        Mockito.when(request.getRequestURI()).thenReturn("/auth/magic/verify");
+        Mockito.when(request.getMethod()).thenReturn("POST");
+
+        filter.doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verifyNoInteractions(chain);
+    }
+
     private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(
