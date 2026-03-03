@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -26,6 +27,10 @@ public class MagicLinkChallengeEntity {
     @Column(name = "consumed_at")
     private Instant consumedAt;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     protected MagicLinkChallengeEntity() {
     }
 
@@ -34,13 +39,15 @@ public class MagicLinkChallengeEntity {
             String token,
             String email,
             Instant expiresAt,
-            Instant consumedAt
+            Instant consumedAt,
+            Long version
     ) {
         this.id = id;
         this.token = token;
         this.email = email;
         this.expiresAt = expiresAt;
         this.consumedAt = consumedAt;
+        this.version = version;
     }
 
     public UUID getId() {
@@ -62,5 +69,8 @@ public class MagicLinkChallengeEntity {
     public Instant getConsumedAt() {
         return consumedAt;
     }
-}
 
+    public Long getVersion() {
+        return version;
+    }
+}

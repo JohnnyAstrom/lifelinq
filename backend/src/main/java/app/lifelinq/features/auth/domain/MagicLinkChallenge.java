@@ -9,6 +9,7 @@ public final class MagicLinkChallenge {
     private final String email;
     private final Instant expiresAt;
     private final Instant consumedAt;
+    private final Long version;
 
     public MagicLinkChallenge(
             UUID id,
@@ -16,6 +17,17 @@ public final class MagicLinkChallenge {
             String email,
             Instant expiresAt,
             Instant consumedAt
+    ) {
+        this(id, token, email, expiresAt, consumedAt, null);
+    }
+
+    public MagicLinkChallenge(
+            UUID id,
+            String token,
+            String email,
+            Instant expiresAt,
+            Instant consumedAt,
+            Long version
     ) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
@@ -34,6 +46,7 @@ public final class MagicLinkChallenge {
         this.email = email;
         this.expiresAt = expiresAt;
         this.consumedAt = consumedAt;
+        this.version = version;
     }
 
     public UUID getId() {
@@ -56,6 +69,10 @@ public final class MagicLinkChallenge {
         return consumedAt;
     }
 
+    public Long getVersion() {
+        return version;
+    }
+
     public boolean isExpired(Instant now) {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
@@ -74,7 +91,6 @@ public final class MagicLinkChallenge {
         if (isConsumed()) {
             throw new IllegalStateException("challenge already consumed");
         }
-        return new MagicLinkChallenge(id, token, email, expiresAt, now);
+        return new MagicLinkChallenge(id, token, email, expiresAt, now, version);
     }
 }
-

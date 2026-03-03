@@ -9,7 +9,8 @@ final class MagicLinkChallengeMapper {
                 challenge.getToken(),
                 challenge.getEmail(),
                 challenge.getExpiresAt(),
-                challenge.getConsumedAt()
+                challenge.getConsumedAt(),
+                challenge.getVersion()
         );
     }
 
@@ -19,8 +20,8 @@ final class MagicLinkChallengeMapper {
                 entity.getToken(),
                 entity.getEmail(),
                 entity.getExpiresAt(),
-                entity.getConsumedAt()
+                entity.getConsumedAt(),
+                entity.getVersion()
         );
     }
 }
-
