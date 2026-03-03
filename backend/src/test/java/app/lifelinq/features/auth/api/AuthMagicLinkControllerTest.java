@@ -55,11 +55,11 @@ class AuthMagicLinkControllerTest {
     @Test
     void verifyRedirectsWithFragmentTokenWhenValid() throws Exception {
         when(authApplicationService.verifyMagicLinkAndBuildRedirect("abc"))
-                .thenReturn("mobileapp://auth/complete#token=jwt-value");
+                .thenReturn("mobileapp://auth/complete#token=jwt-value&refresh=refresh-value");
 
         mockMvc.perform(get("/auth/magic/verify").param("token", "abc"))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", "mobileapp://auth/complete#token=jwt-value"))
+                .andExpect(header().string("Location", "mobileapp://auth/complete#token=jwt-value&refresh=refresh-value"))
                 .andExpect(header().string("Referrer-Policy", "no-referrer"));
     }
 

@@ -9,6 +9,10 @@ import app.lifelinq.features.auth.domain.AuthProvider;
 import app.lifelinq.features.auth.domain.AuthMailSender;
 import app.lifelinq.features.auth.domain.MagicLinkChallengeRepository;
 import app.lifelinq.features.auth.domain.MagicLinkTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshSessionRepository;
+import app.lifelinq.features.auth.domain.RefreshTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshTokenHasher;
+import app.lifelinq.features.auth.domain.RefreshTokenRepository;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
@@ -20,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -37,10 +42,15 @@ public class AuthApplicationService {
     private final AuthIdentityRepository authIdentityRepository;
     private final StartMagicLinkLoginUseCase startMagicLinkLoginUseCase;
     private final VerifyMagicLinkUseCase verifyMagicLinkUseCase;
+    private final IssueRefreshSessionUseCase issueRefreshSessionUseCase;
+    private final RotateRefreshTokenUseCase rotateRefreshTokenUseCase;
+    private final RevokeRefreshSessionUseCase revokeRefreshSessionUseCase;
     private final JwtSigner jwtSigner;
     private final Clock clock;
     private final Duration magicLinkTtl;
     private final Duration maxMagicLinkTtl;
+    private final Duration refreshIdleTtl;
+    private final Duration refreshAbsoluteTtl;
     private final String magicLinkVerifyBaseUrl;
     private final String magicLinkCompleteBaseUrl;
 
@@ -56,10 +66,16 @@ public class AuthApplicationService {
             MagicLinkChallengeRepository magicLinkChallengeRepository,
             MagicLinkTokenGenerator magicLinkTokenGenerator,
             AuthMailSender authMailSender,
+            RefreshSessionRepository refreshSessionRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            RefreshTokenGenerator refreshTokenGenerator,
+            RefreshTokenHasher refreshTokenHasher,
             JwtSigner jwtSigner,
             Clock clock,
             Duration magicLinkTtl,
             Duration maxMagicLinkTtl,
+            Duration refreshIdleTtl,
+            Duration refreshAbsoluteTtl,
             String magicLinkVerifyBaseUrl,
             String magicLinkCompleteBaseUrl
     ) {
@@ -99,6 +115,18 @@ public class AuthApplicationService {
         if (authMailSender == null) {
             throw new IllegalArgumentException("authMailSender must not be null");
         }
+        if (refreshSessionRepository == null) {
+            throw new IllegalArgumentException("refreshSessionRepository must not be null");
+        }
+        if (refreshTokenRepository == null) {
+            throw new IllegalArgumentException("refreshTokenRepository must not be null");
+        }
+        if (refreshTokenGenerator == null) {
+            throw new IllegalArgumentException("refreshTokenGenerator must not be null");
+        }
+        if (refreshTokenHasher == null) {
+            throw new IllegalArgumentException("refreshTokenHasher must not be null");
+        }
         if (clock == null) {
             throw new IllegalArgumentException("clock must not be null");
         }
@@ -110,6 +138,15 @@ public class AuthApplicationService {
         }
         if (magicLinkTtl.compareTo(maxMagicLinkTtl) > 0) {
             throw new IllegalArgumentException("magicLinkTtl must not exceed maxMagicLinkTtl");
+        }
+        if (refreshIdleTtl == null || refreshIdleTtl.isZero() || refreshIdleTtl.isNegative()) {
+            throw new IllegalArgumentException("refreshIdleTtl must be positive");
+        }
+        if (refreshAbsoluteTtl == null || refreshAbsoluteTtl.isZero() || refreshAbsoluteTtl.isNegative()) {
+            throw new IllegalArgumentException("refreshAbsoluteTtl must be positive");
+        }
+        if (refreshIdleTtl.compareTo(refreshAbsoluteTtl) > 0) {
+            throw new IllegalArgumentException("refreshIdleTtl must not exceed refreshAbsoluteTtl");
         }
         if (magicLinkVerifyBaseUrl == null || magicLinkVerifyBaseUrl.isBlank()) {
             throw new IllegalArgumentException("magicLinkVerifyBaseUrl must not be blank");
@@ -131,24 +168,43 @@ public class AuthApplicationService {
                 authMailSender
         );
         this.verifyMagicLinkUseCase = new VerifyMagicLinkUseCase(magicLinkChallengeRepository);
+        this.issueRefreshSessionUseCase = new IssueRefreshSessionUseCase(
+                refreshSessionRepository,
+                refreshTokenRepository,
+                refreshTokenGenerator,
+                refreshTokenHasher
+        );
+        this.rotateRefreshTokenUseCase = new RotateRefreshTokenUseCase(
+                refreshSessionRepository,
+                refreshTokenRepository,
+                refreshTokenGenerator,
+                refreshTokenHasher
+        );
+        this.revokeRefreshSessionUseCase = new RevokeRefreshSessionUseCase(
+                refreshSessionRepository,
+                refreshTokenRepository,
+                refreshTokenHasher
+        );
         this.jwtSigner = jwtSigner;
         this.clock = clock;
         this.magicLinkTtl = magicLinkTtl;
         this.maxMagicLinkTtl = maxMagicLinkTtl;
+        this.refreshIdleTtl = refreshIdleTtl;
+        this.refreshAbsoluteTtl = refreshAbsoluteTtl;
         this.magicLinkVerifyBaseUrl = trimTrailingSlash(magicLinkVerifyBaseUrl);
         this.magicLinkCompleteBaseUrl = magicLinkCompleteBaseUrl;
     }
 
-    public String devLogin(String email) {
+    public AuthTokenPair devLogin(String email) {
         return devLogin(email, null);
     }
 
-    public String devLogin(String email, String initialPlaceName) {
+    public AuthTokenPair devLogin(String email, String initialPlaceName) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("email must not be blank");
         }
         UUID userId = deterministicEmailUserId(normalizeEmail(email));
-        return ensureProvisionedAndSignToken(userId, initialPlaceName);
+        return issueAuthPairForUser(userId, initialPlaceName);
     }
 
     @Transactional
@@ -168,9 +224,10 @@ public class AuthApplicationService {
     public String verifyMagicLinkAndBuildRedirect(String token) {
         VerifiedMagicLinkResult verified = verifyMagicLinkUseCase.execute(new VerifyMagicLinkCommand(token, clock.instant()));
         UUID userId = resolveOrCreateEmailIdentity(verified.getNormalizedEmail());
-        String jwt = ensureProvisionedAndSignToken(userId);
-        String encodedJwt = URLEncoder.encode(jwt, StandardCharsets.UTF_8);
-        return magicLinkCompleteBaseUrl + "#token=" + encodedJwt;
+        AuthTokenPair authTokenPair = issueAuthPairForUser(userId, null);
+        String encodedAccessToken = URLEncoder.encode(authTokenPair.accessToken(), StandardCharsets.UTF_8);
+        String encodedRefreshToken = URLEncoder.encode(authTokenPair.refreshToken(), StandardCharsets.UTF_8);
+        return magicLinkCompleteBaseUrl + "#token=" + encodedAccessToken + "&refresh=" + encodedRefreshToken;
     }
 
     @Transactional
@@ -189,6 +246,25 @@ public class AuthApplicationService {
             userActiveGroupSelection.setActiveGroup(userId, groupId);
         }
         return jwtSigner.sign(userId);
+    }
+
+    @Transactional
+    public AuthTokenPair refreshAuthTokens(String refreshToken) {
+        Instant now = clock.instant();
+        RotateRefreshTokenResult rotated = rotateRefreshTokenUseCase.execute(
+                refreshToken,
+                now,
+                refreshIdleTtl
+        );
+        return new AuthTokenPair(
+                ensureProvisionedAndSignToken(rotated.userId()),
+                rotated.refreshToken()
+        );
+    }
+
+    @Transactional
+    public void logoutRefreshSession(String refreshToken) {
+        revokeRefreshSessionUseCase.execute(refreshToken, clock.instant());
     }
 
     public String signDevToken(UUID userId) {
@@ -260,6 +336,17 @@ public class AuthApplicationService {
 
     private UUID deterministicEmailUserId(String normalizedEmail) {
         return UUID.nameUUIDFromBytes(normalizedEmail.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private AuthTokenPair issueAuthPairForUser(UUID userId, String initialPlaceName) {
+        String accessToken = ensureProvisionedAndSignToken(userId, initialPlaceName);
+        IssueRefreshSessionResult refresh = issueRefreshSessionUseCase.execute(
+                userId,
+                clock.instant(),
+                refreshIdleTtl,
+                refreshAbsoluteTtl
+        );
+        return new AuthTokenPair(accessToken, refresh.refreshToken());
     }
 
     private String normalizeEmail(String email) {

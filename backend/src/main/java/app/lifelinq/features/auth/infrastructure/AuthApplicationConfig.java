@@ -6,6 +6,10 @@ import app.lifelinq.features.auth.domain.AuthIdentityRepository;
 import app.lifelinq.features.auth.domain.AuthMailSender;
 import app.lifelinq.features.auth.domain.MagicLinkChallengeRepository;
 import app.lifelinq.features.auth.domain.MagicLinkTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshSessionRepository;
+import app.lifelinq.features.auth.domain.RefreshTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshTokenHasher;
+import app.lifelinq.features.auth.domain.RefreshTokenRepository;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.user.contract.UserAccountDeletion;
@@ -35,10 +39,16 @@ public class AuthApplicationConfig {
             MagicLinkChallengeRepository magicLinkChallengeRepository,
             MagicLinkTokenGenerator magicLinkTokenGenerator,
             AuthMailSender authMailSender,
+            RefreshSessionRepository refreshSessionRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            RefreshTokenGenerator refreshTokenGenerator,
+            RefreshTokenHasher refreshTokenHasher,
             JwtSigner jwtSigner,
             Clock clock,
             @Value("${lifelinq.auth.magic.ttlSeconds:900}") long magicLinkTtlSeconds,
             @Value("${lifelinq.auth.magic.maxTtlSeconds:3600}") long maxMagicLinkTtlSeconds,
+            @Value("${lifelinq.auth.refresh.idleTtlSeconds:2592000}") long refreshIdleTtlSeconds,
+            @Value("${lifelinq.auth.refresh.absoluteTtlSeconds:7776000}") long refreshAbsoluteTtlSeconds,
             @Value("${lifelinq.auth.magic.verifyBaseUrl:http://localhost:8080/auth/magic/verify}") String magicVerifyBaseUrl,
             @Value("${lifelinq.auth.magic.completeBaseUrl:mobileapp://auth/complete}") String magicCompleteBaseUrl
     ) {
@@ -54,10 +64,16 @@ public class AuthApplicationConfig {
                 magicLinkChallengeRepository,
                 magicLinkTokenGenerator,
                 authMailSender,
+                refreshSessionRepository,
+                refreshTokenRepository,
+                refreshTokenGenerator,
+                refreshTokenHasher,
                 jwtSigner,
                 clock,
                 Duration.ofSeconds(magicLinkTtlSeconds),
                 Duration.ofSeconds(maxMagicLinkTtlSeconds),
+                Duration.ofSeconds(refreshIdleTtlSeconds),
+                Duration.ofSeconds(refreshAbsoluteTtlSeconds),
                 magicVerifyBaseUrl,
                 magicCompleteBaseUrl
         );

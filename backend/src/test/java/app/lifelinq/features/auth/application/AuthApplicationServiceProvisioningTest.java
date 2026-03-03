@@ -13,6 +13,12 @@ import app.lifelinq.features.auth.domain.AuthProvider;
 import app.lifelinq.features.auth.domain.MagicLinkChallenge;
 import app.lifelinq.features.auth.domain.MagicLinkChallengeRepository;
 import app.lifelinq.features.auth.domain.MagicLinkTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshSession;
+import app.lifelinq.features.auth.domain.RefreshSessionRepository;
+import app.lifelinq.features.auth.domain.RefreshToken;
+import app.lifelinq.features.auth.domain.RefreshTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshTokenHasher;
+import app.lifelinq.features.auth.domain.RefreshTokenRepository;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.group.contract.UserGroupMembershipSummary;
@@ -95,11 +101,17 @@ class AuthApplicationServiceProvisioningTest {
                 () -> "magic-token",
                 (email, verifyUrl) -> {
                 },
+                new InMemoryRefreshSessionRepository(),
+                new InMemoryRefreshTokenRepository(),
+                () -> "refresh-token",
+                new PassthroughRefreshTokenHasher(),
                 new JwtSigner("test-secret", 300, null, null,
                         Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)),
                 Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC),
                 java.time.Duration.ofHours(2),
                 java.time.Duration.ofHours(1),
+                java.time.Duration.ofDays(30),
+                java.time.Duration.ofDays(90),
                 "http://localhost:8080/auth/magic/verify",
                 "mobileapp://auth/complete"
         ));
@@ -125,11 +137,17 @@ class AuthApplicationServiceProvisioningTest {
                     () -> "magic-token",
                     (email, verifyUrl) -> {
                     },
+                    new InMemoryRefreshSessionRepository(),
+                    new InMemoryRefreshTokenRepository(),
+                    () -> "refresh-token",
+                    new PassthroughRefreshTokenHasher(),
                     new JwtSigner("test-secret", 300, null, null,
                             Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC)),
                     Clock.fixed(Instant.parse("2026-02-26T00:00:00Z"), ZoneOffset.UTC),
                     java.time.Duration.ofMinutes(15),
                     java.time.Duration.ofHours(1),
+                    java.time.Duration.ofDays(30),
+                    java.time.Duration.ofDays(90),
                     "http://localhost:8080/auth/magic/verify",
                     "mobileapp://auth/complete"
             );
@@ -227,6 +245,57 @@ class AuthApplicationServiceProvisioningTest {
         @Override
         public void save(MagicLinkChallenge challenge) {
             byToken.put(challenge.getToken(), challenge);
+        }
+    }
+
+    private static final class InMemoryRefreshSessionRepository implements RefreshSessionRepository {
+        private final Map<UUID, RefreshSession> byId = new HashMap<>();
+
+        @Override
+        public void save(RefreshSession refreshSession) {
+            byId.put(refreshSession.getId(), refreshSession);
+        }
+
+        @Override
+        public Optional<RefreshSession> findById(UUID id) {
+            return Optional.ofNullable(byId.get(id));
+        }
+    }
+
+    private static final class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
+        private final Map<UUID, RefreshToken> byId = new HashMap<>();
+        private final Map<String, UUID> idByHash = new HashMap<>();
+
+        @Override
+        public void save(RefreshToken refreshToken) {
+            byId.put(refreshToken.getId(), refreshToken);
+            idByHash.put(refreshToken.getTokenHash(), refreshToken.getId());
+        }
+
+        @Override
+        public Optional<RefreshToken> findById(UUID id) {
+            return Optional.ofNullable(byId.get(id));
+        }
+
+        @Override
+        public Optional<RefreshToken> findByTokenHash(String tokenHash) {
+            UUID id = idByHash.get(tokenHash);
+            if (id == null) {
+                return Optional.empty();
+            }
+            return Optional.ofNullable(byId.get(id));
+        }
+    }
+
+    private static final class PassthroughRefreshTokenHasher implements RefreshTokenHasher {
+        @Override
+        public String hash(String plaintextToken) {
+            return plaintextToken;
+        }
+
+        @Override
+        public boolean matches(String plaintextToken, String hashedToken) {
+            return plaintextToken.equals(hashedToken);
         }
     }
 }

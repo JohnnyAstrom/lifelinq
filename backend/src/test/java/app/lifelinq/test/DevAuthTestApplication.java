@@ -8,9 +8,17 @@ import app.lifelinq.features.auth.domain.AuthIdentityRepository;
 import app.lifelinq.features.auth.domain.AuthMailSender;
 import app.lifelinq.features.auth.domain.MagicLinkChallengeRepository;
 import app.lifelinq.features.auth.domain.MagicLinkTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshSession;
+import app.lifelinq.features.auth.domain.RefreshSessionRepository;
+import app.lifelinq.features.auth.domain.RefreshToken;
+import app.lifelinq.features.auth.domain.RefreshTokenGenerator;
+import app.lifelinq.features.auth.domain.RefreshTokenHasher;
+import app.lifelinq.features.auth.domain.RefreshTokenRepository;
 import app.lifelinq.features.auth.infrastructure.AuthApplicationConfig;
+import app.lifelinq.features.auth.infrastructure.HmacSha256RefreshTokenHasher;
 import app.lifelinq.features.auth.infrastructure.InMemoryAuthIdentityRepository;
 import app.lifelinq.features.auth.infrastructure.InMemoryMagicLinkChallengeRepository;
+import app.lifelinq.features.auth.infrastructure.SecureRefreshTokenGenerator;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupApplicationServiceTestFactory;
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
@@ -136,6 +144,61 @@ public class DevAuthTestApplication {
     @Bean
     public AuthMailSender authMailSender() {
         return (email, verifyUrl) -> {
+        };
+    }
+
+    @Bean
+    public RefreshTokenGenerator refreshTokenGenerator() {
+        return new SecureRefreshTokenGenerator();
+    }
+
+    @Bean
+    public RefreshTokenHasher refreshTokenHasher() {
+        return new HmacSha256RefreshTokenHasher("test-refresh-secret");
+    }
+
+    @Bean
+    public RefreshSessionRepository refreshSessionRepository() {
+        return new RefreshSessionRepository() {
+            private final Map<UUID, RefreshSession> sessions = new ConcurrentHashMap<>();
+
+            @Override
+            public void save(RefreshSession refreshSession) {
+                sessions.put(refreshSession.getId(), refreshSession);
+            }
+
+            @Override
+            public Optional<RefreshSession> findById(UUID id) {
+                return Optional.ofNullable(sessions.get(id));
+            }
+        };
+    }
+
+    @Bean
+    public RefreshTokenRepository refreshTokenRepository() {
+        return new RefreshTokenRepository() {
+            private final Map<UUID, RefreshToken> tokensById = new ConcurrentHashMap<>();
+            private final Map<String, UUID> tokenIdByHash = new ConcurrentHashMap<>();
+
+            @Override
+            public void save(RefreshToken refreshToken) {
+                tokensById.put(refreshToken.getId(), refreshToken);
+                tokenIdByHash.put(refreshToken.getTokenHash(), refreshToken.getId());
+            }
+
+            @Override
+            public Optional<RefreshToken> findById(UUID id) {
+                return Optional.ofNullable(tokensById.get(id));
+            }
+
+            @Override
+            public Optional<RefreshToken> findByTokenHash(String tokenHash) {
+                UUID id = tokenIdByHash.get(tokenHash);
+                if (id == null) {
+                    return Optional.empty();
+                }
+                return Optional.ofNullable(tokensById.get(id));
+            }
         };
     }
 

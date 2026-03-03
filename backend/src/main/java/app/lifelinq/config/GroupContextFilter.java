@@ -38,6 +38,9 @@ public final class GroupContextFilter extends OncePerRequestFilter {
         if ("POST".equalsIgnoreCase(method) && "/auth/magic/start".equals(path)) {
             return true;
         }
+        if ("POST".equalsIgnoreCase(method) && "/auth/refresh".equals(path)) {
+            return true;
+        }
         return "GET".equalsIgnoreCase(method) && "/auth/magic/verify".equals(path);
     }
 
