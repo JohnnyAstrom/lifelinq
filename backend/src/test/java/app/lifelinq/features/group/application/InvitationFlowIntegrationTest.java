@@ -105,6 +105,7 @@ class InvitationFlowIntegrationTest {
                 resolveInvitationCodeUseCase,
                 previewInvitationUseCase,
                 revokeInvitationUseCase,
+                invitationRepository,
                 membershipRepository,
                 groupRepository,
                 userApplicationService,

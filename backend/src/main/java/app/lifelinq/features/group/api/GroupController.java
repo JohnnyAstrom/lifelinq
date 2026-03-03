@@ -138,6 +138,28 @@ public class GroupController {
         ));
     }
 
+    @GetMapping("/groups/{groupId}/invitations/active")
+    public ResponseEntity<?> getActiveInvitation(@PathVariable UUID groupId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (!groupId.equals(context.getGroupId())) {
+            return ResponseEntity.status(409).body("groupId does not match active context");
+        }
+        var result = groupApplicationService.getActiveLinkInvitation(groupId, context.getUserId());
+        if (result.isEmpty()) {
+            return ResponseEntity.ok(ActiveInvitationResponse.empty());
+        }
+        var invitation = result.get();
+        return ResponseEntity.ok(new ActiveInvitationResponse(
+                invitation.getId(),
+                invitation.getToken(),
+                invitation.getShortCode(),
+                invitation.getExpiresAt()
+        ));
+    }
+
     @PostMapping("/groups/invitations")
     public ResponseEntity<?> createInvitation(@RequestBody CreateInvitationRequest request) {
         RequestContext context = ApiScoping.getContext();

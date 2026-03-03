@@ -134,7 +134,7 @@ class CreateInvitationUseCaseTest {
     }
 
     @Test
-    void returnsExistingActiveLinkPerGroup() {
+    void rejectsCreateWhenActiveLinkAlreadyExists() {
         InMemoryInvitationRepository repository = new InMemoryInvitationRepository();
         UUID groupId = UUID.randomUUID();
         repository.saved.add(Invitation.createActive(
@@ -162,9 +162,7 @@ class CreateInvitationUseCaseTest {
                 null
         );
 
-        CreateInvitationResult result = useCase.execute(command);
-
-        assertEquals("existing-link-token", result.getToken());
+        assertThrows(IllegalStateException.class, () -> useCase.execute(command));
         assertEquals(1, repository.saved.size());
     }
 

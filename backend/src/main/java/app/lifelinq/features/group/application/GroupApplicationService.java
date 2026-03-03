@@ -18,6 +18,7 @@ import app.lifelinq.features.user.contract.UserProfileRead;
 import app.lifelinq.features.user.contract.UserProfileView;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
@@ -40,6 +41,7 @@ public class GroupApplicationService {
     private final ResolveInvitationCodeUseCase resolveInvitationCodeUseCase;
     private final PreviewInvitationUseCase previewInvitationUseCase;
     private final RevokeInvitationUseCase revokeInvitationUseCase;
+    private final InvitationRepository invitationRepository;
     private final MembershipRepository membershipRepository;
     private final GroupRepository groupRepository;
     private final UserProvisioning userProvisioning;
@@ -58,6 +60,7 @@ public class GroupApplicationService {
             ResolveInvitationCodeUseCase resolveInvitationCodeUseCase,
             PreviewInvitationUseCase previewInvitationUseCase,
             RevokeInvitationUseCase revokeInvitationUseCase,
+            InvitationRepository invitationRepository,
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
             UserProvisioning userProvisioning,
@@ -75,6 +78,7 @@ public class GroupApplicationService {
         this.resolveInvitationCodeUseCase = resolveInvitationCodeUseCase;
         this.previewInvitationUseCase = previewInvitationUseCase;
         this.revokeInvitationUseCase = revokeInvitationUseCase;
+        this.invitationRepository = invitationRepository;
         this.membershipRepository = membershipRepository;
         this.groupRepository = groupRepository;
         this.userProvisioning = userProvisioning;
@@ -169,6 +173,21 @@ public class GroupApplicationService {
     @Transactional(readOnly = true)
     public Optional<Invitation> resolveInvitationCode(String code) {
         return resolveInvitationCodeUseCase.execute(new ResolveInvitationCodeCommand(code));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Invitation> getActiveLinkInvitation(UUID groupId, UUID actorUserId) {
+        userProvisioning.ensureUserExists(actorUserId);
+        ensureAdmin(groupId, actorUserId);
+        Instant now = clock.instant();
+        for (Invitation invitation : invitationRepository.findActive()) {
+            if (invitation.getType() == InvitationType.LINK
+                    && groupId.equals(invitation.getGroupId())
+                    && invitation.isAcceptAllowed(now)) {
+                return Optional.of(invitation);
+            }
+        }
+        return Optional.empty();
     }
 
     @Transactional
@@ -340,6 +359,7 @@ public class GroupApplicationService {
                 new ResolveInvitationCodeUseCase(invitationRepository),
                 new PreviewInvitationUseCase(invitationRepository, groupRepository),
                 new RevokeInvitationUseCase(invitationRepository),
+                invitationRepository,
                 membershipRepository,
                 groupRepository,
                 userProvisioning,

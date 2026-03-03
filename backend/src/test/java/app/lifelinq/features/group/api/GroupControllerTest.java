@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -320,6 +321,97 @@ class GroupControllerTest {
                         .content("{}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.token").value("invite-link-token"));
+    }
+
+    @Test
+    void createLinkInvitationReturns409WhenActiveLinkAlreadyExists() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId, groupId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(groupApplicationService.createLinkInvitation(
+                Mockito.eq(groupId),
+                Mockito.eq(actorUserId),
+                Mockito.isNull(),
+                Mockito.isNull()
+        )).thenThrow(new IllegalStateException("active link invitation already exists"));
+
+        mockMvc.perform(post("/groups/invitations/link")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void getActiveInvitationReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(get("/groups/" + UUID.randomUUID() + "/invitations/active"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(groupApplicationService);
+    }
+
+    @Test
+    void getActiveInvitationReturns409WhenGroupIdDoesNotMatchContext() throws Exception {
+        UUID activeGroupId = UUID.randomUUID();
+        UUID requestedGroupId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId, activeGroupId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(get("/groups/" + requestedGroupId + "/invitations/active")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void getActiveInvitationReturns200WithEmptyPayloadWhenNoneExists() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId, groupId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        when(groupApplicationService.getActiveLinkInvitation(groupId, actorUserId))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/groups/" + groupId + "/invitations/active")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invitationId").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.token").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.shortCode").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.expiresAt").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void getActiveInvitationReturns200WithInvitationWhenPresent() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId, groupId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                groupId,
+                app.lifelinq.features.group.domain.InvitationType.LINK,
+                null,
+                null,
+                "invite-link-token",
+                "K7M9XQ",
+                Instant.now().plusSeconds(3600),
+                null
+        );
+
+        when(groupApplicationService.getActiveLinkInvitation(groupId, actorUserId))
+                .thenReturn(Optional.of(invitation));
+
+        mockMvc.perform(get("/groups/" + groupId + "/invitations/active")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invitationId").value(invitation.getId().toString()))
+                .andExpect(jsonPath("$.token").value("invite-link-token"))
+                .andExpect(jsonPath("$.shortCode").value("K7M9XQ"));
     }
 
     @Test

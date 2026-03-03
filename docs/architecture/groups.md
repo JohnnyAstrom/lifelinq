@@ -154,7 +154,9 @@ Invitation usage model:
 - `shortCode` is stored as a nullable unique value (6 uppercase alphanumeric), generated on creation for `EMAIL` and `LINK`
 - default endpoint behavior:
   - `POST /groups/invitations` creates `EMAIL` invitations
-  - `POST /groups/invitations/link` creates `LINK` invitations
+  - `GET /groups/{groupId}/invitations/active` returns the current active `LINK` invitation for the active context (read-only; no creation)
+  - `POST /groups/invitations/link` explicitly creates a new `LINK` invitation
+    - returns `409` when an accept-allowed `LINK` invitation already exists
   - `POST /groups/invitations/resolve-code` resolves metadata by `shortCode` (read-only, no mutation)
 
 ### Rationale

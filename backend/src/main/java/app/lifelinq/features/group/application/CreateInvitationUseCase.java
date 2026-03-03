@@ -80,7 +80,7 @@ final class CreateInvitationUseCase {
         } else {
             Invitation activeLink = findActiveLink(command.getGroupId(), command.getNow());
             if (activeLink != null) {
-                return new CreateInvitationResult(activeLink.getId(), activeLink.getToken(), activeLink.getExpiresAt());
+                throw new IllegalStateException("active link invitation already exists");
             }
         }
         String token = generateUniqueToken();
