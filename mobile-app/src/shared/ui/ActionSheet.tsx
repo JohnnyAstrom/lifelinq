@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from './theme';
 
-type Presentation = 'compact' | 'standard' | 'fullscreen';
+type Presentation = 'compact' | 'standard' | 'large' | 'fullscreen';
 
 type ActionSheetProps = {
   visible: boolean;
@@ -15,7 +15,12 @@ type ActionSheetProps = {
 export function ActionSheet({ visible, onClose, presentation, children }: ActionSheetProps) {
   const insets = useSafeAreaInsets();
   const isFullscreen = presentation === 'fullscreen';
-  const minHeight = presentation === 'compact' ? '30%' : '45%';
+  const minHeight =
+    presentation === 'compact'
+      ? '30%'
+      : presentation === 'large'
+        ? '65%'
+        : '45%';
 
   return (
     <Modal
@@ -72,4 +77,3 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 0,
   },
 });
-

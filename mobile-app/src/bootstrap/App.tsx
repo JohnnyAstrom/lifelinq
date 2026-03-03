@@ -6,7 +6,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { setActiveGroup, updateProfile } from '../features/auth/api/meApi';
-import { acceptInvitation, renameCurrentPlace } from '../features/group/api/groupApi';
+import { acceptInvitation, createGroup, renameCurrentPlace } from '../features/group/api/groupApi';
 import { useMe } from '../features/auth/hooks/useMe';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
@@ -19,7 +19,6 @@ import { MealsWeekScreen } from '../features/meals/screens/MealsWeekScreen';
 import { ShoppingListsScreen } from '../features/shopping/screens/ShoppingListsScreen';
 import { ShoppingListDetailScreen } from '../features/shopping/screens/ShoppingListDetailScreen';
 import { DocumentsScreen } from '../features/documents/screens/DocumentsScreen';
-import { CreatePlaceScreen } from '../screens/CreatePlaceScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ManagePlaceScreen } from '../screens/ManagePlaceScreen';
 import { SpacesScreen } from '../screens/SpacesScreen';
@@ -39,7 +38,6 @@ type Screen =
   | 'shopping-detail'
   | 'meals'
   | 'settings'
-  | 'createPlace'
   | 'manage-place'
   | 'spaces'
   | 'documents'
@@ -90,6 +88,11 @@ function AppShell() {
   const [joinTokenInput, setJoinTokenInput] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
+  const [createNameInput, setCreateNameInput] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [pendingCreatedGroupId, setPendingCreatedGroupId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; key: number } | null>(null);
   const me = useMe(token);
   const strings = {
@@ -133,12 +136,27 @@ function AppShell() {
     setJoinSheetOpen(true);
   }
 
+  function openCreateSheet() {
+    setCreateError(null);
+    setCreateNameInput('');
+    setPendingCreatedGroupId(null);
+    setCreateSheetOpen(true);
+  }
+
   function closeJoinSheet() {
     if (joinLoading) {
       return;
     }
     setJoinSheetOpen(false);
     setJoinError(null);
+  }
+
+  function closeCreateSheet() {
+    if (createLoading) {
+      return;
+    }
+    setCreateSheetOpen(false);
+    setCreateError(null);
   }
 
   async function handleJoinPlaceSubmit() {
@@ -185,6 +203,53 @@ function AppShell() {
       setSwitchError(formatApiError(err));
     } finally {
       setSwitchingGroupId(null);
+    }
+  }
+
+  async function handleCreatePlaceSubmit() {
+    const nextName = createNameInput.trim();
+    if (!token || !nextName || createLoading) {
+      return;
+    }
+    setCreateLoading(true);
+    setCreateError(null);
+    setPendingCreatedGroupId(null);
+    try {
+      const created = await createGroup(token, nextName);
+      setPendingCreatedGroupId(created.groupId);
+      try {
+        await switchPlace(created.groupId);
+        setCreateSheetOpen(false);
+        setCreateNameInput('');
+        setPendingCreatedGroupId(null);
+      } catch (activateErr) {
+        await handleApiError(activateErr);
+        setCreateError(`Place created, but we could not switch yet. ${formatApiError(activateErr)}`);
+      }
+    } catch (err) {
+      await handleApiError(err);
+      setCreateError(formatApiError(err));
+    } finally {
+      setCreateLoading(false);
+    }
+  }
+
+  async function handleRetryCreatePlaceSwitch() {
+    if (!pendingCreatedGroupId || createLoading) {
+      return;
+    }
+    setCreateLoading(true);
+    setCreateError(null);
+    try {
+      await switchPlace(pendingCreatedGroupId);
+      setCreateSheetOpen(false);
+      setCreateNameInput('');
+      setPendingCreatedGroupId(null);
+    } catch (err) {
+      await handleApiError(err);
+      setCreateError(`Could not switch place yet. ${formatApiError(err)}`);
+    } finally {
+      setCreateLoading(false);
     }
   }
 
@@ -344,8 +409,8 @@ function AppShell() {
     </ActionSheet>
   ) : null;
 
-  const joinSheet = (
-    <ActionSheet visible={joinSheetOpen} onClose={closeJoinSheet} presentation="standard">
+  const joinSheet = joinSheetOpen ? (
+    <ActionSheet visible={joinSheetOpen} onClose={closeJoinSheet} presentation="large">
       <View style={styles.joinSheetContent}>
         <Text style={textStyles.h3}>Join a place</Text>
         <AppInput
@@ -378,7 +443,53 @@ function AppShell() {
         </View>
       </View>
     </ActionSheet>
-  );
+  ) : null;
+
+  const createSheet = createSheetOpen ? (
+    <ActionSheet visible={createSheetOpen} onClose={closeCreateSheet} presentation="large">
+      <View style={styles.createSheetContent}>
+        <Text style={textStyles.h3}>Create new place</Text>
+        <AppInput
+          value={createNameInput}
+          onChangeText={setCreateNameInput}
+          placeholder="Place name"
+          returnKeyType="done"
+          onSubmitEditing={() => {
+            void handleCreatePlaceSubmit();
+          }}
+        />
+        {createError ? <Text style={styles.createError}>{createError}</Text> : null}
+        <View style={styles.createActions}>
+          <AppButton
+            title={createLoading ? 'Creating...' : 'Create'}
+            onPress={() => {
+              void handleCreatePlaceSubmit();
+            }}
+            disabled={createLoading || createNameInput.trim().length === 0}
+            fullWidth
+          />
+          {pendingCreatedGroupId && createError ? (
+            <AppButton
+              title="Try again"
+              onPress={() => {
+                void handleRetryCreatePlaceSwitch();
+              }}
+              disabled={createLoading}
+              variant="ghost"
+              fullWidth
+            />
+          ) : null}
+          <AppButton
+            title="Cancel"
+            onPress={closeCreateSheet}
+            variant="ghost"
+            disabled={createLoading}
+            fullWidth
+          />
+        </View>
+      </View>
+    </ActionSheet>
+  ) : null;
 
   const toastOverlay = (
     <AppToast
@@ -460,26 +571,11 @@ function AppShell() {
           setScreen('manage-place');
         }}
         onSwitchPlace={openSwitchSheet}
-        onCreatePlace={() => {
-          setScreen('createPlace');
-        }}
+        onCreatePlace={openCreateSheet}
         onJoinPlace={openJoinSheet}
         onLogout={async () => {
           await logout();
           setScreen('login');
-        }}
-      />
-    );
-  } else if (screen === 'createPlace') {
-    screenContent = (
-      <CreatePlaceScreen
-        token={token}
-        onDone={() => {
-          setScreen('settings');
-        }}
-        onCreated={async (groupId) => {
-          await switchPlace(groupId);
-          setScreen('settings');
         }}
       />
     );
@@ -603,6 +699,7 @@ function AppShell() {
       {screenContent}
       {switchSheet}
       {joinSheet}
+      {createSheet}
       {toastOverlay}
     </>
   );
@@ -653,6 +750,16 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   joinError: {
+    color: theme.colors.danger,
+    fontFamily: theme.typography.body,
+  },
+  createSheetContent: {
+    gap: theme.spacing.md,
+  },
+  createActions: {
+    gap: theme.spacing.sm,
+  },
+  createError: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
   },
