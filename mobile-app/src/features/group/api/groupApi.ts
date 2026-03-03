@@ -7,13 +7,22 @@ export type CreateGroupResponse = {
 export type CreateInvitationResponse = {
   invitationId: string;
   token: string;
-  shortCode?: string | null;
+  shortCode: string;
   expiresAt: string;
 };
 
 export type AcceptInvitationResponse = {
   groupId: string;
   userId: string;
+};
+
+export type ResolveInvitationCodeResponse = {
+  invitationId: string;
+  groupId: string;
+  token: string;
+  type: 'EMAIL' | 'LINK';
+  status: 'ACTIVE' | 'REVOKED';
+  expiresAt: string;
 };
 
 export async function createGroup(
@@ -79,7 +88,7 @@ export async function getActiveInvitationLink(
   const response = await fetchJson<{
     invitationId: string | null;
     token: string | null;
-    shortCode?: string | null;
+    shortCode: string | null;
     expiresAt: string | null;
   }>(
     `/groups/${encodeURIComponent(groupId)}/invitations/active`,
@@ -88,13 +97,13 @@ export async function getActiveInvitationLink(
     },
     { token }
   );
-  if (!response.invitationId || !response.token || !response.expiresAt) {
+  if (!response.invitationId || !response.token || !response.shortCode || !response.expiresAt) {
     return null;
   }
   return {
     invitationId: response.invitationId,
     token: response.token,
-    shortCode: response.shortCode ?? null,
+    shortCode: response.shortCode,
     expiresAt: response.expiresAt,
   };
 }
@@ -108,6 +117,20 @@ export async function acceptInvitation(
     {
       method: 'POST',
       body: JSON.stringify({ token: invitationToken }),
+    },
+    { token }
+  );
+}
+
+export async function resolveInvitationCode(
+  token: string,
+  code: string
+): Promise<ResolveInvitationCodeResponse> {
+  return fetchJson<ResolveInvitationCodeResponse>(
+    '/groups/invitations/resolve-code',
+    {
+      method: 'POST',
+      body: JSON.stringify({ code }),
     },
     { token }
   );

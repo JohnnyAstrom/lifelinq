@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MeResponse } from '../../auth/api/meApi';
+import type { MemberItemResponse } from '../api/groupMembersApi';
 import { useGroupMembers } from '../hooks/useGroupMembers';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
-import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
-import { AppButton, AppCard, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { ActionSheet } from '../../../shared/ui/ActionSheet';
+import { AppButton, AppCard, AppScreen, BackIconButton, Subtle, TopBar } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
@@ -15,154 +16,153 @@ type Props = {
 
 export function GroupDetailsScreen({ token, me, onDone }: Props) {
   const members = useGroupMembers(token);
-  const [showInviteSheet, setShowInviteSheet] = useState(false);
-  const [showAddExistingUserForm, setShowAddExistingUserForm] = useState(false);
-  const [inviteUserId, setInviteUserId] = useState('');
-  const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<MemberItemResponse | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [removeSubmitting, setRemoveSubmitting] = useState(false);
   const activeMembership = me.activeGroupId
     ? me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null
     : null;
   const currentRole = activeMembership?.role ?? 'MEMBER';
-  const currentGroupName = activeMembership?.groupName ?? 'Unknown group';
   const isAdmin = currentRole === 'ADMIN';
-  const strings = {
-    identityTitle: 'Space',
-    membersTitle: 'Members',
-    collaborationTitle: 'Collaboration',
-    loadingMembers: 'Loading members...',
-    inviteMember: 'Invite someone',
-    inviteTitle: 'Invite someone',
-    addExistingUser: 'Add existing user',
-    lifeLinqIdLabel: 'LifeLinq ID',
-    lifeLinqIdPlaceholder: 'Enter LifeLinq ID',
-    add: 'Add',
-    close: 'Close',
-    back: 'Back',
-    unnamedSpace: 'My space',
-  };
-  const memberNames = members.items
-    .map((member) => member.displayName?.trim() ?? '')
-    .filter((name) => name.length > 0);
+  const currentUserId = me.userId;
+  const currentGroupName = activeMembership?.groupName ?? 'My place';
+
+  const sortedMembers = useMemo(
+    () => [...members.items].sort((a, b) => (a.displayName ?? '').localeCompare(b.displayName ?? '')),
+    [members.items]
+  );
 
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: showInviteSheet,
+    isOverlayOpen: actionsOpen,
     onCloseOverlay: () => {
-      setShowInviteSheet(false);
-      setShowAddExistingUserForm(false);
-      setInviteUserId('');
+      if (removeSubmitting) {
+        return;
+      }
+      setActionsOpen(false);
+      setSelectedMember(null);
     },
   });
 
-  async function handleAddExistingUser() {
-    const userId = inviteUserId.trim();
-    if (!userId || isSubmittingInvite) {
+  function openMemberActions(member: MemberItemResponse) {
+    if (!isAdmin || removeSubmitting) {
       return;
     }
-    setIsSubmittingInvite(true);
-    try {
-      await members.add(userId);
-      await members.reload();
-      setShowInviteSheet(false);
-      setShowAddExistingUserForm(false);
-      setInviteUserId('');
-    } finally {
-      setIsSubmittingInvite(false);
+    setSelectedMember(member);
+    setActionsOpen(true);
+  }
+
+  async function handleRemoveSelectedMember() {
+    if (!selectedMember || removeSubmitting) {
+      return;
     }
+    setRemoveSubmitting(true);
+    try {
+      await members.remove(selectedMember.userId);
+      setActionsOpen(false);
+      setSelectedMember(null);
+    } finally {
+      setRemoveSubmitting(false);
+    }
+  }
+
+  function roleLabel(role: MemberItemResponse['role']): string {
+    return role === 'ADMIN' ? 'Admin' : 'Member';
   }
 
   return (
     <AppScreen>
-      <TopBar
-        title={currentGroupName || strings.unnamedSpace}
-        right={<BackIconButton onPress={onDone} />}
-      />
+      <TopBar title="Manage members" subtitle={currentGroupName} right={<BackIconButton onPress={onDone} />} />
 
       <View style={styles.contentOffset}>
         <AppCard>
-          <SectionTitle>{strings.identityTitle}</SectionTitle>
-          <Text style={styles.spaceName}>{currentGroupName || strings.unnamedSpace}</Text>
-        </AppCard>
+          {members.loading ? <Subtle>Loading members...</Subtle> : null}
+          {members.error ? <Text style={styles.error}>{members.error}</Text> : null}
+          {sortedMembers.length === 0 && !members.loading ? <Subtle>No members yet.</Subtle> : null}
 
-        {members.items.length > 1 ? (
-          <AppCard>
-            <SectionTitle>{strings.membersTitle}</SectionTitle>
-            {members.loading ? <Subtle>{strings.loadingMembers}</Subtle> : null}
-            {members.error ? <Text style={styles.error}>{members.error}</Text> : null}
-            <View style={styles.list}>
-              {memberNames.map((name) => (
-                <View key={name} style={styles.memberRow}>
-                  <Text style={styles.memberName}>{name}</Text>
+          <View style={styles.list}>
+            {sortedMembers.map((member, index) => {
+              const name = member.displayName?.trim() || 'Unknown member';
+              const isCurrentUser = member.userId === currentUserId;
+              const showDivider = index < sortedMembers.length - 1;
+
+              return (
+                <View key={member.userId}>
+                  <View style={styles.memberRow}>
+                    <View style={styles.memberIdentity}>
+                      <Text style={styles.memberName}>{name}</Text>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.memberRole}>{roleLabel(member.role)}</Text>
+                        {isCurrentUser ? (
+                          <View style={styles.youBadge}>
+                            <Text style={styles.youBadgeText}>You</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    {isAdmin ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => openMemberActions(member)}
+                        style={({ pressed }) => [styles.overflowButton, pressed ? styles.overflowPressed : null]}
+                      >
+                        <Text style={styles.overflowText}>⋯</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  {showDivider ? <View style={styles.divider} /> : null}
                 </View>
-              ))}
-            </View>
-          </AppCard>
-        ) : null}
-
-        <AppCard>
-          <SectionTitle>{strings.collaborationTitle}</SectionTitle>
-          {isAdmin ? (
-            <AppButton
-              title={strings.inviteMember}
-              onPress={() => {
-                setShowInviteSheet(true);
-                setShowAddExistingUserForm(false);
-                setInviteUserId('');
-              }}
-              fullWidth
-            />
-          ) : null}
+              );
+            })}
+          </View>
         </AppCard>
       </View>
 
-      {showInviteSheet ? (
-        <OverlaySheet
-          onClose={() => {
-            setShowInviteSheet(false);
-            setShowAddExistingUserForm(false);
-            setInviteUserId('');
-          }}
-          sheetStyle={styles.sheet}
-        >
-          <View style={styles.sheetContent}>
-            <SectionTitle>{strings.inviteTitle}</SectionTitle>
-            {!showAddExistingUserForm ? (
-              <AppButton
-                title={strings.addExistingUser}
-                onPress={() => setShowAddExistingUserForm(true)}
-                fullWidth
-              />
-            ) : (
-              <View style={styles.addUserForm}>
-                <Subtle>{strings.lifeLinqIdLabel}</Subtle>
-                <AppInput
-                  value={inviteUserId}
-                  onChangeText={setInviteUserId}
-                  placeholder={strings.lifeLinqIdPlaceholder}
-                />
-                <AppButton
-                  title={isSubmittingInvite ? `${strings.add}...` : strings.add}
-                  onPress={() => void handleAddExistingUser()}
-                  disabled={isSubmittingInvite || inviteUserId.trim().length === 0}
-                  fullWidth
-                />
-                {members.error ? <Text style={styles.error}>{members.error}</Text> : null}
-              </View>
-            )}
-            <AppButton
-              title={strings.close}
-              onPress={() => {
-                setShowInviteSheet(false);
-                setShowAddExistingUserForm(false);
-                setInviteUserId('');
-              }}
-              variant="ghost"
-              fullWidth
-            />
-          </View>
-        </OverlaySheet>
-      ) : null}
+      <ActionSheet
+        visible={actionsOpen}
+        onClose={() => {
+          if (removeSubmitting) {
+            return;
+          }
+          setActionsOpen(false);
+          setSelectedMember(null);
+        }}
+        presentation="standard"
+      >
+        <View style={styles.sheetContent}>
+          {selectedMember?.role === 'MEMBER' ? (
+            <AppButton title="Make admin" onPress={() => {}} variant="ghost" disabled fullWidth />
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              void handleRemoveSelectedMember();
+            }}
+            disabled={removeSubmitting}
+            style={({ pressed }) => [
+              styles.removeAction,
+              pressed ? styles.removeActionPressed : null,
+              removeSubmitting ? styles.removeActionDisabled : null,
+            ]}
+          >
+            <Text style={styles.removeActionText}>Remove from place</Text>
+          </Pressable>
+
+          <AppButton
+            title="Close"
+            onPress={() => {
+              setActionsOpen(false);
+              setSelectedMember(null);
+            }}
+            variant="ghost"
+            disabled={removeSubmitting}
+            fullWidth
+          />
+        </View>
+      </ActionSheet>
     </AppScreen>
   );
 }
@@ -173,38 +173,84 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   list: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-  },
-  spaceName: {
-    ...textStyles.body,
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   memberRow: {
+    minHeight: 56,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: theme.spacing.sm,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  memberIdentity: {
+    flex: 1,
+    gap: 4,
   },
   memberName: {
     ...textStyles.body,
+    fontWeight: '500',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  memberRole: {
+    ...textStyles.subtle,
+  },
+  youBadge: {
+    borderRadius: 999,
+    backgroundColor: theme.colors.surfaceAlt,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  youBadgeText: {
+    ...textStyles.subtle,
+    fontSize: 11,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  overflowButton: {
+    minWidth: 36,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+  },
+  overflowPressed: {
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  overflowText: {
+    ...textStyles.h3,
+    lineHeight: 16,
   },
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
   },
-  sheet: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-  },
   sheetContent: {
-    gap: theme.spacing.md,
-  },
-  addUserForm: {
     gap: theme.spacing.sm,
+  },
+  removeAction: {
+    minHeight: 44,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.md,
+  },
+  removeActionPressed: {
+    opacity: 0.85,
+  },
+  removeActionDisabled: {
+    opacity: 0.5,
+  },
+  removeActionText: {
+    ...textStyles.body,
+    color: theme.colors.danger,
   },
 });

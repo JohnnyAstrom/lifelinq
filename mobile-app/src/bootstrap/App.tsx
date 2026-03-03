@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { PendingInviteProvider, usePendingInvite } from '../shared/invite/PendingInviteContext';
 import { setActiveGroup, updateProfile } from '../features/auth/api/meApi';
-import { acceptInvitation, createGroup, renameCurrentPlace } from '../features/group/api/groupApi';
+import { acceptInvitation, createGroup, renameCurrentPlace, resolveInvitationCode } from '../features/group/api/groupApi';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { CompleteProfileScreen } from '../features/auth/screens/CompleteProfileScreen';
@@ -21,6 +21,7 @@ import { ShoppingListDetailScreen } from '../features/shopping/screens/ShoppingL
 import { DocumentsScreen } from '../features/documents/screens/DocumentsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ManagePlaceScreen } from '../screens/ManagePlaceScreen';
+import { ManageInvitationsScreen } from '../screens/ManageInvitationsScreen';
 import { SpacesScreen } from '../screens/SpacesScreen';
 import { AcceptInviteScreen } from '../screens/AcceptInviteScreen';
 import { AppToast } from '../shared/ui/AppToast';
@@ -38,6 +39,7 @@ type Screen =
   | 'meals'
   | 'settings'
   | 'manage-place'
+  | 'manage-invitations'
   | 'spaces'
   | 'documents'
   | 'accept-invite';
@@ -295,6 +297,7 @@ function AppStack({
   const { token, me, meLoading, meError, reloadMe, logout, handleApiError } = useAuth();
   const { setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
   const [screen, setScreen] = useState<Screen>('home');
+  const [membersReturnScreen, setMembersReturnScreen] = useState<Screen>('spaces');
   const [acceptInviteToken, setAcceptInviteToken] = useState<string | null>(null);
   const [activeShoppingListId, setActiveShoppingListId] = useState<string | null>(null);
   const [switchSheetOpen, setSwitchSheetOpen] = useState(false);
@@ -371,15 +374,19 @@ function AppStack({
   }
 
   async function handleJoinPlaceSubmit() {
-    const normalizedToken = joinTokenInput.trim();
-    if (!token || !normalizedToken || joinLoading) {
+    const normalizedInput = joinTokenInput.trim();
+    if (!token || !normalizedInput || joinLoading) {
       return;
     }
-    setPendingInviteToken(normalizedToken);
+    setPendingInviteToken(normalizedInput);
     setJoinError(null);
     setJoinLoading(true);
     try {
-      await acceptInvitation(token, normalizedToken);
+      const isShortCodeInput = /^[A-Za-z0-9]{6}$/.test(normalizedInput);
+      const invitationToken = isShortCodeInput
+        ? (await resolveInvitationCode(token, normalizedInput)).token
+        : normalizedInput;
+      await acceptInvitation(token, invitationToken);
       const updatedMe = await reloadMe();
       const activeMembership = updatedMe?.activeGroupId
         ? updatedMe.memberships.find((membership) => membership.groupId === updatedMe.activeGroupId) ?? null
@@ -707,7 +714,7 @@ function AppStack({
         token={token}
         me={me}
         onDone={() => {
-          setScreen('spaces');
+          setScreen(membersReturnScreen);
         }}
       />
     );
@@ -771,45 +778,34 @@ function AppStack({
       />
     );
   } else if (screen === 'manage-place') {
-    const meData = me;
-    const activeMembership = meData.activeGroupId
-      ? meData.memberships.find((membership) => membership.groupId === meData.activeGroupId) ?? null
-      : null;
-    const isDefaultGroupAction = activeMembership?.isDefault === true;
-
     screenContent = (
       <ManagePlaceScreen
         token={token}
-        me={meData}
+        me={me}
         onPlaceRenamed={async () => {
           await reloadMe();
           showToast('Place renamed.');
         }}
-        onPlaceLeft={async (oldPlaceName) => {
-          if (isDefaultGroupAction) {
-            if (__DEV__) {
-              console.warn('Blocked default place side effects for leave callback.');
-            }
-            return;
-          }
-          await reloadMe();
-          setScreen('settings');
-          showToast(`You left ${oldPlaceName}.`);
+        onManageMembers={() => {
+          setMembersReturnScreen('manage-place');
+          setScreen('members');
         }}
-        onPlaceDeleted={async (_oldPlaceName) => {
-          if (isDefaultGroupAction) {
-            if (__DEV__) {
-              console.warn('Blocked default place side effects for delete callback.');
-            }
-            return;
-          }
-          await reloadMe();
-          setScreen('settings');
-          showToast('Place deleted.');
+        onManageInvitations={() => {
+          setScreen('manage-invitations');
         }}
-        onShowToast={showToast}
         onDone={() => {
           setScreen('settings');
+        }}
+      />
+    );
+  } else if (screen === 'manage-invitations') {
+    screenContent = (
+      <ManageInvitationsScreen
+        token={token}
+        me={me}
+        onShowToast={showToast}
+        onDone={() => {
+          setScreen('manage-place');
         }}
       />
     );
@@ -821,6 +817,7 @@ function AppStack({
           setScreen('settings');
         }}
         onOpenSpace={() => {
+          setMembersReturnScreen('spaces');
           setScreen('members');
         }}
       />

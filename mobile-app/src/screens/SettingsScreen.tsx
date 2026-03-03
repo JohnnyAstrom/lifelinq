@@ -24,11 +24,6 @@ export function SettingsScreen({
   onJoinPlace,
   onLogout,
 }: Props) {
-  const activeMembership = me.activeGroupId
-    ? me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null
-    : null;
-  const currentPlaceName = activeMembership?.groupName?.trim() || 'My place';
-
   const strings = {
     title: 'Settings',
     subtitle: 'Your account and app.',
@@ -37,6 +32,7 @@ export function SettingsScreen({
     notifications: 'Notifications',
     privacy: 'Privacy',
     currentPlaceTitle: 'Current place',
+    manageCurrentPlace: 'Manage current place',
     switchPlace: 'Switch place',
     createNewPlace: 'Create new place',
     joinPlace: 'Join a place',
@@ -79,7 +75,7 @@ export function SettingsScreen({
         <View style={styles.section}>
           <SectionTitle>{strings.currentPlaceTitle}</SectionTitle>
           <AppCard>
-            <SettingRow label={currentPlaceName} onPress={onManagePlace} />
+            <SettingRow label={strings.manageCurrentPlace} onPress={onManagePlace} />
             {me.memberships.length > 1 ? (
               <SettingRow label={strings.switchPlace} onPress={onSwitchPlace} />
             ) : null}
