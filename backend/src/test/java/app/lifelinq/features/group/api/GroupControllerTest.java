@@ -198,6 +198,7 @@ class GroupControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.invitationId").value(result.getId().toString()))
                 .andExpect(jsonPath("$.groupId").value(result.getGroupId().toString()))
+                .andExpect(jsonPath("$.token").value(result.getToken()))
                 .andExpect(jsonPath("$.type").value("LINK"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
@@ -266,6 +267,7 @@ class GroupControllerTest {
         CreateInvitationOutput result = new CreateInvitationOutput(
                 invitationId,
                 "invite-token",
+                "ABC123",
                 expiresAt
         );
 
@@ -305,6 +307,7 @@ class GroupControllerTest {
         CreateInvitationOutput result = new CreateInvitationOutput(
                 invitationId,
                 "invite-link-token",
+                "K7M9XQ",
                 expiresAt
         );
 
@@ -320,7 +323,8 @@ class GroupControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value("invite-link-token"));
+                .andExpect(jsonPath("$.token").value("invite-link-token"))
+                .andExpect(jsonPath("$.shortCode").value("K7M9XQ"));
     }
 
     @Test

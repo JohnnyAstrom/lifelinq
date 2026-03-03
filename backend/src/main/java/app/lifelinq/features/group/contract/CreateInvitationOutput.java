@@ -6,6 +6,7 @@ import java.util.UUID;
 public record CreateInvitationOutput(
         UUID invitationId,
         String token,
+        String shortCode,
         Instant expiresAt
 ) {
 }

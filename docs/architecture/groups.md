@@ -157,7 +157,7 @@ Invitation usage model:
   - `GET /groups/{groupId}/invitations/active` returns the current active `LINK` invitation for the active context (read-only; no creation)
   - `POST /groups/invitations/link` explicitly creates a new `LINK` invitation
     - returns `409` when an accept-allowed `LINK` invitation already exists
-  - `POST /groups/invitations/resolve-code` resolves metadata by `shortCode` (read-only, no mutation)
+  - `POST /groups/invitations/resolve-code` resolves invitation by `shortCode` and returns invitation metadata plus token for follow-up accept (read-only, no mutation)
 
 ### Rationale
 

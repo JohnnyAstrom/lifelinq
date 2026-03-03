@@ -132,6 +132,7 @@ public class GroupController {
         return ResponseEntity.ok(new ResolveInvitationCodeResponse(
                 invitation.getId(),
                 invitation.getGroupId(),
+                invitation.getToken(),
                 invitation.getType(),
                 invitation.getStatus(),
                 invitation.getExpiresAt()
@@ -178,6 +179,7 @@ public class GroupController {
         return ResponseEntity.status(201).body(new CreateInvitationResponse(
                 result.invitationId(),
                 result.token(),
+                result.shortCode(),
                 result.expiresAt()
         ));
     }
@@ -201,6 +203,7 @@ public class GroupController {
         return ResponseEntity.status(201).body(new CreateInvitationResponse(
                 result.invitationId(),
                 result.token(),
+                result.shortCode(),
                 result.expiresAt()
         ));
     }

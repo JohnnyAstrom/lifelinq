@@ -6,11 +6,13 @@ import java.util.UUID;
 public final class CreateInvitationResult {
     private final UUID invitationId;
     private final String token;
+    private final String shortCode;
     private final Instant expiresAt;
 
-    public CreateInvitationResult(UUID invitationId, String token, Instant expiresAt) {
+    public CreateInvitationResult(UUID invitationId, String token, String shortCode, Instant expiresAt) {
         this.invitationId = invitationId;
         this.token = token;
+        this.shortCode = shortCode;
         this.expiresAt = expiresAt;
     }
 
@@ -20,6 +22,10 @@ public final class CreateInvitationResult {
 
     public String getToken() {
         return token;
+    }
+
+    public String getShortCode() {
+        return shortCode;
     }
 
     public Instant getExpiresAt() {

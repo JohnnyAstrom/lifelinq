@@ -125,6 +125,7 @@ public class GroupApplicationService {
         return new CreateInvitationOutput(
                 result.getInvitationId(),
                 result.getToken(),
+                result.getShortCode(),
                 result.getExpiresAt()
         );
     }
@@ -152,6 +153,7 @@ public class GroupApplicationService {
         return new CreateInvitationOutput(
                 result.getInvitationId(),
                 result.getToken(),
+                result.getShortCode(),
                 result.getExpiresAt()
         );
     }

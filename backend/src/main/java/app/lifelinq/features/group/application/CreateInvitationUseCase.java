@@ -99,7 +99,12 @@ final class CreateInvitationUseCase {
 
         invitationRepository.save(invitation);
 
-        return new CreateInvitationResult(invitation.getId(), invitation.getToken(), invitation.getExpiresAt());
+        return new CreateInvitationResult(
+                invitation.getId(),
+                invitation.getToken(),
+                invitation.getShortCode(),
+                invitation.getExpiresAt()
+        );
     }
 
     private String generateUniqueToken() {
