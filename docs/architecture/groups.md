@@ -115,6 +115,7 @@ Invitations:
   - `EMAIL` (targeted invite, requires invitee email)
   - `LINK` (open invite, no invitee email)
 - support public, non-mutating preview via `GET /invite/{token}` (server-rendered HTML)
+- include a human-friendly short invite code (`shortCode`, 6 uppercase alphanumeric) for manual code resolution
 
 Invite web namespace contract:
 - `/invite/**` is public **GET-only**
@@ -144,14 +145,17 @@ Default TTL applied in ApplicationService when expiresAt is not provided
 Invitee email is normalized (trim + lowercase) in ApplicationService before duplicate checks  
 Time policy (clock/now) is owned by ApplicationService and passed into the use case
 Invitation usage model:
-- `maxUses` (default `1`)
-- `usageCount` (default `0`)
-- acceptance is rejected when `usageCount >= maxUses`
-- successful acceptance increments `usageCount`
+- `EMAIL` invitations are implicitly single-use (`maxUses = 1` internally)
+- `LINK` invitations are unlimited by default (`maxUses = null`)
+- `usageCount` tracks acceptances and increments only when `maxUses` is set
+- acceptance is rejected when `maxUses` is set and `usageCount >= maxUses`
+- exhaustion auto-revokes only when `maxUses` is set
 - `inviterDisplayName` is stored as a nullable snapshot at creation time (used for read-only preview copy)
+- `shortCode` is stored as a nullable unique value (6 uppercase alphanumeric), generated on creation for `EMAIL` and `LINK`
 - default endpoint behavior:
   - `POST /groups/invitations` creates `EMAIL` invitations
   - `POST /groups/invitations/link` creates `LINK` invitations
+  - `POST /groups/invitations/resolve-code` resolves metadata by `shortCode` (read-only, no mutation)
 
 ### Rationale
 
@@ -194,3 +198,4 @@ Groups own data.
 Users participate via memberships.
 
 This separation is foundational to LifeLinq.
+

@@ -154,6 +154,7 @@ It is a guiding target, not a strict implementation requirement.
 - `groupId` (core)
 - `inviteeEmail` (core)
 - `token` (core)
+- `shortCode` (core, nullable, unique, 6 uppercase alphanumeric)
 - `expiresAt` (core)
 - `status` (core)
 - `createdAt` (core)
@@ -265,7 +266,7 @@ This is a structural overview of tables and relations that are implemented today
 - `shopping_lists`: `id`, `group_id`, `name`, `created_at`
 - `shopping_items`: `id`, `list_id`, `name`, `status`, `quantity`, `unit`, `created_at`, `bought_at`
 - `memberships`: composite key (`group_id`, `user_id`), `role`
-- `invitations`: `id`, `group_id`, `invitee_email`, `token`, `expires_at`, `status`
+- `invitations`: `id`, `group_id`, `type`, `invitee_email`, `inviter_display_name`, `token`, `short_code`, `expires_at`, `max_uses`, `usage_count`, `status`
 
 ### Relations (ID‑based)
 
@@ -307,7 +308,9 @@ shopping_items (list_id)
 
 - `memberships` primary key is (`group_id`, `user_id`)
 - `invitations.token` is unique
+- `invitations.short_code` is unique when present
 - `invitations.status` is `ACTIVE` or `REVOKED`; expired is derived from `expires_at`
+- `invitations.max_uses` is nullable; usage exhaustion applies only when `max_uses` is set
 
 ### Aggregate boundaries
 
