@@ -32,7 +32,13 @@ public final class GroupContextFilter extends OncePerRequestFilter {
         }
         String method = request.getMethod();
         boolean invitePath = "/invite".equals(path) || path.startsWith("/invite/");
-        return "GET".equalsIgnoreCase(method) && invitePath;
+        if ("GET".equalsIgnoreCase(method) && invitePath) {
+            return true;
+        }
+        if ("POST".equalsIgnoreCase(method) && "/auth/magic/start".equals(path)) {
+            return true;
+        }
+        return "GET".equalsIgnoreCase(method) && "/auth/magic/verify".equals(path);
     }
 
     @Override

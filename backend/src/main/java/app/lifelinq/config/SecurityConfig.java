@@ -36,6 +36,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/login/**", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/invite/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/magic/start").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/auth/magic/verify").permitAll()
                         .requestMatchers(HttpMethod.POST, "/dev/token", "/auth/dev-login")
                         .access((authentication, context) ->
                                 new org.springframework.security.authorization.AuthorizationDecision(devAuthEnabled))
