@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { devLogin } from '../api/devLoginApi';
 import { formatApiError } from '../../../shared/api/client';
 import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
@@ -17,16 +18,62 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const strings = {
-    appName: 'LifeLinq',
-    title: 'Sign in',
-    subtitle: 'Use magic link to continue.',
-    emailLabel: 'Email',
+    title: 'LifeLinq',
+    subtitle: 'Organize life together.',
+    emailLabel: 'Email address',
     emailPlaceholder: 'you@lifelinq.dev',
     login: 'Send magic link',
     loggingIn: 'Sending...',
     google: 'Continue with Google',
-    apple: 'Continue with Apple',
+    divider: 'or',
+    helper: "We'll send a secure login link to your email.",
   };
+
+  function trimTrailingSlash(value: string): string {
+    return value.replace(/\/+$/, '');
+  }
+
+  function getExpoDevHost(): string | null {
+    const hostUriFromExpoConfig = (Constants.expoConfig as { hostUri?: string } | null)?.hostUri;
+    if (hostUriFromExpoConfig) {
+      return hostUriFromExpoConfig.split(':')[0] ?? null;
+    }
+
+    const hostUriFromManifest = (
+      Constants.manifest2 as { extra?: { expoClient?: { hostUri?: string } } } | null
+    )?.extra?.expoClient?.hostUri;
+    if (hostUriFromManifest) {
+      return hostUriFromManifest.split(':')[0] ?? null;
+    }
+
+    return null;
+  }
+
+  function resolveApiBaseUrl(): string {
+    const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+    if (configured) {
+      return trimTrailingSlash(configured);
+    }
+
+    if (Platform.OS === 'android') {
+      const devHost = getExpoDevHost();
+      if (devHost) {
+        return `http://${devHost}:8080`;
+      }
+      return 'http://10.0.2.2:8080';
+    }
+
+    return 'http://localhost:8080';
+  }
+
+  async function handleGoogleLogin() {
+    if (loading) {
+      return;
+    }
+    onClearAuthError?.();
+    const url = `${resolveApiBaseUrl()}/oauth2/authorization/google`;
+    await Linking.openURL(url);
+  }
 
   async function handleLogin() {
     if (!email.trim() || loading) {
@@ -61,12 +108,28 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
           keyboardDismissMode="on-drag"
         >
           <View style={styles.header}>
-            <Text style={styles.logo}>{strings.appName}</Text>
             <Text style={textStyles.h2}>{strings.title}</Text>
             <Subtle>{strings.subtitle}</Subtle>
           </View>
 
           <AppCard style={styles.card}>
+            <View style={styles.providers}>
+              <AppButton
+                title={strings.google}
+                onPress={() => {
+                  void handleGoogleLogin();
+                }}
+                variant="ghost"
+                fullWidth
+              />
+            </View>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>{strings.divider}</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
             <View style={styles.field}>
               <Text style={styles.label}>{strings.emailLabel}</Text>
               <AppInput
@@ -84,23 +147,7 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
               />
             </View>
             {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
-            <View style={styles.providers}>
-              <AppButton
-                title={strings.google}
-                onPress={() => {}}
-                variant="ghost"
-                disabled
-                fullWidth
-              />
-              <AppButton
-                title={strings.apple}
-                onPress={() => {}}
-                variant="ghost"
-                disabled
-                fullWidth
-              />
-            </View>
-            <View style={styles.primaryCta}>
+            <View>
               <AppButton
                 title={loading ? strings.loggingIn : strings.login}
                 onPress={handleLogin}
@@ -108,6 +155,7 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
                 fullWidth
               />
             </View>
+            <Subtle>{strings.helper}</Subtle>
           </AppCard>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -153,21 +201,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.xs,
   },
-  logo: {
-    ...textStyles.subtle,
-    fontFamily: theme.typography.heading,
-    letterSpacing: 0.4,
-  },
   card: {
     gap: theme.spacing.md,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  dividerText: {
+    ...textStyles.subtle,
+    textTransform: 'lowercase',
   },
   field: {
     gap: theme.spacing.xs,
   },
   label: {
-    ...textStyles.subtle,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...textStyles.body,
   },
   error: {
     color: theme.colors.danger,
@@ -175,8 +230,5 @@ const styles = StyleSheet.create({
   },
   providers: {
     gap: theme.spacing.sm,
-  },
-  primaryCta: {
-    marginTop: theme.spacing.md,
   },
 });
