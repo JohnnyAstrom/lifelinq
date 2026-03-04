@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
@@ -45,7 +46,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 );
 
-        if (clientRegistrationRepository.getIfAvailable() != null) {
+        ClientRegistrationRepository registrationRepository = clientRegistrationRepository.getIfAvailable();
+        if (hasAnyClientRegistration(registrationRepository)) {
             http.oauth2Login(oauth -> oauth.successHandler(successHandler));
         }
         http.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -77,5 +79,12 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private boolean hasAnyClientRegistration(ClientRegistrationRepository registrationRepository) {
+        if (!(registrationRepository instanceof InMemoryClientRegistrationRepository repository)) {
+            return false;
+        }
+        return repository.iterator().hasNext();
     }
 }
