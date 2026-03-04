@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { UnauthorizedError } from '../api/client';
-import { clearAuthTokens, getToken, setAuthTokens, setToken } from '../api/tokenStore';
+import { invalidateAuthSession, revokeRefreshSession, UnauthorizedError } from '../api/client';
+import { clearAuthTokens, getRefreshToken, getToken, setAuthTokens, setToken } from '../api/tokenStore';
 import { fetchMe, type MeResponse } from '../../features/auth/api/meApi';
 
 type AuthState = {
@@ -70,6 +70,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
+    invalidateAuthSession();
+    try {
+      const currentRefreshToken = await getRefreshToken();
+      if (token && currentRefreshToken) {
+        await revokeRefreshSession(token, currentRefreshToken);
+      }
+    } catch {
+      // Logout must still succeed locally even if backend revoke fails.
+    }
     await clearAuthTokens();
     setTokenState(null);
     setMe(null);
@@ -92,6 +101,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return response;
     } catch (err) {
       if (err instanceof UnauthorizedError) {
+        await logout();
+        return null;
+      }
+      if (!me) {
         await logout();
         return null;
       }

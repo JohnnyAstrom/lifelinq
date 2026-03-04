@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useAuth } from '../shared/auth/AuthContext';
 import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { HydratingSplashScreen } from './HydratingSplashScreen';
@@ -18,7 +18,8 @@ export function AuthGate({
   onClearPendingInviteToken,
   onClearInviteError,
 }: Props) {
-  const { status, login } = useAuth();
+  const { status, token, me, meLoading, meError, login, logout } = useAuth();
+  const recoveringRef = useRef(false);
 
   useEffect(() => {
     if (status !== 'unauthenticated') {
@@ -28,6 +29,23 @@ export function AuthGate({
     onClearInviteError();
     onClearAuthError();
   }, [onClearAuthError, onClearInviteError, onClearPendingInviteToken, status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      recoveringRef.current = false;
+      return;
+    }
+    const missingAuthState = !token;
+    const failedProfileHydration = !meLoading && !me && !!meError;
+    if (!missingAuthState && !failedProfileHydration) {
+      return;
+    }
+    if (recoveringRef.current) {
+      return;
+    }
+    recoveringRef.current = true;
+    void logout();
+  }, [logout, me, meError, meLoading, status, token]);
 
   if (status === 'hydrating') {
     return <HydratingSplashScreen />;
@@ -39,4 +57,3 @@ export function AuthGate({
 
   return <>{children}</>;
 }
-

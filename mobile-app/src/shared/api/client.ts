@@ -8,6 +8,7 @@ export type ApiClientOptions = {
 
 const DEFAULT_BASE_URL = 'http://localhost:8080';
 let refreshInFlight: Promise<string | null> | null = null;
+let authSessionVersion = 0;
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -61,6 +62,10 @@ export class UnauthorizedError extends ApiError {
   constructor(body = 'Unauthorized') {
     super(401, body);
   }
+}
+
+export function invalidateAuthSession(): void {
+  authSessionVersion += 1;
 }
 
 export function formatApiError(err: unknown): string {
@@ -231,7 +236,8 @@ async function tryRefreshAccessToken(baseUrl: string, path: string): Promise<str
   if (refreshInFlight) {
     return refreshInFlight;
   }
-  refreshInFlight = runRefreshAccessToken(baseUrl);
+  const refreshVersion = authSessionVersion;
+  refreshInFlight = runRefreshAccessToken(baseUrl, refreshVersion);
   try {
     return await refreshInFlight;
   } finally {
@@ -239,31 +245,51 @@ async function tryRefreshAccessToken(baseUrl: string, path: string): Promise<str
   }
 }
 
-async function runRefreshAccessToken(baseUrl: string): Promise<string | null> {
-  const refreshToken = await getRefreshToken();
-  if (!refreshToken) {
+async function runRefreshAccessToken(baseUrl: string, refreshVersion: number): Promise<string | null> {
+  try {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) {
+      return null;
+    }
+    const refreshResponse = await fetch(`${baseUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!refreshResponse.ok) {
+      return null;
+    }
+    const payload = (await refreshResponse.json()) as {
+      accessToken?: string;
+      refreshToken?: string;
+    };
+    const accessToken = payload.accessToken?.trim();
+    const rotatedRefreshToken = payload.refreshToken?.trim();
+    if (!accessToken || !rotatedRefreshToken) {
+      return null;
+    }
+    if (refreshVersion !== authSessionVersion) {
+      return null;
+    }
+    await setAuthTokens(accessToken, rotatedRefreshToken);
+    return accessToken;
+  } catch {
     return null;
   }
-  const refreshResponse = await fetch(`${baseUrl}/auth/refresh`, {
+}
+
+export async function revokeRefreshSession(accessToken: string, refreshToken: string): Promise<void> {
+  const baseUrl = resolveBaseUrl();
+  await fetch(`${baseUrl}/auth/logout`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ refreshToken }),
   });
-  if (!refreshResponse.ok) {
-    return null;
-  }
-  const payload = (await refreshResponse.json()) as {
-    accessToken?: string;
-    refreshToken?: string;
-  };
-  const accessToken = payload.accessToken?.trim();
-  const rotatedRefreshToken = payload.refreshToken?.trim();
-  if (!accessToken || !rotatedRefreshToken) {
-    return null;
-  }
-  await setAuthTokens(accessToken, rotatedRefreshToken);
-  return accessToken;
 }
