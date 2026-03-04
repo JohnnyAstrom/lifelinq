@@ -18,9 +18,9 @@ import java.util.UUID;
 @Table(
         name = "todos",
         indexes = {
-                @Index(name = "idx_todos_household", columnList = "household_id"),
-                @Index(name = "idx_todos_household_scope", columnList = "household_id,scope"),
-                @Index(name = "idx_todos_household_duedate", columnList = "household_id,dueDate"),
+                @Index(name = "idx_todos_group", columnList = "group_id"),
+                @Index(name = "idx_todos_group_scope", columnList = "group_id,scope"),
+                @Index(name = "idx_todos_group_duedate", columnList = "group_id,dueDate"),
                 @Index(name = "idx_todos_deletedat", columnList = "deletedAt")
         }
 )
@@ -28,7 +28,7 @@ public class TodoEntity {
     @Id
     private UUID id;
 
-    @Column(name = "household_id", nullable = false)
+    @Column(name = "group_id", nullable = false)
     private UUID groupId;
 
     @Column(nullable = false)

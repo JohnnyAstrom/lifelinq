@@ -17,7 +17,7 @@ import java.util.UUID;
 @Table(
         name = "recipes",
         indexes = {
-                @Index(name = "idx_recipes_household_id", columnList = "household_id")
+                @Index(name = "idx_recipes_group_id", columnList = "group_id")
         }
 )
 public class RecipeEntity {
@@ -25,7 +25,7 @@ public class RecipeEntity {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "household_id", nullable = false)
+    @Column(name = "group_id", nullable = false)
     private UUID groupId;
 
     @Column(name = "name", nullable = false)

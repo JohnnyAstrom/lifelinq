@@ -15,7 +15,7 @@ import java.util.UUID;
 @Table(
         name = "shopping_lists",
         indexes = {
-                @jakarta.persistence.Index(name = "idx_shopping_lists_household_id", columnList = "household_id")
+                @jakarta.persistence.Index(name = "idx_shopping_lists_group_id", columnList = "group_id")
         }
 )
 public class ShoppingListEntity {
@@ -23,7 +23,7 @@ public class ShoppingListEntity {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "household_id", nullable = false)
+    @Column(name = "group_id", nullable = false)
     private UUID groupId;
 
     @Column(name = "name", nullable = false)

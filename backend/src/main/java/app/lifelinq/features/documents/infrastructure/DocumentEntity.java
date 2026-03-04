@@ -19,7 +19,7 @@ public class DocumentEntity {
     @Id
     private UUID id;
 
-    @Column(name = "household_id", nullable = false)
+    @Column(name = "group_id", nullable = false)
     private UUID groupId;
 
     @Column(nullable = false)

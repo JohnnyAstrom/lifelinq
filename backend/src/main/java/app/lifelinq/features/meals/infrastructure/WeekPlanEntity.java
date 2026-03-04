@@ -15,10 +15,10 @@ import java.util.UUID;
 @Table(
         name = "week_plans",
         uniqueConstraints = {
-                @jakarta.persistence.UniqueConstraint(columnNames = {"household_id", "week_year", "iso_week"})
+                @jakarta.persistence.UniqueConstraint(columnNames = {"group_id", "week_year", "iso_week"})
         },
         indexes = {
-                @jakarta.persistence.Index(name = "idx_week_plans_household_id", columnList = "household_id")
+                @jakarta.persistence.Index(name = "idx_week_plans_group_id", columnList = "group_id")
         }
 )
 public class WeekPlanEntity {
@@ -26,7 +26,7 @@ public class WeekPlanEntity {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "household_id", nullable = false)
+    @Column(name = "group_id", nullable = false)
     private UUID groupId;
 
     @Column(name = "week_year", nullable = false)

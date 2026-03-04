@@ -16,14 +16,14 @@ import java.util.UUID;
 @Table(
         name = "invitations",
         indexes = {
-                @Index(name = "idx_invitation_household_email_status", columnList = "household_id,inviteeEmail,status")
+                @Index(name = "idx_invitation_group_email_status", columnList = "group_id,inviteeEmail,status")
         }
 )
 public class InvitationEntity {
     @Id
     private UUID id;
 
-    @Column(name = "household_id", nullable = false)
+    @Column(name = "group_id", nullable = false)
     private UUID groupId;
 
     @Enumerated(EnumType.STRING)
