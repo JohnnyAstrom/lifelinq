@@ -1,14 +1,14 @@
 package app.lifelinq.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import app.lifelinq.features.auth.application.AuthApplicationService;
 import app.lifelinq.features.auth.application.AuthTokenPair;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -55,18 +55,13 @@ class OAuth2LoginSuccessHandlerTest {
 
         handler.onAuthenticationSuccess(request, response, authentication);
 
-        assertEquals(200, response.getStatus());
-        Map<String, String> payload = objectMapper.readValue(
-                response.getContentAsString(),
-                new TypeReference<Map<String, String>>() {}
-        );
-        String accessToken = payload.get("accessToken");
-        String refreshToken = payload.get("refreshToken");
-        assertNotNull(accessToken);
-        assertNotNull(refreshToken);
-
-        assertEquals(expectedAccessToken, accessToken);
-        assertEquals(expectedRefreshToken, refreshToken);
+        assertEquals(303, response.getStatus());
+        String location = response.getHeader("Location");
+        String expectedLocation = "mobileapp://auth/complete#token="
+                + URLEncoder.encode(expectedAccessToken, StandardCharsets.UTF_8)
+                + "&refresh="
+                + URLEncoder.encode(expectedRefreshToken, StandardCharsets.UTF_8);
+        assertEquals(expectedLocation, location);
         verify(authApplicationService).issueAuthPairForOAuthLogin("google", "provider-sub", "user@example.com", true);
     }
 }

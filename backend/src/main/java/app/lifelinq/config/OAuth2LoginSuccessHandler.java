@@ -8,9 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
+import java.net.URLEncoder;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -18,6 +17,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
+    private static final String COMPLETE_BASE_URL = "mobileapp://auth/complete";
     private final AuthApplicationService authApplicationService;
     private final ObjectMapper objectMapper;
 
@@ -51,13 +51,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 normalizedEmail,
                 emailVerified
         );
-        Map<String, String> payload = new HashMap<>();
-        payload.put("accessToken", tokens.accessToken());
-        payload.put("refreshToken", tokens.refreshToken());
-        response.setStatus(HttpServletResponse.SC_OK);
+        String encodedAccessToken = URLEncoder.encode(tokens.accessToken(), StandardCharsets.UTF_8);
+        String encodedRefreshToken = URLEncoder.encode(tokens.refreshToken(), StandardCharsets.UTF_8);
+        String redirectUrl = COMPLETE_BASE_URL + "#token=" + encodedAccessToken + "&refresh=" + encodedRefreshToken;
+
+        response.setStatus(HttpServletResponse.SC_SEE_OTHER);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(), payload);
+        response.setContentType(MediaType.TEXT_PLAIN_VALUE);
+        response.setHeader("Location", redirectUrl);
     }
 
     private String resolveSubject(OAuth2User user) {
