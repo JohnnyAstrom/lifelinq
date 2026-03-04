@@ -18,6 +18,20 @@ LifeLinq distinguishes clearly between:
 Users do not own data.
 Groups own data.
 
+## Identity Strategy
+
+Canonical identity:
+- `userId` (UUID)
+
+Login methods:
+- `EMAIL_MAGIC_LINK`
+- `GOOGLE` (future)
+- `APPLE` (future)
+
+Account linking rule:
+- If an OAuth provider returns a verified email that matches an existing user, log in the existing user instead of creating a new account.
+- Provider-linking persistence and explicit multi-provider linking flows are not implemented in this phase.
+
 ---
 
 ## CURRENT: Request scoping (Phase 2 implemented)
