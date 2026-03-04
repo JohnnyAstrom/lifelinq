@@ -19,7 +19,7 @@ import org.springframework.web.context.WebApplicationContext;
 @WebAppConfiguration
 @org.springframework.test.context.TestPropertySource(properties = {
         "lifelinq.jwt.secret=test-jwt-secret",
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration"
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
 })
 class DevTokenControllerDisabledTest {
 
