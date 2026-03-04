@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-03-XX)
+Accepted (2026-03-04)
 
 ## Context
 
@@ -33,5 +33,10 @@ contained edge-case instability and lifecycle ambiguity.
 ## Non-Goals
 
 - No session persistence model was introduced.
-- No refresh-token mechanism exists yet.
-- JWT lifecycle remains short-lived without silent renewal.
+- No refresh-token mechanism was introduced in Phase 3 itself.
+- JWT lifecycle remained short-lived in Phase 3.
+
+## Follow-up status
+
+Phase 4 introduced the explicit refresh session model.
+See `ADR-0006` and `ADR-0007` for the implemented session architecture.

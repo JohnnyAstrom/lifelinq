@@ -76,9 +76,9 @@ Place governance endpoints are context-driven and scoped by persisted `activeGro
 
 ---
 
-## CURRENT: Minimal OAuth2 login (implemented)
+## CURRENT: OAuth2 login (implemented)
 
-LifeLinq currently supports a **minimal OAuth2 login**:
+LifeLinq currently supports OAuth2 login:
 
 - OAuth2 login is wired via Spring Security.
 - On successful OAuth2 login, the backend:
@@ -86,9 +86,11 @@ LifeLinq currently supports a **minimal OAuth2 login**:
   - ensures the user exists
   - ensures a default group membership exists (default group name: `Personal`)
   - sets `activeGroupId` if missing
-  - issues a JWT (access token)
+  - issues an auth pair: `accessToken` + `refreshToken`
 
-This is intentionally minimal and does **not** include refresh tokens or session management.
+OAuth2 success payload is JSON:
+- `accessToken` (short-lived JWT)
+- `refreshToken` (opaque token)
 
 ## OAuth2 configuration (local/dev)
 
@@ -102,20 +104,7 @@ spring.security.oauth2.client.registration.google.scope=openid,profile,email
 spring.security.oauth2.client.provider.google.user-name-attribute=sub
 ```
 
-These are required for local OAuth2 login but do not enable refresh tokens or session management.
-
-## FUTURE: Full OAuth2 authentication flow (not implemented yet)
-
-LifeLinq will expand OAuth2 to a full authentication flow.
-
-Primary provider:
-- Google
-
-Planned authentication flow (future):
-1. User authenticates with external provider
-2. Backend validates identity
-3. User record is created or retrieved
-4. A token is issued
+These are required for local OAuth2 login.
 
 ---
 
@@ -146,6 +135,37 @@ Tokens do not contain:
 - group context
 - roles or permissions
 
+JWT TTL is configurable via:
+- `lifelinq.jwt.ttlSeconds`
+
+Default is 900 seconds (15 minutes).
+
+---
+
+## Session model (implemented)
+
+LifeLinq now uses explicit auth sessions:
+
+- access token: short-lived JWT
+- refresh token: opaque token
+
+Refresh behavior:
+- refresh tokens are stored server-side as hashes
+- refresh tokens are single-use and rotated on each refresh
+- replay/second-use detection revokes the session
+- refresh rotation is transactional and optimistic-lock safe
+
+Session endpoints:
+- `POST /auth/refresh` (public): `{ refreshToken }` -> `{ accessToken, refreshToken }`
+- `POST /auth/logout` (authenticated): `{ refreshToken }` -> `204`
+
+Magic-link verification redirect:
+- `GET /auth/magic/verify?token=...` redirects to:
+  - `mobileapp://auth/complete#token=<access>&refresh=<refresh>`
+- response includes `Referrer-Policy: no-referrer`
+
+Magic-link verification remains identity proof; session renewal uses refresh tokens.
+
 ---
 
 ## Group context
@@ -164,7 +184,13 @@ Group context is:
 - Clients are untrusted
 - Backend is authoritative
 - All checks are server-side
-- Tokens are short-lived
+- Access tokens are short-lived
+- Secrets are fail-closed in production
+
+Secret configuration:
+- `lifelinq.jwt.secret` is required (no code fallback)
+- `lifelinq.auth.refresh.secret` is required (no code fallback)
+- Dev profile defines explicit dev-only values in `application-dev.properties`
 
 ---
 
@@ -174,19 +200,6 @@ Authentication establishes identity.
 Authorization uses membership + role checks within the active group context.
 
 Both are enforced strictly to protect shared group data.
-
----
-
-## Future Auth Model (Not Implemented Yet)
-
-This section describes the intended direction for LifeLinq authentication. It is **not implemented yet**.
-
-Planned model:
-- Short‑lived **access token** for API authorization.
-- Long‑lived **opaque refresh token** stored **server‑side** with rotation and reuse‑detection.
-- Refresh token delivered as **HttpOnly cookie** (web) or **secure storage** (React Native).
-
-These are architectural guidelines only and do not reflect current code.
 
 ---
 

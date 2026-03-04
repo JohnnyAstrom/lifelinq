@@ -2,19 +2,17 @@
 
 ## Status
 
-Proposed (2026-03-XX)
+Accepted (2026-03-04)
 
 ## Context
 
-Current authentication relies on:
+Previous authentication relied on:
 
 Short-lived JWT access tokens.
 
 Magic link identity verification.
 
-No refresh-token based session model.
-
-This requires re-authentication once access tokens expire,
+This required re-authentication once access tokens expired,
 creating unnecessary friction for users.
 
 LifeLinq prioritizes a low-friction, family-friendly experience.
@@ -25,15 +23,21 @@ after initial identity verification.
 
 - Magic link remains identity proof only.
 - Access tokens (JWT) remain short-lived (~15 minutes).
-- A refresh-token based session model will be introduced.
+- A refresh-token based session model is introduced.
 - Refresh tokens:
-  - Are long-lived (~30 days).
+  - Are long-lived with sliding idle window (~30 days).
   - Are stored hashed in persistence.
   - Are rotated upon use.
   - Support sliding expiration.
 - Logout revokes refresh tokens.
 - Access token expiration does not force re-authentication if refresh token is valid.
 - Identity lifecycle and session lifecycle remain decoupled.
+
+Implementation notes:
+- `POST /auth/refresh` is live.
+- `POST /auth/logout` is live.
+- OAuth2 success returns `{ accessToken, refreshToken }`.
+- Magic-link verify redirect carries both tokens in fragment.
 
 ## Consequences
 

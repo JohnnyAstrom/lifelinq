@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-03-XX)
+Accepted (2026-03-04)
 
 ## Context
 
@@ -10,15 +10,15 @@ LifeLinq is passwordless and uses magic links for identity verification.
 
 Current state:
 - Access JWTs are short-lived (default 15 minutes).
-- No refresh mechanism exists.
-- When JWT expires, the client must re-authenticate via magic link.
+- Refresh mechanism is implemented with rotation.
+- Access-token expiration is handled through refresh when a valid refresh session exists.
 - Frontend auth state is centralized in AuthContext and token storage is abstracted in tokenStore.
 
 Problem:
 Short-lived JWT without refresh causes session churn and unnecessary user friction.
 
 Goal:
-Introduce a modern session model that keeps the app “logged in” on trusted devices while preserving clean architecture boundaries.
+Use a modern session model that keeps the app “logged in” on trusted devices while preserving clean architecture boundaries.
 
 ## Decisions
 
@@ -62,6 +62,12 @@ Refresh endpoint failures are treated as authentication failures:
 - missing/malformed/expired/revoked token: 401 Unauthorized (generic message)
 - token reuse / rotation race-loser: 401 Unauthorized + revoke session family
 - DB/infra failure during rotation: fail closed (no partial issuance)
+
+### 11) Delivery contract (implemented)
+- `POST /auth/refresh` -> `{ accessToken, refreshToken }`
+- `POST /auth/logout` consumes current refresh token and revokes session
+- `GET /auth/magic/verify` redirects to `mobileapp://auth/complete#token=<JWT>&refresh=<REFRESH>`
+- OAuth2 login success returns `{ accessToken, refreshToken }`
 
 ### 9) Data Model (Authoritative)
 Persist refresh sessions and refresh tokens as separate lifecycle entities:

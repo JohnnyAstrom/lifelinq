@@ -41,7 +41,6 @@ that can be used end-to-end without placeholder endpoints or cross-feature leaks
 
 ### Explicitly not required for V0
 
-- Active group selection (multi-group).
 - Todo calendar view.
 - Documents search/filter.
 - Ingredients-level recipe modeling.
@@ -91,6 +90,10 @@ that can be used end-to-end without placeholder endpoints or cross-feature leaks
 ## Phase 6 — Long-term Phase (Target)
 
 - Documents V1: cloud storage, compression, previews, group sharing.
-- Active group selection (multi-group support).
 - Meals enhancements (history tooling, week templates, faster planning flows).
 - Observability, backups, and scaling hardening.
+
+## Current implemented baseline (context selection)
+
+- `PUT /me/active-group` is implemented.
+- Frontend active-group selection flow is live (`SelectActiveGroupScreen` + root orchestration).

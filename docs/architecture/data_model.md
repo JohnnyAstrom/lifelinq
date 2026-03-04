@@ -252,6 +252,10 @@ It is a guiding target, not a strict implementation requirement.
 
 This is a structural overview of tables and relations that are implemented today.
 
+Naming note:
+- Group foreign keys use `group_id` in persistence naming.
+- Legacy `household_id` naming has been removed from active mappings.
+
 ### Tables
 
 - `users`: `id`
