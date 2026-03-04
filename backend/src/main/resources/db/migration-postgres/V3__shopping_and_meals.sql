@@ -6,7 +6,7 @@ CREATE TABLE shopping_lists (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_shopping_lists_group
         FOREIGN KEY (group_id)
-        REFERENCES households(id)
+        REFERENCES groups(id)
         ON DELETE CASCADE
 );
 
@@ -39,7 +39,7 @@ CREATE TABLE recipes (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_recipes_group
         FOREIGN KEY (group_id)
-        REFERENCES households(id)
+        REFERENCES groups(id)
         ON DELETE CASCADE
 );
 
@@ -71,7 +71,7 @@ CREATE TABLE week_plans (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_week_plans_group
         FOREIGN KEY (group_id)
-        REFERENCES households(id)
+        REFERENCES groups(id)
         ON DELETE CASCADE,
     CONSTRAINT uk_week_plans_group_week UNIQUE (group_id, week_year, iso_week)
 );
