@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import app.lifelinq.features.auth.application.AuthApplicationService;
-import app.lifelinq.features.user.application.UserApplicationService;
+import app.lifelinq.features.auth.application.AuthTokenPair;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
@@ -29,9 +29,11 @@ class OAuth2LoginSuccessHandlerTest {
     void issuesTokenViaAuthOrchestrator() throws Exception {
         AuthApplicationService authApplicationService = Mockito.mock(AuthApplicationService.class);
         ObjectMapper objectMapper = new ObjectMapper();
-        String expectedJwt = "signed.jwt.token";
+        String expectedAccessToken = "signed.jwt.token";
+        String expectedRefreshToken = "opaque.refresh.token";
         UUID expectedUserId = OAuth2LoginSuccessHandler.deterministicUserId("google", "provider-sub");
-        when(authApplicationService.ensureProvisionedAndSignToken(expectedUserId)).thenReturn(expectedJwt);
+        when(authApplicationService.issueAuthPairForUser(expectedUserId))
+                .thenReturn(new AuthTokenPair(expectedAccessToken, expectedRefreshToken));
         OAuth2LoginSuccessHandler handler = new OAuth2LoginSuccessHandler(
                 authApplicationService,
                 objectMapper
@@ -60,10 +62,13 @@ class OAuth2LoginSuccessHandlerTest {
                 response.getContentAsString(),
                 new TypeReference<Map<String, String>>() {}
         );
-        String token = payload.get("token");
-        assertNotNull(token);
+        String accessToken = payload.get("accessToken");
+        String refreshToken = payload.get("refreshToken");
+        assertNotNull(accessToken);
+        assertNotNull(refreshToken);
 
-        assertEquals(expectedJwt, token);
-        verify(authApplicationService).ensureProvisionedAndSignToken(expectedUserId);
+        assertEquals(expectedAccessToken, accessToken);
+        assertEquals(expectedRefreshToken, refreshToken);
+        verify(authApplicationService).issueAuthPairForUser(expectedUserId);
     }
 }

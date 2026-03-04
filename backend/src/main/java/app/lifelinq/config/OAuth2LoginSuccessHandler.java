@@ -1,6 +1,7 @@
 package app.lifelinq.config;
 
 import app.lifelinq.features.auth.application.AuthApplicationService;
+import app.lifelinq.features.auth.application.AuthTokenPair;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,9 +44,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String subject = resolveSubject(user);
         UUID userId = deterministicUserId(provider, subject);
 
-        String jwt = authApplicationService.ensureProvisionedAndSignToken(userId);
+        AuthTokenPair tokens = authApplicationService.issueAuthPairForUser(userId);
         Map<String, String> payload = new HashMap<>();
-        payload.put("token", jwt);
+        payload.put("accessToken", tokens.accessToken());
+        payload.put("refreshToken", tokens.refreshToken());
         response.setStatus(HttpServletResponse.SC_OK);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

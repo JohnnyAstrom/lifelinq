@@ -208,6 +208,11 @@ public class AuthApplicationService {
     }
 
     @Transactional
+    public AuthTokenPair issueAuthPairForUser(UUID userId) {
+        return issueAuthPairForUser(userId, null);
+    }
+
+    @Transactional
     public void startMagicLinkLogin(String email) {
         if (magicLinkTtl.compareTo(maxMagicLinkTtl) > 0) {
             throw new IllegalArgumentException("magic link ttl exceeds configured maximum");
