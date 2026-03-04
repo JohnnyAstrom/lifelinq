@@ -66,7 +66,7 @@ public class AuthPersistenceConfig {
 
     @Bean
     public RefreshTokenHasher refreshTokenHasher(
-            @Value("${lifelinq.auth.refresh.secret:dev-refresh-secret}") String secret
+            @Value("${lifelinq.auth.refresh.secret}") String secret
     ) {
         return new HmacSha256RefreshTokenHasher(secret);
     }

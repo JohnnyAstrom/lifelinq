@@ -21,6 +21,7 @@ import org.springframework.web.context.WebApplicationContext;
 @WebAppConfiguration
 @TestPropertySource(properties = {
         "lifelinq.devAuth.enabled=true",
+        "lifelinq.jwt.secret=test-jwt-secret",
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration"
 })
 class DevTokenControllerEnabledTest {
