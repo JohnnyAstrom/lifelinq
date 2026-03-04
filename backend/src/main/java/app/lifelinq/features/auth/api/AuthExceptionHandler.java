@@ -1,5 +1,6 @@
 package app.lifelinq.features.auth.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.user.contract.DeleteAccountBlockedException;
 import app.lifelinq.features.auth.application.ActiveGroupSelectionConflictException;
 import app.lifelinq.features.auth.application.RefreshAuthenticationException;
@@ -12,17 +13,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class AuthExceptionHandler {
 
     @ExceptionHandler(DeleteAccountBlockedException.class)
-    public ResponseEntity<String> handleDeleteAccountBlocked(DeleteAccountBlockedException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleDeleteAccountBlocked(DeleteAccountBlockedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("DELETE_ACCOUNT_BLOCKED", ex.getMessage()));
     }
 
     @ExceptionHandler(ActiveGroupSelectionConflictException.class)
-    public ResponseEntity<String> handleActiveGroupSelectionConflict(ActiveGroupSelectionConflictException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleActiveGroupSelectionConflict(ActiveGroupSelectionConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("ACTIVE_GROUP_CONFLICT", ex.getMessage()));
     }
 
     @ExceptionHandler(RefreshAuthenticationException.class)
-    public ResponseEntity<String> handleRefreshAuthenticationFailure(RefreshAuthenticationException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+    public ResponseEntity<ApiErrorResponse> handleRefreshAuthenticationFailure(RefreshAuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiErrorResponse("UNAUTHORIZED", "Unauthorized"));
     }
 }

@@ -1,5 +1,6 @@
 package app.lifelinq.features.auth.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.auth.application.AuthApplicationService;
 import app.lifelinq.features.auth.application.AuthTokenPair;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class AuthRefreshController {
     @PostMapping("/auth/refresh")
     public ResponseEntity<?> refresh(@RequestBody RefreshRequest request) {
         if (request == null || request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
-            return ResponseEntity.badRequest().body("refreshToken must not be blank");
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("BAD_REQUEST", "refreshToken must not be blank"));
         }
         AuthTokenPair tokens = authApplicationService.refreshAuthTokens(request.getRefreshToken());
         return ResponseEntity.ok(new RefreshResponse(tokens.accessToken(), tokens.refreshToken()));
@@ -38,4 +39,3 @@ public class AuthRefreshController {
 
     public record RefreshResponse(String accessToken, String refreshToken) {}
 }
-

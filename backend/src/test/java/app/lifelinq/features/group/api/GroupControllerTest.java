@@ -103,7 +103,7 @@ class GroupControllerTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Home\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
 
         verify(groupApplicationService).createGroup("Home", userId);
     }

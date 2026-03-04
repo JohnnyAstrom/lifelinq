@@ -112,7 +112,7 @@ class TodoControllerTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"text\":\"Buy milk\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
 
         verify(todoApplicationService).createTodo(groupId, userId, "Buy milk", TodoScope.LATER, null, null, null, null, null);
     }

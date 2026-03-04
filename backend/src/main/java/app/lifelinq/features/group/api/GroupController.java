@@ -1,5 +1,6 @@
 package app.lifelinq.features.group.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupMemberView;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,7 +39,7 @@ public class GroupController {
         if (context == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        return ResponseEntity.ok(new CreateGroupResponse(
+        return ResponseEntity.status(HttpStatus.CREATED).body(new CreateGroupResponse(
                 groupApplicationService.createGroup(request.getName(), context.getUserId())
         ));
     }
@@ -65,7 +67,7 @@ public class GroupController {
                     membership.getRole()
             ));
         } catch (AccessDeniedException ex) {
-            return ResponseEntity.status(403).body("Access denied");
+            return ResponseEntity.status(403).body(new ApiErrorResponse("ACCESS_DENIED", "Access denied"));
         }
     }
 
@@ -83,9 +85,12 @@ public class GroupController {
             );
             return ResponseEntity.ok(new RemoveMemberResponse(removed));
         } catch (AccessDeniedException ex) {
-            return ResponseEntity.status(403).body("Access denied");
+            return ResponseEntity.status(403).body(new ApiErrorResponse("ACCESS_DENIED", "Access denied"));
         } catch (LastAdminRemovalException ex) {
-            return ResponseEntity.status(409).body("Cannot remove the last admin while other members exist");
+            return ResponseEntity.status(409).body(new ApiErrorResponse(
+                    "LAST_ADMIN_REMOVAL_FORBIDDEN",
+                    "Cannot remove the last admin while other members exist"
+            ));
         }
     }
 
@@ -146,7 +151,10 @@ public class GroupController {
             return ApiScoping.missingContext();
         }
         if (!groupId.equals(context.getGroupId())) {
-            return ResponseEntity.status(409).body("groupId does not match active context");
+            return ResponseEntity.status(409).body(new ApiErrorResponse(
+                    "ACTIVE_GROUP_MISMATCH",
+                    "groupId does not match active context"
+            ));
         }
         var result = groupApplicationService.getActiveLinkInvitation(groupId, context.getUserId());
         if (result.isEmpty()) {
@@ -232,7 +240,7 @@ public class GroupController {
             return ApiScoping.missingContext();
         }
         if (request == null) {
-            return ResponseEntity.badRequest().body("name must not be blank");
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("BAD_REQUEST", "name must not be blank"));
         }
         groupApplicationService.renameCurrentPlace(context.getGroupId(), context.getUserId(), request.getName());
         return ResponseEntity.noContent().build();

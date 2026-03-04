@@ -1,5 +1,6 @@
 package app.lifelinq.features.shopping.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.shopping.application.AccessDeniedException;
 import app.lifelinq.features.shopping.domain.DuplicateShoppingItemNameException;
 import app.lifelinq.features.shopping.domain.ShoppingItemNotFoundException;
@@ -13,27 +14,32 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public final class ShoppingExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<String> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiErrorResponse("ACCESS_DENIED", "Access denied"));
     }
 
     @ExceptionHandler(ShoppingListNotFoundException.class)
-    public ResponseEntity<String> handleListNotFound(ShoppingListNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleListNotFound(ShoppingListNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse("SHOPPING_LIST_NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(ShoppingItemNotFoundException.class)
-    public ResponseEntity<String> handleItemNotFound(ShoppingItemNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleItemNotFound(ShoppingItemNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse("SHOPPING_ITEM_NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(DuplicateShoppingItemNameException.class)
-    public ResponseEntity<String> handleDuplicate(DuplicateShoppingItemNameException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleDuplicate(DuplicateShoppingItemNameException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("DUPLICATE_ITEM_NAME", ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse("BAD_REQUEST", ex.getMessage()));
     }
 }

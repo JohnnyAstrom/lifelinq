@@ -1,5 +1,6 @@
 package app.lifelinq.features.auth.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.auth.application.AuthApplicationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,7 +18,7 @@ public class AuthLogoutController {
     @PostMapping("/auth/logout")
     public ResponseEntity<?> logout(@RequestBody(required = false) LogoutRequest request) {
         if (request == null || request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
-            return ResponseEntity.badRequest().body("refreshToken must not be blank");
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("BAD_REQUEST", "refreshToken must not be blank"));
         }
         authApplicationService.logoutRefreshSession(request.getRefreshToken());
         return ResponseEntity.noContent().build();
@@ -35,4 +36,3 @@ public class AuthLogoutController {
         }
     }
 }
-

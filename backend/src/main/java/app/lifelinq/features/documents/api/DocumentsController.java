@@ -34,7 +34,7 @@ public class DocumentsController {
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        return ResponseEntity.ok(new CreateDocumentResponse(
+        return ResponseEntity.status(HttpStatus.CREATED).body(new CreateDocumentResponse(
                 documentsApplicationService.createDocument(
                         context.getGroupId(),
                         context.getUserId(),

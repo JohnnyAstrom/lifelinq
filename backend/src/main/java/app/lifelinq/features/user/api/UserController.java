@@ -1,5 +1,6 @@
 package app.lifelinq.features.user.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.config.RequestContextHolder;
 import app.lifelinq.features.user.application.UserApplicationService;
@@ -21,10 +22,11 @@ public final class UserController {
     public ResponseEntity<?> updateProfile(@RequestBody UpdateProfileRequest request) {
         RequestContext context = RequestContextHolder.getCurrent();
         if (context == null || context.getUserId() == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing authenticated context");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiErrorResponse("MISSING_AUTH_CONTEXT", "Missing authenticated context"));
         }
         if (request == null) {
-            return ResponseEntity.badRequest().body("Request body must not be null");
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("BAD_REQUEST", "Request body must not be null"));
         }
 
         userApplicationService.updateProfile(

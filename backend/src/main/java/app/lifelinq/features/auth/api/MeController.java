@@ -1,5 +1,6 @@
 package app.lifelinq.features.auth.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.config.RequestContextHolder;
 import app.lifelinq.features.auth.application.AuthApplicationService;
@@ -28,7 +29,8 @@ public class MeController {
     public ResponseEntity<?> me() {
         RequestContext context = RequestContextHolder.getCurrent();
         if (context == null || context.getUserId() == null) {
-            return ResponseEntity.status(401).body("Missing authenticated context");
+            return ResponseEntity.status(401)
+                    .body(new ApiErrorResponse("MISSING_AUTH_CONTEXT", "Missing authenticated context"));
         }
         return ResponseEntity.ok(toResponse(authApplicationService.getMe(context.getUserId())));
     }
@@ -37,7 +39,8 @@ public class MeController {
     public ResponseEntity<?> deleteMe() {
         RequestContext context = RequestContextHolder.getCurrent();
         if (context == null || context.getUserId() == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing authenticated context");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiErrorResponse("MISSING_AUTH_CONTEXT", "Missing authenticated context"));
         }
         authApplicationService.deleteAccount(context.getUserId());
         return ResponseEntity.noContent().build();
@@ -47,10 +50,11 @@ public class MeController {
     public ResponseEntity<?> setActiveGroup(@RequestBody SetActiveGroupRequest request) {
         RequestContext context = RequestContextHolder.getCurrent();
         if (context == null || context.getUserId() == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing authenticated context");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiErrorResponse("MISSING_AUTH_CONTEXT", "Missing authenticated context"));
         }
         if (request == null || request.getActiveGroupId() == null) {
-            return ResponseEntity.badRequest().body("activeGroupId must not be null");
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("BAD_REQUEST", "activeGroupId must not be null"));
         }
         return ResponseEntity.ok(toResponse(
                 authApplicationService.setActiveGroup(context.getUserId(), request.getActiveGroupId())

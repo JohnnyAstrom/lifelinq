@@ -1,5 +1,6 @@
 package app.lifelinq.features.meals.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.config.RequestContextHolder;
 import org.springframework.http.ResponseEntity;
@@ -12,11 +13,11 @@ final class ApiScoping {
         return RequestContextHolder.getCurrent();
     }
 
-    static ResponseEntity<String> missingContext() {
+    static ResponseEntity<ApiErrorResponse> missingContext() {
         RequestContext context = getContext();
         if (context != null && context.getUserId() != null && context.getGroupId() == null) {
             throw new app.lifelinq.config.NoActiveGroupSelectedException();
         }
-        return ResponseEntity.status(401).body("Missing group context");
+        return ResponseEntity.status(401).body(new ApiErrorResponse("MISSING_GROUP_CONTEXT", "Missing group context"));
     }
 }

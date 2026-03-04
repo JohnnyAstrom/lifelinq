@@ -1,5 +1,6 @@
 package app.lifelinq.features.meals.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.meals.application.MealsAccessDeniedException;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
@@ -15,39 +16,46 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public final class MealsExceptionHandler {
 
     @ExceptionHandler(MealsAccessDeniedException.class)
-    public ResponseEntity<String> handleAccessDenied(MealsAccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(MealsAccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiErrorResponse("ACCESS_DENIED", "Access denied"));
     }
 
     @ExceptionHandler(MealsShoppingAccessDeniedException.class)
-    public ResponseEntity<String> handleShoppingAccessDenied(
+    public ResponseEntity<ApiErrorResponse> handleShoppingAccessDenied(
             MealsShoppingAccessDeniedException ex
     ) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiErrorResponse("ACCESS_DENIED", "Access denied"));
     }
 
     @ExceptionHandler(MealNotFoundException.class)
-    public ResponseEntity<String> handleMealNotFound(MealNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleMealNotFound(MealNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse("MEAL_NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(RecipeNotFoundException.class)
-    public ResponseEntity<String> handleRecipeNotFound(RecipeNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleRecipeNotFound(RecipeNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse("RECIPE_NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(MealsShoppingListNotFoundException.class)
-    public ResponseEntity<String> handleShoppingListNotFound(MealsShoppingListNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleShoppingListNotFound(MealsShoppingListNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse("SHOPPING_LIST_NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(MealsShoppingDuplicateItemException.class)
-    public ResponseEntity<String> handleDuplicateShoppingItem(MealsShoppingDuplicateItemException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleDuplicateShoppingItem(MealsShoppingDuplicateItemException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("DUPLICATE_ITEM", ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiErrorResponse("BAD_REQUEST", ex.getMessage()));
     }
 }

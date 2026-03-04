@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public final class RequestContextExceptionHandler {
 
     @ExceptionHandler(NoActiveGroupSelectedException.class)
-    public ResponseEntity<String> handleNoActiveGroupSelected(NoActiveGroupSelectedException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    public ResponseEntity<ApiErrorResponse> handleNoActiveGroupSelected(NoActiveGroupSelectedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("NO_ACTIVE_GROUP", ex.getMessage()));
     }
 }

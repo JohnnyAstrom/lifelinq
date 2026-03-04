@@ -1,5 +1,6 @@
 package app.lifelinq.features.todo.api;
 
+import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.features.todo.application.TodoApplicationService;
 import app.lifelinq.features.todo.domain.Todo;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +40,7 @@ public class TodoController {
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        return ResponseEntity.ok(new CreateTodoResponse(
+        return ResponseEntity.status(HttpStatus.CREATED).body(new CreateTodoResponse(
                 todoApplicationService.createTodo(
                         context.getGroupId(),
                         context.getUserId(),
@@ -117,7 +119,7 @@ public class TodoController {
             return ApiScoping.missingContext();
         }
         if (month < 1 || month > 12) {
-            return ResponseEntity.badRequest().body("month must be between 1 and 12");
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("BAD_REQUEST", "month must be between 1 and 12"));
         }
         return ResponseEntity.ok(new ListTodosResponse(toResponseItems(
                 todoApplicationService.listTodosForMonth(context.getGroupId(), year, month)
