@@ -30,7 +30,7 @@ Login methods:
 
 Account linking rule:
 - If an OAuth provider returns a verified email that matches an existing user, log in the existing user instead of creating a new account.
-- Provider-linking persistence and explicit multi-provider linking flows are not implemented in this phase.
+- Provider identities are persisted in `auth_identities` per `(provider, subject)` and reused on subsequent logins.
 
 ---
 
@@ -96,7 +96,10 @@ LifeLinq currently supports OAuth2 login:
 
 - OAuth2 login is wired via Spring Security.
 - On successful OAuth2 login, the backend:
-  - derives a deterministic internal `userId` from provider + subject
+  - resolves provider identity via `AuthIdentityRepository` using `(provider, subject)`
+  - reuses existing linked user when identity exists
+  - for first-time provider identities: links to existing `EMAIL` identity only when provider email is verified
+  - otherwise creates a new `userId` and persists the provider identity link
   - ensures the user exists
   - ensures a default group membership exists (default group name: `Personal`)
   - sets `activeGroupId` if missing

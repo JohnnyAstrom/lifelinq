@@ -2,6 +2,7 @@ package app.lifelinq.features.auth.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -84,6 +85,107 @@ class AuthApplicationServiceProvisioningTest {
     }
 
     @Test
+    void firstOAuthLoginCreatesIdentityAndUserAndReturnsAuthPair() {
+        TestFixture fixture = new TestFixture();
+
+        AuthTokenPair tokens = fixture.authApplicationService.issueAuthPairForOAuthLogin(
+                "google",
+                "oauth-subject",
+                "user@example.com",
+                true
+        );
+
+        assertNotNull(tokens.accessToken());
+        assertNotNull(tokens.refreshToken());
+
+        AuthIdentity identity = fixture.authIdentityRepository
+                .findByProviderAndSubject(AuthProvider.GOOGLE, "oauth-subject")
+                .orElseThrow();
+        assertTrue(fixture.userRepository.findById(identity.getUserId()).isPresent());
+    }
+
+    @Test
+    void secondOAuthLoginReusesExistingIdentityUserId() {
+        TestFixture fixture = new TestFixture();
+
+        fixture.authApplicationService.issueAuthPairForOAuthLogin(
+                "google",
+                "oauth-subject",
+                "user@example.com",
+                true
+        );
+        UUID firstUserId = fixture.authIdentityRepository
+                .findByProviderAndSubject(AuthProvider.GOOGLE, "oauth-subject")
+                .orElseThrow()
+                .getUserId();
+
+        fixture.authApplicationService.issueAuthPairForOAuthLogin(
+                "google",
+                "oauth-subject",
+                "other@example.com",
+                true
+        );
+        UUID secondUserId = fixture.authIdentityRepository
+                .findByProviderAndSubject(AuthProvider.GOOGLE, "oauth-subject")
+                .orElseThrow()
+                .getUserId();
+
+        assertEquals(firstUserId, secondUserId);
+        assertEquals(1, fixture.userRepository.count());
+    }
+
+    @Test
+    void verifiedEmailLinksOAuthIdentityToExistingEmailIdentityUser() {
+        TestFixture fixture = new TestFixture();
+        UUID existingUserId = UUID.randomUUID();
+        fixture.authIdentityRepository.save(new AuthIdentity(
+                UUID.randomUUID(),
+                AuthProvider.EMAIL,
+                "user@example.com",
+                existingUserId
+        ));
+
+        fixture.authApplicationService.issueAuthPairForOAuthLogin(
+                "google",
+                "oauth-subject",
+                " User@example.com ",
+                true
+        );
+
+        UUID oauthUserId = fixture.authIdentityRepository
+                .findByProviderAndSubject(AuthProvider.GOOGLE, "oauth-subject")
+                .orElseThrow()
+                .getUserId();
+        assertEquals(existingUserId, oauthUserId);
+    }
+
+    @Test
+    void unverifiedEmailDoesNotLinkToExistingEmailIdentityUser() {
+        TestFixture fixture = new TestFixture();
+        UUID existingUserId = UUID.randomUUID();
+        fixture.authIdentityRepository.save(new AuthIdentity(
+                UUID.randomUUID(),
+                AuthProvider.EMAIL,
+                "user@example.com",
+                existingUserId
+        ));
+
+        fixture.authApplicationService.issueAuthPairForOAuthLogin(
+                "apple",
+                "oauth-subject",
+                "user@example.com",
+                false
+        );
+
+        UUID oauthUserId = fixture.authIdentityRepository
+                .findByProviderAndSubject(AuthProvider.APPLE, "oauth-subject")
+                .orElseThrow()
+                .getUserId();
+        assertNotEquals(existingUserId, oauthUserId);
+        assertTrue(fixture.userRepository.findById(oauthUserId).isPresent());
+    }
+
+    @Test
     void rejectsMagicLinkTtlAboveConfiguredMaximum() {
         UserApplicationService userApplicationService = UserApplicationServiceTestFactory.create(new InMemoryUserRepository());
         FakeUserDefaultGroupProvisioning provisioning = new FakeUserDefaultGroupProvisioning();
@@ -120,6 +222,7 @@ class AuthApplicationServiceProvisioningTest {
     private static final class TestFixture {
         private final InMemoryUserRepository userRepository = new InMemoryUserRepository();
         private final FakeUserDefaultGroupProvisioning userDefaultGroupProvisioning = new FakeUserDefaultGroupProvisioning();
+        private final InMemoryAuthIdentityRepository authIdentityRepository = new InMemoryAuthIdentityRepository();
         private final AuthApplicationService authApplicationService;
 
         private TestFixture() {
@@ -132,7 +235,7 @@ class AuthApplicationServiceProvisioningTest {
                     userApplicationService,
                     userDefaultGroupProvisioning,
                     userDefaultGroupProvisioning,
-                    new InMemoryAuthIdentityRepository(),
+                    authIdentityRepository,
                     new InMemoryMagicLinkChallengeRepository(),
                     () -> "magic-token",
                     (email, verifyUrl) -> {
@@ -170,6 +273,10 @@ class AuthApplicationServiceProvisioningTest {
         @Override
         public void deleteById(UUID id) {
             users.remove(id);
+        }
+
+        private int count() {
+            return users.size();
         }
     }
 

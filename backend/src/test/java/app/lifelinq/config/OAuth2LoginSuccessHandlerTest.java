@@ -28,7 +28,7 @@ class OAuth2LoginSuccessHandlerTest {
         ObjectMapper objectMapper = new ObjectMapper();
         String expectedAccessToken = "signed.jwt.token";
         String expectedRefreshToken = "opaque.refresh.token";
-        when(authApplicationService.issueAuthPairForOAuthLogin("google", "provider-sub", "user@example.com"))
+        when(authApplicationService.issueAuthPairForOAuthLogin("google", "provider-sub", "user@example.com", true))
                 .thenReturn(new AuthTokenPair(expectedAccessToken, expectedRefreshToken));
         OAuth2LoginSuccessHandler handler = new OAuth2LoginSuccessHandler(
                 authApplicationService,
@@ -38,6 +38,7 @@ class OAuth2LoginSuccessHandlerTest {
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("sub", "provider-sub");
         attributes.put("email", " User@Example.com ");
+        attributes.put("email_verified", true);
         OAuth2User user = new DefaultOAuth2User(
                 Set.of(new SimpleGrantedAuthority("ROLE_USER")),
                 attributes,
@@ -66,6 +67,6 @@ class OAuth2LoginSuccessHandlerTest {
 
         assertEquals(expectedAccessToken, accessToken);
         assertEquals(expectedRefreshToken, refreshToken);
-        verify(authApplicationService).issueAuthPairForOAuthLogin("google", "provider-sub", "user@example.com");
+        verify(authApplicationService).issueAuthPairForOAuthLogin("google", "provider-sub", "user@example.com", true);
     }
 }

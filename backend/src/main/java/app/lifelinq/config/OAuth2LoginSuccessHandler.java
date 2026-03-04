@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -44,8 +43,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String provider = token.getAuthorizedClientRegistrationId();
         String subject = resolveSubject(user);
         String normalizedEmail = normalizeEmailOrNull(resolveEmail(user));
+        boolean emailVerified = resolveEmailVerified(user);
 
-        AuthTokenPair tokens = authApplicationService.issueAuthPairForOAuthLogin(provider, subject, normalizedEmail);
+        AuthTokenPair tokens = authApplicationService.issueAuthPairForOAuthLogin(
+                provider,
+                subject,
+                normalizedEmail,
+                emailVerified
+        );
         Map<String, String> payload = new HashMap<>();
         payload.put("accessToken", tokens.accessToken());
         payload.put("refreshToken", tokens.refreshToken());
@@ -53,11 +58,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getWriter(), payload);
-    }
-
-    static UUID deterministicUserId(String provider, String subject) {
-        String value = provider + ":" + subject;
-        return UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8));
     }
 
     private String resolveSubject(OAuth2User user) {
@@ -75,6 +75,17 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private String resolveEmail(OAuth2User user) {
         Object email = user.getAttributes().get("email");
         return email == null ? null : String.valueOf(email);
+    }
+
+    private boolean resolveEmailVerified(OAuth2User user) {
+        Object emailVerified = user.getAttributes().get("email_verified");
+        if (emailVerified instanceof Boolean value) {
+            return value;
+        }
+        if (emailVerified instanceof String value) {
+            return Boolean.parseBoolean(value);
+        }
+        return false;
     }
 
     private String normalizeEmailOrNull(String email) {

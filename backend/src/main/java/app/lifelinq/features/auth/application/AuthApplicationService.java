@@ -237,15 +237,28 @@ public class AuthApplicationService {
     }
 
     @Transactional
-    public AuthTokenPair issueAuthPairForOAuthLogin(String provider, String subject, String email) {
+    public AuthTokenPair issueAuthPairForOAuthLogin(String provider, String subject, String email, boolean emailVerified) {
         if (provider == null || provider.isBlank()) {
             throw new IllegalArgumentException("provider must not be blank");
         }
         if (subject == null || subject.isBlank()) {
             throw new IllegalArgumentException("subject must not be blank");
         }
+        AuthProvider oauthProvider = mapOAuthProvider(provider);
+        var existingIdentity = authIdentityRepository.findByProviderAndSubject(oauthProvider, subject);
+        if (existingIdentity.isPresent()) {
+            return issueAuthPairForUser(existingIdentity.get().getUserId());
+        }
+
         String normalizedEmail = normalizeEmailOrNull(email);
-        UUID userId = UUID.nameUUIDFromBytes((provider + ":" + subject).getBytes(StandardCharsets.UTF_8));
+        UUID userId = resolveLinkedUserId(normalizedEmail, emailVerified)
+                .orElseGet(UUID::randomUUID);
+        authIdentityRepository.save(new AuthIdentity(
+                UUID.randomUUID(),
+                oauthProvider,
+                subject,
+                userId
+        ));
         return issueAuthPairForUser(userId, null, normalizedEmail);
     }
 
@@ -355,6 +368,23 @@ public class AuthApplicationService {
                     ));
                     return userId;
                 });
+    }
+
+    private java.util.Optional<UUID> resolveLinkedUserId(String normalizedEmail, boolean emailVerified) {
+        if (!emailVerified || normalizedEmail == null) {
+            return java.util.Optional.empty();
+        }
+        return authIdentityRepository.findByProviderAndSubject(AuthProvider.EMAIL, normalizedEmail)
+                .map(AuthIdentity::getUserId);
+    }
+
+    private AuthProvider mapOAuthProvider(String provider) {
+        String normalizedProvider = provider.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedProvider) {
+            case "google" -> AuthProvider.GOOGLE;
+            case "apple" -> AuthProvider.APPLE;
+            default -> throw new IllegalArgumentException("Unsupported OAuth provider: " + provider);
+        };
     }
 
     private UUID deterministicEmailUserId(String normalizedEmail) {
