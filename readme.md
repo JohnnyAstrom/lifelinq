@@ -139,3 +139,18 @@ LifeLinq is designed to evolve — but never drift.
 4. If `/me` returns `groupId: null`, create a group once.
 5. Todos and other scoped endpoints require a group context.
 
+## Local PostgreSQL (Phase 6.1)
+
+Start PostgreSQL:
+
+- `docker compose -f infra/docker-compose.postgres.yml up -d`
+
+Start backend against PostgreSQL + Flyway (keeping dev auth and persistence adapters):
+
+- `mvn spring-boot:run "-Dspring-boot.run.profiles=dev,persistence,dev-postgres"`
+
+Notes:
+
+- Flyway runs from `classpath:db/migration-postgres`.
+- `spring.jpa.hibernate.ddl-auto` is `validate` in `dev-postgres` (schema is Flyway-owned).
+

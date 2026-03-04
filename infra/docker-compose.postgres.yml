@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: lifelinq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lifelinq
+      POSTGRES_USER: lifelinq
+      POSTGRES_PASSWORD: lifelinq
+    ports:
+      - "5432:5432"
+    volumes:
+      - lifelinq-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifelinq -d lifelinq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  lifelinq-postgres-data:
