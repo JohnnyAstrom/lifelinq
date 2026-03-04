@@ -7,12 +7,12 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 @Entity
-@Table(name = "households")
+@Table(name = "groups")
 public class GroupEntity {
     @Id
     private UUID id;
 
-    @Column
+    @Column(nullable = false)
     private String name;
 
     protected GroupEntity() {
