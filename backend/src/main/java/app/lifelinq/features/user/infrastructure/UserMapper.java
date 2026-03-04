@@ -7,6 +7,7 @@ final class UserMapper {
         return new UserEntity(
                 user.getId(),
                 user.getActiveGroupId(),
+                user.getEmail(),
                 user.getFirstName(),
                 user.getLastName()
         );
@@ -16,6 +17,7 @@ final class UserMapper {
         return new User(
                 entity.getId(),
                 entity.getActiveGroupId(),
+                entity.getEmail(),
                 entity.getFirstName(),
                 entity.getLastName()
         );

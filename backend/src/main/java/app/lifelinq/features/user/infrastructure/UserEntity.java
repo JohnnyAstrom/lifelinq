@@ -16,6 +16,9 @@ public class UserEntity {
     @Column(name = "active_group_id")
     private UUID activeGroupId;
 
+    @Column(name = "email", unique = true)
+    private String email;
+
     @Column(name = "first_name")
     private String firstName;
 
@@ -26,16 +29,21 @@ public class UserEntity {
     }
 
     public UserEntity(UUID id) {
-        this(id, null, null, null);
+        this(id, null, null, null, null);
     }
 
     public UserEntity(UUID id, UUID activeGroupId) {
-        this(id, activeGroupId, null, null);
+        this(id, activeGroupId, null, null, null);
     }
 
     public UserEntity(UUID id, UUID activeGroupId, String firstName, String lastName) {
+        this(id, activeGroupId, null, firstName, lastName);
+    }
+
+    public UserEntity(UUID id, UUID activeGroupId, String email, String firstName, String lastName) {
         this.id = id;
         this.activeGroupId = activeGroupId;
+        this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
     }
@@ -46,6 +54,10 @@ public class UserEntity {
 
     public UUID getActiveGroupId() {
         return activeGroupId;
+    }
+
+    public String getEmail() {
+        return email;
     }
 
     public String getFirstName() {

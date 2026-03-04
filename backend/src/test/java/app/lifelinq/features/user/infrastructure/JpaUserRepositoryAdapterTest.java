@@ -1,6 +1,7 @@
 package app.lifelinq.features.user.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.user.domain.User;
@@ -10,6 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = UserJpaTestApplication.class)
@@ -38,5 +40,14 @@ class JpaUserRepositoryAdapterTest {
         repository.deleteById(user.getId());
 
         assertTrue(repository.findById(user.getId()).isEmpty());
+    }
+
+    @Test
+    void enforcesUniqueEmailConstraint() {
+        repository.save(new User(UUID.randomUUID(), null, "user@example.com", null, null));
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> repository.save(new User(UUID.randomUUID(), null, "user@example.com", null, null))
+        );
     }
 }
