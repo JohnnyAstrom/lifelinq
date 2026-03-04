@@ -2,6 +2,7 @@ package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
+import app.lifelinq.features.group.application.InvitationTokenGenerator;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.MembershipRepository;
@@ -50,6 +51,11 @@ public class GroupPersistenceConfig {
             InvitationMapper invitationMapper
     ) {
         return new JpaInvitationRepositoryAdapter(invitationJpaRepository, invitationMapper);
+    }
+
+    @Bean
+    public InvitationTokenGenerator invitationTokenGenerator() {
+        return new InMemoryInvitationTokenGenerator();
     }
 
     @Bean
