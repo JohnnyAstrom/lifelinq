@@ -203,8 +203,9 @@ public class AuthApplicationService {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("email must not be blank");
         }
-        UUID userId = deterministicEmailUserId(normalizeEmail(email));
-        return issueAuthPairForUser(userId, initialPlaceName);
+        String normalizedEmail = normalizeEmail(email);
+        UUID userId = deterministicEmailUserId(normalizedEmail);
+        return issueAuthPairForUser(userId, initialPlaceName, normalizedEmail);
     }
 
     @Transactional
@@ -229,10 +230,23 @@ public class AuthApplicationService {
     public String verifyMagicLinkAndBuildRedirect(String token) {
         VerifiedMagicLinkResult verified = verifyMagicLinkUseCase.execute(new VerifyMagicLinkCommand(token, clock.instant()));
         UUID userId = resolveOrCreateEmailIdentity(verified.getNormalizedEmail());
-        AuthTokenPair authTokenPair = issueAuthPairForUser(userId, null);
+        AuthTokenPair authTokenPair = issueAuthPairForUser(userId, null, verified.getNormalizedEmail());
         String encodedAccessToken = URLEncoder.encode(authTokenPair.accessToken(), StandardCharsets.UTF_8);
         String encodedRefreshToken = URLEncoder.encode(authTokenPair.refreshToken(), StandardCharsets.UTF_8);
         return magicLinkCompleteBaseUrl + "#token=" + encodedAccessToken + "&refresh=" + encodedRefreshToken;
+    }
+
+    @Transactional
+    public AuthTokenPair issueAuthPairForOAuthLogin(String provider, String subject, String email) {
+        if (provider == null || provider.isBlank()) {
+            throw new IllegalArgumentException("provider must not be blank");
+        }
+        if (subject == null || subject.isBlank()) {
+            throw new IllegalArgumentException("subject must not be blank");
+        }
+        String normalizedEmail = normalizeEmailOrNull(email);
+        UUID userId = UUID.nameUUIDFromBytes((provider + ":" + subject).getBytes(StandardCharsets.UTF_8));
+        return issueAuthPairForUser(userId, null, normalizedEmail);
     }
 
     @Transactional
@@ -242,10 +256,14 @@ public class AuthApplicationService {
 
     @Transactional
     public String ensureProvisionedAndSignToken(UUID userId, String initialPlaceName) {
+        return ensureProvisionedAndSignToken(userId, initialPlaceName, null);
+    }
+
+    private String ensureProvisionedAndSignToken(UUID userId, String initialPlaceName, String normalizedEmail) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }
-        userProvisioning.ensureUserExists(userId);
+        userProvisioning.ensureUserExists(userId, normalizedEmail);
         UUID groupId = userDefaultGroupProvisioning.ensureDefaultGroupProvisioned(userId, initialPlaceName);
         if (userActiveGroupRead.getActiveGroupId(userId) == null) {
             userActiveGroupSelection.setActiveGroup(userId, groupId);
@@ -344,7 +362,11 @@ public class AuthApplicationService {
     }
 
     private AuthTokenPair issueAuthPairForUser(UUID userId, String initialPlaceName) {
-        String accessToken = ensureProvisionedAndSignToken(userId, initialPlaceName);
+        return issueAuthPairForUser(userId, initialPlaceName, null);
+    }
+
+    private AuthTokenPair issueAuthPairForUser(UUID userId, String initialPlaceName, String normalizedEmail) {
+        String accessToken = ensureProvisionedAndSignToken(userId, initialPlaceName, normalizedEmail);
         IssueRefreshSessionResult refresh = issueRefreshSessionUseCase.execute(
                 userId,
                 clock.instant(),
@@ -356,6 +378,14 @@ public class AuthApplicationService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeEmailOrNull(String email) {
+        if (email == null) {
+            return null;
+        }
+        String normalized = normalizeEmail(email);
+        return normalized.isBlank() ? null : normalized;
     }
 
     private String trimTrailingSlash(String value) {

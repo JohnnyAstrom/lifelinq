@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.MediaType;
@@ -42,9 +43,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User user = token.getPrincipal();
         String provider = token.getAuthorizedClientRegistrationId();
         String subject = resolveSubject(user);
-        UUID userId = deterministicUserId(provider, subject);
+        String normalizedEmail = normalizeEmailOrNull(resolveEmail(user));
 
-        AuthTokenPair tokens = authApplicationService.issueAuthPairForUser(userId);
+        AuthTokenPair tokens = authApplicationService.issueAuthPairForOAuthLogin(provider, subject, normalizedEmail);
         Map<String, String> payload = new HashMap<>();
         payload.put("accessToken", tokens.accessToken());
         payload.put("refreshToken", tokens.refreshToken());
@@ -69,5 +70,18 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             return String.valueOf(id);
         }
         return user.getName();
+    }
+
+    private String resolveEmail(OAuth2User user) {
+        Object email = user.getAttributes().get("email");
+        return email == null ? null : String.valueOf(email);
+    }
+
+    private String normalizeEmailOrNull(String email) {
+        if (email == null) {
+            return null;
+        }
+        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        return normalized.isBlank() ? null : normalized;
     }
 }

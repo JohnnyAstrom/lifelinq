@@ -12,7 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -23,16 +22,13 @@ import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 class OAuth2LoginSuccessHandlerTest {
-    private static final String SECRET = "test-secret";
-
     @Test
     void issuesTokenViaAuthOrchestrator() throws Exception {
         AuthApplicationService authApplicationService = Mockito.mock(AuthApplicationService.class);
         ObjectMapper objectMapper = new ObjectMapper();
         String expectedAccessToken = "signed.jwt.token";
         String expectedRefreshToken = "opaque.refresh.token";
-        UUID expectedUserId = OAuth2LoginSuccessHandler.deterministicUserId("google", "provider-sub");
-        when(authApplicationService.issueAuthPairForUser(expectedUserId))
+        when(authApplicationService.issueAuthPairForOAuthLogin("google", "provider-sub", "user@example.com"))
                 .thenReturn(new AuthTokenPair(expectedAccessToken, expectedRefreshToken));
         OAuth2LoginSuccessHandler handler = new OAuth2LoginSuccessHandler(
                 authApplicationService,
@@ -41,6 +37,7 @@ class OAuth2LoginSuccessHandlerTest {
 
         Map<String, Object> attributes = new HashMap<>();
         attributes.put("sub", "provider-sub");
+        attributes.put("email", " User@Example.com ");
         OAuth2User user = new DefaultOAuth2User(
                 Set.of(new SimpleGrantedAuthority("ROLE_USER")),
                 attributes,
@@ -69,6 +66,6 @@ class OAuth2LoginSuccessHandlerTest {
 
         assertEquals(expectedAccessToken, accessToken);
         assertEquals(expectedRefreshToken, refreshToken);
-        verify(authApplicationService).issueAuthPairForUser(expectedUserId);
+        verify(authApplicationService).issueAuthPairForOAuthLogin("google", "provider-sub", "user@example.com");
     }
 }
