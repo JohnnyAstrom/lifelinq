@@ -1,5 +1,5 @@
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -9,7 +9,6 @@ import { PendingInviteProvider, usePendingInvite } from '../shared/invite/Pendin
 import { setActiveGroup, updateProfile } from '../features/auth/api/meApi';
 import { acceptInvitation, createGroup, renameCurrentPlace, resolveInvitationCode } from '../features/group/api/groupApi';
 import { HomeScreen } from '../screens/HomeScreen';
-import { LoginScreen } from '../features/auth/screens/LoginScreen';
 import { CompleteProfileScreen } from '../features/auth/screens/CompleteProfileScreen';
 import { CreateGroupScreen } from '../features/group/screens/CreateGroupScreen';
 import { GroupDetailsScreen } from '../features/group/screens/GroupDetailsScreen';
@@ -25,10 +24,14 @@ import { ManageInvitationsScreen } from '../screens/ManageInvitationsScreen';
 import { SpacesScreen } from '../screens/SpacesScreen';
 import { AcceptInviteScreen } from '../screens/AcceptInviteScreen';
 import { AppToast } from '../shared/ui/AppToast';
-import { ApiError, UnauthorizedError, formatApiError } from '../shared/api/client';
+import { formatApiError } from '../shared/api/client';
 import { ActionSheet } from '../shared/ui/ActionSheet';
 import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
+import { DeepLinkRouter } from './DeepLinkRouter';
+import { InviteFlowCoordinator } from './InviteFlowCoordinator';
+import { AuthGate } from './AuthGate';
+import { HydratingSplashScreen } from './HydratingSplashScreen';
 
 type Screen =
   | 'home'
@@ -64,223 +67,46 @@ export default function App() {
   );
 }
 
-function HydratingSplashScreen() {
-  return (
-    <AppScreen scroll={false} contentStyle={{ justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator color={theme.colors.primary} />
-    </AppScreen>
-  );
-}
-
-function parseAuthCompleteUrl(url: string): { token?: string; refresh?: string; error?: string } | null {
-  const [base, fragment = ''] = url.split('#', 2);
-  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  if (normalizedBase !== 'mobileapp://auth/complete') {
-    return null;
-  }
-  const params = new URLSearchParams(fragment);
-  const token = params.get('token')?.trim();
-  const refresh = params.get('refresh')?.trim();
-  const error = params.get('error')?.trim();
-  if (token) {
-    return { token, refresh };
-  }
-  if (error) {
-    return { error };
-  }
-  return null;
-}
-
-function parseInviteUrl(url: string): { token: string } | null {
-  const [baseWithPath, queryAndMaybeFragment = ''] = url.split('?', 2);
-  const normalizedBase = baseWithPath.endsWith('/') ? baseWithPath.slice(0, -1) : baseWithPath;
-  if (normalizedBase !== 'mobileapp://invite') {
-    return null;
-  }
-  const query = queryAndMaybeFragment.split('#', 1)[0];
-  const params = new URLSearchParams(query);
-  const token = params.get('token')?.trim();
-  if (!token) {
-    return null;
-  }
-  return { token };
-}
-
 function AppShell() {
   const { status, token, reloadMe, login, handleApiError } = useAuth();
   const { pendingInviteToken, setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
   const [authError, setAuthError] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [autoAccepting, setAutoAccepting] = useState(false);
-  const lastHandledUrlRef = useRef<string | null>(null);
-  const tokenInFlightRef = useRef<string | null>(null);
-  const previousStatusRef = useRef(status);
-  const autoAcceptInFlightRef = useRef<string | null>(null);
-  const lastAutoAcceptedTokenRef = useRef<string | null>(null);
-
-  const handleIncomingUrl = useCallback(
-    async (url: string | null | undefined) => {
-      if (!url || lastHandledUrlRef.current === url) {
-        return;
-      }
-      const parsed = parseAuthCompleteUrl(url);
-      if (parsed) {
-        lastHandledUrlRef.current = url;
-        if (parsed.token) {
-          if (status === 'authenticated') {
-            return;
-          }
-          if (tokenInFlightRef.current === parsed.token) {
-            return;
-          }
-          tokenInFlightRef.current = parsed.token;
-          setAuthError(null);
-          try {
-            await login(parsed.token, parsed.refresh ?? null);
-          } finally {
-            tokenInFlightRef.current = null;
-          }
-          return;
-        }
-        if (parsed.error) {
-          setAuthError('Magic link is invalid or expired.');
-        }
-        return;
-      }
-
-      const invite = parseInviteUrl(url);
-      if (invite) {
-        lastHandledUrlRef.current = url;
-        setInviteError(null);
-        setPendingInviteToken(invite.token);
-      }
-    },
-    [login, setPendingInviteToken, status]
-  );
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      const initialUrl = await Linking.getInitialURL();
-      if (!active) {
-        return;
-      }
-      void handleIncomingUrl(initialUrl);
-    })();
-
-    const subscription = Linking.addEventListener('url', (event) => {
-      void handleIncomingUrl(event.url);
-    });
-
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, [handleIncomingUrl]);
-
-  useEffect(() => {
-    if (status !== 'unauthenticated') {
-      return;
-    }
-    clearPendingInviteToken();
-    setInviteError(null);
-    setAuthError(null);
-  }, [status, clearPendingInviteToken]);
-
-  useEffect(() => {
-    const previousStatus = previousStatusRef.current;
-    previousStatusRef.current = status;
-
-    const transitionedToAuthenticated = previousStatus === 'unauthenticated' && status === 'authenticated';
-    if (!transitionedToAuthenticated || !pendingInviteToken || !token) {
-      return;
-    }
-    if (autoAcceptInFlightRef.current === pendingInviteToken) {
-      return;
-    }
-    if (lastAutoAcceptedTokenRef.current === pendingInviteToken) {
-      return;
-    }
-
-    let cancelled = false;
-    autoAcceptInFlightRef.current = pendingInviteToken;
-    setAutoAccepting(true);
-
-    (async () => {
-      try {
-        await acceptInvitation(token, pendingInviteToken);
-        if (cancelled) {
-          return;
-        }
-        lastAutoAcceptedTokenRef.current = pendingInviteToken;
-        clearPendingInviteToken();
-        await reloadMe();
-        setInviteError(null);
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-        clearPendingInviteToken();
-        if (err instanceof UnauthorizedError || (err instanceof ApiError && err.status === 401)) {
-          await handleApiError(err);
-          setInviteError(null);
-          return;
-        }
-        if (err instanceof ApiError && err.status === 409) {
-          setInviteError('This invitation is invalid or expired.');
-          return;
-        }
-        setInviteError('Invitation could not be accepted.');
-      } finally {
-        if (!cancelled) {
-          autoAcceptInFlightRef.current = null;
-          setAutoAccepting(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      autoAcceptInFlightRef.current = null;
-      setAutoAccepting(false);
-    };
-  }, [status, pendingInviteToken, token, clearPendingInviteToken, reloadMe, handleApiError]);
-
-  if (status === 'hydrating') {
-    return <HydratingSplashScreen />;
-  }
-
-  if (status === 'unauthenticated') {
-    return (
-      <AuthStack
-        onLoggedIn={login}
-        authError={authError}
-        onClearAuthError={() => setAuthError(null)}
-      />
-    );
-  }
-
   return (
-    <AppStack
-      pendingInviteToken={pendingInviteToken}
-      inviteError={inviteError}
-      clearInviteError={() => setInviteError(null)}
-      autoAccepting={autoAccepting}
-    />
+    <DeepLinkRouter
+      status={status}
+      onLoginFromDeepLink={login}
+      onAuthError={setAuthError}
+      onInviteToken={setPendingInviteToken}
+      onClearInviteError={() => setInviteError(null)}
+    >
+      <InviteFlowCoordinator
+        status={status}
+        token={token}
+        pendingInviteToken={pendingInviteToken}
+        clearPendingInviteToken={clearPendingInviteToken}
+        reloadMe={reloadMe}
+        handleApiError={handleApiError}
+        setInviteError={setInviteError}
+        setAutoAccepting={setAutoAccepting}
+      >
+        <AuthGate
+          authError={authError}
+          onClearAuthError={() => setAuthError(null)}
+          onClearPendingInviteToken={clearPendingInviteToken}
+          onClearInviteError={() => setInviteError(null)}
+        >
+          <AppStack
+            pendingInviteToken={pendingInviteToken}
+            inviteError={inviteError}
+            clearInviteError={() => setInviteError(null)}
+            autoAccepting={autoAccepting}
+          />
+        </AuthGate>
+      </InviteFlowCoordinator>
+    </DeepLinkRouter>
   );
-}
-
-function AuthStack({
-  onLoggedIn,
-  authError,
-  onClearAuthError,
-}: {
-  onLoggedIn: (accessToken: string, refreshToken?: string | null) => Promise<void>;
-  authError: string | null;
-  onClearAuthError: () => void;
-}) {
-  return <LoginScreen onLoggedIn={onLoggedIn} authError={authError} onClearAuthError={onClearAuthError} />;
 }
 
 function AppStack({
