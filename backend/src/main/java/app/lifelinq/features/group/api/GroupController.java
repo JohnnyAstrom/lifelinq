@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -167,6 +168,46 @@ public class GroupController {
                 invitation.getShortCode(),
                 invitation.getExpiresAt()
         ));
+    }
+
+    @GetMapping("/groups/{groupId}/invitations")
+    public ResponseEntity<?> listInvitations(
+            @PathVariable UUID groupId,
+            @RequestParam(required = false) String status
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (!groupId.equals(context.getGroupId())) {
+            return ResponseEntity.status(409).body(new ApiErrorResponse(
+                    "ACTIVE_GROUP_MISMATCH",
+                    "groupId does not match active context"
+            ));
+        }
+        var invitations = groupApplicationService.listInvitations(
+                groupId,
+                context.getUserId(),
+                status
+        );
+        List<InvitationListItemResponse> response = new ArrayList<>();
+        for (var item : invitations) {
+            response.add(new InvitationListItemResponse(
+                    item.invitationId(),
+                    item.type(),
+                    item.status(),
+                    item.effectiveState(),
+                    item.inviteeEmail(),
+                    item.inviterDisplayName(),
+                    item.token(),
+                    item.shortCode(),
+                    item.expiresAt(),
+                    item.maxUses(),
+                    item.usageCount(),
+                    item.acceptAllowed()
+            ));
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/groups/invitations")

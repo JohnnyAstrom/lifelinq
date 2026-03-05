@@ -82,6 +82,13 @@ class ResolveInvitationCodeUseCaseTest {
         }
 
         @Override
+        public List<Invitation> findByGroupId(UUID groupId) {
+            return byToken.values().stream()
+                    .filter(inv -> groupId.equals(inv.getGroupId()))
+                    .toList();
+        }
+
+        @Override
         public List<Invitation> findActive() {
             return byToken.values().stream().filter(inv -> inv.getStatus() == InvitationStatus.ACTIVE).toList();
         }

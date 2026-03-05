@@ -21,6 +21,7 @@ import app.lifelinq.features.group.infrastructure.JpaInvitationRepositoryAdapter
 import app.lifelinq.features.group.infrastructure.JpaMembershipRepositoryAdapter;
 import app.lifelinq.features.group.infrastructure.InMemoryInvitationTokenGenerator;
 import app.lifelinq.features.group.infrastructure.InvitationFlowTestApplication;
+import app.lifelinq.features.group.infrastructure.NoOpGroupInvitationMailSender;
 import app.lifelinq.features.user.application.UserApplicationService;
 import app.lifelinq.features.user.application.UserApplicationServiceTestFactory;
 import app.lifelinq.features.user.domain.User;
@@ -108,6 +109,8 @@ class InvitationFlowIntegrationTest {
                 invitationRepository,
                 membershipRepository,
                 groupRepository,
+                new NoOpGroupInvitationMailSender(),
+                "http://localhost:8080",
                 userApplicationService,
                 userApplicationService,
                 userApplicationService,

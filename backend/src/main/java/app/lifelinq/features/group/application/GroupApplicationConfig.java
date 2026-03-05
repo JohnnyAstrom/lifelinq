@@ -12,6 +12,7 @@ import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import app.lifelinq.features.user.contract.UserProfileRead;
 import java.time.Clock;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -93,11 +94,13 @@ public class GroupApplicationConfig {
             InvitationRepository invitationRepository,
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
+            GroupInvitationMailSender groupInvitationMailSender,
             UserProvisioning userProvisioning,
             UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
-            Clock clock
+            Clock clock,
+            @Value("${lifelinq.group.invitation.previewBaseUrl:http://localhost:8080}") String invitationPreviewBaseUrl
     ) {
         return new GroupApplicationService(
                 acceptInvitationUseCase,
@@ -112,6 +115,8 @@ public class GroupApplicationConfig {
                 invitationRepository,
                 membershipRepository,
                 groupRepository,
+                groupInvitationMailSender,
+                invitationPreviewBaseUrl,
                 userProvisioning,
                 userActiveGroupRead,
                 userActiveGroupSelection,

@@ -105,6 +105,17 @@ class ExpireInvitationsUseCaseTest {
         }
 
         @Override
+        public List<Invitation> findByGroupId(UUID groupId) {
+            List<Invitation> result = new ArrayList<>();
+            for (Invitation invitation : saved) {
+                if (groupId.equals(invitation.getGroupId())) {
+                    result.add(invitation);
+                }
+            }
+            return result;
+        }
+
+        @Override
         public List<Invitation> findActive() {
             List<Invitation> result = new ArrayList<>();
             for (Invitation invitation : saved) {

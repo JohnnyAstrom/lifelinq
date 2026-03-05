@@ -23,7 +23,11 @@ class InviteWebControllerTest {
     @BeforeEach
     void setUp() {
         groupApplicationService = Mockito.mock(GroupApplicationService.class);
-        InviteWebController controller = new InviteWebController(groupApplicationService);
+        InviteWebController controller = new InviteWebController(
+                groupApplicationService,
+                "https://apps.apple.com/lifelinq",
+                "https://play.google.com/store/apps/details?id=app.lifelinq"
+        );
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
@@ -49,7 +53,9 @@ class InviteWebControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Invite code")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("K7M9XQ")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("navigator.clipboard.writeText('K7M9XQ')")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("invite-token"))));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("mobileapp://invite?token=invite-token")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Get it on App Store")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Get it on Google Play")));
     }
 
     @Test
@@ -73,8 +79,8 @@ class InviteWebControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("This is a shared invitation link.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Invite code")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("K7M9XQ")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("invite-token"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Open in the app")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("mobileapp://invite?token=invite-token")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Open in LifeLinq")));
     }
 
     @Test

@@ -18,10 +18,14 @@ import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.application.AdminRemovalConflictException;
 import app.lifelinq.features.group.application.GroupApplicationService;
+import app.lifelinq.features.group.application.GroupInvitationView;
+import app.lifelinq.features.group.application.InvitationEffectiveState;
 import app.lifelinq.features.group.application.GroupMemberView;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.Invitation;
+import app.lifelinq.features.group.domain.InvitationStatus;
+import app.lifelinq.features.group.domain.InvitationType;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipId;
@@ -416,6 +420,48 @@ class GroupControllerTest {
                 .andExpect(jsonPath("$.invitationId").value(invitation.getId().toString()))
                 .andExpect(jsonPath("$.token").value("invite-link-token"))
                 .andExpect(jsonPath("$.shortCode").value("K7M9XQ"));
+    }
+
+    @Test
+    void listInvitationsReturns401WhenContextMissing() throws Exception {
+        mockMvc.perform(get("/groups/" + UUID.randomUUID() + "/invitations"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(groupApplicationService);
+    }
+
+    @Test
+    void listInvitationsSucceedsWithDerivedEffectiveState() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        userRepository.withUser(actorUserId, groupId);
+        String token = createToken(actorUserId, Instant.now().plusSeconds(60));
+
+        GroupInvitationView item = new GroupInvitationView(
+                UUID.randomUUID(),
+                InvitationType.EMAIL,
+                InvitationStatus.ACTIVE,
+                InvitationEffectiveState.EXPIRED,
+                "invitee@example.com",
+                "Alex Admin",
+                "invite-token",
+                "ABC123",
+                Instant.now().minusSeconds(30),
+                1,
+                0,
+                false
+        );
+
+        when(groupApplicationService.listInvitations(groupId, actorUserId, "expired"))
+                .thenReturn(List.of(item));
+
+        mockMvc.perform(get("/groups/" + groupId + "/invitations")
+                        .header("Authorization", "Bearer " + token)
+                        .queryParam("status", "expired"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].invitationId").value(item.invitationId().toString()))
+                .andExpect(jsonPath("$[0].effectiveState").value("EXPIRED"))
+                .andExpect(jsonPath("$[0].status").value("ACTIVE"));
     }
 
     @Test

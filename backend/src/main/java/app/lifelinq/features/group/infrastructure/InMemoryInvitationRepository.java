@@ -77,6 +77,20 @@ public final class InMemoryInvitationRepository implements InvitationRepository 
     }
 
     @Override
+    public List<Invitation> findByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        List<Invitation> result = new ArrayList<>();
+        for (Invitation invitation : invitationsByToken.values()) {
+            if (groupId.equals(invitation.getGroupId())) {
+                result.add(invitation);
+            }
+        }
+        return result;
+    }
+
+    @Override
     public List<Invitation> findActive() {
         List<Invitation> result = new ArrayList<>();
         for (Invitation invitation : invitationsByToken.values()) {

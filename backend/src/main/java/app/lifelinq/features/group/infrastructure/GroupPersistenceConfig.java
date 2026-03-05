@@ -2,13 +2,16 @@ package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
+import app.lifelinq.features.group.application.GroupInvitationMailSender;
 import app.lifelinq.features.group.application.InvitationTokenGenerator;
 import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.MembershipRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.mail.javamail.JavaMailSender;
 
 @Configuration
 @Profile("persistence")
@@ -56,6 +59,23 @@ public class GroupPersistenceConfig {
     @Bean
     public InvitationTokenGenerator invitationTokenGenerator() {
         return new InMemoryInvitationTokenGenerator();
+    }
+
+    @Bean
+    @Profile("dev")
+    public GroupInvitationMailSender groupInvitationMailSender(
+            JavaMailSender mailSender,
+            @Value("${lifelinq.auth.mail.from:}") String configuredFrom,
+            @Value("${spring.mail.username:}") String smtpUsername
+    ) {
+        String fromAddress = configuredFrom != null && !configuredFrom.isBlank() ? configuredFrom : smtpUsername;
+        return new SmtpGroupInvitationMailSender(mailSender, fromAddress);
+    }
+
+    @Bean
+    @Profile("!dev")
+    public GroupInvitationMailSender productionGroupInvitationMailSender() {
+        return new FailFastGroupInvitationMailSender();
     }
 
     @Bean

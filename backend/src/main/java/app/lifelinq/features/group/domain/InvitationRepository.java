@@ -15,6 +15,8 @@ public interface InvitationRepository {
     boolean existsByToken(String token);
     boolean existsByShortCode(String shortCode);
 
+    List<Invitation> findByGroupId(UUID groupId);
+
     List<Invitation> findActive();
 
     Optional<Invitation> findActiveByGroupIdAndInviteeEmail(UUID groupId, String inviteeEmail);

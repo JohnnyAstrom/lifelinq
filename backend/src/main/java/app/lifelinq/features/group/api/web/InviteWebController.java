@@ -4,8 +4,11 @@ import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.PreviewInvitationReason;
 import app.lifelinq.features.group.application.PreviewInvitationResult;
 import app.lifelinq.features.group.domain.InvitationType;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,28 +17,48 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class InviteWebController {
     private final GroupApplicationService groupApplicationService;
+    private final String iosStoreUrl;
+    private final String androidStoreUrl;
 
-    public InviteWebController(GroupApplicationService groupApplicationService) {
+    public InviteWebController(
+            GroupApplicationService groupApplicationService,
+            @Value("${lifelinq.mobile.iosStoreUrl:https://apps.apple.com}") String iosStoreUrl,
+            @Value("${lifelinq.mobile.androidStoreUrl:https://play.google.com/store}") String androidStoreUrl
+    ) {
         this.groupApplicationService = groupApplicationService;
+        this.iosStoreUrl = iosStoreUrl;
+        this.androidStoreUrl = androidStoreUrl;
     }
 
     @GetMapping(value = "/invite/{token}", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
     public ResponseEntity<String> previewInvitation(@PathVariable String token) {
         PreviewInvitationResult preview = groupApplicationService.previewInvitation(token);
-        return ResponseEntity.ok(renderHtml(preview));
+        return ResponseEntity.ok(renderHtml(preview, token));
     }
 
-    private String renderHtml(PreviewInvitationResult preview) {
+    private String renderHtml(PreviewInvitationResult preview, String token) {
         InvitationCopy copy = resolveCopy(preview);
         String escapedShortCode = preview.getShortCode() == null ? "" : escapeHtml(preview.getShortCode());
+        String deepLink = "mobileapp://invite?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
         String validExtras = preview.isValid()
                 ? """
-                      <div class="button">Open in the app</div>
+                      <a id="open-app-link" class="button" href="%s">Open in LifeLinq</a>
+                      <div id="app-fallback" class="fallback hidden">
+                        <div class="fallback-title">Having trouble opening the app?</div>
+                        <a class="store-link" href="%s" rel="noopener noreferrer">Get it on App Store</a>
+                        <a class="store-link" href="%s" rel="noopener noreferrer">Get it on Google Play</a>
+                      </div>
                       <div class="code-label">Invite code</div>
                       <div class="code-box">%s</div>
                       <button class="copy-button" onclick="navigator.clipboard.writeText('%s')">Copy</button>
-                      """.formatted(escapedShortCode, escapedShortCode)
+                      """.formatted(
+                                escapeHtml(deepLink),
+                                escapeHtml(iosStoreUrl),
+                                escapeHtml(androidStoreUrl),
+                                escapedShortCode,
+                                escapedShortCode
+                        )
                 : "";
         String placeBlock = preview.isValid()
                 ? """
@@ -113,8 +136,7 @@ public class InviteWebController {
                     text-decoration: none;
                     font-weight: 600;
                     margin-bottom: 16px;
-                    opacity: 0.5;
-                    cursor: default;
+                    cursor: pointer;
                   }
 
                   .code-label {
@@ -148,6 +170,31 @@ public class InviteWebController {
                     font-size: 14px;
                     cursor: pointer;
                   }
+
+                  .fallback {
+                    margin-bottom: 16px;
+                    padding: 12px;
+                    border-radius: 8px;
+                    background: #f9fafb;
+                  }
+
+                  .fallback-title {
+                    font-size: 13px;
+                    color: #666;
+                    margin-bottom: 8px;
+                  }
+
+                  .store-link {
+                    display: block;
+                    font-size: 14px;
+                    margin-bottom: 6px;
+                    color: #111;
+                    text-decoration: underline;
+                  }
+
+                  .hidden {
+                    display: none;
+                  }
                 </style>
                 </head>
                 <body>
@@ -162,6 +209,20 @@ public class InviteWebController {
 
                     %s
                   </div>
+                  <script>
+                    (function () {
+                      var openLink = document.getElementById('open-app-link');
+                      var fallback = document.getElementById('app-fallback');
+                      if (!openLink || !fallback) {
+                        return;
+                      }
+                      openLink.addEventListener('click', function () {
+                        setTimeout(function () {
+                          fallback.classList.remove('hidden');
+                        }, 1200);
+                      });
+                    })();
+                  </script>
                 </body>
                 </html>
                 """.formatted(

@@ -13,6 +13,8 @@ public interface InvitationJpaRepository extends JpaRepository<InvitationEntity,
     boolean existsByToken(String token);
     boolean existsByShortCode(String shortCode);
 
+    List<InvitationEntity> findByGroupId(UUID groupId);
+
     List<InvitationEntity> findByStatus(InvitationStatus status);
 
     Optional<InvitationEntity> findByGroupIdAndInviteeEmailAndStatus(

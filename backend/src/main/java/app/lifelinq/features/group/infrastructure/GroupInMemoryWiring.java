@@ -1,6 +1,7 @@
 package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.application.GroupApplicationService;
+import app.lifelinq.features.group.infrastructure.NoOpGroupInvitationMailSender;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import app.lifelinq.features.user.contract.UserProfileRead;
@@ -27,6 +28,8 @@ public final class GroupInMemoryWiring {
                 invitationRepository,
                 tokenGenerator,
                 shortCodeGenerator,
+                new NoOpGroupInvitationMailSender(),
+                "http://localhost:8080",
                 userProvisioning,
                 userActiveGroupRead,
                 userActiveGroupSelection,

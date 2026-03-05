@@ -107,6 +107,8 @@ class GroupApplicationServiceGovernanceTest {
                 invitationRepository,
                 () -> "token",
                 () -> "ABC123",
+                new app.lifelinq.features.group.infrastructure.NoOpGroupInvitationMailSender(),
+                "http://localhost:8080",
                 userProvisioning,
                 (userId) -> null,
                 userActiveGroupSelection,
@@ -227,6 +229,11 @@ class GroupApplicationServiceGovernanceTest {
 
         @Override
         public List<Invitation> findActive() {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<Invitation> findByGroupId(UUID groupId) {
             throw new UnsupportedOperationException("not used");
         }
 

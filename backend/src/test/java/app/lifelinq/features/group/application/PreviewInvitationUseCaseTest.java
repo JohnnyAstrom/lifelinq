@@ -213,6 +213,13 @@ class PreviewInvitationUseCaseTest {
         }
 
         @Override
+        public List<Invitation> findByGroupId(UUID groupId) {
+            return byToken.values().stream()
+                    .filter(invitation -> groupId.equals(invitation.getGroupId()))
+                    .toList();
+        }
+
+        @Override
         public List<Invitation> findActive() {
             return List.of();
         }

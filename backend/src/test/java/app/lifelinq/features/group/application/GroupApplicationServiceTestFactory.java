@@ -6,6 +6,7 @@ import app.lifelinq.features.group.domain.Invitation;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.Membership;
 import app.lifelinq.features.group.domain.MembershipRepository;
+import app.lifelinq.features.group.infrastructure.NoOpGroupInvitationMailSender;
 import app.lifelinq.features.user.application.UserApplicationServiceTestFactory;
 import app.lifelinq.features.user.domain.User;
 import app.lifelinq.features.user.domain.UserRepository;
@@ -31,6 +32,8 @@ public final class GroupApplicationServiceTestFactory {
                 invitationRepository,
                 tokenGenerator,
                 shortCodeGenerator,
+                new NoOpGroupInvitationMailSender(),
+                "http://localhost:8080",
                 userService,
                 userService,
                 userService,
@@ -103,6 +106,11 @@ public final class GroupApplicationServiceTestFactory {
 
         @Override
         public List<Invitation> findActive() {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public List<Invitation> findByGroupId(UUID groupId) {
             throw new UnsupportedOperationException("not used");
         }
 

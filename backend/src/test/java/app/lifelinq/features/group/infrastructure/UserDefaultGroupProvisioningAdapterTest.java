@@ -121,6 +121,8 @@ class UserDefaultGroupProvisioningAdapterTest {
                 new InMemoryInvitationRepository(),
                 new InMemoryInvitationTokenGenerator(),
                 new InMemoryInvitationShortCodeGenerator(),
+                new NoOpGroupInvitationMailSender(),
+                "http://localhost:8080",
                 noOpUserProvisioning,
                 (userId) -> null,
                 noOpActiveGroupSelection,

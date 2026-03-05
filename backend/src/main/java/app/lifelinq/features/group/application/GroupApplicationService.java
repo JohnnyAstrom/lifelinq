@@ -20,6 +20,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +45,8 @@ public class GroupApplicationService {
     private final InvitationRepository invitationRepository;
     private final MembershipRepository membershipRepository;
     private final GroupRepository groupRepository;
+    private final GroupInvitationMailSender groupInvitationMailSender;
+    private final String invitationPreviewBaseUrl;
     private final UserProvisioning userProvisioning;
     private final UserActiveGroupRead userActiveGroupRead;
     private final UserActiveGroupSelection userActiveGroupSelection;
@@ -63,6 +66,8 @@ public class GroupApplicationService {
             InvitationRepository invitationRepository,
             MembershipRepository membershipRepository,
             GroupRepository groupRepository,
+            GroupInvitationMailSender groupInvitationMailSender,
+            String invitationPreviewBaseUrl,
             UserProvisioning userProvisioning,
             UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
@@ -81,6 +86,14 @@ public class GroupApplicationService {
         this.invitationRepository = invitationRepository;
         this.membershipRepository = membershipRepository;
         this.groupRepository = groupRepository;
+        if (groupInvitationMailSender == null) {
+            throw new IllegalArgumentException("groupInvitationMailSender must not be null");
+        }
+        if (invitationPreviewBaseUrl == null || invitationPreviewBaseUrl.isBlank()) {
+            throw new IllegalArgumentException("invitationPreviewBaseUrl must not be blank");
+        }
+        this.groupInvitationMailSender = groupInvitationMailSender;
+        this.invitationPreviewBaseUrl = trimTrailingSlash(invitationPreviewBaseUrl);
         this.userProvisioning = userProvisioning;
         if (userActiveGroupRead == null) {
             throw new IllegalArgumentException("userActiveGroupRead must not be null");
@@ -122,6 +135,17 @@ public class GroupApplicationService {
                 DEFAULT_EMAIL_INVITATION_MAX_USES
         );
         CreateInvitationResult result = createInvitationUseCase.execute(command);
+        String groupName = groupRepository.findById(groupId)
+                .map(group -> group.getName())
+                .orElse(DEFAULT_GROUP_NAME);
+        groupInvitationMailSender.sendInvitationEmail(
+                normalizedEmail,
+                invitationPreviewUrl(result.getToken()),
+                result.getShortCode(),
+                result.getExpiresAt(),
+                inviterDisplayName,
+                groupName
+        );
         return new CreateInvitationOutput(
                 result.getInvitationId(),
                 result.getToken(),
@@ -190,6 +214,40 @@ public class GroupApplicationService {
             }
         }
         return Optional.empty();
+    }
+
+    @Transactional(readOnly = true)
+    public List<GroupInvitationView> listInvitations(
+            UUID groupId,
+            UUID actorUserId,
+            String status
+    ) {
+        userProvisioning.ensureUserExists(actorUserId);
+        ensureAdmin(groupId, actorUserId);
+        InvitationEffectiveState statusFilter = parseEffectiveStateFilter(status);
+        Instant now = clock.instant();
+        List<GroupInvitationView> items = new ArrayList<>();
+        for (Invitation invitation : invitationRepository.findByGroupId(groupId)) {
+            InvitationEffectiveState effectiveState = toEffectiveState(invitation, now);
+            if (statusFilter != null && effectiveState != statusFilter) {
+                continue;
+            }
+            items.add(new GroupInvitationView(
+                    invitation.getId(),
+                    invitation.getType(),
+                    invitation.getStatus(),
+                    effectiveState,
+                    invitation.getInviteeEmail(),
+                    invitation.getInviterDisplayName(),
+                    invitation.getToken(),
+                    invitation.getShortCode(),
+                    invitation.getExpiresAt(),
+                    invitation.getMaxUses(),
+                    invitation.getUsageCount(),
+                    invitation.isAcceptAllowed(now)
+            ));
+        }
+        return items;
     }
 
     @Transactional
@@ -345,6 +403,8 @@ public class GroupApplicationService {
             InvitationRepository invitationRepository,
             InvitationTokenGenerator tokenGenerator,
             InvitationShortCodeGenerator shortCodeGenerator,
+            GroupInvitationMailSender groupInvitationMailSender,
+            String invitationPreviewBaseUrl,
             UserProvisioning userProvisioning,
             UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
@@ -364,6 +424,8 @@ public class GroupApplicationService {
                 invitationRepository,
                 membershipRepository,
                 groupRepository,
+                groupInvitationMailSender,
+                invitationPreviewBaseUrl,
                 userProvisioning,
                 userActiveGroupRead,
                 userActiveGroupSelection,
@@ -387,6 +449,30 @@ public class GroupApplicationService {
             return null;
         }
         return profile.firstName() + " " + profile.lastName();
+    }
+
+    private InvitationEffectiveState toEffectiveState(Invitation invitation, Instant now) {
+        if (invitation.getStatus() == app.lifelinq.features.group.domain.InvitationStatus.REVOKED) {
+            return InvitationEffectiveState.REVOKED;
+        }
+        if (invitation.isExpired(now)) {
+            return InvitationEffectiveState.EXPIRED;
+        }
+        if (invitation.getMaxUses() != null && invitation.getUsageCount() >= invitation.getMaxUses()) {
+            return InvitationEffectiveState.EXHAUSTED;
+        }
+        return InvitationEffectiveState.ACTIVE;
+    }
+
+    private InvitationEffectiveState parseEffectiveStateFilter(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return InvitationEffectiveState.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("status must be one of ACTIVE, REVOKED, EXPIRED, EXHAUSTED");
+        }
     }
 
     private void ensureAdmin(UUID groupId, UUID actorUserId) {
@@ -462,6 +548,18 @@ public class GroupApplicationService {
             return null;
         }
         return email.trim().toLowerCase();
+    }
+
+    private String invitationPreviewUrl(String invitationToken) {
+        return invitationPreviewBaseUrl + "/invite/" + invitationToken;
+    }
+
+    private String trimTrailingSlash(String value) {
+        String normalized = value.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private String normalizePlaceName(String placeName) {

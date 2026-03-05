@@ -70,6 +70,18 @@ public final class JpaInvitationRepositoryAdapter implements InvitationRepositor
     }
 
     @Override
+    public List<Invitation> findByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        List<Invitation> result = new ArrayList<>();
+        for (InvitationEntity entity : invitationJpaRepository.findByGroupId(groupId)) {
+            result.add(mapper.toDomain(entity));
+        }
+        return result;
+    }
+
+    @Override
     public List<Invitation> findActive() {
         List<Invitation> result = new ArrayList<>();
         for (InvitationEntity entity : invitationJpaRepository.findByStatus(InvitationStatus.ACTIVE)) {
