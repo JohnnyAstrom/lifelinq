@@ -1,5 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useState, type ReactNode } from 'react';
+import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -134,10 +134,12 @@ function AppStack({
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [joinSheetOpen, setJoinSheetOpen] = useState(false);
   const [joinTokenInput, setJoinTokenInput] = useState('');
+  const [joinTokenInputFocused, setJoinTokenInputFocused] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const [createNameInput, setCreateNameInput] = useState('');
+  const [createNameInputFocused, setCreateNameInputFocused] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [pendingCreatedGroupId, setPendingCreatedGroupId] = useState<string | null>(null);
@@ -175,12 +177,14 @@ function AppStack({
     clearInviteError();
     setJoinError(null);
     setJoinTokenInput(pendingInviteToken ?? '');
+    setJoinTokenInputFocused(false);
     setJoinSheetOpen(true);
   }
 
   function openCreateSheet() {
     setCreateError(null);
     setCreateNameInput('');
+    setCreateNameInputFocused(false);
     setPendingCreatedGroupId(null);
     setCreateSheetOpen(true);
   }
@@ -191,6 +195,7 @@ function AppStack({
     }
     clearInviteError();
     setJoinSheetOpen(false);
+    setJoinTokenInputFocused(false);
     setJoinError(null);
   }
 
@@ -199,8 +204,43 @@ function AppStack({
       return;
     }
     setCreateSheetOpen(false);
+    setCreateNameInputFocused(false);
     setCreateError(null);
   }
+
+  useEffect(() => {
+    if (!joinSheetOpen) {
+      return;
+    }
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setJoinTokenInputFocused(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setJoinTokenInputFocused(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [joinSheetOpen]);
+
+  useEffect(() => {
+    if (!createSheetOpen) {
+      return;
+    }
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setCreateNameInputFocused(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setCreateNameInputFocused(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [createSheetOpen]);
 
   async function handleJoinPlaceSubmit() {
     const normalizedInput = joinTokenInput.trim();
@@ -224,6 +264,7 @@ function AppStack({
       showToast(`You joined ${placeName}.`);
       clearPendingInviteToken();
       setJoinSheetOpen(false);
+      setJoinTokenInputFocused(false);
       setJoinTokenInput('');
     } catch (err) {
       await handleApiError(err);
@@ -268,6 +309,7 @@ function AppStack({
       try {
         await switchPlace(created.groupId);
         setCreateSheetOpen(false);
+        setCreateNameInputFocused(false);
         setCreateNameInput('');
         setPendingCreatedGroupId(null);
       } catch (activateErr) {
@@ -291,6 +333,7 @@ function AppStack({
     try {
       await switchPlace(pendingCreatedGroupId);
       setCreateSheetOpen(false);
+      setCreateNameInputFocused(false);
       setCreateNameInput('');
       setPendingCreatedGroupId(null);
     } catch (err) {
@@ -445,12 +488,18 @@ function AppStack({
   ) : null;
 
   const joinSheet = joinSheetOpen ? (
-    <ActionSheet visible={joinSheetOpen} onClose={closeJoinSheet} presentation="large">
+    <ActionSheet
+      visible={joinSheetOpen}
+      onClose={closeJoinSheet}
+      presentation={joinTokenInputFocused ? 'large' : 'standard'}
+    >
       <View style={styles.joinSheetContent}>
         <Text style={textStyles.h3}>Join a place</Text>
         <AppInput
           value={joinTokenInput}
           onChangeText={setJoinTokenInput}
+          onFocus={() => setJoinTokenInputFocused(true)}
+          onBlur={() => setJoinTokenInputFocused(false)}
           placeholder="Paste invitation code"
           returnKeyType="done"
           onSubmitEditing={() => {
@@ -481,12 +530,18 @@ function AppStack({
   ) : null;
 
   const createSheet = createSheetOpen ? (
-    <ActionSheet visible={createSheetOpen} onClose={closeCreateSheet} presentation="large">
+    <ActionSheet
+      visible={createSheetOpen}
+      onClose={closeCreateSheet}
+      presentation={createNameInputFocused ? 'large' : 'standard'}
+    >
       <View style={styles.createSheetContent}>
         <Text style={textStyles.h3}>Create new place</Text>
         <AppInput
           value={createNameInput}
           onChangeText={setCreateNameInput}
+          onFocus={() => setCreateNameInputFocused(true)}
+          onBlur={() => setCreateNameInputFocused(false)}
           placeholder="Place name"
           returnKeyType="done"
           onSubmitEditing={() => {
