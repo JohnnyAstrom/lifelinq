@@ -1,6 +1,12 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { acceptInvitation } from '../features/group/api/groupApi';
 import { ApiError, UnauthorizedError } from '../shared/api/client';
+import {
+  buildInviteAttemptKey,
+  isTerminalInviteAcceptError,
+  shouldClearPendingInviteAfterAccept,
+  shouldStartInviteAutoAccept,
+} from './inviteAutoAccept';
 
 type Props = {
   children: ReactNode;
@@ -25,27 +31,27 @@ export function InviteFlowCoordinator({
   setInviteError,
   setAutoAccepting,
 }: Props) {
-  const previousStatusRef = useRef(status);
   const autoAcceptInFlightRef = useRef<string | null>(null);
-  const lastAutoAcceptedTokenRef = useRef<string | null>(null);
+  const lastAutoAcceptAttemptRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const previousStatus = previousStatusRef.current;
-    previousStatusRef.current = status;
-
-    const transitionedToAuthenticated = previousStatus === 'unauthenticated' && status === 'authenticated';
-    if (!transitionedToAuthenticated || !pendingInviteToken || !token) {
-      return;
-    }
-    if (autoAcceptInFlightRef.current === pendingInviteToken) {
-      return;
-    }
-    if (lastAutoAcceptedTokenRef.current === pendingInviteToken) {
+    if (!shouldStartInviteAutoAccept({
+      status,
+      accessToken: token,
+      pendingInviteToken,
+      inFlightAttemptKey: autoAcceptInFlightRef.current,
+      lastAttemptedKey: lastAutoAcceptAttemptRef.current,
+    })) {
       return;
     }
 
+    const attemptKey = buildInviteAttemptKey(token, pendingInviteToken);
+    if (!attemptKey || !pendingInviteToken || !token) {
+      return;
+    }
+    lastAutoAcceptAttemptRef.current = attemptKey;
     let cancelled = false;
-    autoAcceptInFlightRef.current = pendingInviteToken;
+    autoAcceptInFlightRef.current = attemptKey;
     setAutoAccepting(true);
 
     (async () => {
@@ -54,21 +60,24 @@ export function InviteFlowCoordinator({
         if (cancelled) {
           return;
         }
-        lastAutoAcceptedTokenRef.current = pendingInviteToken;
-        clearPendingInviteToken();
+        if (shouldClearPendingInviteAfterAccept(true, null)) {
+          clearPendingInviteToken();
+        }
         await reloadMe();
         setInviteError(null);
       } catch (err) {
         if (cancelled) {
           return;
         }
-        clearPendingInviteToken();
         if (err instanceof UnauthorizedError || (err instanceof ApiError && err.status === 401)) {
           await handleApiError(err);
           setInviteError(null);
           return;
         }
-        if (err instanceof ApiError && err.status === 409) {
+        if (isTerminalInviteAcceptError(err)) {
+          if (shouldClearPendingInviteAfterAccept(false, err)) {
+            clearPendingInviteToken();
+          }
           setInviteError('This invitation is invalid or expired.');
           return;
         }
@@ -99,4 +108,3 @@ export function InviteFlowCoordinator({
 
   return <>{children}</>;
 }
-

@@ -64,9 +64,6 @@ export function DeepLinkRouter({
       if (parsed) {
         lastHandledUrlRef.current = url;
         if (parsed.token) {
-          if (status === 'authenticated') {
-            return;
-          }
           if (tokenInFlightRef.current === parsed.token) {
             return;
           }
@@ -118,4 +115,3 @@ export function DeepLinkRouter({
 
   return <>{children}</>;
 }
-

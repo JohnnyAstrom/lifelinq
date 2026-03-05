@@ -61,12 +61,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function loginWithRefresh(newAccessToken: string, newRefreshToken?: string | null) {
-    if (newRefreshToken && newRefreshToken.trim()) {
-      await setAuthTokens(newAccessToken, newRefreshToken.trim());
-    } else {
-      await setToken(newAccessToken);
+    const normalizedAccessToken = newAccessToken.trim();
+    const existingAccessToken = await getToken();
+    if (existingAccessToken === normalizedAccessToken) {
+      return;
     }
-    await hydrateWithToken(newAccessToken);
+
+    if (newRefreshToken && newRefreshToken.trim()) {
+      await setAuthTokens(normalizedAccessToken, newRefreshToken.trim());
+    } else {
+      await setToken(normalizedAccessToken);
+    }
+    await hydrateWithToken(normalizedAccessToken);
   }
 
   async function logout() {

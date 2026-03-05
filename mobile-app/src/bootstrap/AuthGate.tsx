@@ -7,7 +7,6 @@ type Props = {
   children: ReactNode;
   authError: string | null;
   onClearAuthError: () => void;
-  onClearPendingInviteToken: () => void;
   onClearInviteError: () => void;
 };
 
@@ -15,7 +14,6 @@ export function AuthGate({
   children,
   authError,
   onClearAuthError,
-  onClearPendingInviteToken,
   onClearInviteError,
 }: Props) {
   const { status, token, me, meLoading, meError, login, logout } = useAuth();
@@ -25,10 +23,9 @@ export function AuthGate({
     if (status !== 'unauthenticated') {
       return;
     }
-    onClearPendingInviteToken();
     onClearInviteError();
     onClearAuthError();
-  }, [onClearAuthError, onClearInviteError, onClearPendingInviteToken, status]);
+  }, [onClearAuthError, onClearInviteError, status]);
 
   useEffect(() => {
     if (status !== 'authenticated') {

@@ -69,7 +69,8 @@ export default function App() {
 
 function AppShell() {
   const { status, token, reloadMe, login, handleApiError } = useAuth();
-  const { pendingInviteToken, setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
+  const { pendingInviteToken, inviteOnboardingActive, setPendingInviteToken, clearPendingInviteToken } =
+    usePendingInvite();
   const [authError, setAuthError] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [autoAccepting, setAutoAccepting] = useState(false);
@@ -94,11 +95,11 @@ function AppShell() {
         <AuthGate
           authError={authError}
           onClearAuthError={() => setAuthError(null)}
-          onClearPendingInviteToken={clearPendingInviteToken}
           onClearInviteError={() => setInviteError(null)}
         >
           <AppStack
             pendingInviteToken={pendingInviteToken}
+            inviteOnboardingActive={inviteOnboardingActive}
             inviteError={inviteError}
             clearInviteError={() => setInviteError(null)}
             autoAccepting={autoAccepting}
@@ -111,17 +112,19 @@ function AppShell() {
 
 function AppStack({
   pendingInviteToken,
+  inviteOnboardingActive,
   inviteError,
   clearInviteError,
   autoAccepting,
 }: {
   pendingInviteToken: string | null;
+  inviteOnboardingActive: boolean;
   inviteError: string | null;
   clearInviteError: () => void;
   autoAccepting: boolean;
 }) {
   const { token, me, meLoading, meError, reloadMe, logout, handleApiError } = useAuth();
-  const { setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
+  const { setPendingInviteToken, clearPendingInviteToken, clearInviteOnboarding } = usePendingInvite();
   const [screen, setScreen] = useState<Screen>('home');
   const [membersReturnScreen, setMembersReturnScreen] = useState<Screen>('spaces');
   const [acceptInviteToken, setAcceptInviteToken] = useState<string | null>(null);
@@ -343,6 +346,11 @@ function AppStack({
   const activeMembershipForProfile = meData.activeGroupId
     ? meData.memberships.find((membership) => membership.groupId === meData.activeGroupId) ?? null
     : null;
+  const isInviteFlow = inviteOnboardingActive || !!pendingInviteToken;
+  const inviteFlowGroupName =
+    isInviteFlow && activeMembershipForProfile?.isDefault !== true
+      ? activeMembershipForProfile?.groupName ?? null
+      : null;
 
   if (!hasCompletedProfile) {
     return (
@@ -351,6 +359,8 @@ function AppStack({
         initialFirstName={meData.firstName}
         initialLastName={meData.lastName}
         initialPlaceName="Personal"
+        isInviteFlow={isInviteFlow}
+        inviteGroupName={inviteFlowGroupName}
         onSubmitProfile={async (firstName, lastName, initialPlaceName) => {
           await updateProfile(token, firstName, lastName);
 
@@ -366,6 +376,7 @@ function AppStack({
           await renameCurrentPlace(token, initialPlaceName);
         }}
         onCompleted={() => {
+          clearInviteOnboarding();
           reloadMe();
         }}
       />
@@ -599,6 +610,7 @@ function AppStack({
         onJoinPlace={openJoinSheet}
         onLogout={async () => {
           clearPendingInviteToken();
+          clearInviteOnboarding();
           await logout();
         }}
       />

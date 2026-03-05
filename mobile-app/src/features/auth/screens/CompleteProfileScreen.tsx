@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
+import { usePendingInvite } from '../../../shared/invite/PendingInviteContext';
 import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import { updateProfile } from '../api/meApi';
@@ -12,6 +13,8 @@ type Props = {
   initialFirstName?: string | null;
   initialLastName?: string | null;
   initialPlaceName?: string | null;
+  isInviteFlow?: boolean;
+  inviteGroupName?: string | null;
   onSubmitProfile?: (
     firstName: string,
     lastName: string,
@@ -25,6 +28,8 @@ export function CompleteProfileScreen({
   initialFirstName,
   initialLastName,
   initialPlaceName,
+  isInviteFlow = false,
+  inviteGroupName,
   onSubmitProfile,
   onCompleted,
 }: Props) {
@@ -34,11 +39,14 @@ export function CompleteProfileScreen({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { handleApiError } = useAuth();
+  const { pendingInviteToken } = usePendingInvite();
+  const effectiveIsInviteFlow = isInviteFlow || !!pendingInviteToken;
   const strings = {
     title: 'Complete profile',
     subtitle: 'Please add your first and last name to continue.',
+    inviteSubtitle: 'You are joining:',
     placeNameLabel: 'What should we call your place?',
-    save: 'Save profile',
+    save: 'Continue',
     saving: 'Saving...',
   };
 
@@ -49,8 +57,12 @@ export function CompleteProfileScreen({
     setLoading(true);
     setError(null);
     try {
-      const trimmedPlaceName = placeName.trim();
-      const normalizedPlaceName = trimmedPlaceName.length > 0 ? trimmedPlaceName : null;
+      const normalizedPlaceName = effectiveIsInviteFlow
+        ? null
+        : (() => {
+            const trimmedPlaceName = placeName.trim();
+            return trimmedPlaceName.length > 0 ? trimmedPlaceName : null;
+          })();
       if (onSubmitProfile) {
         await onSubmitProfile(firstName, lastName, normalizedPlaceName);
       } else {
@@ -84,7 +96,14 @@ export function CompleteProfileScreen({
         >
           <View style={styles.header}>
             <Text style={textStyles.h2}>{strings.title}</Text>
-            <Subtle>{strings.subtitle}</Subtle>
+            {effectiveIsInviteFlow ? (
+              <>
+                <Subtle>{strings.inviteSubtitle}</Subtle>
+                {inviteGroupName ? <Text style={styles.joinGroupName}>{inviteGroupName}</Text> : null}
+              </>
+            ) : (
+              <Subtle>{strings.subtitle}</Subtle>
+            )}
           </View>
 
           <AppCard style={styles.card}>
@@ -102,14 +121,18 @@ export function CompleteProfileScreen({
                 placeholder="Last name"
                 returnKeyType="next"
               />
-              <Text style={textStyles.subtle}>{strings.placeNameLabel}</Text>
-              <AppInput
-                value={placeName}
-                onChangeText={setPlaceName}
-                placeholder="Personal"
-                returnKeyType="done"
-                onSubmitEditing={handleSubmit}
-              />
+              {!effectiveIsInviteFlow ? (
+                <>
+                  <Text style={textStyles.subtle}>{strings.placeNameLabel}</Text>
+                  <AppInput
+                    value={placeName}
+                    onChangeText={setPlaceName}
+                    placeholder="Personal"
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit}
+                  />
+                </>
+              ) : null}
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -165,6 +188,9 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: theme.spacing.xs,
+  },
+  joinGroupName: {
+    ...textStyles.h3,
   },
   card: {
     gap: theme.spacing.md,
