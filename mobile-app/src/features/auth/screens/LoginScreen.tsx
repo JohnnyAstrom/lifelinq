@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { devLogin } from '../api/devLoginApi';
+import { startMagicLink } from '../api/magicLinkApi';
 import { formatApiError } from '../../../shared/api/client';
 import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -15,17 +16,22 @@ type Props = {
 export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMagic, setLoadingMagic] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const strings = {
     title: 'LifeLinq',
     subtitle: 'Organize life together.',
     emailLabel: 'Email address',
     emailPlaceholder: 'you@lifelinq.dev',
-    login: 'Send magic link',
-    loggingIn: 'Sending...',
+    devLogin: 'Dev login',
+    devLoggingIn: 'Logging in...',
+    magicLogin: 'Send magic link',
+    magicLoading: 'Sending...',
     google: 'Continue with Google',
-    divider: 'or',
+    divider: 'OR',
     helper: "We'll send a secure login link to your email.",
+    magicSent: 'Magic link sent. Check your email.',
   };
 
   function trimTrailingSlash(value: string): string {
@@ -41,7 +47,7 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
   }
 
   async function handleGoogleLogin() {
-    if (loading) {
+    if (loading || loadingMagic) {
       return;
     }
     onClearAuthError?.();
@@ -49,12 +55,13 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
     await Linking.openURL(url);
   }
 
-  async function handleLogin() {
-    if (!email.trim() || loading) {
+  async function handleDevLogin() {
+    if (!email.trim() || loading || loadingMagic) {
       return;
     }
     setLoading(true);
     setError(null);
+    setNotice(null);
     onClearAuthError?.();
     try {
       const response = await devLogin(email.trim());
@@ -63,6 +70,24 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
       setError(formatApiError(err));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleMagicLogin() {
+    if (!email.trim() || loading || loadingMagic) {
+      return;
+    }
+    setLoadingMagic(true);
+    setError(null);
+    setNotice(null);
+    onClearAuthError?.();
+    try {
+      await startMagicLink(email.trim());
+      setNotice(strings.magicSent);
+    } catch (err) {
+      setError(formatApiError(err));
+    } finally {
+      setLoadingMagic(false);
     }
   }
 
@@ -117,15 +142,27 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
                 }}
                 autoFocus
                 returnKeyType="done"
-                onSubmitEditing={handleLogin}
+                onSubmitEditing={handleDevLogin}
               />
             </View>
             {error || authError ? <Text style={styles.error}>{error ?? authError}</Text> : null}
-            <View>
+            {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+            <View style={styles.providers}>
               <AppButton
-                title={loading ? strings.loggingIn : strings.login}
-                onPress={handleLogin}
-                disabled={!email.trim() || loading}
+                title={loading ? strings.devLoggingIn : strings.devLogin}
+                onPress={handleDevLogin}
+                disabled={!email.trim() || loading || loadingMagic}
+                fullWidth
+              />
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>{strings.divider}</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              <AppButton
+                title={loadingMagic ? strings.magicLoading : strings.magicLogin}
+                onPress={handleMagicLogin}
+                disabled={!email.trim() || loading || loadingMagic}
                 fullWidth
               />
             </View>
@@ -200,6 +237,10 @@ const styles = StyleSheet.create({
   },
   error: {
     color: theme.colors.danger,
+    fontFamily: theme.typography.body,
+  },
+  notice: {
+    color: theme.colors.primary,
     fontFamily: theme.typography.body,
   },
   providers: {
