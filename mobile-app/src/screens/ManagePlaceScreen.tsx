@@ -58,8 +58,8 @@ export function ManagePlaceScreen({
     membersCount: (count: number) => `${count} member${count === 1 ? '' : 's'}`,
     manageMembers: 'Manage members',
     invitationsTitle: 'Invitations',
+    inviteCount: (count: number) => `${count} active invite${count === 1 ? '' : 's'}`,
     noActiveInvite: 'No active invites',
-    activeInviteCount: '1 active invite',
     manageInvitations: 'Manage invitations',
     save: 'Save',
     saving: 'Saving...',
@@ -265,11 +265,14 @@ export function ManagePlaceScreen({
             {!inviteLoading && !inviteError ? (
               activeInvite ? (
                 <>
-                  <Subtle>{strings.activeInviteCount}</Subtle>
+                  <Subtle>{strings.inviteCount(1)}</Subtle>
                   <Subtle>{getExpiryLabel(activeInvite.expiresAt)}</Subtle>
                 </>
               ) : (
-                <Subtle>{strings.noActiveInvite}</Subtle>
+                <>
+                  <Subtle>{strings.inviteCount(0)}</Subtle>
+                  <Subtle>{strings.noActiveInvite}</Subtle>
+                </>
               )
             ) : null}
             <AppButton title={strings.manageInvitations} onPress={onManageInvitations} variant="ghost" fullWidth />
