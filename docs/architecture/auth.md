@@ -25,8 +25,8 @@ Canonical identity:
 
 Login methods:
 - `EMAIL_MAGIC_LINK`
-- `GOOGLE` (future)
-- `APPLE` (future)
+- `GOOGLE`
+- `APPLE`
 
 Account linking rule:
 - If an OAuth provider returns a verified email that matches an existing user, log in the existing user instead of creating a new account.
@@ -105,9 +105,17 @@ LifeLinq currently supports OAuth2 login:
   - sets `activeGroupId` if missing
   - issues an auth pair: `accessToken` + `refreshToken`
 
-OAuth2 success payload is JSON:
-- `accessToken` (short-lived JWT)
-- `refreshToken` (opaque token)
+OAuth2 completion flow:
+- mobile app opens `/oauth2/authorization/{provider}`
+- provider callback reaches backend (`/login/oauth2/code/{registrationId}`)
+- backend resolves identity and issues auth pair
+- backend returns `303 See Other` redirect to:
+  - `mobileapp://auth/complete#token=<access>&refresh=<refresh>`
+- mobile app handles the deep link in `DeepLinkRouter`
+- `AuthContext.login(...)` stores tokens and hydrates `/me`
+
+OAuth2 complete redirect base URL is configurable via:
+- `lifelinq.auth.oauth.completeBaseUrl` (default: `mobileapp://auth/complete`)
 
 ## Identity resolution (current)
 
@@ -203,6 +211,11 @@ Magic-link verification redirect:
 - response includes `Referrer-Policy: no-referrer`
 
 Magic-link verification remains identity proof; session renewal uses refresh tokens.
+
+Magic-link email delivery:
+- `StartMagicLinkLoginUseCase` sends via `AuthMailSender` abstraction
+- dev profile uses `SmtpAuthMailSender` (Spring `JavaMailSender`)
+- non-dev profile currently uses fail-fast sender until a production sender is configured
 
 ---
 
