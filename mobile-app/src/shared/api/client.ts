@@ -1,51 +1,12 @@
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 import { getRefreshToken, getToken, setAuthTokens } from './tokenStore';
+import { getApiBaseUrl } from './apiConfig';
 
 export type ApiClientOptions = {
   token?: string | null;
 };
 
-const DEFAULT_BASE_URL = 'http://localhost:8080';
 let refreshInFlight: Promise<string | null> | null = null;
 let authSessionVersion = 0;
-
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/, '');
-}
-
-function getExpoDevHost(): string | null {
-  const hostUriFromExpoConfig = (Constants.expoConfig as { hostUri?: string } | null)?.hostUri;
-  if (hostUriFromExpoConfig) {
-    return hostUriFromExpoConfig.split(':')[0] ?? null;
-  }
-
-  const hostUriFromManifest = (
-    Constants.manifest2 as { extra?: { expoClient?: { hostUri?: string } } } | null
-  )?.extra?.expoClient?.hostUri;
-  if (hostUriFromManifest) {
-    return hostUriFromManifest.split(':')[0] ?? null;
-  }
-
-  return null;
-}
-
-function resolveBaseUrl(): string {
-  const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
-  if (configured) {
-    return trimTrailingSlash(configured);
-  }
-
-  if (Platform.OS === 'android') {
-    const devHost = getExpoDevHost();
-    if (devHost) {
-      return `http://${devHost}:8080`;
-    }
-    return 'http://10.0.2.2:8080';
-  }
-
-  return DEFAULT_BASE_URL;
-}
 
 export class ApiError extends Error {
   status: number;
@@ -92,7 +53,7 @@ export async function fetchJson<T>(
   options: RequestInit = {},
   clientOptions: ApiClientOptions = {}
 ): Promise<T> {
-  const baseUrl = resolveBaseUrl();
+  const baseUrl = getApiBaseUrl();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(options.headers as Record<string, string> | undefined),
@@ -167,7 +128,7 @@ export async function fetchText(
   options: RequestInit = {},
   clientOptions: ApiClientOptions = {}
 ): Promise<string> {
-  const baseUrl = resolveBaseUrl();
+  const baseUrl = getApiBaseUrl();
   const headers: Record<string, string> = {
     Accept: 'text/plain, text/html, */*',
     ...(options.headers as Record<string, string> | undefined),
@@ -282,7 +243,7 @@ async function runRefreshAccessToken(baseUrl: string, refreshVersion: number): P
 }
 
 export async function revokeRefreshSession(accessToken: string, refreshToken: string): Promise<void> {
-  const baseUrl = resolveBaseUrl();
+  const baseUrl = getApiBaseUrl();
   await fetch(`${baseUrl}/auth/logout`, {
     method: 'POST',
     headers: {

@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { devLogin } from '../api/devLoginApi';
 import { startMagicLink } from '../api/magicLinkApi';
+import { getApiBaseUrl } from '../../../shared/api/apiConfig';
 import { formatApiError } from '../../../shared/api/client';
 import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -34,24 +35,12 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
     magicSent: 'Magic link sent. Check your email.',
   };
 
-  function trimTrailingSlash(value: string): string {
-    return value.replace(/\/+$/, '');
-  }
-
-  function resolveApiBaseUrl(): string {
-    const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
-    if (configured) {
-      return trimTrailingSlash(configured);
-    }
-    return 'http://localhost:8080';
-  }
-
   async function handleGoogleLogin() {
     if (loading || loadingMagic) {
       return;
     }
     onClearAuthError?.();
-    const url = `${resolveApiBaseUrl()}/oauth2/authorization/google`;
+    const url = `${getApiBaseUrl()}/oauth2/authorization/google`;
     await Linking.openURL(url);
   }
 
