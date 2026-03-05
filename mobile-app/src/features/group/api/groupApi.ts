@@ -81,6 +81,24 @@ export async function createInvitationLink(token: string): Promise<CreateInvitat
   );
 }
 
+export async function createInvitationByEmail(
+  token: string,
+  email: string,
+  ttlSeconds?: number
+): Promise<CreateInvitationResponse> {
+  return fetchJson<CreateInvitationResponse>(
+    '/groups/invitations',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        email,
+        ...(ttlSeconds == null ? {} : { ttlSeconds }),
+      }),
+    },
+    { token }
+  );
+}
+
 export async function getActiveInvitationLink(
   token: string,
   groupId: string
