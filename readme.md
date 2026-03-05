@@ -154,3 +154,18 @@ Notes:
 - Flyway runs from `classpath:db/migration-postgres`.
 - `spring.jpa.hibernate.ddl-auto` is `validate` in `dev-postgres` (schema is Flyway-owned).
 
+## Invitation Preview URL (dev)
+
+Invitation emails use `lifelinq.group.invitation.previewBaseUrl` to build links like `/invite/{token}`.
+
+In `application-dev.properties`, this is safely configured via env var with localhost fallback:
+
+- `lifelinq.group.invitation.previewBaseUrl=${INVITATION_PREVIEW_BASE_URL:http://localhost:8080}`
+
+For real-device testing, set `INVITATION_PREVIEW_BASE_URL` to a reachable public/LAN URL:
+
+- LAN example: `http://192.168.1.50:8080`
+- ngrok example: `https://your-subdomain.ngrok-free.app`
+
+Do not commit secrets; only host/base URL is needed for this setting.
+

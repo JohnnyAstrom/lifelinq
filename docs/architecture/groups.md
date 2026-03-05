@@ -116,6 +116,7 @@ Invitations:
   - `LINK` (open invite, no invitee email)
 - support public, non-mutating preview via `GET /invite/{token}` (server-rendered HTML)
 - include a human-friendly short invite code (`shortCode`, 6 uppercase alphanumeric) for manual code resolution
+- for `EMAIL` invitations, delivery is sent through `GroupInvitationMailSender` (SMTP in `dev`, fail-fast outside `dev` until production sender wiring is enabled)
 
 Invite web namespace contract:
 - `/invite/**` is public **GET-only**
@@ -154,7 +155,11 @@ Invitation usage model:
 - `shortCode` is stored as a nullable unique value (6 uppercase alphanumeric), generated on creation for `EMAIL` and `LINK`
 - default endpoint behavior:
   - `POST /groups/invitations` creates `EMAIL` invitations
+    - sends invitation email containing preview URL, short code, inviter name, group name, and expiry
   - `GET /groups/{groupId}/invitations/active` returns the current active `LINK` invitation for the active context (read-only; no creation)
+  - `GET /groups/{groupId}/invitations` lists invitations for the active context group
+    - supports optional `status` filter: `ACTIVE`, `REVOKED`, `EXPIRED`, `EXHAUSTED`
+    - exposes derived `effectiveState` at runtime (not persisted)
   - `POST /groups/invitations/link` explicitly creates a new `LINK` invitation
     - returns `409` when an accept-allowed `LINK` invitation already exists
   - `POST /groups/invitations/resolve-code` resolves invitation by `shortCode` and returns invitation metadata plus token for follow-up accept (read-only, no mutation)
@@ -181,7 +186,17 @@ At the domain level, invitations follow a simple lifecycle:
 - `ACTIVE` → `REVOKED` when an admin revokes an invitation
 - `ACTIVE` → expired (derived) when `now > expiresAt`
 
+Runtime listing state derives:
+- `REVOKED` when persisted status is `REVOKED`
+- `EXPIRED` when status is still `ACTIVE` and `now > expiresAt`
+- `EXHAUSTED` when `maxUses` is set and `usageCount >= maxUses`
+- `ACTIVE` otherwise
+
 Invitations are time‑limited, and acceptance of a valid invitation creates a group membership.
+
+Invite preview (`GET /invite/{token}`) remains read-only and now includes:
+- `Open in LifeLinq` CTA targeting `mobileapp://invite?token=...`
+- fallback app-store links and copy-code option when app open fails
 
 ---
 
