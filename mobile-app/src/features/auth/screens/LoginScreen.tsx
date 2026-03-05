@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Constants from 'expo-constants';
 import { devLogin } from '../api/devLoginApi';
 import { formatApiError } from '../../../shared/api/client';
 import { AppButton, AppCard, AppInput, Subtle } from '../../../shared/ui/components';
@@ -33,36 +32,11 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
     return value.replace(/\/+$/, '');
   }
 
-  function getExpoDevHost(): string | null {
-    const hostUriFromExpoConfig = (Constants.expoConfig as { hostUri?: string } | null)?.hostUri;
-    if (hostUriFromExpoConfig) {
-      return hostUriFromExpoConfig.split(':')[0] ?? null;
-    }
-
-    const hostUriFromManifest = (
-      Constants.manifest2 as { extra?: { expoClient?: { hostUri?: string } } } | null
-    )?.extra?.expoClient?.hostUri;
-    if (hostUriFromManifest) {
-      return hostUriFromManifest.split(':')[0] ?? null;
-    }
-
-    return null;
-  }
-
   function resolveApiBaseUrl(): string {
     const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
     if (configured) {
       return trimTrailingSlash(configured);
     }
-
-    if (Platform.OS === 'android') {
-      const devHost = getExpoDevHost();
-      if (devHost) {
-        return `http://${devHost}:8080`;
-      }
-      return 'http://10.0.2.2:8080';
-    }
-
     return 'http://localhost:8080';
   }
 
