@@ -55,6 +55,11 @@ public class UserApplicationService implements
         ensureUserExistsUseCase.execute(userId, normalizedEmail);
     }
 
+    @Override
+    public UUID ensureUserExistsAndResolveUserId(UUID userId, String normalizedEmail) {
+        return ensureUserExistsUseCase.execute(userId, normalizedEmail);
+    }
+
     @Transactional
     @Override
     public void deleteAccount(UUID userId) {

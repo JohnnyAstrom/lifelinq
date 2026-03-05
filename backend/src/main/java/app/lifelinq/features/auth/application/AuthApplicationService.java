@@ -3,7 +3,6 @@ package app.lifelinq.features.auth.application;
 import app.lifelinq.config.JwtSigner;
 import app.lifelinq.features.auth.contract.UserContextView;
 import app.lifelinq.features.auth.contract.UserMembershipView;
-import app.lifelinq.features.auth.domain.AuthIdentity;
 import app.lifelinq.features.auth.domain.AuthIdentityRepository;
 import app.lifelinq.features.auth.domain.AuthProvider;
 import app.lifelinq.features.auth.domain.AuthMailSender;
@@ -39,7 +38,7 @@ public class AuthApplicationService {
     private final UserProfileRead userProfileRead;
     private final UserDefaultGroupProvisioning userDefaultGroupProvisioning;
     private final UserGroupMembershipLookup userGroupMembershipLookup;
-    private final AuthIdentityRepository authIdentityRepository;
+    private final ResolveUserIdentityUseCase resolveUserIdentityUseCase;
     private final StartMagicLinkLoginUseCase startMagicLinkLoginUseCase;
     private final VerifyMagicLinkUseCase verifyMagicLinkUseCase;
     private final IssueRefreshSessionUseCase issueRefreshSessionUseCase;
@@ -161,7 +160,7 @@ public class AuthApplicationService {
         this.userProfileRead = userProfileRead;
         this.userDefaultGroupProvisioning = userDefaultGroupProvisioning;
         this.userGroupMembershipLookup = userGroupMembershipLookup;
-        this.authIdentityRepository = authIdentityRepository;
+        this.resolveUserIdentityUseCase = new ResolveUserIdentityUseCase(authIdentityRepository, userProvisioning);
         this.startMagicLinkLoginUseCase = new StartMagicLinkLoginUseCase(
                 magicLinkChallengeRepository,
                 magicLinkTokenGenerator,
@@ -203,9 +202,14 @@ public class AuthApplicationService {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("email must not be blank");
         }
-        String normalizedEmail = normalizeEmail(email);
-        UUID userId = deterministicEmailUserId(normalizedEmail);
-        return issueAuthPairForUser(userId, initialPlaceName, normalizedEmail);
+        ResolvedUserIdentity resolvedIdentity = resolveUserIdentityUseCase.execute(new ResolveUserIdentityCommand(
+                ResolveUserIdentityCommand.LoginMethod.DEV,
+                null,
+                null,
+                email,
+                true
+        ));
+        return issueAuthPairForUser(resolvedIdentity.userId(), initialPlaceName, resolvedIdentity.normalizedEmail());
     }
 
     @Transactional
@@ -229,8 +233,18 @@ public class AuthApplicationService {
     @Transactional
     public String verifyMagicLinkAndBuildRedirect(String token) {
         VerifiedMagicLinkResult verified = verifyMagicLinkUseCase.execute(new VerifyMagicLinkCommand(token, clock.instant()));
-        UUID userId = resolveOrCreateEmailIdentity(verified.getNormalizedEmail());
-        AuthTokenPair authTokenPair = issueAuthPairForUser(userId, null, verified.getNormalizedEmail());
+        ResolvedUserIdentity resolvedIdentity = resolveUserIdentityUseCase.execute(new ResolveUserIdentityCommand(
+                ResolveUserIdentityCommand.LoginMethod.MAGIC_LINK,
+                null,
+                null,
+                verified.getNormalizedEmail(),
+                true
+        ));
+        AuthTokenPair authTokenPair = issueAuthPairForUser(
+                resolvedIdentity.userId(),
+                null,
+                resolvedIdentity.normalizedEmail()
+        );
         String encodedAccessToken = URLEncoder.encode(authTokenPair.accessToken(), StandardCharsets.UTF_8);
         String encodedRefreshToken = URLEncoder.encode(authTokenPair.refreshToken(), StandardCharsets.UTF_8);
         return magicLinkCompleteBaseUrl + "#token=" + encodedAccessToken + "&refresh=" + encodedRefreshToken;
@@ -245,21 +259,14 @@ public class AuthApplicationService {
             throw new IllegalArgumentException("subject must not be blank");
         }
         AuthProvider oauthProvider = mapOAuthProvider(provider);
-        var existingIdentity = authIdentityRepository.findByProviderAndSubject(oauthProvider, subject);
-        if (existingIdentity.isPresent()) {
-            return issueAuthPairForUser(existingIdentity.get().getUserId());
-        }
-
-        String normalizedEmail = normalizeEmailOrNull(email);
-        UUID userId = resolveLinkedUserId(normalizedEmail, emailVerified)
-                .orElseGet(UUID::randomUUID);
-        authIdentityRepository.save(new AuthIdentity(
-                UUID.randomUUID(),
+        ResolvedUserIdentity resolvedIdentity = resolveUserIdentityUseCase.execute(new ResolveUserIdentityCommand(
+                ResolveUserIdentityCommand.LoginMethod.OAUTH,
                 oauthProvider,
                 subject,
-                userId
+                email,
+                emailVerified
         ));
-        return issueAuthPairForUser(userId, null, normalizedEmail);
+        return issueAuthPairForUser(resolvedIdentity.userId(), null, resolvedIdentity.normalizedEmail());
     }
 
     @Transactional
@@ -355,29 +362,6 @@ public class AuthApplicationService {
         return UUID.nameUUIDFromBytes(("personal-group:" + userId).getBytes(StandardCharsets.UTF_8));
     }
 
-    private UUID resolveOrCreateEmailIdentity(String normalizedEmail) {
-        return authIdentityRepository.findByProviderAndSubject(AuthProvider.EMAIL, normalizedEmail)
-                .map(AuthIdentity::getUserId)
-                .orElseGet(() -> {
-                    UUID userId = deterministicEmailUserId(normalizedEmail);
-                    authIdentityRepository.save(new AuthIdentity(
-                            UUID.randomUUID(),
-                            AuthProvider.EMAIL,
-                            normalizedEmail,
-                            userId
-                    ));
-                    return userId;
-                });
-    }
-
-    private java.util.Optional<UUID> resolveLinkedUserId(String normalizedEmail, boolean emailVerified) {
-        if (!emailVerified || normalizedEmail == null) {
-            return java.util.Optional.empty();
-        }
-        return authIdentityRepository.findByProviderAndSubject(AuthProvider.EMAIL, normalizedEmail)
-                .map(AuthIdentity::getUserId);
-    }
-
     private AuthProvider mapOAuthProvider(String provider) {
         String normalizedProvider = provider.trim().toLowerCase(Locale.ROOT);
         return switch (normalizedProvider) {
@@ -385,10 +369,6 @@ public class AuthApplicationService {
             case "apple" -> AuthProvider.APPLE;
             default -> throw new IllegalArgumentException("Unsupported OAuth provider: " + provider);
         };
-    }
-
-    private UUID deterministicEmailUserId(String normalizedEmail) {
-        return UUID.nameUUIDFromBytes(normalizedEmail.getBytes(StandardCharsets.UTF_8));
     }
 
     private AuthTokenPair issueAuthPairForUser(UUID userId, String initialPlaceName) {
@@ -404,18 +384,6 @@ public class AuthApplicationService {
                 refreshAbsoluteTtl
         );
         return new AuthTokenPair(accessToken, refresh.refreshToken());
-    }
-
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String normalizeEmailOrNull(String email) {
-        if (email == null) {
-            return null;
-        }
-        String normalized = normalizeEmail(email);
-        return normalized.isBlank() ? null : normalized;
     }
 
     private String trimTrailingSlash(String value) {

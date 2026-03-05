@@ -109,6 +109,27 @@ OAuth2 success payload is JSON:
 - `accessToken` (short-lived JWT)
 - `refreshToken` (opaque token)
 
+## Identity resolution (current)
+
+Authentication flows use a centralized identity resolver in `auth` application layer:
+
+- `ResolveUserIdentityUseCase`
+- command: `ResolveUserIdentityCommand`
+- result: `ResolvedUserIdentity`
+
+This resolver is used by:
+- OAuth login
+- magic-link verification
+- dev login
+
+Resolver responsibilities:
+- resolve by provider + subject for OAuth
+- resolve/link by email identity when applicable
+- provision user via user provisioning contract
+- persist new auth identity links when needed
+
+Token/session issuance remains in `AuthApplicationService`.
+
 ## OAuth2 configuration (local/dev)
 
 Minimal OAuth2 setup requires provider registration properties.

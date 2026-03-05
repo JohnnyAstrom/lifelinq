@@ -186,6 +186,20 @@ class AuthApplicationServiceProvisioningTest {
     }
 
     @Test
+    void devLoginReusesExistingUserByEmail() {
+        TestFixture fixture = new TestFixture();
+        UUID existingUserId = UUID.randomUUID();
+        fixture.userRepository.save(new User(existingUserId, null, "user@example.com", null, null));
+
+        AuthTokenPair tokens = fixture.authApplicationService.devLogin(" User@example.com ");
+
+        assertNotNull(tokens.accessToken());
+        assertNotNull(tokens.refreshToken());
+        assertEquals(1, fixture.userRepository.count());
+        assertTrue(fixture.userRepository.findById(existingUserId).isPresent());
+    }
+
+    @Test
     void rejectsMagicLinkTtlAboveConfiguredMaximum() {
         UserApplicationService userApplicationService = UserApplicationServiceTestFactory.create(new InMemoryUserRepository());
         FakeUserDefaultGroupProvisioning provisioning = new FakeUserDefaultGroupProvisioning();
@@ -263,6 +277,13 @@ class AuthApplicationServiceProvisioningTest {
         @Override
         public Optional<User> findById(UUID id) {
             return Optional.ofNullable(users.get(id));
+        }
+
+        @Override
+        public Optional<User> findByEmail(String email) {
+            return users.values().stream()
+                    .filter(user -> email != null && email.equals(user.getEmail()))
+                    .findFirst();
         }
 
         @Override

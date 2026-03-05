@@ -8,4 +8,9 @@ public interface UserProvisioning {
     default void ensureUserExists(UUID userId, String normalizedEmail) {
         ensureUserExists(userId);
     }
+
+    default UUID ensureUserExistsAndResolveUserId(UUID userId, String normalizedEmail) {
+        ensureUserExists(userId, normalizedEmail);
+        return userId;
+    }
 }

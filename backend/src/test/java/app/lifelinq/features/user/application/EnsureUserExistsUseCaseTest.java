@@ -39,6 +39,19 @@ class EnsureUserExistsUseCaseTest {
         assertEquals(1, repository.saveCount);
     }
 
+    @Test
+    void reusesExistingUserWhenEmailAlreadyExists() {
+        InMemoryUserRepository repository = new InMemoryUserRepository();
+        UUID existingUserId = UUID.randomUUID();
+        repository.save(new User(existingUserId, null, "user@example.com", null, null));
+        EnsureUserExistsUseCase useCase = new EnsureUserExistsUseCase(repository);
+
+        UUID resolvedUserId = useCase.execute(UUID.randomUUID(), "User@example.com");
+
+        assertEquals(existingUserId, resolvedUserId);
+        assertEquals(1, repository.saveCount);
+    }
+
     private static final class InMemoryUserRepository implements UserRepository {
         private final Map<UUID, User> storage = new HashMap<>();
         private int saveCount = 0;
@@ -46,6 +59,13 @@ class EnsureUserExistsUseCaseTest {
         @Override
         public Optional<User> findById(UUID id) {
             return Optional.ofNullable(storage.get(id));
+        }
+
+        @Override
+        public Optional<User> findByEmail(String email) {
+            return storage.values().stream()
+                    .filter(user -> email != null && email.equals(user.getEmail()))
+                    .findFirst();
         }
 
         @Override

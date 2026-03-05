@@ -26,6 +26,14 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public Optional<User> findByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByEmail(email).map(mapper::toDomain);
+    }
+
+    @Override
     public void save(User user) {
         repository.save(mapper.toEntity(user));
     }
