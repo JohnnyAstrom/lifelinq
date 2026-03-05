@@ -8,8 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.net.URLEncoder;
+import java.util.Locale;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -17,16 +17,21 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
-    private static final String COMPLETE_BASE_URL = "mobileapp://auth/complete";
+    private final String completeBaseUrl;
     private final AuthApplicationService authApplicationService;
     private final ObjectMapper objectMapper;
 
     public OAuth2LoginSuccessHandler(
             AuthApplicationService authApplicationService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            String completeBaseUrl
     ) {
+        if (completeBaseUrl == null || completeBaseUrl.isBlank()) {
+            throw new IllegalArgumentException("completeBaseUrl must not be blank");
+        }
         this.authApplicationService = authApplicationService;
         this.objectMapper = objectMapper;
+        this.completeBaseUrl = trimTrailingSlash(completeBaseUrl);
     }
 
     @Override
@@ -53,7 +58,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         );
         String encodedAccessToken = URLEncoder.encode(tokens.accessToken(), StandardCharsets.UTF_8);
         String encodedRefreshToken = URLEncoder.encode(tokens.refreshToken(), StandardCharsets.UTF_8);
-        String redirectUrl = COMPLETE_BASE_URL + "#token=" + encodedAccessToken + "&refresh=" + encodedRefreshToken;
+        String redirectUrl = completeBaseUrl + "#token=" + encodedAccessToken + "&refresh=" + encodedRefreshToken;
 
         response.setStatus(HttpServletResponse.SC_SEE_OTHER);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -95,5 +100,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
         String normalized = email.trim().toLowerCase(Locale.ROOT);
         return normalized.isBlank() ? null : normalized;
+    }
+
+    private String trimTrailingSlash(String value) {
+        return value.replaceAll("/+$", "");
     }
 }

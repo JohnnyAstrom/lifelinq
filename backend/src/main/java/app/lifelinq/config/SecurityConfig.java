@@ -58,9 +58,10 @@ public class SecurityConfig {
     @Bean
     public OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler(
             AuthApplicationService authApplicationService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            @Value("${lifelinq.auth.oauth.completeBaseUrl:mobileapp://auth/complete}") String oauthCompleteBaseUrl
     ) {
-        return new OAuth2LoginSuccessHandler(authApplicationService, objectMapper);
+        return new OAuth2LoginSuccessHandler(authApplicationService, objectMapper, oauthCompleteBaseUrl);
     }
 
     @Bean

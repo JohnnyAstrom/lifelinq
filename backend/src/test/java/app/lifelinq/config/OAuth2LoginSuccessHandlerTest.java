@@ -32,7 +32,8 @@ class OAuth2LoginSuccessHandlerTest {
                 .thenReturn(new AuthTokenPair(expectedAccessToken, expectedRefreshToken));
         OAuth2LoginSuccessHandler handler = new OAuth2LoginSuccessHandler(
                 authApplicationService,
-                objectMapper
+                objectMapper,
+                "mobileapp://auth/complete"
         );
 
         Map<String, Object> attributes = new HashMap<>();
