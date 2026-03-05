@@ -3,14 +3,13 @@ package app.lifelinq.features.user.contract;
 import java.util.UUID;
 
 public interface UserProvisioning {
-    void ensureUserExists(UUID userId);
+    UUID ensureUserExistsAndResolveUserId(UUID proposedUserId, String email);
 
-    default void ensureUserExists(UUID userId, String normalizedEmail) {
-        ensureUserExists(userId);
+    default void ensureUserExists(UUID userId) {
+        ensureUserExistsAndResolveUserId(userId, null);
     }
 
-    default UUID ensureUserExistsAndResolveUserId(UUID userId, String normalizedEmail) {
-        ensureUserExists(userId, normalizedEmail);
-        return userId;
+    default void ensureUserExists(UUID userId, String email) {
+        ensureUserExistsAndResolveUserId(userId, email);
     }
 }

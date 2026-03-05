@@ -96,8 +96,7 @@ class GroupApplicationServiceGovernanceTest {
     private GroupApplicationService createService(MembershipRepository membershipRepository) {
         GroupRepository groupRepository = new StubGroupRepository();
         InvitationRepository invitationRepository = new StubInvitationRepository();
-        UserProvisioning userProvisioning = userId -> {
-        };
+        UserProvisioning userProvisioning = (proposedUserId, email) -> proposedUserId;
         var userActiveGroupSelection = (app.lifelinq.features.user.contract.UserActiveGroupSelection) (userId, groupId) -> {
         };
         var userProfileRead = (app.lifelinq.features.user.contract.UserProfileRead) userId ->

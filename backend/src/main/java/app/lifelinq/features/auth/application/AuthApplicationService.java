@@ -283,12 +283,12 @@ public class AuthApplicationService {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }
-        userProvisioning.ensureUserExists(userId, normalizedEmail);
-        UUID groupId = userDefaultGroupProvisioning.ensureDefaultGroupProvisioned(userId, initialPlaceName);
-        if (userActiveGroupRead.getActiveGroupId(userId) == null) {
-            userActiveGroupSelection.setActiveGroup(userId, groupId);
+        UUID canonicalUserId = userProvisioning.ensureUserExistsAndResolveUserId(userId, normalizedEmail);
+        UUID groupId = userDefaultGroupProvisioning.ensureDefaultGroupProvisioned(canonicalUserId, initialPlaceName);
+        if (userActiveGroupRead.getActiveGroupId(canonicalUserId) == null) {
+            userActiveGroupSelection.setActiveGroup(canonicalUserId, groupId);
         }
-        return jwtSigner.sign(userId);
+        return jwtSigner.sign(canonicalUserId);
     }
 
     @Transactional

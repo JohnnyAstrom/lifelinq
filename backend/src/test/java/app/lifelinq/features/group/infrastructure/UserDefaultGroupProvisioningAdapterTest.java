@@ -110,8 +110,7 @@ class UserDefaultGroupProvisioningAdapterTest {
             InMemoryGroupRepository groupRepository,
             InMemoryMembershipRepository membershipRepository
     ) {
-        UserProvisioning noOpUserProvisioning = userId -> {
-        };
+        UserProvisioning noOpUserProvisioning = (proposedUserId, email) -> proposedUserId;
         var noOpActiveGroupSelection = (app.lifelinq.features.user.contract.UserActiveGroupSelection) (userId, groupId) -> {
         };
         var noOpUserProfileRead = (app.lifelinq.features.user.contract.UserProfileRead) userId ->

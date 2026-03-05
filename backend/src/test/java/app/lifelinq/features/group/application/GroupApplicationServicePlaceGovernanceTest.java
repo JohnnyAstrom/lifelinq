@@ -117,8 +117,7 @@ class GroupApplicationServicePlaceGovernanceTest {
             FakeActiveGroups activeGroups
     ) {
         InvitationRepository invitationRepository = new StubInvitationRepository();
-        UserProvisioning userProvisioning = userId -> {
-        };
+        UserProvisioning userProvisioning = (proposedUserId, email) -> proposedUserId;
         var userProfileRead = (app.lifelinq.features.user.contract.UserProfileRead) userId ->
                 new UserProfileView(null, null);
         return GroupApplicationService.create(
