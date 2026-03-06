@@ -37,8 +37,9 @@ export function CompleteProfileScreen({
   const [lastName, setLastName] = useState(initialLastName ?? '');
   const [placeName, setPlaceName] = useState(initialPlaceName ?? 'Personal');
   const [loading, setLoading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { handleApiError } = useAuth();
+  const { handleApiError, logout } = useAuth();
   const { pendingInviteToken } = usePendingInvite();
   const effectiveIsInviteFlow = isInviteFlow || !!pendingInviteToken;
   const strings = {
@@ -48,10 +49,12 @@ export function CompleteProfileScreen({
     placeNameLabel: 'What should we call your place?',
     save: 'Continue',
     saving: 'Saving...',
+    backToLogin: 'Back to login',
+    loggingOut: 'Returning...',
   };
 
   async function handleSubmit() {
-    if (loading) {
+    if (loading || loggingOut) {
       return;
     }
     setLoading(true);
@@ -77,6 +80,19 @@ export function CompleteProfileScreen({
       setError(formatApiError(err));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleBackToLogin() {
+    if (loading || loggingOut) {
+      return;
+    }
+    setLoggingOut(true);
+    setError(null);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
     }
   }
 
@@ -141,7 +157,16 @@ export function CompleteProfileScreen({
               <AppButton
                 title={loading ? strings.saving : strings.save}
                 onPress={handleSubmit}
-                disabled={loading}
+                disabled={loading || loggingOut}
+                fullWidth
+              />
+              <AppButton
+                title={loggingOut ? strings.loggingOut : strings.backToLogin}
+                onPress={() => {
+                  void handleBackToLogin();
+                }}
+                disabled={loading || loggingOut}
+                variant="ghost"
                 fullWidth
               />
             </View>
