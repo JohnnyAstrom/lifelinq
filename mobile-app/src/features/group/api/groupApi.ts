@@ -25,6 +25,21 @@ export type ResolveInvitationCodeResponse = {
   expiresAt: string;
 };
 
+export type InvitationListItemResponse = {
+  invitationId: string;
+  type: 'EMAIL' | 'LINK';
+  status: 'ACTIVE' | 'REVOKED';
+  effectiveState: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | 'EXHAUSTED';
+  inviteeEmail: string | null;
+  inviterDisplayName: string | null;
+  token: string;
+  shortCode: string;
+  expiresAt: string;
+  maxUses: number | null;
+  usageCount: number;
+  acceptAllowed: boolean;
+};
+
 export async function createGroup(
   token: string,
   name: string
@@ -159,6 +174,21 @@ export async function revokeInvitation(token: string, invitationId: string): Pro
     `/groups/invitations/${invitationId}`,
     {
       method: 'DELETE',
+    },
+    { token }
+  );
+}
+
+export async function listInvitations(
+  token: string,
+  groupId: string,
+  status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | 'EXHAUSTED'
+): Promise<InvitationListItemResponse[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : '';
+  return fetchJson<InvitationListItemResponse[]>(
+    `/groups/${encodeURIComponent(groupId)}/invitations${query}`,
+    {
+      method: 'GET',
     },
     { token }
   );

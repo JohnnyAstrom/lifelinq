@@ -6,6 +6,7 @@ import {
   createInvitationByEmail,
   createInvitationLink,
   getActiveInvitationLink,
+  listInvitations,
   revokeInvitation,
 } from '../features/group/api/groupApi';
 import { WEB_BASE_URL } from '../shared/config/web';
@@ -29,8 +30,16 @@ type ActiveLinkInvite = {
   expiresAt: string;
 };
 
+type ActiveEmailInvite = {
+  invitationId: string;
+  inviteeEmail: string;
+  shortCode: string;
+  expiresAt: string;
+};
+
 export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Props) {
   const [activeInvite, setActiveInvite] = useState<ActiveLinkInvite | null>(null);
+  const [activeEmailInvites, setActiveEmailInvites] = useState<ActiveEmailInvite[]>([]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [showInviteOptions, setShowInviteOptions] = useState(false);
@@ -42,6 +51,7 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
   const [revokeInviteSheetOpen, setRevokeInviteSheetOpen] = useState(false);
   const [revokeInviteSubmitting, setRevokeInviteSubmitting] = useState(false);
   const [revokeInviteError, setRevokeInviteError] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<{ invitationId: string; label: string } | null>(null);
 
   const activeMembership = me.activeGroupId
     ? me.memberships.find((membership) => membership.groupId === me.activeGroupId) ?? null
@@ -66,6 +76,7 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
       if (revokeInviteSheetOpen) {
         setRevokeInviteSheetOpen(false);
         setRevokeInviteError(null);
+        setRevokeTarget(null);
       }
     },
   });
@@ -73,6 +84,7 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
   useEffect(() => {
     if (!isAdmin || !activeGroupId) {
       setActiveInvite(null);
+      setActiveEmailInvites([]);
       setInviteError(null);
       return;
     }
@@ -86,20 +98,35 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
     setInviteError(null);
     setInviteLoading(true);
     try {
-      const invitation = await getActiveInvitationLink(token, activeGroupId);
-      if (!invitation) {
-        setActiveInvite(null);
-        return;
-      }
-      setActiveInvite({
-        invitationId: invitation.invitationId,
-        token: invitation.token,
-        shortCode: invitation.shortCode,
-        expiresAt: invitation.expiresAt,
-      });
+      const [linkInvitation, invitations] = await Promise.all([
+        getActiveInvitationLink(token, activeGroupId),
+        listInvitations(token, activeGroupId, 'ACTIVE'),
+      ]);
+
+      setActiveInvite(
+        linkInvitation
+          ? {
+              invitationId: linkInvitation.invitationId,
+              token: linkInvitation.token,
+              shortCode: linkInvitation.shortCode,
+              expiresAt: linkInvitation.expiresAt,
+            }
+          : null
+      );
+
+      const emails = invitations
+        .filter((item) => item.type === 'EMAIL' && item.effectiveState === 'ACTIVE' && !!item.inviteeEmail)
+        .map((item) => ({
+          invitationId: item.invitationId,
+          inviteeEmail: item.inviteeEmail as string,
+          shortCode: item.shortCode,
+          expiresAt: item.expiresAt,
+        }));
+      setActiveEmailInvites(emails);
     } catch (err) {
       setInviteError(formatApiError(err));
       setActiveInvite(null);
+      setActiveEmailInvites([]);
     } finally {
       setInviteLoading(false);
     }
@@ -150,16 +177,17 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
   }
 
   async function handleConfirmRevokeInvite() {
-    if (!activeInvite || revokeInviteSubmitting) {
+    if (!revokeTarget || revokeInviteSubmitting) {
       return;
     }
     setRevokeInviteSubmitting(true);
     setRevokeInviteError(null);
     try {
-      await revokeInvitation(token, activeInvite.invitationId);
+      await revokeInvitation(token, revokeTarget.invitationId);
       await loadActiveInvite();
       setRevokeInviteSheetOpen(false);
       setRevokeInviteError(null);
+      setRevokeTarget(null);
       setInviteError(null);
       onShowToast('Invite revoked.');
     } catch (err) {
@@ -174,6 +202,12 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
       return;
     }
     setShowInviteOptions(true);
+  }
+
+  function openRevokeInvite(invitationId: string, label: string) {
+    setRevokeInviteError(null);
+    setRevokeTarget({ invitationId, label });
+    setRevokeInviteSheetOpen(true);
   }
 
   function handleInviteByLink() {
@@ -330,17 +364,39 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
                   <AppButton
                     title="Revoke invite"
                     onPress={() => {
-                      setRevokeInviteError(null);
-                      setRevokeInviteSheetOpen(true);
+                      openRevokeInvite(activeInvite.invitationId, 'this invite link');
                     }}
                     variant="ghost"
                     fullWidth
                   />
                 </View>
               </>
-            ) : (
+            ) : null}
+            {activeEmailInvites.length > 0 ? (
+              <View style={styles.emailInviteSection}>
+                <Text style={styles.activeInviteTitle}>Active email invites</Text>
+                {activeEmailInvites.map((invite) => (
+                  <View key={invite.invitationId} style={styles.emailInviteRow}>
+                    <View style={styles.emailInviteMeta}>
+                      <Text style={styles.emailInviteAddress}>{invite.inviteeEmail}</Text>
+                      <Subtle>
+                        Valid until {formatInviteExpiry(invite.expiresAt)} • {invite.shortCode}
+                      </Subtle>
+                    </View>
+                    <AppButton
+                      title="Revoke"
+                      onPress={() => {
+                        openRevokeInvite(invite.invitationId, invite.inviteeEmail);
+                      }}
+                      variant="ghost"
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {!activeInvite && activeEmailInvites.length === 0 ? (
               <Subtle>No active invites</Subtle>
-            )}
+            ) : null}
           </View>
         </AppCard>
       </View>
@@ -429,12 +485,17 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
           }
           setRevokeInviteSheetOpen(false);
           setRevokeInviteError(null);
+          setRevokeTarget(null);
         }}
         presentation="standard"
       >
         <View style={styles.confirmContent}>
           <Text style={textStyles.h3}>Revoke this invite?</Text>
-          <Subtle>Anyone with this code will lose access to join.</Subtle>
+          <Subtle>
+            {revokeTarget
+              ? `Anyone with this invite (${revokeTarget.label}) will lose access to join.`
+              : 'Anyone with this code will lose access to join.'}
+          </Subtle>
           {revokeInviteError ? <Text style={styles.error}>{revokeInviteError}</Text> : null}
           <View style={styles.confirmActions}>
             <AppButton
@@ -442,6 +503,7 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
               onPress={() => {
                 setRevokeInviteSheetOpen(false);
                 setRevokeInviteError(null);
+                setRevokeTarget(null);
               }}
               variant="ghost"
               disabled={revokeInviteSubmitting}
@@ -514,6 +576,30 @@ const styles = StyleSheet.create({
   },
   inviteDangerSection: {
     marginTop: theme.spacing.md,
+  },
+  emailInviteSection: {
+    marginTop: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  emailInviteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceAlt,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  emailInviteMeta: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  emailInviteAddress: {
+    ...textStyles.body,
+    fontWeight: '600',
   },
   error: {
     color: theme.colors.danger,
