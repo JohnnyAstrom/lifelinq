@@ -94,10 +94,67 @@ class AcceptInvitationUseCaseTest {
         );
 
         useCase.execute(command);
-        assertThrows(IllegalStateException.class, () -> useCase.execute(command));
+        useCase.execute(command);
 
         assertEquals(1, membershipRepository.findByGroupId(groupId).size());
         assertEquals(1, invitationRepository.findByToken("token-repeat").orElseThrow().getUsageCount());
+    }
+
+    @Test
+    void repeatedAcceptFailsForDifferentUserWhenUsageLimitReached() {
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        UUID groupId = UUID.randomUUID();
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                groupId,
+                "test@example.com",
+                "token-repeat-different-user",
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+        invitationRepository.save(invitation);
+
+        AcceptInvitationUseCase useCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
+        useCase.execute(new AcceptInvitationCommand(
+                "token-repeat-different-user",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        ));
+
+        assertThrows(IllegalStateException.class, () -> useCase.execute(new AcceptInvitationCommand(
+                "token-repeat-different-user",
+                UUID.randomUUID(),
+                Instant.parse("2025-12-31T00:00:00Z")
+        )));
+    }
+
+    @Test
+    void alreadyMemberBypassesRevokedValidation() {
+        InMemoryInvitationRepository invitationRepository = new InMemoryInvitationRepository();
+        InMemoryMembershipRepository membershipRepository = new InMemoryMembershipRepository();
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Invitation invitation = Invitation.createActive(
+                UUID.randomUUID(),
+                groupId,
+                "test@example.com",
+                "token-revoked-idempotent",
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+        invitation.revoke();
+        invitationRepository.save(invitation);
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.MEMBER));
+
+        AcceptInvitationUseCase useCase = new AcceptInvitationUseCase(invitationRepository, membershipRepository);
+        AcceptInvitationResult result = useCase.execute(new AcceptInvitationCommand(
+                "token-revoked-idempotent",
+                userId,
+                Instant.parse("2025-12-31T00:00:00Z")
+        ));
+
+        assertEquals(groupId, result.getGroupId());
+        assertEquals(userId, result.getUserId());
+        assertEquals(1, membershipRepository.findByGroupId(groupId).size());
     }
 
     @Test

@@ -41,6 +41,10 @@ final class AcceptInvitationUseCase {
         Invitation invitation = invitationRepository.findByToken(command.getToken())
                 .orElseThrow(() -> new IllegalArgumentException("invitation not found"));
 
+        if (isAlreadyMember(invitation.getGroupId(), command.getUserId())) {
+            return new AcceptInvitationResult(invitation.getGroupId(), command.getUserId());
+        }
+
         if (invitation.getStatus() == app.lifelinq.features.group.domain.InvitationStatus.REVOKED) {
             throw new IllegalStateException("invitation is revoked");
         }
@@ -56,15 +60,12 @@ final class AcceptInvitationUseCase {
             invitation.revoke();
         }
 
-        if (!isAlreadyMember(invitation.getGroupId(), command.getUserId())) {
-            Membership membership = new Membership(
-                    invitation.getGroupId(),
-                    command.getUserId(),
-                    GroupRole.MEMBER
-            );
-
-            membershipRepository.save(membership);
-        }
+        Membership membership = new Membership(
+                invitation.getGroupId(),
+                command.getUserId(),
+                GroupRole.MEMBER
+        );
+        membershipRepository.save(membership);
         invitationRepository.save(invitation);
 
         return new AcceptInvitationResult(invitation.getGroupId(), command.getUserId());
