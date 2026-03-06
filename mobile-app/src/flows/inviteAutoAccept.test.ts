@@ -73,3 +73,4 @@ describe('invite auto-accept guards', () => {
     expect(shouldClearPendingInviteAfterAccept(false, new Error('network'))).toBe(false);
   });
 });
+

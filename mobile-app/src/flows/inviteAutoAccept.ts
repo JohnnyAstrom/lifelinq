@@ -56,3 +56,4 @@ function isHttpStatusError(error: unknown): error is { status: number } {
   const candidate = error as { status?: unknown };
   return typeof candidate.status === 'number';
 }
+

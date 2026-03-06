@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../shared/auth/AuthContext';
 import { PendingInviteProvider, usePendingInvite } from '../shared/invite/PendingInviteContext';
 import { setActiveGroup, updateProfile } from '../features/auth/api/meApi';
-import { acceptInvitation, createGroup, renameCurrentPlace, resolveInvitationCode } from '../features/group/api/groupApi';
+import { createGroup, renameCurrentPlace } from '../features/group/api/groupApi';
 import { HomeScreen } from '../screens/HomeScreen';
 import { CompleteProfileScreen } from '../features/auth/screens/CompleteProfileScreen';
 import { CreateGroupScreen } from '../features/group/screens/CreateGroupScreen';
@@ -24,14 +24,16 @@ import { ManageInvitationsScreen } from '../screens/ManageInvitationsScreen';
 import { SpacesScreen } from '../screens/SpacesScreen';
 import { AcceptInviteScreen } from '../screens/AcceptInviteScreen';
 import { AppToast } from '../shared/ui/AppToast';
-import { ApiError, formatApiError, UnauthorizedError } from '../shared/api/client';
+import { formatApiError } from '../shared/api/client';
 import { ActionSheet } from '../shared/ui/ActionSheet';
 import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
-import { DeepLinkRouter } from './DeepLinkRouter';
-import { InviteFlowCoordinator } from './InviteFlowCoordinator';
 import { AuthGate } from './AuthGate';
 import { HydratingSplashScreen } from './HydratingSplashScreen';
+import { useAuthBootstrap } from './useAuthBootstrap';
+import { useDeepLinkBootstrap } from './useDeepLinkBootstrap';
+import { useInviteBootstrap } from './useInviteBootstrap';
+import { useJoinPlaceFlow } from '../flows/useJoinPlaceFlow';
 
 type Screen =
   | 'home'
@@ -68,49 +70,47 @@ export default function App() {
 }
 
 function AppShell() {
-  const { status, token, me, reloadMe, login, handleApiError } = useAuth();
+  const { status, token, me, reloadMe, login, handleApiError, authError, setAuthError, clearAuthError } =
+    useAuthBootstrap();
   const { pendingInviteToken, inviteOnboardingActive, setPendingInviteToken, clearPendingInviteToken } =
     usePendingInvite();
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [autoAccepting, setAutoAccepting] = useState(false);
-  const [manualInviteAcceptInFlight, setManualInviteAcceptInFlight] = useState(false);
+  const {
+    inviteError,
+    clearInviteError,
+    autoAccepting,
+    setManualInviteAcceptInFlight,
+  } = useInviteBootstrap({
+    status,
+    token,
+    me,
+    pendingInviteToken,
+    clearPendingInviteToken,
+    reloadMe,
+    handleApiError,
+  });
+
+  useDeepLinkBootstrap({
+    onLoginFromDeepLink: login,
+    onAuthError: setAuthError,
+    onInviteToken: setPendingInviteToken,
+    onClearInviteError: clearInviteError,
+  });
+
   return (
-    <DeepLinkRouter
-      status={status}
-      onLoginFromDeepLink={login}
-      onAuthError={setAuthError}
-      onInviteToken={setPendingInviteToken}
-      onClearInviteError={() => setInviteError(null)}
+    <AuthGate
+      authError={authError}
+      onClearAuthError={clearAuthError}
+      onClearInviteError={clearInviteError}
     >
-      <InviteFlowCoordinator
-        status={status}
-        token={token}
-        currentMe={me}
-        manualInviteAcceptInFlight={manualInviteAcceptInFlight}
+      <AppStack
+        setManualInviteAcceptInFlight={setManualInviteAcceptInFlight}
         pendingInviteToken={pendingInviteToken}
-        clearPendingInviteToken={clearPendingInviteToken}
-        reloadMe={reloadMe}
-        handleApiError={handleApiError}
-        setInviteError={setInviteError}
-        setAutoAccepting={setAutoAccepting}
-      >
-        <AuthGate
-          authError={authError}
-          onClearAuthError={() => setAuthError(null)}
-          onClearInviteError={() => setInviteError(null)}
-        >
-          <AppStack
-            setManualInviteAcceptInFlight={setManualInviteAcceptInFlight}
-            pendingInviteToken={pendingInviteToken}
-            inviteOnboardingActive={inviteOnboardingActive}
-            inviteError={inviteError}
-            clearInviteError={() => setInviteError(null)}
-            autoAccepting={autoAccepting}
-          />
-        </AuthGate>
-      </InviteFlowCoordinator>
-    </DeepLinkRouter>
+        inviteOnboardingActive={inviteOnboardingActive}
+        inviteError={inviteError}
+        clearInviteError={clearInviteError}
+        autoAccepting={autoAccepting}
+      />
+    </AuthGate>
   );
 }
 
@@ -131,6 +131,14 @@ function AppStack({
 }) {
   const { token, me, meLoading, meError, reloadMe, logout, handleApiError } = useAuth();
   const { setPendingInviteToken, clearPendingInviteToken, clearInviteOnboarding } = usePendingInvite();
+  const { joinPlace } = useJoinPlaceFlow({
+    token,
+    reloadMe,
+    handleApiError,
+    setPendingInviteToken,
+    clearPendingInviteToken,
+    setManualInviteAcceptInFlight,
+  });
   const [screen, setScreen] = useState<Screen>('home');
   const [membersReturnScreen, setMembersReturnScreen] = useState<Screen>('spaces');
   const [acceptInviteToken, setAcceptInviteToken] = useState<string | null>(null);
@@ -255,44 +263,20 @@ function AppStack({
     }
     setJoinError(null);
     setJoinLoading(true);
-    let resolvedInvitationToken: string | null = null;
     try {
-      const isShortCodeInput = /^[A-Za-z0-9]{6}$/.test(normalizedInput);
-      const invitationToken = isShortCodeInput
-        ? (await resolveInvitationCode(token, normalizedInput)).token
-        : normalizedInput;
-      resolvedInvitationToken = invitationToken;
-      setPendingInviteToken(invitationToken);
-      setManualInviteAcceptInFlight(true);
-      await acceptInvitation(token, invitationToken);
-      const updatedMe = await reloadMe();
-      const activeMembership = updatedMe?.activeGroupId
-        ? updatedMe.memberships.find((membership) => membership.groupId === updatedMe.activeGroupId) ?? null
-        : null;
-      const placeName = activeMembership?.groupName?.trim() || 'My space';
-      showToast(`You joined ${placeName}.`);
-      clearPendingInviteToken();
-      setJoinSheetOpen(false);
-      setJoinTokenInputFocused(false);
-      setJoinTokenInput('');
-    } catch (err) {
-      await handleApiError(err);
-      if (isUnauthorizedInviteAcceptError(err) && resolvedInvitationToken) {
-        setJoinError('Session expired. Log in again to continue joining this place.');
+      const result = await joinPlace(normalizedInput);
+
+      if (result.status === 'success') {
+        showToast(`You joined ${result.placeName}.`);
+        setJoinSheetOpen(false);
+        setJoinTokenInputFocused(false);
+        setJoinTokenInput('');
         return;
       }
-      if (resolvedInvitationToken) {
-        clearPendingInviteToken();
-      }
-      setJoinError('Could not join this place. Check the code and try again.');
+      setJoinError(result.message);
     } finally {
-      setManualInviteAcceptInFlight(false);
       setJoinLoading(false);
     }
-  }
-
-  function isUnauthorizedInviteAcceptError(err: unknown): boolean {
-    return err instanceof UnauthorizedError || (err instanceof ApiError && err.status === 401);
   }
 
   async function handleSwitchPlaceSelection(groupId: string) {
