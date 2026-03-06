@@ -14,6 +14,7 @@ type Props = {
   status: 'hydrating' | 'unauthenticated' | 'authenticated';
   token: string | null;
   currentMe: MeResponse | null;
+  manualInviteAcceptInFlight: boolean;
   pendingInviteToken: string | null;
   clearPendingInviteToken: () => void;
   reloadMe: () => Promise<MeResponse | null>;
@@ -27,6 +28,7 @@ export function InviteFlowCoordinator({
   status,
   token,
   currentMe,
+  manualInviteAcceptInFlight,
   pendingInviteToken,
   clearPendingInviteToken,
   reloadMe,
@@ -38,6 +40,10 @@ export function InviteFlowCoordinator({
   const lastAutoAcceptAttemptRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (manualInviteAcceptInFlight) {
+      return;
+    }
+
     if (!shouldStartInviteAutoAccept({
       status,
       accessToken: token,
@@ -114,6 +120,7 @@ export function InviteFlowCoordinator({
     clearPendingInviteToken,
     currentMe,
     handleApiError,
+    manualInviteAcceptInFlight,
     pendingInviteToken,
     reloadMe,
     setAutoAccepting,
