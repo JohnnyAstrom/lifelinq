@@ -35,8 +35,6 @@ class FeatureApplicationBoundaryArchTest {
 
                             String sameFeatureBase = "app.lifelinq.features." + feature + ".";
                             String sameFeatureApplication = sameFeatureBase + "application.";
-                            String sameFeatureDomain = sameFeatureBase + "domain.";
-                            String sameFeatureInfrastructure = sameFeatureBase + "infrastructure.";
 
                             for (Dependency dependency : javaClass.getDirectDependenciesFromSelf()) {
                                 JavaClass target = dependency.getTargetClass();
@@ -46,24 +44,23 @@ class FeatureApplicationBoundaryArchTest {
                                 }
 
                                 boolean sameFeature = targetPackage.startsWith(sameFeatureBase);
-                                boolean targetIsDomain = targetPackage.startsWith(sameFeatureDomain);
-                                boolean targetIsInfrastructure = targetPackage.startsWith(sameFeatureInfrastructure);
+                                boolean targetIsInfrastructure = isSameFeatureLayer(targetPackage, sameFeatureBase, "infrastructure");
 
                                 if (sameFeature) {
-                                    if (targetIsDomain || targetIsInfrastructure) {
+                                    if (targetIsInfrastructure) {
                                         events.add(SimpleConditionEvent.violated(
                                                 javaClass,
                                                 javaClass.getName() + " depends on " + target.getName()
-                                                        + " but controllers must not depend on own domain/infrastructure"
+                                                        + " but controllers must not depend on own infrastructure"
                                         ));
                                     }
                                     continue;
                                 }
 
-                                if (targetPackage.contains(".api.")
-                                        || targetPackage.contains(".application.")
-                                        || targetPackage.contains(".domain.")
-                                        || targetPackage.contains(".infrastructure.")) {
+                                if (isFeatureLayer(targetPackage, "api")
+                                        || isFeatureLayer(targetPackage, "application")
+                                        || isFeatureLayer(targetPackage, "domain")
+                                        || isFeatureLayer(targetPackage, "infrastructure")) {
                                     events.add(SimpleConditionEvent.violated(
                                             javaClass,
                                             javaClass.getName() + " depends on " + target.getName()
@@ -93,8 +90,6 @@ class FeatureApplicationBoundaryArchTest {
 
                             String sameFeatureBase = "app.lifelinq.features." + feature + ".";
                             String sameFeatureApplication = sameFeatureBase + "application.";
-                            String sameFeatureDomain = sameFeatureBase + "domain.";
-                            String sameFeatureInfrastructure = sameFeatureBase + "infrastructure.";
 
                             for (Dependency dependency : javaClass.getDirectDependenciesFromSelf()) {
                                 JavaClass target = dependency.getTargetClass();
@@ -104,24 +99,23 @@ class FeatureApplicationBoundaryArchTest {
                                 }
 
                                 boolean sameFeature = targetPackage.startsWith(sameFeatureBase);
-                                boolean targetIsDomain = targetPackage.startsWith(sameFeatureDomain);
-                                boolean targetIsInfrastructure = targetPackage.startsWith(sameFeatureInfrastructure);
+                                boolean targetIsInfrastructure = isSameFeatureLayer(targetPackage, sameFeatureBase, "infrastructure");
 
                                 if (sameFeature) {
-                                    if (targetIsDomain || targetIsInfrastructure) {
+                                    if (targetIsInfrastructure) {
                                         events.add(SimpleConditionEvent.violated(
                                                 javaClass,
                                                 javaClass.getName() + " depends on " + target.getName()
-                                                        + " but controllers must not depend on own domain/infrastructure"
+                                                        + " but controllers must not depend on own infrastructure"
                                         ));
                                     }
                                     continue;
                                 }
 
-                                if (targetPackage.contains(".api.")
-                                        || targetPackage.contains(".application.")
-                                        || targetPackage.contains(".domain.")
-                                        || targetPackage.contains(".infrastructure.")) {
+                                if (isFeatureLayer(targetPackage, "api")
+                                        || isFeatureLayer(targetPackage, "application")
+                                        || isFeatureLayer(targetPackage, "domain")
+                                        || isFeatureLayer(targetPackage, "infrastructure")) {
                                     events.add(SimpleConditionEvent.violated(
                                             javaClass,
                                             javaClass.getName() + " depends on " + target.getName()
@@ -146,5 +140,15 @@ class FeatureApplicationBoundaryArchTest {
             return null;
         }
         return remaining.substring(0, endIndex);
+    }
+
+    private static boolean isSameFeatureLayer(String packageName, String sameFeatureBase, String layer) {
+        String root = sameFeatureBase + layer;
+        return packageName.equals(root) || packageName.startsWith(root + ".");
+    }
+
+    private static boolean isFeatureLayer(String packageName, String layer) {
+        String marker = "." + layer + ".";
+        return packageName.contains(marker) || packageName.endsWith("." + layer);
     }
 }

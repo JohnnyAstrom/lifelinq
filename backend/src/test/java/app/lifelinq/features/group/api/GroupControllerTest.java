@@ -17,18 +17,18 @@ import app.lifelinq.config.RequestContextExceptionHandler;
 import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.application.AdminRemovalConflictException;
+import app.lifelinq.features.group.application.AddMemberToGroupResult;
+import app.lifelinq.features.group.application.AcceptInvitationResult;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupInvitationView;
+import app.lifelinq.features.group.application.InvitationLookupView;
 import app.lifelinq.features.group.application.InvitationEffectiveState;
 import app.lifelinq.features.group.application.GroupMemberView;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.GroupRole;
-import app.lifelinq.features.group.domain.Invitation;
 import app.lifelinq.features.group.domain.InvitationStatus;
 import app.lifelinq.features.group.domain.InvitationType;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
-import app.lifelinq.features.group.domain.Membership;
-import app.lifelinq.features.group.domain.MembershipId;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -129,7 +129,7 @@ class GroupControllerTest {
         userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        MembershipId membershipId = new MembershipId(groupId, userId);
+        AcceptInvitationResult membershipId = new AcceptInvitationResult(groupId, userId);
         when(groupApplicationService.acceptInvitation(
                 Mockito.eq("invite-token"),
                 Mockito.eq(userId)
@@ -180,16 +180,14 @@ class GroupControllerTest {
         userRepository.withUser(userId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        Invitation result = Invitation.createActive(
+        InvitationLookupView result = new InvitationLookupView(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                app.lifelinq.features.group.domain.InvitationType.LINK,
-                null,
-                null,
+                InvitationType.LINK,
+                InvitationStatus.ACTIVE,
                 "token-1",
                 "K7M9XQ",
-                Instant.now().plusSeconds(3600),
-                null
+                Instant.now().plusSeconds(3600)
         );
 
         when(groupApplicationService.resolveInvitationCode("K7M9XQ"))
@@ -200,9 +198,9 @@ class GroupControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"code\":\"K7M9XQ\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.invitationId").value(result.getId().toString()))
-                .andExpect(jsonPath("$.groupId").value(result.getGroupId().toString()))
-                .andExpect(jsonPath("$.token").value(result.getToken()))
+                .andExpect(jsonPath("$.invitationId").value(result.invitationId().toString()))
+                .andExpect(jsonPath("$.groupId").value(result.groupId().toString()))
+                .andExpect(jsonPath("$.token").value(result.token()))
                 .andExpect(jsonPath("$.type").value("LINK"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
@@ -399,16 +397,14 @@ class GroupControllerTest {
         userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
 
-        Invitation invitation = Invitation.createActive(
+        InvitationLookupView invitation = new InvitationLookupView(
                 UUID.randomUUID(),
                 groupId,
-                app.lifelinq.features.group.domain.InvitationType.LINK,
-                null,
-                null,
+                InvitationType.LINK,
+                InvitationStatus.ACTIVE,
                 "invite-link-token",
                 "K7M9XQ",
-                Instant.now().plusSeconds(3600),
-                null
+                Instant.now().plusSeconds(3600)
         );
 
         when(groupApplicationService.getActiveLinkInvitation(groupId, actorUserId))
@@ -417,7 +413,7 @@ class GroupControllerTest {
         mockMvc.perform(get("/groups/" + groupId + "/invitations/active")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.invitationId").value(invitation.getId().toString()))
+                .andExpect(jsonPath("$.invitationId").value(invitation.invitationId().toString()))
                 .andExpect(jsonPath("$.token").value("invite-link-token"))
                 .andExpect(jsonPath("$.shortCode").value("K7M9XQ"));
     }
@@ -563,7 +559,7 @@ class GroupControllerTest {
         UUID targetUserId = UUID.randomUUID();
         userRepository.withUser(actorUserId, groupId);
         String token = createToken(actorUserId, Instant.now().plusSeconds(60));
-        Membership membership = new Membership(groupId, targetUserId, GroupRole.MEMBER);
+        AddMemberToGroupResult membership = new AddMemberToGroupResult(groupId, targetUserId, GroupRole.MEMBER);
 
         when(groupApplicationService.addMember(groupId, actorUserId, targetUserId))
                 .thenReturn(membership);

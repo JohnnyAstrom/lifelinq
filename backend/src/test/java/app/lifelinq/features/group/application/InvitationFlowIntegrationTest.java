@@ -1,7 +1,6 @@
 package app.lifelinq.features.group.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.group.domain.GroupRepository;
@@ -164,7 +163,7 @@ class InvitationFlowIntegrationTest {
     }
 
     @Test
-    void repeatedAcceptInvitationFailsAfterUsageLimit() {
+    void repeatedAcceptInvitationIsIdempotentForExistingMember() {
         UUID ownerUserId = UUID.randomUUID();
         UUID invitedUserId = UUID.randomUUID();
 
@@ -177,7 +176,7 @@ class InvitationFlowIntegrationTest {
         );
 
         groupApplicationService.acceptInvitation(output.token(), invitedUserId);
-        assertThrows(IllegalStateException.class, () -> groupApplicationService.acceptInvitation(output.token(), invitedUserId));
+        groupApplicationService.acceptInvitation(output.token(), invitedUserId);
 
         List<GroupMemberView> memberships = groupApplicationService.listMembers(groupId);
         long invitedMemberships = memberships.stream()

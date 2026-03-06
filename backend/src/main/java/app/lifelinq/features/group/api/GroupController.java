@@ -2,12 +2,12 @@ package app.lifelinq.features.group.api;
 
 import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.config.RequestContext;
+import app.lifelinq.features.group.application.AddMemberToGroupResult;
+import app.lifelinq.features.group.application.AcceptInvitationResult;
 import app.lifelinq.features.group.application.GroupApplicationService;
 import app.lifelinq.features.group.application.GroupMemberView;
 import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
-import app.lifelinq.features.group.domain.Membership;
-import app.lifelinq.features.group.domain.MembershipId;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ public class GroupController {
             return ApiScoping.missingContext();
         }
         try {
-            Membership membership = groupApplicationService.addMember(
+            AddMemberToGroupResult membership = groupApplicationService.addMember(
                     context.getGroupId(),
                     context.getUserId(),
                     request.getUserId()
@@ -112,7 +112,7 @@ public class GroupController {
         if (context == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        MembershipId membershipId = groupApplicationService.acceptInvitation(
+        AcceptInvitationResult membershipId = groupApplicationService.acceptInvitation(
                 request.getToken(),
                 context.getUserId()
         );
@@ -136,12 +136,12 @@ public class GroupController {
         }
         var invitation = result.get();
         return ResponseEntity.ok(new ResolveInvitationCodeResponse(
-                invitation.getId(),
-                invitation.getGroupId(),
-                invitation.getToken(),
-                invitation.getType(),
-                invitation.getStatus(),
-                invitation.getExpiresAt()
+                invitation.invitationId(),
+                invitation.groupId(),
+                invitation.token(),
+                invitation.type(),
+                invitation.status(),
+                invitation.expiresAt()
         ));
     }
 
@@ -163,10 +163,10 @@ public class GroupController {
         }
         var invitation = result.get();
         return ResponseEntity.ok(new ActiveInvitationResponse(
-                invitation.getId(),
-                invitation.getToken(),
-                invitation.getShortCode(),
-                invitation.getExpiresAt()
+                invitation.invitationId(),
+                invitation.token(),
+                invitation.shortCode(),
+                invitation.expiresAt()
         ));
     }
 

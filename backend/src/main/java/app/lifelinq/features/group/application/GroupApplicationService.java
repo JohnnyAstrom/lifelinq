@@ -3,7 +3,6 @@ package app.lifelinq.features.group.application;
 import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.CreateInvitationOutput;
 import app.lifelinq.features.group.domain.Membership;
-import app.lifelinq.features.group.domain.MembershipId;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.domain.GroupRole;
 import app.lifelinq.features.group.domain.LastAdminRemovalException;
@@ -105,12 +104,12 @@ public class GroupApplicationService {
     }
 
     @Transactional
-    public MembershipId acceptInvitation(String token, UUID userId) {
+    public AcceptInvitationResult acceptInvitation(String token, UUID userId) {
         userProvisioning.ensureUserExists(userId);
         AcceptInvitationCommand command = new AcceptInvitationCommand(token, userId, clock.instant());
         AcceptInvitationResult result = acceptInvitationUseCase.execute(command);
         userActiveGroupSelection.setActiveGroup(userId, result.getGroupId());
-        return new MembershipId(result.getGroupId(), result.getUserId());
+        return result;
     }
 
     @Transactional
@@ -197,12 +196,13 @@ public class GroupApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Invitation> resolveInvitationCode(String code) {
-        return resolveInvitationCodeUseCase.execute(new ResolveInvitationCodeCommand(code));
+    public Optional<InvitationLookupView> resolveInvitationCode(String code) {
+        return resolveInvitationCodeUseCase.execute(new ResolveInvitationCodeCommand(code))
+                .map(this::toInvitationLookupView);
     }
 
     @Transactional(readOnly = true)
-    public Optional<Invitation> getActiveLinkInvitation(UUID groupId, UUID actorUserId) {
+    public Optional<InvitationLookupView> getActiveLinkInvitation(UUID groupId, UUID actorUserId) {
         userProvisioning.ensureUserExists(actorUserId);
         ensureAdmin(groupId, actorUserId);
         Instant now = clock.instant();
@@ -210,7 +210,7 @@ public class GroupApplicationService {
             if (invitation.getType() == InvitationType.LINK
                     && groupId.equals(invitation.getGroupId())
                     && invitation.isAcceptAllowed(now)) {
-                return Optional.of(invitation);
+                return Optional.of(toInvitationLookupView(invitation));
             }
         }
         return Optional.empty();
@@ -232,20 +232,7 @@ public class GroupApplicationService {
             if (statusFilter != null && effectiveState != statusFilter) {
                 continue;
             }
-            items.add(new GroupInvitationView(
-                    invitation.getId(),
-                    invitation.getType(),
-                    invitation.getStatus(),
-                    effectiveState,
-                    invitation.getInviteeEmail(),
-                    invitation.getInviterDisplayName(),
-                    invitation.getToken(),
-                    invitation.getShortCode(),
-                    invitation.getExpiresAt(),
-                    invitation.getMaxUses(),
-                    invitation.getUsageCount(),
-                    invitation.isAcceptAllowed(now)
-            ));
+            items.add(toInvitationView(invitation, now));
         }
         return items;
     }
@@ -337,12 +324,11 @@ public class GroupApplicationService {
     }
 
     @Transactional
-    public Membership addMember(UUID groupId, UUID actorUserId, UUID targetUserId) {
+    public AddMemberToGroupResult addMember(UUID groupId, UUID actorUserId, UUID targetUserId) {
         userProvisioning.ensureUserExists(actorUserId);
         ensureAdmin(groupId, actorUserId);
         AddMemberToGroupCommand command = new AddMemberToGroupCommand(groupId, targetUserId);
-        AddMemberToGroupResult result = addMemberToGroupUseCase.execute(command);
-        return new Membership(result.getGroupId(), result.getUserId(), result.getRole());
+        return addMemberToGroupUseCase.execute(command);
     }
 
     @Transactional
@@ -462,6 +448,35 @@ public class GroupApplicationService {
             return InvitationEffectiveState.EXHAUSTED;
         }
         return InvitationEffectiveState.ACTIVE;
+    }
+
+    private GroupInvitationView toInvitationView(Invitation invitation, Instant now) {
+        return new GroupInvitationView(
+                invitation.getId(),
+                invitation.getType(),
+                invitation.getStatus(),
+                toEffectiveState(invitation, now),
+                invitation.getInviteeEmail(),
+                invitation.getInviterDisplayName(),
+                invitation.getToken(),
+                invitation.getShortCode(),
+                invitation.getExpiresAt(),
+                invitation.getMaxUses(),
+                invitation.getUsageCount(),
+                invitation.isAcceptAllowed(now)
+        );
+    }
+
+    private InvitationLookupView toInvitationLookupView(Invitation invitation) {
+        return new InvitationLookupView(
+                invitation.getId(),
+                invitation.getGroupId(),
+                invitation.getType(),
+                invitation.getStatus(),
+                invitation.getToken(),
+                invitation.getShortCode(),
+                invitation.getExpiresAt()
+        );
     }
 
     private InvitationEffectiveState parseEffectiveStateFilter(String status) {

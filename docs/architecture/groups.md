@@ -176,7 +176,8 @@ Revoke operates on invitationId
 409 returned when ACTIVE invitation already exists  
 Future resend flow can reuse invitationId but regenerate token  
 Expiry evaluation can be derived from expiresAt + status logic
-Acceptance validates: invitation exists, status is ACTIVE, and it is not expired
+Acceptance validates: invitation exists, and for non-members it enforces status ACTIVE and non-expired rules.
+Idempotent accept behavior: if the actor is already a member of the invitation group, accept returns success immediately without incrementing usage or reapplying invitation lifecycle checks.
 
 ---
 
