@@ -1,4 +1,6 @@
 const LOCAL_WEB_PORT = process.env.EXPO_PUBLIC_LOCAL_WEB_PORT?.trim() || "8080";
+// Keep this default host aligned with backend dev property:
+// lifelinq.group.invitation.previewBaseUrl (application-dev.properties).
 
 function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
