@@ -46,14 +46,14 @@ describe('invite auto-accept guards', () => {
     ).toBe(true);
   });
 
-  test('same token+session attempt key is accepted only once', () => {
+  test('same invite token is accepted only once regardless of access token changes', () => {
     const key = buildInviteAttemptKey('access-2', 'invite-2');
-    expect(key).toBe('invite-2::access-2');
+    expect(key).toBe('invite-2');
 
     expect(
       shouldStartInviteAutoAccept({
         status: 'authenticated',
-        accessToken: 'access-2',
+        accessToken: 'access-3',
         pendingInviteToken: 'invite-2',
         inFlightAttemptKey: null,
         lastAttemptedKey: key,

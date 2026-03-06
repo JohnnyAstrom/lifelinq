@@ -9,13 +9,13 @@ export type AutoAcceptDecisionInput = {
 };
 
 export function buildInviteAttemptKey(
-  accessToken: string | null,
+  _accessToken: string | null,
   pendingInviteToken: string | null
 ): string | null {
-  if (!accessToken || !pendingInviteToken) {
+  if (!pendingInviteToken) {
     return null;
   }
-  return `${pendingInviteToken}::${accessToken}`;
+  return pendingInviteToken;
 }
 
 export function shouldStartInviteAutoAccept(input: AutoAcceptDecisionInput): boolean {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { acceptInvitation } from '../features/group/api/groupApi';
 import { ApiError, UnauthorizedError } from '../shared/api/client';
+import type { MeResponse } from '../features/auth/api/meApi';
 import {
   buildInviteAttemptKey,
   isTerminalInviteAcceptError,
@@ -12,9 +13,10 @@ type Props = {
   children: ReactNode;
   status: 'hydrating' | 'unauthenticated' | 'authenticated';
   token: string | null;
+  currentMe: MeResponse | null;
   pendingInviteToken: string | null;
   clearPendingInviteToken: () => void;
-  reloadMe: () => Promise<unknown>;
+  reloadMe: () => Promise<MeResponse | null>;
   handleApiError: (error: unknown) => Promise<void>;
   setInviteError: (message: string | null) => void;
   setAutoAccepting: (value: boolean) => void;
@@ -24,6 +26,7 @@ export function InviteFlowCoordinator({
   children,
   status,
   token,
+  currentMe,
   pendingInviteToken,
   clearPendingInviteToken,
   reloadMe,
@@ -50,6 +53,8 @@ export function InviteFlowCoordinator({
       return;
     }
     lastAutoAcceptAttemptRef.current = attemptKey;
+    const beforeMembershipGroupIds = new Set((currentMe?.memberships ?? []).map((membership) => membership.groupId));
+    const beforeActiveGroupId = currentMe?.activeGroupId ?? null;
     let cancelled = false;
     autoAcceptInFlightRef.current = attemptKey;
     setAutoAccepting(true);
@@ -75,6 +80,16 @@ export function InviteFlowCoordinator({
           return;
         }
         if (isTerminalInviteAcceptError(err)) {
+          if (isRevokedInvitationConflict(err)) {
+            const meAfterConflict = await reloadMe();
+            if (didAlreadyJoinInvitedGroup(beforeMembershipGroupIds, beforeActiveGroupId, meAfterConflict)) {
+              clearPendingInviteToken();
+              setInviteError(null);
+              return;
+            }
+            setInviteError('This invitation was already used. Ask for a new invite if you still need access.');
+            return;
+          }
           if (shouldClearPendingInviteAfterAccept(false, err)) {
             clearPendingInviteToken();
           }
@@ -97,6 +112,7 @@ export function InviteFlowCoordinator({
     };
   }, [
     clearPendingInviteToken,
+    currentMe,
     handleApiError,
     pendingInviteToken,
     reloadMe,
@@ -107,4 +123,33 @@ export function InviteFlowCoordinator({
   ]);
 
   return <>{children}</>;
+}
+
+function isRevokedInvitationConflict(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 409) {
+    return false;
+  }
+  return error.body.toLowerCase().includes('invitation is revoked');
+}
+
+function didAlreadyJoinInvitedGroup(
+  beforeGroupIds: Set<string>,
+  beforeActiveGroupId: string | null,
+  meAfterConflict: MeResponse | null
+): boolean {
+  if (!meAfterConflict) {
+    return false;
+  }
+
+  for (const membership of meAfterConflict.memberships) {
+    if (!beforeGroupIds.has(membership.groupId)) {
+      return true;
+    }
+  }
+
+  const afterActiveGroupId = meAfterConflict.activeGroupId ?? null;
+  if (!afterActiveGroupId || afterActiveGroupId === beforeActiveGroupId) {
+    return false;
+  }
+  return !beforeGroupIds.has(afterActiveGroupId);
 }

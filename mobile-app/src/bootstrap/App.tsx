@@ -68,7 +68,7 @@ export default function App() {
 }
 
 function AppShell() {
-  const { status, token, reloadMe, login, handleApiError } = useAuth();
+  const { status, token, me, reloadMe, login, handleApiError } = useAuth();
   const { pendingInviteToken, inviteOnboardingActive, setPendingInviteToken, clearPendingInviteToken } =
     usePendingInvite();
   const [authError, setAuthError] = useState<string | null>(null);
@@ -85,6 +85,7 @@ function AppShell() {
       <InviteFlowCoordinator
         status={status}
         token={token}
+        currentMe={me}
         pendingInviteToken={pendingInviteToken}
         clearPendingInviteToken={clearPendingInviteToken}
         reloadMe={reloadMe}
