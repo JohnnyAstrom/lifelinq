@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { AppButton, AppCard, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
-import { acceptInvitation } from '../features/group/api/groupApi';
+import { useJoinPlaceFlow } from '../flows/useJoinPlaceFlow';
+import { useAuth } from '../shared/auth/AuthContext';
+import { usePendingInvite } from '../shared/invite/PendingInviteContext';
 
 type Props = {
   token: string;
@@ -19,6 +21,15 @@ export function AcceptInviteScreen({
 }: Props) {
   const [state, setState] = useState<'loading' | 'error'>('loading');
   const startedRef = useRef(false);
+  const { reloadMe, handleApiError } = useAuth();
+  const { setPendingInviteToken, clearPendingInviteToken } = usePendingInvite();
+  const { joinPlace } = useJoinPlaceFlow({
+    token,
+    reloadMe,
+    handleApiError,
+    setPendingInviteToken,
+    clearPendingInviteToken,
+  });
 
   useEffect(() => {
     if (startedRef.current) {
@@ -35,7 +46,11 @@ export function AcceptInviteScreen({
       }
 
       try {
-        await acceptInvitation(token, normalizedToken);
+        const result = await joinPlace(normalizedToken);
+        if (result.status !== 'success') {
+          setState('error');
+          return;
+        }
         if (cancelled) {
           return;
         }
@@ -51,7 +66,7 @@ export function AcceptInviteScreen({
     return () => {
       cancelled = true;
     };
-  }, [inviteToken, onAccepted, token]);
+  }, [inviteToken, joinPlace, onAccepted]);
 
   if (state === 'loading') {
     return (
