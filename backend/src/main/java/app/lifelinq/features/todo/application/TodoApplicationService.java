@@ -4,7 +4,7 @@ import app.lifelinq.features.todo.domain.Todo;
 import app.lifelinq.features.todo.domain.TodoRepository;
 import app.lifelinq.features.todo.domain.TodoScope;
 import app.lifelinq.features.todo.domain.TodoStatus;
-import app.lifelinq.features.user.contract.UserProvisioning;
+import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,25 +19,27 @@ public class TodoApplicationService {
     private final ListTodosUseCase listTodosUseCase;
     private final ListTodosForMonthUseCase listTodosForMonthUseCase;
     private final UpdateTodoUseCase updateTodoUseCase;
-    private final UserProvisioning userProvisioning;
+    private final TodoRepository todoRepository;
+    private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
 
     public TodoApplicationService(
             TodoRepository todoRepository,
-            UserProvisioning userProvisioning
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase
     ) {
         if (todoRepository == null) {
             throw new IllegalArgumentException("todoRepository must not be null");
         }
-        if (userProvisioning == null) {
-            throw new IllegalArgumentException("userProvisioning must not be null");
+        if (ensureGroupMemberUseCase == null) {
+            throw new IllegalArgumentException("ensureGroupMemberUseCase must not be null");
         }
+        this.todoRepository = todoRepository;
         this.createTodoUseCase = new CreateTodoUseCase(todoRepository);
         this.completeTodoUseCase = new CompleteTodoUseCase(todoRepository);
         this.deleteTodoUseCase = new DeleteTodoUseCase(todoRepository);
         this.listTodosUseCase = new ListTodosUseCase(todoRepository);
         this.listTodosForMonthUseCase = new ListTodosForMonthUseCase(todoRepository);
         this.updateTodoUseCase = new UpdateTodoUseCase(todoRepository);
-        this.userProvisioning = userProvisioning;
+        this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
     }
 
     @Transactional
@@ -52,7 +54,7 @@ public class TodoApplicationService {
             Integer scopeWeek,
             Integer scopeMonth
     ) {
-        userProvisioning.ensureUserExists(actorUserId);
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
         CreateTodoResult result = createTodoUseCase.execute(
                 new CreateTodoCommand(groupId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
         );
@@ -61,7 +63,11 @@ public class TodoApplicationService {
 
     @Transactional
     public boolean completeTodo(UUID todoId, UUID actorUserId, Instant now) {
-        userProvisioning.ensureUserExists(actorUserId);
+        UUID groupId = findTodoGroupId(todoId);
+        if (groupId == null) {
+            return false;
+        }
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
         CompleteTodoResult result = completeTodoUseCase.execute(new CompleteTodoCommand(todoId, now));
         return result.isCompleted();
     }
@@ -78,7 +84,11 @@ public class TodoApplicationService {
             Integer scopeWeek,
             Integer scopeMonth
     ) {
-        userProvisioning.ensureUserExists(actorUserId);
+        UUID groupId = findTodoGroupId(todoId);
+        if (groupId == null) {
+            return false;
+        }
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
         UpdateTodoResult result = updateTodoUseCase.execute(
                 new UpdateTodoCommand(todoId, text, scope, dueDate, dueTime, scopeYear, scopeWeek, scopeMonth)
         );
@@ -87,7 +97,11 @@ public class TodoApplicationService {
 
     @Transactional
     public boolean deleteTodo(UUID todoId, UUID actorUserId, Instant now) {
-        userProvisioning.ensureUserExists(actorUserId);
+        UUID groupId = findTodoGroupId(todoId);
+        if (groupId == null) {
+            return false;
+        }
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
         DeleteTodoResult result = deleteTodoUseCase.execute(new DeleteTodoCommand(todoId, now));
         return result.isDeleted();
     }
@@ -102,5 +116,14 @@ public class TodoApplicationService {
     public List<Todo> listTodosForMonth(UUID groupId, int year, int month) {
         ListTodosResult result = listTodosForMonthUseCase.execute(new TodoMonthQuery(groupId, year, month));
         return result.getTodos();
+    }
+
+    private UUID findTodoGroupId(UUID todoId) {
+        if (todoId == null) {
+            throw new IllegalArgumentException("todoId must not be null");
+        }
+        return todoRepository.findById(todoId)
+                .map(Todo::getGroupId)
+                .orElse(null);
     }
 }
