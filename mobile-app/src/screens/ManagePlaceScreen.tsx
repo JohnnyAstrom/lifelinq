@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { MeResponse } from '../features/auth/api/meApi';
-import { getActiveInvitationLink, renameCurrentPlace } from '../features/group/api/groupApi';
+import { getActiveInvitationLink, listInvitations, renameCurrentPlace } from '../features/group/api/groupApi';
 import { useGroupMembers } from '../features/group/hooks/useGroupMembers';
 import { formatApiError } from '../shared/api/client';
 import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
@@ -17,8 +17,9 @@ type Props = {
   onManageInvitations: () => void;
 };
 
-type ActiveInviteSummary = {
-  expiresAt: string;
+type InvitationSummary = {
+  activeLinkInvites: number;
+  pendingEmailInvites: number;
 };
 
 export function ManagePlaceScreen({
@@ -35,7 +36,10 @@ export function ManagePlaceScreen({
   const [nameDraft, setNameDraft] = useState('');
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
-  const [activeInvite, setActiveInvite] = useState<ActiveInviteSummary | null>(null);
+  const [invitationSummary, setInvitationSummary] = useState<InvitationSummary>({
+    activeLinkInvites: 0,
+    pendingEmailInvites: 0,
+  });
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -58,8 +62,9 @@ export function ManagePlaceScreen({
     membersCount: (count: number) => `${count} member${count === 1 ? '' : 's'}`,
     manageMembers: 'Manage members',
     invitationsTitle: 'Invitations',
-    inviteCount: (count: number) => `${count} active invite${count === 1 ? '' : 's'}`,
-    noActiveInvite: 'No active invites',
+    activeLinkInviteStatus: (active: boolean) => (active ? 'Invite link active' : 'No invite link active'),
+    pendingEmailInviteCount: (count: number) => `${count} email invitation${count === 1 ? '' : 's'} pending`,
+    noActiveInvite: 'No active invitations',
     manageInvitations: 'Manage invitations',
     save: 'Save',
     saving: 'Saving...',
@@ -90,7 +95,10 @@ export function ManagePlaceScreen({
 
   useEffect(() => {
     if (!isAdmin || !activeGroupId) {
-      setActiveInvite(null);
+      setInvitationSummary({
+        activeLinkInvites: 0,
+        pendingEmailInvites: 0,
+      });
       setInviteError(null);
       return;
     }
@@ -104,46 +112,23 @@ export function ManagePlaceScreen({
     setInviteError(null);
     setInviteLoading(true);
     try {
-      const invitation = await getActiveInvitationLink(token, activeGroupId);
-      if (!invitation) {
-        setActiveInvite(null);
-        return;
-      }
-      setActiveInvite({
-        expiresAt: invitation.expiresAt,
+      const [, invitations] = await Promise.all([
+        getActiveInvitationLink(token, activeGroupId),
+        listInvitations(token, activeGroupId, 'ACTIVE'),
+      ]);
+      setInvitationSummary({
+        activeLinkInvites: invitations.filter((item) => item.type === 'LINK' && item.effectiveState === 'ACTIVE').length,
+        pendingEmailInvites: invitations.filter((item) => item.type === 'EMAIL' && item.effectiveState === 'ACTIVE').length,
       });
     } catch (err) {
       setInviteError(formatApiError(err));
-      setActiveInvite(null);
+      setInvitationSummary({
+        activeLinkInvites: 0,
+        pendingEmailInvites: 0,
+      });
     } finally {
       setInviteLoading(false);
     }
-  }
-
-  function daysUntilExpiry(value: string): number | null {
-    const expiresAt = new Date(value).getTime();
-    if (Number.isNaN(expiresAt)) {
-      return null;
-    }
-    const diffMs = expiresAt - Date.now();
-    if (diffMs <= 0) {
-      return 0;
-    }
-    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  }
-
-  function getExpiryLabel(value: string): string {
-    const days = daysUntilExpiry(value);
-    if (days == null) {
-      return 'Expires soon';
-    }
-    if (days === 0) {
-      return 'Expires today';
-    }
-    if (days === 1) {
-      return 'Expires in 1 day';
-    }
-    return `Expires in ${days} days`;
   }
 
   function startRename() {
@@ -263,17 +248,13 @@ export function ManagePlaceScreen({
             {inviteLoading ? <Subtle>Loading invitations...</Subtle> : null}
             {inviteError ? <Text style={styles.error}>{inviteError}</Text> : null}
             {!inviteLoading && !inviteError ? (
-              activeInvite ? (
-                <>
-                  <Subtle>{strings.inviteCount(1)}</Subtle>
-                  <Subtle>{getExpiryLabel(activeInvite.expiresAt)}</Subtle>
-                </>
-              ) : (
-                <>
-                  <Subtle>{strings.inviteCount(0)}</Subtle>
-                  <Subtle>{strings.noActiveInvite}</Subtle>
-                </>
-              )
+              <>
+                <Subtle>{strings.activeLinkInviteStatus(invitationSummary.activeLinkInvites > 0)}</Subtle>
+                <Subtle>{strings.pendingEmailInviteCount(invitationSummary.pendingEmailInvites)}</Subtle>
+                {invitationSummary.activeLinkInvites === 0 && invitationSummary.pendingEmailInvites === 0
+                  ? <Subtle>{strings.noActiveInvite}</Subtle>
+                  : null}
+              </>
             ) : null}
             <AppButton title={strings.manageInvitations} onPress={onManageInvitations} variant="ghost" fullWidth />
           </View>

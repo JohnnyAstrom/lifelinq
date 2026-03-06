@@ -42,12 +42,12 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
   const [activeEmailInvites, setActiveEmailInvites] = useState<ActiveEmailInvite[]>([]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const [showInviteOptions, setShowInviteOptions] = useState(false);
   const [emailInviteSheetOpen, setEmailInviteSheetOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [emailInviteInputFocused, setEmailInviteInputFocused] = useState(false);
   const [emailInviteSubmitting, setEmailInviteSubmitting] = useState(false);
   const [emailInviteError, setEmailInviteError] = useState<string | null>(null);
+  const [emailInvitesExpanded, setEmailInvitesExpanded] = useState(false);
   const [revokeInviteSheetOpen, setRevokeInviteSheetOpen] = useState(false);
   const [revokeInviteSubmitting, setRevokeInviteSubmitting] = useState(false);
   const [revokeInviteError, setRevokeInviteError] = useState<string | null>(null);
@@ -62,13 +62,10 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: showInviteOptions || emailInviteSheetOpen || revokeInviteSheetOpen,
+    isOverlayOpen: emailInviteSheetOpen || revokeInviteSheetOpen,
     onCloseOverlay: () => {
       if (revokeInviteSubmitting || emailInviteSubmitting) {
         return;
-      }
-      if (showInviteOptions) {
-        setShowInviteOptions(false);
       }
       if (emailInviteSheetOpen) {
         closeEmailInviteSheet();
@@ -197,13 +194,6 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
     }
   }
 
-  function openInviteOptions() {
-    if (inviteLoading) {
-      return;
-    }
-    setShowInviteOptions(true);
-  }
-
   function openRevokeInvite(invitationId: string, label: string) {
     setRevokeInviteError(null);
     setRevokeTarget({ invitationId, label });
@@ -211,12 +201,13 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
   }
 
   function handleInviteByLink() {
-    setShowInviteOptions(false);
     void handleCreateInvite();
   }
 
   function handleInviteByEmail() {
-    setShowInviteOptions(false);
+    if (inviteLoading || emailInviteSubmitting) {
+      return;
+    }
     setEmailInviteError(null);
     setInviteEmail('');
     setEmailInviteInputFocused(false);
@@ -292,6 +283,10 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
     return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
+  function toggleEmailInvitesExpanded() {
+    setEmailInvitesExpanded((prev) => !prev);
+  }
+
   if (!isAdmin) {
     return (
       <AppScreen>
@@ -313,19 +308,33 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
         <AppCard>
           <View style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Invite people</Text>
-            <AppButton title="Create invite link" onPress={openInviteOptions} fullWidth />
+            <View style={styles.invitePeopleActions}>
+              <AppButton
+                title={inviteLoading ? 'Creating link...' : 'Invite by link'}
+                onPress={handleInviteByLink}
+                disabled={inviteLoading || emailInviteSubmitting}
+                fullWidth
+              />
+              <AppButton
+                title="Invite by email"
+                onPress={handleInviteByEmail}
+                disabled={inviteLoading || emailInviteSubmitting}
+                variant="ghost"
+                fullWidth
+              />
+            </View>
           </View>
         </AppCard>
 
         <AppCard>
           <View style={styles.sectionContent}>
-            <Text style={styles.sectionTitle}>Active invite</Text>
+            <Text style={styles.sectionTitle}>Invite link</Text>
             {inviteLoading ? <Subtle>Loading invite...</Subtle> : null}
             {inviteError ? <Text style={styles.error}>{inviteError}</Text> : null}
             {activeInvite ? (
               <>
                 <View style={styles.activeInviteHeader}>
-                  <Subtle>Valid until {formatInviteExpiry(activeInvite.expiresAt)}</Subtle>
+                  <Subtle>Active · Expires {formatInviteExpiry(activeInvite.expiresAt)}</Subtle>
                 </View>
                 <View style={styles.invitePrimarySection}>
                   <AppButton
@@ -337,8 +346,8 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
                   />
                 </View>
                 <View style={styles.inviteDetailsSection}>
-                  <Text style={styles.activeInviteTitle}>Invite code</Text>
-                  <View style={styles.inviteCodeRow}>
+                  <View style={styles.inviteCodeInlineRow}>
+                    <Text style={styles.activeInviteTitle}>Invite code</Text>
                     <Pressable
                       onPress={() => {
                         void handleCopyInviteCode();
@@ -372,70 +381,50 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
                 </View>
               </>
             ) : null}
-            {activeEmailInvites.length > 0 ? (
+            {!activeInvite ? <Subtle>No active link invite</Subtle> : null}
+          </View>
+        </AppCard>
+
+        <AppCard>
+          <View style={styles.sectionContent}>
+            <Pressable
+              onPress={toggleEmailInvitesExpanded}
+              style={({ pressed }) => [styles.collapsibleHeaderRow, pressed ? styles.collapsibleHeaderPressed : null]}
+              accessibilityRole="button"
+            >
+              <Text style={styles.sectionTitle}>Pending email invitations ({activeEmailInvites.length})</Text>
+              <Text style={styles.collapsibleChevron}>{emailInvitesExpanded ? '▲' : '▼'}</Text>
+            </Pressable>
+            {inviteLoading ? <Subtle>Loading invitations...</Subtle> : null}
+            {inviteError ? <Text style={styles.error}>{inviteError}</Text> : null}
+            {emailInvitesExpanded && activeEmailInvites.length > 0 ? (
               <View style={styles.emailInviteSection}>
-                <Text style={styles.activeInviteTitle}>Active email invites</Text>
                 {activeEmailInvites.map((invite) => (
-                  <View key={invite.invitationId} style={styles.emailInviteRow}>
-                    <View style={styles.emailInviteMeta}>
-                      <Text style={styles.emailInviteAddress}>{invite.inviteeEmail}</Text>
-                      <Subtle>
-                        Valid until {formatInviteExpiry(invite.expiresAt)} • {invite.shortCode}
-                      </Subtle>
-                    </View>
+                  <View key={invite.invitationId} style={styles.emailInviteCard}>
+                    <Text style={styles.emailInviteAddress} numberOfLines={2} ellipsizeMode="tail">
+                      {invite.inviteeEmail}
+                    </Text>
+                    <Subtle style={styles.emailInviteExpiry}>
+                      Pending · Expires {formatInviteExpiry(invite.expiresAt)}
+                    </Subtle>
                     <AppButton
-                      title="Revoke"
+                      title="Revoke invitation"
                       onPress={() => {
                         openRevokeInvite(invite.invitationId, invite.inviteeEmail);
                       }}
                       variant="ghost"
+                      fullWidth
                     />
                   </View>
                 ))}
               </View>
             ) : null}
-            {!activeInvite && activeEmailInvites.length === 0 ? (
-              <Subtle>No active invites</Subtle>
+            {emailInvitesExpanded && !inviteLoading && activeEmailInvites.length === 0 ? (
+              <Subtle>No active email invitations</Subtle>
             ) : null}
           </View>
         </AppCard>
       </View>
-
-      <ActionSheet
-        visible={showInviteOptions}
-        onClose={() => {
-          setShowInviteOptions(false);
-        }}
-        presentation="standard"
-      >
-        <View style={styles.confirmContent}>
-          <Text style={textStyles.h3}>Create invite link</Text>
-          <View style={styles.confirmActions}>
-            <AppButton
-              title="Invite by link"
-              onPress={handleInviteByLink}
-              disabled={inviteLoading || emailInviteSubmitting}
-              fullWidth
-            />
-            <AppButton
-              title="Invite by email"
-              onPress={handleInviteByEmail}
-              disabled={inviteLoading || emailInviteSubmitting}
-              variant="ghost"
-              fullWidth
-            />
-            <AppButton
-              title="Cancel"
-              onPress={() => {
-                setShowInviteOptions(false);
-              }}
-              variant="ghost"
-              disabled={inviteLoading || emailInviteSubmitting}
-              fullWidth
-            />
-          </View>
-        </View>
-      </ActionSheet>
 
       <ActionSheet
         visible={emailInviteSheetOpen}
@@ -534,10 +523,25 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
+  invitePeopleActions: {
+    gap: theme.spacing.sm,
+  },
   sectionTitle: {
     ...textStyles.h3,
     fontWeight: '700',
+  },
+  collapsibleHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: theme.spacing.xs,
+  },
+  collapsibleHeaderPressed: {
+    opacity: 0.8,
+  },
+  collapsibleChevron: {
+    ...textStyles.subtle,
+    fontWeight: '700',
   },
   activeInviteTitle: {
     ...textStyles.subtle,
@@ -552,6 +556,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     marginTop: theme.spacing.lg,
   },
+  inviteCodeInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   inviteCodeBox: {
     borderWidth: 0,
     borderRadius: theme.radius.md,
@@ -563,11 +572,6 @@ const styles = StyleSheet.create({
   inviteCodeBoxPressed: {
     opacity: 0.85,
   },
-  inviteCodeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
   inviteCodeText: {
     ...textStyles.body,
     textAlign: 'center',
@@ -578,28 +582,26 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
   },
   emailInviteSection: {
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.md,
     gap: theme.spacing.sm,
   },
-  emailInviteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
+  emailInviteCard: {
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.surfaceAlt,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-  },
-  emailInviteMeta: {
-    flex: 1,
-    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    gap: 4,
   },
   emailInviteAddress: {
     ...textStyles.body,
     fontWeight: '600',
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  emailInviteExpiry: {
+    marginBottom: 2,
   },
   error: {
     color: theme.colors.danger,
