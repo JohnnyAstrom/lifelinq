@@ -7,6 +7,7 @@ import app.lifelinq.features.economy.application.CalculateSettlementUseCase;
 import app.lifelinq.features.economy.application.CloseSettlementPeriodUseCase;
 import app.lifelinq.features.economy.application.ListSettlementTransactionsUseCase;
 import app.lifelinq.features.economy.application.SoftDeleteSettlementTransactionUseCase;
+import app.lifelinq.features.economy.application.UpdateSettlementStrategyUseCase;
 import app.lifelinq.features.economy.contract.InitializeGroupEconomyPort;
 import app.lifelinq.features.economy.domain.SettlementPeriodRepository;
 import app.lifelinq.features.economy.domain.SettlementTransactionRepository;
@@ -104,5 +105,12 @@ public class EconomyApplicationConfig {
                 groupMembershipReadPort,
                 clock
         );
+    }
+
+    @Bean
+    public UpdateSettlementStrategyUseCase updateSettlementStrategyUseCase(
+            SettlementPeriodRepository settlementPeriodRepository
+    ) {
+        return new UpdateSettlementStrategyUseCase(settlementPeriodRepository);
     }
 }

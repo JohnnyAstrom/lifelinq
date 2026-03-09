@@ -38,6 +38,9 @@ public class SettlementPeriodEntity {
     @Column(name = "strategy_type", nullable = false)
     private SettlementStrategyType strategyType;
 
+    @Column(name = "strategy_snapshot_json", nullable = false)
+    private String strategySnapshotJson;
+
     @OneToMany(mappedBy = "period", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<SettlementPeriodParticipantEntity> participants = new LinkedHashSet<>();
 
@@ -50,7 +53,8 @@ public class SettlementPeriodEntity {
             Instant startDate,
             Instant endDate,
             SettlementPeriodStatus status,
-            SettlementStrategyType strategyType
+            SettlementStrategyType strategyType,
+            String strategySnapshotJson
     ) {
         this.id = id;
         this.groupId = groupId;
@@ -58,6 +62,7 @@ public class SettlementPeriodEntity {
         this.endDate = endDate;
         this.status = status;
         this.strategyType = strategyType;
+        this.strategySnapshotJson = strategySnapshotJson;
     }
 
     public UUID getId() {
@@ -82,6 +87,10 @@ public class SettlementPeriodEntity {
 
     public SettlementStrategyType getStrategyType() {
         return strategyType;
+    }
+
+    public String getStrategySnapshotJson() {
+        return strategySnapshotJson;
     }
 
     public Set<SettlementPeriodParticipantEntity> getParticipants() {

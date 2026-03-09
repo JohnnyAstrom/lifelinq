@@ -2,6 +2,7 @@ package app.lifelinq.features.economy.infrastructure;
 
 import app.lifelinq.features.economy.domain.SettlementPeriodRepository;
 import app.lifelinq.features.economy.domain.SettlementTransactionRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -11,8 +12,8 @@ import org.springframework.context.annotation.Profile;
 public class EconomyPersistenceConfig {
 
     @Bean
-    public SettlementPeriodMapper settlementPeriodMapper() {
-        return new SettlementPeriodMapper();
+    public SettlementPeriodMapper settlementPeriodMapper(ObjectMapper objectMapper) {
+        return new SettlementPeriodMapper(objectMapper);
     }
 
     @Bean

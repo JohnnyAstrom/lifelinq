@@ -109,6 +109,24 @@ public final class SettlementPeriod {
         );
     }
 
+    public SettlementPeriod withStrategySnapshot(SettlementStrategySnapshot updatedStrategySnapshot) {
+        if (updatedStrategySnapshot == null) {
+            throw new IllegalArgumentException("updatedStrategySnapshot must not be null");
+        }
+        if (status != SettlementPeriodStatus.OPEN) {
+            throw new IllegalStateException("strategy can only be updated for OPEN period");
+        }
+        return new SettlementPeriod(
+                id,
+                groupId,
+                startDate,
+                endDate,
+                status,
+                updatedStrategySnapshot,
+                participants
+        );
+    }
+
     public UUID getId() {
         return id;
     }
