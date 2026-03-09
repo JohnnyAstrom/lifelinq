@@ -10,7 +10,6 @@ import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationType;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.Invitation;
-import app.lifelinq.features.economy.contract.InitializeGroupEconomyPort;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
@@ -52,7 +51,7 @@ public class GroupApplicationService {
     private final UserActiveGroupSelection userActiveGroupSelection;
     private final UserProfileRead userProfileRead;
     private final Clock clock;
-    private final InitializeGroupEconomyPort initializeGroupEconomyPort;
+    private final GroupFeatureInitializer groupFeatureInitializer;
 
     public GroupApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
@@ -74,7 +73,7 @@ public class GroupApplicationService {
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
             Clock clock,
-            InitializeGroupEconomyPort initializeGroupEconomyPort
+            GroupFeatureInitializer groupFeatureInitializer
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
         this.createGroupUseCase = createGroupUseCase;
@@ -104,10 +103,10 @@ public class GroupApplicationService {
         this.userActiveGroupSelection = userActiveGroupSelection;
         this.userProfileRead = userProfileRead;
         this.clock = clock;
-        if (initializeGroupEconomyPort == null) {
-            throw new IllegalArgumentException("initializeGroupEconomyPort must not be null");
+        if (groupFeatureInitializer == null) {
+            throw new IllegalArgumentException("groupFeatureInitializer must not be null");
         }
-        this.initializeGroupEconomyPort = initializeGroupEconomyPort;
+        this.groupFeatureInitializer = groupFeatureInitializer;
     }
 
     public GroupApplicationService(
@@ -151,8 +150,7 @@ public class GroupApplicationService {
                 userActiveGroupSelection,
                 userProfileRead,
                 clock,
-                groupId -> {
-                }
+                new GroupFeatureInitializer(List.of())
         );
     }
 
@@ -295,7 +293,7 @@ public class GroupApplicationService {
         userProvisioning.ensureUserExists(ownerUserId);
         CreateGroupCommand command = new CreateGroupCommand(name, ownerUserId);
         CreateGroupResult result = createGroupUseCase.execute(command);
-        initializeGroupEconomyPort.initializeGroupEconomy(result.getGroupId());
+        groupFeatureInitializer.initializeFeatures(result.getGroupId());
         return result.getGroupId();
     }
 
@@ -471,8 +469,7 @@ public class GroupApplicationService {
                 userActiveGroupSelection,
                 userProfileRead,
                 clock,
-                groupId -> {
-                }
+                new GroupFeatureInitializer(List.of())
         );
     }
 

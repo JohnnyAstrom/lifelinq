@@ -4,15 +4,16 @@ import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.MembershipRepository;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
+import app.lifelinq.features.group.contract.GroupFeatureInitializerPort;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.infrastructure.InMemoryInvitationShortCodeGenerator;
 import app.lifelinq.features.group.infrastructure.UserDefaultGroupProvisioningAdapter;
-import app.lifelinq.features.economy.contract.InitializeGroupEconomyPort;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
 import app.lifelinq.features.user.contract.UserProfileRead;
 import java.time.Clock;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -82,6 +83,13 @@ public class GroupApplicationConfig {
     }
 
     @Bean
+    public GroupFeatureInitializer groupFeatureInitializer(
+            List<GroupFeatureInitializerPort> featureInitializers
+    ) {
+        return new GroupFeatureInitializer(featureInitializers);
+    }
+
+    @Bean
     public GroupApplicationService groupApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
             CreateGroupUseCase createGroupUseCase,
@@ -100,7 +108,7 @@ public class GroupApplicationConfig {
             UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
-            InitializeGroupEconomyPort initializeGroupEconomyPort,
+            GroupFeatureInitializer groupFeatureInitializer,
             Clock clock,
             @Value("${lifelinq.group.invitation.previewBaseUrl:http://localhost:8080}") String invitationPreviewBaseUrl
     ) {
@@ -124,7 +132,7 @@ public class GroupApplicationConfig {
                 userActiveGroupSelection,
                 userProfileRead,
                 clock,
-                initializeGroupEconomyPort
+                groupFeatureInitializer
         );
     }
 

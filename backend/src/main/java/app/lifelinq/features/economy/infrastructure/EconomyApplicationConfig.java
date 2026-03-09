@@ -5,12 +5,14 @@ import app.lifelinq.features.economy.application.InitializeGroupEconomyUseCase;
 import app.lifelinq.features.economy.application.CreateSettlementTransactionUseCase;
 import app.lifelinq.features.economy.application.CalculateSettlementUseCase;
 import app.lifelinq.features.economy.application.CloseSettlementPeriodUseCase;
+import app.lifelinq.features.economy.application.EconomyInitializer;
 import app.lifelinq.features.economy.application.ListSettlementTransactionsUseCase;
 import app.lifelinq.features.economy.application.SoftDeleteSettlementTransactionUseCase;
 import app.lifelinq.features.economy.application.UpdateSettlementStrategyUseCase;
 import app.lifelinq.features.economy.contract.InitializeGroupEconomyPort;
 import app.lifelinq.features.economy.domain.SettlementPeriodRepository;
 import app.lifelinq.features.economy.domain.SettlementTransactionRepository;
+import app.lifelinq.features.group.contract.GroupFeatureInitializerPort;
 import app.lifelinq.features.group.contract.GroupMembershipReadPort;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
@@ -40,10 +42,21 @@ public class EconomyApplicationConfig {
     }
 
     @Bean
-    public GetActiveSettlementPeriodUseCase getActiveSettlementPeriodUseCase(
-            SettlementPeriodRepository settlementPeriodRepository
+    public GroupFeatureInitializerPort economyInitializer(
+            InitializeGroupEconomyUseCase initializeGroupEconomyUseCase
     ) {
-        return new GetActiveSettlementPeriodUseCase(settlementPeriodRepository);
+        return new EconomyInitializer(initializeGroupEconomyUseCase);
+    }
+
+    @Bean
+    public GetActiveSettlementPeriodUseCase getActiveSettlementPeriodUseCase(
+            SettlementPeriodRepository settlementPeriodRepository,
+            InitializeGroupEconomyUseCase initializeGroupEconomyUseCase
+    ) {
+        return new GetActiveSettlementPeriodUseCase(
+                settlementPeriodRepository,
+                initializeGroupEconomyUseCase
+        );
     }
 
     @Bean
