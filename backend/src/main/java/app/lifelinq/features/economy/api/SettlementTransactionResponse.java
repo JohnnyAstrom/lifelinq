@@ -9,6 +9,7 @@ public record SettlementTransactionResponse(
         UUID periodId,
         BigDecimal amount,
         String description,
+        UUID createdByUserId,
         UUID paidByUserId,
         Instant createdAt,
         Instant deletedAt,

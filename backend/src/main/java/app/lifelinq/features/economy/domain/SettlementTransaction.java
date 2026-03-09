@@ -9,6 +9,7 @@ public final class SettlementTransaction {
     private final UUID periodId;
     private final BigDecimal amount;
     private final String description;
+    private final UUID createdByUserId;
     private final UUID paidByUserId;
     private final Instant createdAt;
     private final Instant deletedAt;
@@ -19,6 +20,7 @@ public final class SettlementTransaction {
             UUID periodId,
             BigDecimal amount,
             String description,
+            UUID createdByUserId,
             UUID paidByUserId,
             Instant createdAt,
             Instant deletedAt,
@@ -36,6 +38,9 @@ public final class SettlementTransaction {
         if (paidByUserId == null) {
             throw new IllegalArgumentException("paidByUserId must not be null");
         }
+        if (createdByUserId == null) {
+            throw new IllegalArgumentException("createdByUserId must not be null");
+        }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
         }
@@ -43,6 +48,7 @@ public final class SettlementTransaction {
         this.periodId = periodId;
         this.amount = amount;
         this.description = description;
+        this.createdByUserId = createdByUserId;
         this.paidByUserId = paidByUserId;
         this.createdAt = createdAt;
         this.deletedAt = deletedAt;
@@ -53,6 +59,7 @@ public final class SettlementTransaction {
             SettlementPeriod period,
             BigDecimal amount,
             String description,
+            UUID actorUserId,
             UUID paidByUserId,
             Instant createdAt,
             String category
@@ -66,11 +73,15 @@ public final class SettlementTransaction {
         if (!period.hasParticipant(paidByUserId)) {
             throw new IllegalArgumentException("paidByUserId must be a participant of the period");
         }
+        if (!period.hasParticipant(actorUserId)) {
+            throw new IllegalArgumentException("createdByUserId must be a participant of the period");
+        }
         return new SettlementTransaction(
                 UUID.randomUUID(),
                 period.getId(),
                 amount,
                 description,
+                actorUserId,
                 paidByUserId,
                 createdAt,
                 null,
@@ -99,6 +110,7 @@ public final class SettlementTransaction {
                 periodId,
                 amount,
                 description,
+                createdByUserId,
                 paidByUserId,
                 createdAt,
                 deletedAt,
@@ -124,6 +136,10 @@ public final class SettlementTransaction {
 
     public UUID getPaidByUserId() {
         return paidByUserId;
+    }
+
+    public UUID getCreatedByUserId() {
+        return createdByUserId;
     }
 
     public Instant getCreatedAt() {

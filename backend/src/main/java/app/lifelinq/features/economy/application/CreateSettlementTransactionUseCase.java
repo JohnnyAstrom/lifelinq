@@ -45,6 +45,7 @@ public final class CreateSettlementTransactionUseCase {
                 period,
                 command.amount(),
                 command.description(),
+                command.actorUserId(),
                 command.paidByUserId(),
                 clock.instant(),
                 command.category()

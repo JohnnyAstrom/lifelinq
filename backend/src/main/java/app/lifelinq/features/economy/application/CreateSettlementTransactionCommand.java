@@ -7,6 +7,7 @@ public record CreateSettlementTransactionCommand(
         UUID periodId,
         BigDecimal amount,
         String description,
+        UUID actorUserId,
         UUID paidByUserId,
         String category
 ) {

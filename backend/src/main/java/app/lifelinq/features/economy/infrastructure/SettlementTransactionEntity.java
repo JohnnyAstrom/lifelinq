@@ -23,6 +23,9 @@ public class SettlementTransactionEntity {
     @Column(nullable = false)
     private String description;
 
+    @Column(name = "created_by_user_id", nullable = false)
+    private UUID createdByUserId;
+
     @Column(name = "paid_by_user_id", nullable = false)
     private UUID paidByUserId;
 
@@ -43,6 +46,7 @@ public class SettlementTransactionEntity {
             UUID periodId,
             BigDecimal amount,
             String description,
+            UUID createdByUserId,
             UUID paidByUserId,
             Instant createdAt,
             Instant deletedAt,
@@ -52,6 +56,7 @@ public class SettlementTransactionEntity {
         this.periodId = periodId;
         this.amount = amount;
         this.description = description;
+        this.createdByUserId = createdByUserId;
         this.paidByUserId = paidByUserId;
         this.createdAt = createdAt;
         this.deletedAt = deletedAt;
@@ -76,6 +81,10 @@ public class SettlementTransactionEntity {
 
     public UUID getPaidByUserId() {
         return paidByUserId;
+    }
+
+    public UUID getCreatedByUserId() {
+        return createdByUserId;
     }
 
     public Instant getCreatedAt() {
