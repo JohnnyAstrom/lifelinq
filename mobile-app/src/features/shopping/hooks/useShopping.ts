@@ -3,7 +3,7 @@ import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { createShoppingItem } from '../api/shoppingApi';
 
-export function useShopping(token: string | null) {
+export function useShopping(token: string | null, listId: string) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { handleApiError } = useAuth();
@@ -15,7 +15,7 @@ export function useShopping(token: string | null) {
     setLoading(true);
     setError(null);
     try {
-      await createShoppingItem(token, name);
+      await createShoppingItem(token, listId, name);
     } catch (err) {
       await handleApiError(err);
       setError(formatApiError(err));

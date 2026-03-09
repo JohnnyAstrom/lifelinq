@@ -31,10 +31,11 @@ export type CreateShoppingItemResponse = {
 
 export async function createShoppingItem(
   token: string,
+  listId: string,
   name: string
 ): Promise<CreateShoppingItemResponse> {
   return fetchJson<CreateShoppingItemResponse>(
-    '/shopping-items',
+    `/shopping-lists/${encodeURIComponent(listId)}/items`,
     {
       method: 'POST',
       body: JSON.stringify({ name }),

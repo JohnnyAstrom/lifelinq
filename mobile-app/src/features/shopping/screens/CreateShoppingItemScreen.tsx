@@ -6,12 +6,13 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
+  listId: string;
   onDone: () => void;
 };
 
-export function CreateShoppingItemScreen({ token, onDone }: Props) {
+export function CreateShoppingItemScreen({ token, listId, onDone }: Props) {
   const [name, setName] = useState('');
-  const shopping = useShopping(token);
+  const shopping = useShopping(token, listId);
   const strings = {
     title: 'Create shopping item',
     subtitle: 'Keep the list fresh and accurate.',
