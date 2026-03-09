@@ -4,6 +4,7 @@ import app.lifelinq.features.economy.domain.SettlementPeriod;
 import app.lifelinq.features.economy.domain.SettlementPeriodRepository;
 import app.lifelinq.features.economy.domain.SettlementTransaction;
 import app.lifelinq.features.economy.domain.SettlementTransactionRepository;
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import java.time.Clock;
 import java.util.UUID;
 
@@ -31,18 +32,21 @@ public final class SoftDeleteSettlementTransactionUseCase {
         this.clock = clock;
     }
 
-    public boolean execute(UUID transactionId) {
+    public void execute(UUID activeGroupId, UUID transactionId) {
+        if (activeGroupId == null) {
+            throw new IllegalArgumentException("activeGroupId must not be null");
+        }
         if (transactionId == null) {
             throw new IllegalArgumentException("transactionId must not be null");
         }
-        SettlementTransaction transaction = settlementTransactionRepository.findById(transactionId).orElse(null);
-        if (transaction == null) {
-            return false;
-        }
+        SettlementTransaction transaction = settlementTransactionRepository.findById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException(transactionId));
         SettlementPeriod period = settlementPeriodRepository.findById(transaction.getPeriodId())
-                .orElseThrow(() -> new IllegalStateException("period not found"));
+                .orElseThrow(() -> new PeriodNotFoundException(transaction.getPeriodId()));
+        if (!activeGroupId.equals(period.getGroupId())) {
+            throw new AccessDeniedException("transaction does not belong to active group");
+        }
         SettlementTransaction deleted = transaction.softDelete(clock.instant(), period);
         settlementTransactionRepository.save(deleted);
-        return deleted.getDeletedAt() != null;
     }
 }

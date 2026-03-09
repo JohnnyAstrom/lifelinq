@@ -1,6 +1,6 @@
 package app.lifelinq.features.economy.application;
 
-import java.util.UUID;
+import app.lifelinq.features.economy.domain.SettlementTransaction;
 
-public record CreateSettlementTransactionResult(UUID transactionId) {
+public record CreateSettlementTransactionResult(SettlementTransaction transaction) {
 }

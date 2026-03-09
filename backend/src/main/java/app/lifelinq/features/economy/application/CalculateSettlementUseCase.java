@@ -10,6 +10,7 @@ import app.lifelinq.features.economy.domain.SettlementPeriodRepository;
 import app.lifelinq.features.economy.domain.SettlementStrategyType;
 import app.lifelinq.features.economy.domain.SettlementTransaction;
 import app.lifelinq.features.economy.domain.SettlementTransactionRepository;
+import app.lifelinq.features.group.contract.AccessDeniedException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -57,12 +58,18 @@ public final class CalculateSettlementUseCase {
         this.percentageCostSettlementCalculator = percentageCostSettlementCalculator;
     }
 
-    public CalculateSettlementResult execute(UUID periodId) {
+    public CalculateSettlementResult execute(UUID activeGroupId, UUID periodId) {
+        if (activeGroupId == null) {
+            throw new IllegalArgumentException("activeGroupId must not be null");
+        }
         if (periodId == null) {
             throw new IllegalArgumentException("periodId must not be null");
         }
         SettlementPeriod period = settlementPeriodRepository.findById(periodId)
-                .orElseThrow(() -> new IllegalArgumentException("period not found"));
+                .orElseThrow(() -> new PeriodNotFoundException(periodId));
+        if (!activeGroupId.equals(period.getGroupId())) {
+            throw new AccessDeniedException("period does not belong to active group");
+        }
         List<SettlementTransaction> activeTransactions = settlementTransactionRepository.findActiveByPeriodId(periodId);
 
         SettlementCalculator calculator = resolveCalculator(period.getStrategySnapshot().getStrategyType());
