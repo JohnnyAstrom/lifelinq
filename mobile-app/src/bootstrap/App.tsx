@@ -661,6 +661,7 @@ function AppStack({
     screenContent = (
       <EconomyScreen
         token={token}
+        onShowToast={showToast}
         onDone={() => {
           setScreen('home');
         }}

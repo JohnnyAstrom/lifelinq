@@ -5,6 +5,8 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   period: ActiveSettlementPeriodResponse;
+  showPreviousPeriodClosed?: boolean;
+  resolveUserName?: (userId: string) => string;
 };
 
 function formatDate(value: string | null): string {
@@ -18,19 +20,28 @@ function formatDate(value: string | null): string {
   return date.toLocaleDateString();
 }
 
-export function SettlementPeriodHeader({ period }: Props) {
+export function SettlementPeriodHeader({
+  period,
+  showPreviousPeriodClosed = false,
+  resolveUserName,
+}: Props) {
+  function displayUser(userId: string): string {
+    const resolved = resolveUserName ? resolveUserName(userId) : userId;
+    return resolved === userId ? userId.slice(0, 8) : resolved;
+  }
+
   return (
     <View style={styles.root}>
-      <Text style={textStyles.h3}>Active period</Text>
       <Subtle>
         {formatDate(period.startDate)} - {period.endDate ? formatDate(period.endDate) : 'Open'}
       </Subtle>
-      <Subtle>Strategy: {period.strategyType}</Subtle>
-      <Subtle>Participants: {period.participantUserIds.length}</Subtle>
+      {showPreviousPeriodClosed ? <Subtle>Previous period closed</Subtle> : null}
+      <Subtle>{`Strategy: ${period.strategyType}`}</Subtle>
+      <Subtle>{`${period.participantUserIds.length} participants`}</Subtle>
       <View style={styles.participants}>
         {period.participantUserIds.map((userId) => (
           <View key={userId} style={styles.participantChip}>
-            <Text style={styles.participantText}>{userId.slice(0, 8)}</Text>
+            <Text style={styles.participantText}>{displayUser(userId)}</Text>
           </View>
         ))}
       </View>

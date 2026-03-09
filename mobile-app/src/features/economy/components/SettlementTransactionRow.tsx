@@ -7,6 +7,7 @@ type Props = {
   item: SettlementTransactionResponse;
   deleting?: boolean;
   onDelete: () => void;
+  resolveUserName?: (userId: string) => string;
 };
 
 function formatAmount(amount: number): string {
@@ -14,13 +15,21 @@ function formatAmount(amount: number): string {
   return rounded.toFixed(2);
 }
 
-export function SettlementTransactionRow({ item, deleting, onDelete }: Props) {
+export function SettlementTransactionRow({
+  item,
+  deleting,
+  onDelete,
+  resolveUserName,
+}: Props) {
+  const resolved = resolveUserName ? resolveUserName(item.paidByUserId) : item.paidByUserId;
+  const payerLabel = resolved === item.paidByUserId ? item.paidByUserId.slice(0, 8) : resolved;
+
   return (
     <View style={styles.row}>
       <View style={styles.content}>
         <Text style={styles.title}>{item.description?.trim() || 'Transaction'}</Text>
         <Subtle>
-          Paid by {item.paidByUserId.slice(0, 8)}
+          Paid by {payerLabel}
           {item.category ? ` · ${item.category}` : ''}
         </Subtle>
         <Subtle>{new Date(item.createdAt).toLocaleDateString()}</Subtle>

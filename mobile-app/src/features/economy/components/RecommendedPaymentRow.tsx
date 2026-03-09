@@ -5,6 +5,7 @@ type Props = {
   fromUserId: string;
   toUserId: string;
   amount: number;
+  resolveUserName?: (userId: string) => string;
 };
 
 function formatAmount(amount: number): string {
@@ -12,11 +13,16 @@ function formatAmount(amount: number): string {
   return rounded.toFixed(2);
 }
 
-export function RecommendedPaymentRow({ fromUserId, toUserId, amount }: Props) {
+export function RecommendedPaymentRow({ fromUserId, toUserId, amount, resolveUserName }: Props) {
+  const resolvedFrom = resolveUserName ? resolveUserName(fromUserId) : fromUserId;
+  const resolvedTo = resolveUserName ? resolveUserName(toUserId) : toUserId;
+  const fromLabel = resolvedFrom === fromUserId ? fromUserId.slice(0, 8) : resolvedFrom;
+  const toLabel = resolvedTo === toUserId ? toUserId.slice(0, 8) : resolvedTo;
+
   return (
     <View style={styles.row}>
       <Text style={styles.users}>
-        {fromUserId.slice(0, 8)} {'->'} {toUserId.slice(0, 8)}
+        {fromLabel} {'->'} {toLabel}
       </Text>
       <Text style={styles.amount}>{formatAmount(amount)}</Text>
     </View>

@@ -4,6 +4,7 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 type Props = {
   userId: string;
   amount: number;
+  resolveUserName?: (userId: string) => string;
 };
 
 function formatAmount(amount: number): string {
@@ -11,13 +12,15 @@ function formatAmount(amount: number): string {
   return rounded.toFixed(2);
 }
 
-export function SettlementBalanceRow({ userId, amount }: Props) {
+export function SettlementBalanceRow({ userId, amount, resolveUserName }: Props) {
   const positive = amount > 0;
   const color = positive ? theme.colors.danger : theme.colors.success;
+  const resolved = resolveUserName ? resolveUserName(userId) : userId;
+  const displayUser = resolved === userId ? userId.slice(0, 8) : resolved;
 
   return (
     <View style={styles.row}>
-      <Text style={styles.user}>{userId.slice(0, 8)}</Text>
+      <Text style={styles.user}>{displayUser}</Text>
       <Text style={[styles.amount, { color }]}>
         {positive ? '+' : ''}{formatAmount(amount)}
       </Text>

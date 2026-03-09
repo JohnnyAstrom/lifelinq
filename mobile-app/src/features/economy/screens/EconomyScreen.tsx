@@ -1,24 +1,28 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CreateTransactionSheetContent } from '../components/CreateTransactionSheetContent';
-import { RecommendedPaymentRow } from '../components/RecommendedPaymentRow';
-import { SettlementBalanceRow } from '../components/SettlementBalanceRow';
-import { SettlementPeriodHeader } from '../components/SettlementPeriodHeader';
-import { SettlementTransactionRow } from '../components/SettlementTransactionRow';
+import { EconomyRoundCard } from '../components/EconomyRoundCard';
+import { EconomySettlementCard } from '../components/EconomySettlementCard';
+import { EconomySummaryCard } from '../components/EconomySummaryCard';
+import { EconomyTransactionsCard } from '../components/EconomyTransactionsCard';
+import { buildParticipantNameMap, resolveParticipantDisplayName } from '../utils/participantNameMap';
+import { useGroupMembers } from '../../group/hooks/useGroupMembers';
 import { useEconomyWorkflow } from '../hooks/useEconomyWorkflow';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
-import { AppButton, AppCard, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { AppButton, AppScreen, BackIconButton, Subtle, TopBar } from '../../../shared/ui/components';
 import { theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
   onDone: () => void;
+  onShowToast: (message: string) => void;
 };
 
-export function EconomyScreen({ token, onDone }: Props) {
+export function EconomyScreen({ token, onDone, onShowToast }: Props) {
   const workflow = useEconomyWorkflow(token);
   const { state, actions } = workflow;
+  const members = useGroupMembers(token);
 
   const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [amountInput, setAmountInput] = useState('');
@@ -26,8 +30,12 @@ export function EconomyScreen({ token, onDone }: Props) {
   const [categoryInput, setCategoryInput] = useState('');
   const [paidByUserId, setPaidByUserId] = useState<string | null>(null);
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
+  const [showPreviousPeriodClosed, setShowPreviousPeriodClosed] = useState(false);
 
   const participants = state.period?.participantUserIds ?? [];
+  const participantNameMap = useMemo(() => buildParticipantNameMap(members.items), [members.items]);
+  const resolveUserName = (userId: string) =>
+    resolveParticipantDisplayName(participantNameMap, userId);
 
   useAppBackHandler({
     canGoBack: true,
@@ -76,6 +84,15 @@ export function EconomyScreen({ token, onDone }: Props) {
     }
   }
 
+  async function handleClosePeriod() {
+    const closed = await actions.closePeriod();
+    if (!closed) {
+      return;
+    }
+    setShowPreviousPeriodClosed(true);
+    onShowToast('Settlement round closed. A new round has started.');
+  }
+
   return (
     <AppScreen>
       <TopBar
@@ -88,68 +105,37 @@ export function EconomyScreen({ token, onDone }: Props) {
         {state.loading ? <Subtle>Loading economy data...</Subtle> : null}
         {state.error ? <Text style={styles.error}>{state.error}</Text> : null}
 
-        <AppCard>
-          <SectionTitle>Period</SectionTitle>
-          {state.period ? (
-            <>
-              <SettlementPeriodHeader period={state.period} />
-              <AppButton title="Close current period" onPress={() => { void actions.closePeriod(); }} variant="ghost" fullWidth />
-            </>
-          ) : (
-            <Subtle>No active period.</Subtle>
-          )}
-        </AppCard>
+        <EconomySummaryCard
+          balances={state.balances}
+          recommendedPayments={state.recommendedPayments}
+          resolveUserName={resolveUserName}
+        />
 
-        <AppCard>
-          <SectionTitle>Settlement</SectionTitle>
-          <Subtle>Balances</Subtle>
-          <View style={styles.list}>
-            {state.balances.length === 0 ? (
-              <Subtle>No balances yet.</Subtle>
-            ) : (
-              state.balances.map((item) => (
-                <SettlementBalanceRow key={item.userId} userId={item.userId} amount={item.amount} />
-              ))
-            )}
-          </View>
+        <EconomyTransactionsCard
+          transactions={state.transactions}
+          deletingTransactionId={deletingTransactionId}
+          resolveUserName={resolveUserName}
+          onDelete={(transactionId) => {
+            void handleDeleteTransaction(transactionId);
+          }}
+        />
 
-          <Subtle style={styles.subsection}>Recommended payments</Subtle>
-          <View style={styles.list}>
-            {state.recommendedPayments.length === 0 ? (
-              <Subtle>No payments needed.</Subtle>
-            ) : (
-              state.recommendedPayments.map((item, index) => (
-                <RecommendedPaymentRow
-                  key={`${item.fromUserId}-${item.toUserId}-${index}`}
-                  fromUserId={item.fromUserId}
-                  toUserId={item.toUserId}
-                  amount={item.amount}
-                />
-              ))
-            )}
-          </View>
-        </AppCard>
+        <AppButton title="+ Add expense" onPress={openCreateSheet} fullWidth />
 
-        <AppCard>
-          <SectionTitle>Transactions</SectionTitle>
-          <View style={styles.list}>
-            {state.transactions.length === 0 ? (
-              <Subtle>No transactions yet.</Subtle>
-            ) : (
-              state.transactions.map((item) => (
-                <SettlementTransactionRow
-                  key={item.transactionId}
-                  item={item}
-                  deleting={deletingTransactionId === item.transactionId}
-                  onDelete={() => {
-                    void handleDeleteTransaction(item.transactionId);
-                  }}
-                />
-              ))
-            )}
-          </View>
-          <AppButton title="Add transaction" onPress={openCreateSheet} fullWidth />
-        </AppCard>
+        <EconomySettlementCard
+          balances={state.balances}
+          recommendedPayments={state.recommendedPayments}
+          resolveUserName={resolveUserName}
+        />
+
+        <EconomyRoundCard
+          period={state.period}
+          showPreviousPeriodClosed={showPreviousPeriodClosed}
+          resolveUserName={resolveUserName}
+          onCloseRound={() => {
+            void handleClosePeriod();
+          }}
+        />
       </View>
 
       {showCreateSheet ? (
@@ -181,13 +167,6 @@ const styles = StyleSheet.create({
   contentOffset: {
     paddingTop: 90,
     gap: theme.spacing.md,
-  },
-  list: {
-    marginTop: theme.spacing.xs,
-    gap: theme.spacing.sm,
-  },
-  subsection: {
-    marginTop: theme.spacing.sm,
   },
   error: {
     color: theme.colors.danger,
