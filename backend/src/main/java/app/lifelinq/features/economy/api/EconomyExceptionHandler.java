@@ -4,6 +4,7 @@ import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.economy.application.PeriodNotFoundException;
 import app.lifelinq.features.economy.application.TransactionNotFoundException;
 import app.lifelinq.features.group.contract.AccessDeniedException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +17,12 @@ public final class EconomyExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleConflict(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiErrorResponse("CONFLICT", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityConflict(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("CONFLICT", "data integrity constraint violated"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

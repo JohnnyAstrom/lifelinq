@@ -17,6 +17,11 @@ public class InMemorySettlementPeriodRepository implements SettlementPeriodRepos
     }
 
     @Override
+    public void flush() {
+        // No-op for in-memory storage.
+    }
+
+    @Override
     public Optional<SettlementPeriod> findById(UUID periodId) {
         return Optional.ofNullable(periods.get(periodId));
     }

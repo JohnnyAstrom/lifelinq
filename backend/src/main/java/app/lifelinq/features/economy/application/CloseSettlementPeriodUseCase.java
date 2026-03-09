@@ -63,6 +63,7 @@ public class CloseSettlementPeriodUseCase {
         );
 
         settlementPeriodRepository.save(closedPeriod);
+        settlementPeriodRepository.flush();
         settlementPeriodRepository.save(newOpenPeriod);
         return new CloseSettlementPeriodResult(closedPeriod.getId(), newOpenPeriod.getId());
     }

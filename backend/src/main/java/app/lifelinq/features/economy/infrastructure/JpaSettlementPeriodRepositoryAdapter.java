@@ -24,6 +24,11 @@ public class JpaSettlementPeriodRepositoryAdapter implements SettlementPeriodRep
     }
 
     @Override
+    public void flush() {
+        settlementPeriodJpaRepository.flush();
+    }
+
+    @Override
     public Optional<SettlementPeriod> findById(UUID periodId) {
         return settlementPeriodJpaRepository.findById(periodId).map(settlementPeriodMapper::toDomain);
     }

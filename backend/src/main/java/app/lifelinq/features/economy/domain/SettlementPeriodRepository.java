@@ -6,6 +6,8 @@ import java.util.UUID;
 public interface SettlementPeriodRepository {
     void save(SettlementPeriod period);
 
+    void flush();
+
     Optional<SettlementPeriod> findById(UUID periodId);
 
     Optional<SettlementPeriod> findOpenByGroupId(UUID groupId);
