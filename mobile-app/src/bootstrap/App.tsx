@@ -18,6 +18,7 @@ import { MealsWeekScreen } from '../features/meals/screens/MealsWeekScreen';
 import { ShoppingListsScreen } from '../features/shopping/screens/ShoppingListsScreen';
 import { ShoppingListDetailScreen } from '../features/shopping/screens/ShoppingListDetailScreen';
 import { DocumentsScreen } from '../features/documents/screens/DocumentsScreen';
+import { EconomyScreen } from '../features/economy/screens/EconomyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ManagePlaceScreen } from '../screens/ManagePlaceScreen';
 import { ManageInvitationsScreen } from '../screens/ManageInvitationsScreen';
@@ -47,6 +48,7 @@ type Screen =
   | 'manage-invitations'
   | 'spaces'
   | 'documents'
+  | 'economy'
   | 'accept-invite';
 
 export default function App() {
@@ -655,6 +657,15 @@ function AppStack({
         }}
       />
     );
+  } else if (screen === 'economy') {
+    screenContent = (
+      <EconomyScreen
+        token={token}
+        onDone={() => {
+          setScreen('home');
+        }}
+      />
+    );
   } else if (screen === 'settings') {
     screenContent = (
       <SettingsScreen
@@ -745,6 +756,9 @@ function AppStack({
         }}
         onDocuments={() => {
           setScreen('documents');
+        }}
+        onEconomy={() => {
+          setScreen('economy');
         }}
         onSettings={() => {
           setScreen('settings');

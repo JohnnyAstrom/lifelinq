@@ -14,6 +14,7 @@ type Props = {
   onCreateShopping: () => void;
   onMeals: () => void;
   onDocuments: () => void;
+  onEconomy: () => void;
   onSettings: () => void;
 };
 
@@ -26,6 +27,7 @@ export function HomeScreen({
   onCreateShopping,
   onMeals,
   onDocuments,
+  onEconomy,
   onSettings,
 }: Props) {
   const todos = useTodos(token, 'OPEN', undefined, {
@@ -42,6 +44,8 @@ export function HomeScreen({
     shoppingSubtitle: 'Sync lists instantly',
     documentsTitle: 'Documents',
     documentsSubtitle: 'Store receipts and records',
+    economyTitle: 'Economy',
+    economySubtitle: 'Shared expenses',
     todayTitle: 'Today',
     todaySubtitle: 'Open todos for today.',
     todayPlaceholderTitle: 'No items yet',
@@ -122,6 +126,7 @@ export function HomeScreen({
             <ActionTile title={strings.todosTitle} subtitle={strings.todosSubtitle} onPress={onCreateTodo} />
             <ActionTile title={strings.shoppingTitle} subtitle={strings.shoppingSubtitle} onPress={onCreateShopping} />
             <ActionTile title={strings.documentsTitle} subtitle={strings.documentsSubtitle} onPress={onDocuments} />
+            <ActionTile title={strings.economyTitle} subtitle={strings.economySubtitle} onPress={onEconomy} />
           </View>
         </AppCard>
       </View>
