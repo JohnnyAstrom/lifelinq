@@ -7,6 +7,7 @@ import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.group.contract.UserDefaultGroupProvisioning;
 import app.lifelinq.features.group.infrastructure.InMemoryInvitationShortCodeGenerator;
 import app.lifelinq.features.group.infrastructure.UserDefaultGroupProvisioningAdapter;
+import app.lifelinq.features.economy.contract.InitializeGroupEconomyPort;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
@@ -99,6 +100,7 @@ public class GroupApplicationConfig {
             UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
+            InitializeGroupEconomyPort initializeGroupEconomyPort,
             Clock clock,
             @Value("${lifelinq.group.invitation.previewBaseUrl:http://localhost:8080}") String invitationPreviewBaseUrl
     ) {
@@ -121,7 +123,8 @@ public class GroupApplicationConfig {
                 userActiveGroupRead,
                 userActiveGroupSelection,
                 userProfileRead,
-                clock
+                clock,
+                initializeGroupEconomyPort
         );
     }
 

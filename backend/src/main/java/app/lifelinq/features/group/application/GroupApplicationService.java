@@ -10,6 +10,7 @@ import app.lifelinq.features.group.domain.GroupRepository;
 import app.lifelinq.features.group.domain.InvitationType;
 import app.lifelinq.features.group.domain.InvitationRepository;
 import app.lifelinq.features.group.domain.Invitation;
+import app.lifelinq.features.economy.contract.InitializeGroupEconomyPort;
 import app.lifelinq.features.user.contract.UserProvisioning;
 import app.lifelinq.features.user.contract.UserActiveGroupRead;
 import app.lifelinq.features.user.contract.UserActiveGroupSelection;
@@ -51,6 +52,7 @@ public class GroupApplicationService {
     private final UserActiveGroupSelection userActiveGroupSelection;
     private final UserProfileRead userProfileRead;
     private final Clock clock;
+    private final InitializeGroupEconomyPort initializeGroupEconomyPort;
 
     public GroupApplicationService(
             AcceptInvitationUseCase acceptInvitationUseCase,
@@ -71,7 +73,8 @@ public class GroupApplicationService {
             UserActiveGroupRead userActiveGroupRead,
             UserActiveGroupSelection userActiveGroupSelection,
             UserProfileRead userProfileRead,
-            Clock clock
+            Clock clock,
+            InitializeGroupEconomyPort initializeGroupEconomyPort
     ) {
         this.acceptInvitationUseCase = acceptInvitationUseCase;
         this.createGroupUseCase = createGroupUseCase;
@@ -101,6 +104,56 @@ public class GroupApplicationService {
         this.userActiveGroupSelection = userActiveGroupSelection;
         this.userProfileRead = userProfileRead;
         this.clock = clock;
+        if (initializeGroupEconomyPort == null) {
+            throw new IllegalArgumentException("initializeGroupEconomyPort must not be null");
+        }
+        this.initializeGroupEconomyPort = initializeGroupEconomyPort;
+    }
+
+    public GroupApplicationService(
+            AcceptInvitationUseCase acceptInvitationUseCase,
+            CreateGroupUseCase createGroupUseCase,
+            AddMemberToGroupUseCase addMemberToGroupUseCase,
+            ListGroupMembersUseCase listGroupMembersUseCase,
+            RemoveMemberFromGroupUseCase removeMemberFromGroupUseCase,
+            CreateInvitationUseCase createInvitationUseCase,
+            ResolveInvitationCodeUseCase resolveInvitationCodeUseCase,
+            PreviewInvitationUseCase previewInvitationUseCase,
+            RevokeInvitationUseCase revokeInvitationUseCase,
+            InvitationRepository invitationRepository,
+            MembershipRepository membershipRepository,
+            GroupRepository groupRepository,
+            GroupInvitationMailSender groupInvitationMailSender,
+            String invitationPreviewBaseUrl,
+            UserProvisioning userProvisioning,
+            UserActiveGroupRead userActiveGroupRead,
+            UserActiveGroupSelection userActiveGroupSelection,
+            UserProfileRead userProfileRead,
+            Clock clock
+    ) {
+        this(
+                acceptInvitationUseCase,
+                createGroupUseCase,
+                addMemberToGroupUseCase,
+                listGroupMembersUseCase,
+                removeMemberFromGroupUseCase,
+                createInvitationUseCase,
+                resolveInvitationCodeUseCase,
+                previewInvitationUseCase,
+                revokeInvitationUseCase,
+                invitationRepository,
+                membershipRepository,
+                groupRepository,
+                groupInvitationMailSender,
+                invitationPreviewBaseUrl,
+                userProvisioning,
+                userActiveGroupRead,
+                userActiveGroupSelection,
+                userProfileRead,
+                clock,
+                groupId -> {
+                }
+        );
     }
 
     @Transactional
@@ -242,6 +295,7 @@ public class GroupApplicationService {
         userProvisioning.ensureUserExists(ownerUserId);
         CreateGroupCommand command = new CreateGroupCommand(name, ownerUserId);
         CreateGroupResult result = createGroupUseCase.execute(command);
+        initializeGroupEconomyPort.initializeGroupEconomy(result.getGroupId());
         return result.getGroupId();
     }
 
@@ -416,7 +470,9 @@ public class GroupApplicationService {
                 userActiveGroupRead,
                 userActiveGroupSelection,
                 userProfileRead,
-                clock
+                clock,
+                groupId -> {
+                }
         );
     }
 

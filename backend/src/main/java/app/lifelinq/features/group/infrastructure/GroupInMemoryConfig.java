@@ -1,6 +1,7 @@
 package app.lifelinq.features.group.infrastructure;
 
 import app.lifelinq.features.group.contract.GroupAccountDeletionGovernancePort;
+import app.lifelinq.features.group.contract.GroupMembershipReadPort;
 import app.lifelinq.features.group.contract.UserGroupMembershipLookup;
 import app.lifelinq.features.group.application.GroupInvitationMailSender;
 import app.lifelinq.features.group.domain.GroupRepository;
@@ -54,5 +55,12 @@ public class GroupInMemoryConfig {
             GroupRepository groupRepository
     ) {
         return new UserGroupMembershipLookupAdapter(membershipRepository, groupRepository);
+    }
+
+    @Bean
+    public GroupMembershipReadPort groupMembershipReadPort(
+            MembershipRepository membershipRepository
+    ) {
+        return new GroupMembershipReadAdapter(membershipRepository);
     }
 }
