@@ -34,6 +34,16 @@ It calculates settlement obligations only.
 - The model must support multiple fairness strategies.
 - The model must remain lightweight and group-oriented.
 
+### Currency
+
+Each group operates in a single configured currency.
+
+All transactions within a group use the group's configured currency.
+
+The Economy feature does not support mixed currencies within the same group or settlement period.
+
+Currency conversion is out of scope for the system.
+
 ---
 
 ## Core Model
@@ -61,6 +71,25 @@ Each group operates in sequential settlement periods.
 
 ---
 
+## Period Participants
+
+Each settlement period captures a snapshot of the participating group members.
+
+These participants define who is included in settlement calculations for the period.
+
+Data shape (conceptual):
+
+- `participants[]` (userIds)
+
+Rules:
+
+- Participants are captured when the period is created.
+- Participants remain immutable for the lifetime of the period.
+- Settlement calculations include only these participants.
+- Changes in group membership do not affect existing periods.
+
+---
+
 ## Transactions
 
 Transactions represent shared expenses within a period.
@@ -83,6 +112,12 @@ Transactions represent shared expenses within a period.
 - Deleted transactions are excluded from settlement.
 - No transaction mutation allowed in `CLOSED` periods.
 
+#### V0 Sharing Rule
+
+In V0, all transactions are shared equally across all participants of the settlement period.
+
+Future versions may allow transactions to specify a subset of participants.
+
 ---
 
 ## Incomes
@@ -103,9 +138,12 @@ Incomes are only relevant for strategies that require them.
 
 Settlement is always calculated dynamically from:
 
+- period participants
 - active transactions
 - incomes (if applicable)
 - strategy snapshot
+
+Settlement produces a balance per participant.
 
 For each period:
 
@@ -157,6 +195,7 @@ remaining disposable income is equalized between members.
   - sets `endDate`
   - sets `status = CLOSED`
   - creates a new `OPEN` period starting at the same timestamp.
+  - the new period captures a fresh participant snapshot based on current group membership.
 - Closed periods are read-only.
 
 ---
