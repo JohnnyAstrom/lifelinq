@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
-public final class UpdateSettlementStrategyUseCase {
+public class UpdateSettlementStrategyUseCase {
     private final SettlementPeriodRepository settlementPeriodRepository;
 
     public UpdateSettlementStrategyUseCase(SettlementPeriodRepository settlementPeriodRepository) {

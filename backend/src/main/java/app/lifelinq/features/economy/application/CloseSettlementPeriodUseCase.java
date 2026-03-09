@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
-public final class CloseSettlementPeriodUseCase {
+public class CloseSettlementPeriodUseCase {
     private final SettlementPeriodRepository settlementPeriodRepository;
     private final GroupMembershipReadPort groupMembershipReadPort;
     private final Clock clock;
