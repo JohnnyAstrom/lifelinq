@@ -12,14 +12,10 @@ import app.lifelinq.features.economy.application.ListSettlementTransactionsUseCa
 import app.lifelinq.features.economy.application.SoftDeleteSettlementTransactionUseCase;
 import app.lifelinq.features.economy.application.UpdateSettlementStrategyUseCase;
 import app.lifelinq.features.economy.domain.SettlementPeriod;
-import app.lifelinq.features.economy.domain.SettlementStrategySnapshot;
-import app.lifelinq.features.economy.domain.SettlementStrategyType;
 import app.lifelinq.features.economy.domain.SettlementTransaction;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -96,7 +92,11 @@ public class EconomyController {
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        List<SettlementTransaction> transactions = listSettlementTransactionsUseCase.execute(periodId, includeDeleted);
+        List<SettlementTransaction> transactions = listSettlementTransactionsUseCase.execute(
+                context.getGroupId(),
+                periodId,
+                includeDeleted
+        );
         List<SettlementTransactionResponse> response = new ArrayList<>();
         for (SettlementTransaction transaction : transactions) {
             response.add(toSettlementTransactionResponse(transaction));
@@ -113,20 +113,18 @@ public class EconomyController {
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        var result = createSettlementTransactionUseCase.execute(new CreateSettlementTransactionCommand(
-                periodId,
-                request == null ? null : request.getAmount(),
-                request == null ? null : request.getDescription(),
-                context.getUserId(),
-                request == null ? null : request.getPaidByUserId(),
-                request == null ? null : request.getCategory()
-        ));
-        // Read from list endpoint source of truth to return full DTO shape.
-        SettlementTransaction created = listSettlementTransactionsUseCase.execute(periodId, true).stream()
-                .filter(tx -> result.transactionId().equals(tx.getId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("created transaction not found"));
-        return ResponseEntity.status(HttpStatus.CREATED).body(toSettlementTransactionResponse(created));
+        var result = createSettlementTransactionUseCase.execute(
+                context.getGroupId(),
+                new CreateSettlementTransactionCommand(
+                        periodId,
+                        request == null ? null : request.getAmount(),
+                        request == null ? null : request.getDescription(),
+                        context.getUserId(),
+                        request == null ? null : request.getPaidByUserId(),
+                        request == null ? null : request.getCategory()
+                )
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(toSettlementTransactionResponse(result.transaction()));
     }
 
     @DeleteMapping("/economy/transactions/{transactionId}")
@@ -135,10 +133,7 @@ public class EconomyController {
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        boolean deleted = softDeleteSettlementTransactionUseCase.execute(transactionId);
-        if (!deleted) {
-            return ResponseEntity.notFound().build();
-        }
+        softDeleteSettlementTransactionUseCase.execute(context.getGroupId(), transactionId);
         return ResponseEntity.noContent().build();
     }
 
@@ -148,7 +143,7 @@ public class EconomyController {
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        CalculateSettlementResult result = calculateSettlementUseCase.execute(periodId);
+        CalculateSettlementResult result = calculateSettlementUseCase.execute(context.getGroupId(), periodId);
         List<CalculateSettlementResponse.BalanceItem> balances = result.balances().stream()
                 .sorted(Comparator.comparing(item -> item.userId().toString()))
                 .map(item -> new CalculateSettlementResponse.BalanceItem(item.userId(), item.amount()))
@@ -168,8 +163,12 @@ public class EconomyController {
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        SettlementStrategySnapshot strategySnapshot = toStrategySnapshot(request);
-        updateSettlementStrategyUseCase.execute(periodId, strategySnapshot);
+        updateSettlementStrategyUseCase.execute(
+                context.getGroupId(),
+                periodId,
+                request == null ? null : request.getStrategyType(),
+                request == null ? null : request.getPercentageShares()
+        );
         return ResponseEntity.noContent().build();
     }
 
@@ -200,15 +199,4 @@ public class EconomyController {
         );
     }
 
-    private SettlementStrategySnapshot toStrategySnapshot(UpdateSettlementStrategyRequest request) {
-        if (request == null || request.getStrategyType() == null) {
-            throw new IllegalArgumentException("strategyType must not be null");
-        }
-        SettlementStrategyType strategyType = request.getStrategyType();
-        if (strategyType == SettlementStrategyType.PERCENTAGE_COST) {
-            Map<UUID, BigDecimal> shares = request.getPercentageShares();
-            return SettlementStrategySnapshot.percentageCost(shares);
-        }
-        return SettlementStrategySnapshot.of(strategyType);
-    }
 }
