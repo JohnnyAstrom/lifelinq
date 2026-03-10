@@ -1,6 +1,5 @@
 import { View } from 'react-native';
 import {
-  AppButton,
   AppCard,
   SectionTitle,
   Subtle,
@@ -22,7 +21,6 @@ type Props = {
   onOpenEditor: (day: number, mealType: MealType) => void;
   MEAL_TYPE_LABELS: Record<MealType, string>;
   styles: Record<string, any>;
-  addMealLabel: string;
   emptyText: string;
   title: string;
 };
@@ -33,20 +31,12 @@ export function MealsDailyView({
   onOpenEditor,
   MEAL_TYPE_LABELS,
   styles,
-  addMealLabel,
   emptyText,
   title,
 }: Props) {
   return (
     <AppCard>
-      <View style={styles.dayHeader}>
-        <SectionTitle>{title}</SectionTitle>
-        <AppButton
-          title={addMealLabel}
-          onPress={() => onOpenEditor(dailyDayNumber, 'DINNER')}
-          variant="secondary"
-        />
-      </View>
+      <SectionTitle>{title}</SectionTitle>
       {dailyMeals.length === 0 ? (
         <Subtle>{emptyText}</Subtle>
       ) : (

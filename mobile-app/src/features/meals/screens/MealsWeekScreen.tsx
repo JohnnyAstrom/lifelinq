@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MealsDailyView } from '../components/MealsDailyView';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
@@ -94,6 +95,7 @@ function formatMonthLabel(date: Date) {
 }
 
 export function MealsWeekScreen({ token, onDone }: Props) {
+  const insets = useSafeAreaInsets();
   const strings = {
     title: 'Meals',
     subtitle: 'Plan your week and keep shopping in sync.',
@@ -219,7 +221,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   });
 
   return (
-    <View style={styles.root}>
+    <>
       <AppScreen
         header={(
           <TopBar
@@ -344,7 +346,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             onOpenEditor={actions.openEditor}
             MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
             styles={styles}
-            addMealLabel={strings.addMeal}
             emptyText={strings.noMeals}
             title={strings.title}
           />
@@ -369,6 +370,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
         </View>
       </AppScreen>
+
+        {viewMode === 'daily' ? (
+          <Pressable
+            style={[styles.fab, { bottom: theme.spacing.lg + insets.bottom }]}
+            onPress={() => actions.openEditor(dailyDayNumber, 'DINNER')}
+          >
+            <Text style={styles.fabLabel}>+</Text>
+        </Pressable>
+      ) : null}
 
       <Modal
         visible={editor.isOpen}
@@ -483,15 +493,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             </Pressable>
         ) : null}
       </Modal>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
   headerCard: {
     gap: theme.spacing.xs,
   },
@@ -742,6 +748,23 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: theme.spacing.lg,
+    right: theme.spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.feature.meals,
+    ...theme.elevation.floating,
+  },
+  fabLabel: {
+    fontSize: 28,
+    color: theme.colors.surface,
+    lineHeight: 32,
   },
 });
 
