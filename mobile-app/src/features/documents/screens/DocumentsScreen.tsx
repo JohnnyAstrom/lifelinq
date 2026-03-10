@@ -144,7 +144,7 @@ export function DocumentsScreen({ onDone }: Props) {
       />
 
       <View style={styles.contentOffset}>
-        <AppCard>
+        <AppCard style={styles.searchCard}>
           <SectionTitle>{strings.searchLabel}</SectionTitle>
           <AppInput
             value={documents.query}
@@ -226,7 +226,6 @@ export function DocumentsScreen({ onDone }: Props) {
         <Pressable style={styles.backdrop} onPress={closeCreate}>
           <View style={styles.modalContent}>
             <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
               <KeyboardAwareScrollView
                 style={styles.sheetScroll}
                 contentContainerStyle={styles.sheetScrollContent}
@@ -279,11 +278,13 @@ export function DocumentsScreen({ onDone }: Props) {
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.md,
     gap: theme.spacing.md,
   },
+  searchCard: {
+    gap: 0,
+  },
   searchMeta: {
-    marginTop: theme.spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -292,20 +293,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   createHeaderText: {
     flex: 1,
     gap: theme.spacing.xs,
   },
   list: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   row: {
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     backgroundColor: theme.colors.surfaceAlt,
   },
   rowPressed: {
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.colors.scrim,
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -344,11 +345,13 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    maxHeight: '95%',
-    paddingTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.lg,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    maxWidth: theme.layout.sheetMaxWidth,
+    maxHeight: theme.layout.sheetMaxHeight.tall,
+    alignSelf: 'center',
+    width: '100%',
+    padding: theme.layout.sheetPadding,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -356,19 +359,11 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   sheetScrollContent: {
-    paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.sm,
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.borderStrong,
-    marginBottom: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+    gap: theme.spacing.xs,
   },
   sheetActions: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   formField: {
     gap: theme.spacing.xs,
@@ -379,3 +374,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
 });
+

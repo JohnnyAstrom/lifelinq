@@ -516,7 +516,7 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset,
     gap: theme.spacing.xxl,
   },
   sectionContent: {
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceAlt,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
-    gap: 4,
+    gap: theme.spacing.xs,
   },
   emailInviteAddress: {
     ...textStyles.body,
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   emailInviteExpiry: {
-    marginBottom: 2,
+    marginBottom: theme.spacing.xs,
   },
   error: {
     color: theme.colors.danger,
@@ -614,3 +614,4 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
 });
+

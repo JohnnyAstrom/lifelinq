@@ -59,7 +59,6 @@ export function EditItemSheetContent({
 }: Props) {
   return (
     <>
-      <View style={styles.sheetHandle} />
       <ScrollView
         style={styles.editorScroll}
         contentContainerStyle={styles.editorScrollContent}

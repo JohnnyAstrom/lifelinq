@@ -266,11 +266,11 @@ export function ManagePlaceScreen({
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
-    gap: theme.spacing.xxl,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   sectionContent: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
   },
   placeName: {
@@ -280,21 +280,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...textStyles.h3,
     fontWeight: '700',
-    marginBottom: theme.spacing.xs,
   },
   placeCardPressed: {
     opacity: 0.88,
   },
   renameEditor: {
-    marginTop: theme.spacing.sm,
     gap: theme.spacing.sm,
   },
   renameActions: {
     gap: theme.spacing.sm,
   },
   membersList: {
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
     gap: theme.spacing.xs,
   },
   memberName: {
@@ -305,3 +301,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
+

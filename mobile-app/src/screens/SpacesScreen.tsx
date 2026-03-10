@@ -57,7 +57,7 @@ export function SpacesScreen({ me, onDone, onOpenSpace }: Props) {
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset,
     gap: theme.spacing.md,
   },
   spaceRow: {
@@ -79,3 +79,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xs,
   },
 });
+

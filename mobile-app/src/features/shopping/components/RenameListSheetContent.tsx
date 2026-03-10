@@ -27,7 +27,6 @@ export function RenameListSheetContent({
 }: Props) {
   return (
     <>
-      <View style={styles.sheetHandle} />
       <Text style={textStyles.h3}>{title}</Text>
       <AppInput placeholder={placeholder} value={value} onChangeText={onChangeText} autoFocus />
       <View style={styles.sheetActions}>

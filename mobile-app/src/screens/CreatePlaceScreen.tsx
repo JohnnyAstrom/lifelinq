@@ -113,7 +113,7 @@ export function CreatePlaceScreen({ token, onDone, onCreated }: Props) {
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset,
     gap: theme.spacing.md,
   },
   card: {
@@ -124,3 +124,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
+

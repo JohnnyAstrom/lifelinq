@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
   participantChip: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 999,
-    paddingVertical: 4,
+    borderRadius: theme.radius.pill,
+    paddingVertical: theme.spacing.xs,
     paddingHorizontal: 8,
     backgroundColor: theme.colors.surfaceAlt,
   },
@@ -72,3 +72,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
 });
+

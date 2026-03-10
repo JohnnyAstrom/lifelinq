@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    gap: 2,
+    gap: theme.spacing.xs,
   },
   title: {
     ...textStyles.body,
@@ -77,3 +77,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

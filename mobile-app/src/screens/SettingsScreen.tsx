@@ -135,17 +135,15 @@ function SettingRow({ label, onPress, disabled }: { label: string; onPress?: () 
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.lg,
     gap: theme.spacing.md,
   },
-  section: {
-    gap: theme.spacing.sm,
-  },
+  section: {},
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
@@ -162,12 +160,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: theme.spacing.sm,
   },
-  logoutSection: {
-    marginTop: theme.spacing.lg,
-  },
+  logoutSection: {},
   chevron: {
     ...textStyles.body,
   },
 });
+

@@ -371,7 +371,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             <Pressable style={styles.backdrop} onPress={closeEditor}>
               <View style={styles.modalContent}>
                 <Pressable style={styles.sheet} onPress={() => null}>
-                  <View style={styles.sheetHandle} />
                   <View style={styles.sheetStickyHeader}>
                     <Text style={textStyles.h3}>{strings.planMealTitle}</Text>
                     <Subtle>
@@ -494,7 +493,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
   },
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.md,
     gap: theme.spacing.md,
   },
   viewSwitchRow: {
@@ -553,9 +552,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceAlt,
   },
   mealTypeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.pill,
   },
   mealTypeText: {
     fontSize: 12,
@@ -651,7 +650,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     minWidth: 18,
     height: 18,
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     paddingHorizontal: 4,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
@@ -702,7 +701,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.colors.scrim,
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -711,8 +710,8 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
     maxHeight: '95%',
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
@@ -733,12 +732,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.borderStrong,
-    marginBottom: theme.spacing.sm,
-  },
 });
+

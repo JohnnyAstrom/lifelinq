@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.colors.scrim,
     zIndex: 1,
   },
   overlaySheet: {
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   aboveSheet: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: theme.layout.sheetPadding,
     marginBottom: theme.spacing.sm,
   },
   aboveSheetFloating: {
@@ -127,8 +127,8 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
     position: 'absolute',
     left: 0,
     right: 0,
@@ -137,3 +137,4 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
 });
+

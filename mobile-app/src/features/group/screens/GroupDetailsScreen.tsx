@@ -169,7 +169,7 @@ export function GroupDetailsScreen({ token, me, onDone }: Props) {
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset,
     gap: theme.spacing.md,
   },
   list: {
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   memberIdentity: {
     flex: 1,
-    gap: 4,
+    gap: theme.spacing.xs,
   },
   memberName: {
     ...textStyles.body,
@@ -200,10 +200,10 @@ const styles = StyleSheet.create({
     ...textStyles.subtle,
   },
   youBadge: {
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.surfaceAlt,
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: theme.spacing.xs,
   },
   youBadgeText: {
     ...textStyles.subtle,
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
   },
   overflowPressed: {
     backgroundColor: theme.colors.surfaceAlt,
@@ -254,3 +254,4 @@ const styles = StyleSheet.create({
     color: theme.colors.danger,
   },
 });
+

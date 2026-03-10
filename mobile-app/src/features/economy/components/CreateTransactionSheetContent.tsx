@@ -37,7 +37,6 @@ export function CreateTransactionSheetContent({
 
   return (
     <View style={styles.root}>
-      <View style={styles.handle} />
       <Text style={textStyles.h3}>Add transaction</Text>
       <AppInput
         value={amount}
@@ -91,14 +90,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  handle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.borderStrong,
-    marginBottom: theme.spacing.sm,
-  },
   label: {
     ...textStyles.subtle,
     textTransform: 'uppercase',
@@ -118,3 +109,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
+

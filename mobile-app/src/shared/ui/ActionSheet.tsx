@@ -19,7 +19,7 @@ export function ActionSheet({ visible, onClose, presentation, children }: Action
     presentation === 'compact'
       ? '30%'
       : presentation === 'large'
-        ? '65%'
+        ? '68%'
         : '45%';
 
   return (
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.colors.scrim,
   },
   container: {
     flex: 1,
@@ -68,8 +68,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
   },
   sheetStandard: {
-    borderTopLeftRadius: theme.radius.lg,
-    borderTopRightRadius: theme.radius.lg,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
   },
   sheetFullscreen: {
     height: '100%',
@@ -77,3 +77,4 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 0,
   },
 });
+

@@ -329,17 +329,18 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         right={<BackIconButton onPress={onBack} />}
       />
 
-      <View style={styles.mainLayout}>
-        <ScrollView
-          style={styles.listScroll}
-          contentContainerStyle={styles.scrollContent}
-          scrollEnabled={!workflowState.draggingOpenItemId}
-          keyboardShouldPersistTaps="handled"
-        >
+      <View style={styles.contentOffset}>
+        <View style={styles.mainLayout}>
+          <ScrollView
+            style={styles.listScroll}
+            contentContainerStyle={styles.scrollContent}
+            scrollEnabled={!workflowState.draggingOpenItemId}
+            keyboardShouldPersistTaps="handled"
+          >
           {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-          <AppCard>
+          <AppCard style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <SectionTitle>{strings.openLabel}</SectionTitle>
               <Subtle>{openItems.length} {strings.openCountSuffix}</Subtle>
@@ -396,7 +397,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             )}
           </AppCard>
 
-          <AppCard>
+          <AppCard style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <SectionTitle>{strings.boughtLabel}</SectionTitle>
               <View style={styles.sectionHeaderRight}>
@@ -442,21 +443,22 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
               </View>
             )}
           </AppCard>
-        </ScrollView>
+          </ScrollView>
 
-      <ShoppingAddBar
-        styles={styles}
-        placeholder={strings.addPlaceholder}
-        actionTitle={strings.addAction}
-        onPressInput={() => {
-          workflowActions.setQuickAddName('');
-          workflowActions.setShowQuickAdd(true);
-        }}
-        onPressAction={() => {
-          Keyboard.dismiss();
-          workflowActions.setShowAddDetails(true);
-        }}
-      />
+          <ShoppingAddBar
+            styles={styles}
+            placeholder={strings.addPlaceholder}
+            actionTitle={strings.addAction}
+            onPressInput={() => {
+              workflowActions.setQuickAddName('');
+              workflowActions.setShowQuickAdd(true);
+            }}
+            onPressAction={() => {
+              Keyboard.dismiss();
+              workflowActions.setShowAddDetails(true);
+            }}
+          />
+        </View>
       </View>
 
 
@@ -602,8 +604,11 @@ const MORE_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
 
 const styles = StyleSheet.create({
   screenContent: {
-    padding: 0,
     flex: 1,
+  },
+  contentOffset: {
+    flex: 1,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.md,
   },
   mainLayout: {
     flex: 1,
@@ -612,10 +617,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingTop: 90,
     paddingBottom: theme.spacing.md,
     gap: theme.spacing.md,
+  },
+  sectionCard: {
+    gap: theme.spacing.xs,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -631,7 +637,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
-    marginVertical: 2,
+    marginVertical: theme.spacing.xs,
     borderRadius: theme.radius.md,
   },
   swipeActionBought: {
@@ -646,26 +652,25 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.heading,
   },
   items: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   itemRow: {
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     backgroundColor: theme.colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
   checkboxPressable: {
-    padding: 2,
+    padding: theme.spacing.xs,
   },
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
     backgroundColor: theme.colors.surfaceAlt,
@@ -700,7 +705,7 @@ const styles = StyleSheet.create({
   },
   itemContent: {
     flex: 1,
-    gap: 2,
+    gap: theme.spacing.xs,
   },
   toggleZone: {
     flex: 1,
@@ -711,13 +716,13 @@ const styles = StyleSheet.create({
   detailZone: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: theme.spacing.xs,
     paddingLeft: theme.spacing.sm,
     borderLeftWidth: 1,
     borderLeftColor: theme.colors.border,
   },
   quickEditRow: {
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
     marginLeft: 36,
     padding: theme.spacing.sm,
     borderRadius: theme.radius.md,
@@ -732,16 +737,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   quickEditInputs: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   quickUnitRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   quickActions: {
     flexDirection: 'row',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   quickInput: {
     maxWidth: 140,
@@ -756,20 +761,20 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   bottomBar: {
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
     flexDirection: 'row',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
     alignItems: 'center',
   },
   addDetailsBar: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   addQuantityInput: {
     maxWidth: 160,
@@ -777,21 +782,22 @@ const styles = StyleSheet.create({
   addUnitRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   sheetActions: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   quickAddSheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-    gap: theme.spacing.sm,
+    maxWidth: theme.layout.sheetMaxWidth,
+    alignSelf: 'center',
+    width: '100%',
+    padding: theme.layout.sheetPadding,
+    gap: theme.spacing.xs,
   },
   bottomInput: {
     flex: 1,
@@ -805,8 +811,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     backgroundColor: theme.colors.surfaceAlt,
     justifyContent: 'center',
   },
@@ -824,7 +830,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.success,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
   },
   quickAddFeedbackText: {
     color: '#ffffff',
@@ -839,32 +845,27 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    maxWidth: theme.layout.sheetMaxWidth,
+    alignSelf: 'center',
+    width: '100%',
+    padding: theme.layout.sheetPadding,
+    gap: theme.spacing.xs,
     borderWidth: 1,
     borderColor: theme.colors.border,
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.borderStrong,
-    marginBottom: theme.spacing.sm,
   },
   unitRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   editorActions: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   editorScroll: {
     maxHeight: '100%',
   },
   editorScrollContent: {
-    gap: theme.spacing.sm,
-    paddingBottom: theme.spacing.md,
+    gap: theme.spacing.xs,
   },
 });
+

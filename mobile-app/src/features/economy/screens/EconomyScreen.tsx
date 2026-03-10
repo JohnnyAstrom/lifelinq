@@ -165,7 +165,7 @@ export function EconomyScreen({ token, onDone, onShowToast }: Props) {
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.md,
     gap: theme.spacing.md,
   },
   error: {
@@ -173,3 +173,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
+

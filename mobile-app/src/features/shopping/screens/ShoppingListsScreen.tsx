@@ -265,7 +265,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
         {shopping.loading ? <Subtle>{strings.loading}</Subtle> : null}
         {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-        <AppCard>
+        <AppCard style={styles.listsCard}>
           <SectionTitle>{strings.yourLists}</SectionTitle>
           {shopping.lists.length === 0 ? (
             <Subtle>{strings.noLists}</Subtle>
@@ -402,24 +402,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.md,
     gap: theme.spacing.md,
   },
+  listsCard: {
+    gap: 0,
+  },
   listGrid: {
-    marginTop: theme.spacing.sm,
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   listCard: {
     minHeight: 84,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.sm,
+    padding: theme.spacing.xs,
     backgroundColor: theme.colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   listCardDragging: {
     opacity: 0.85,
@@ -428,14 +430,14 @@ const styles = StyleSheet.create({
   listMainPressable: {
     flex: 1,
     minHeight: 56,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 0,
     paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.radius.md,
     justifyContent: 'center',
   },
   listMain: {
     flex: 1,
-    gap: 2,
+    gap: theme.spacing.xs,
   },
   listCardPressed: {
     opacity: 0.9,
@@ -486,26 +488,22 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    maxWidth: theme.layout.sheetMaxWidth,
+    alignSelf: 'center',
+    width: '100%',
+    padding: theme.layout.sheetPadding,
+    gap: theme.spacing.xs,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.borderStrong,
-    marginBottom: theme.spacing.sm,
-  },
   sheetActions: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
   },
 });
+

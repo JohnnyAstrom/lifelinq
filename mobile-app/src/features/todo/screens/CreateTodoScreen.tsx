@@ -203,7 +203,6 @@ export function CreateTodoScreen({ token, onDone }: Props) {
         ) : (
         <Pressable style={styles.backdrop} onPress={() => setShowDatePicker(false)}>
           <Pressable style={styles.sheet} onPress={() => null}>
-            <View style={styles.sheetHandle} />
             <Text style={textStyles.h3}>{strings.pickDateTitle}</Text>
             <View style={styles.pickerList}>
               {Array.from({ length: 7 }).map((_, idx) => {
@@ -256,7 +255,6 @@ export function CreateTodoScreen({ token, onDone }: Props) {
         ) : (
         <Pressable style={styles.backdrop} onPress={() => setShowTimePicker(false)}>
           <Pressable style={styles.sheet} onPress={() => null}>
-            <View style={styles.sheetHandle} />
             <Text style={textStyles.h3}>{strings.pickTimeTitle}</Text>
             <View style={styles.pickerList}>
               {['08:00', '12:00', '16:00', '20:00'].map((time) => (
@@ -309,25 +307,21 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.colors.scrim,
     justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
     padding: theme.spacing.lg,
     gap: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
-  },
-  sheetHandle: {
+    maxWidth: theme.layout.sheetMaxWidth,
+    maxHeight: Platform.OS === 'web' ? theme.layout.sheetMaxHeight.web : theme.layout.sheetMaxHeight.standard,
     alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.borderStrong,
-    marginBottom: theme.spacing.sm,
+    width: '100%',
   },
   pickerList: {
     gap: theme.spacing.sm,
@@ -341,3 +335,4 @@ const styles = StyleSheet.create({
     ...textStyles.body,
   },
 });
+

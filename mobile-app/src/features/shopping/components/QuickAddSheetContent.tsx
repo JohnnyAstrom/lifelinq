@@ -23,7 +23,6 @@ export function QuickAddSheetContent({
 }: Props) {
   return (
     <>
-      <View style={styles.sheetHandle} />
       <View style={styles.quickAddHeader}>
         <Text style={textStyles.h3}>{title}</Text>
       </View>

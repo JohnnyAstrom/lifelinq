@@ -90,7 +90,7 @@ export function GroupMembersScreen({ token, onDone }: Props) {
 
 const styles = StyleSheet.create({
   contentOffset: {
-    paddingTop: 90,
+    paddingTop: theme.layout.topBarOffset,
     gap: theme.spacing.md,
   },
   list: {
@@ -118,3 +118,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
+

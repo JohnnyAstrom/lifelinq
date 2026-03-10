@@ -723,21 +723,22 @@ export function TodoListScreen({ token, onDone }: Props) {
 
   return (
     <AppScreen scroll={false} contentStyle={styles.screenContent}>
-      <View style={styles.mainLayout}>
-        <TopBar
-          title={strings.title}
-          subtitle={strings.subtitle}
-          right={<BackIconButton onPress={onDone} />}
-        />
+      <TopBar
+        title={strings.title}
+        subtitle={strings.subtitle}
+        right={<BackIconButton onPress={onDone} />}
+      />
 
-        <ScrollView
-          style={styles.mainScroll}
-          contentContainerStyle={styles.mainScrollContent}
-          refreshControl={<RefreshControl refreshing={todos.loading} onRefresh={todos.reload} />}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          <View style={styles.contentOffset}>
+      <View style={styles.contentOffset}>
+        <View style={styles.mainLayout}>
+          <ScrollView
+            style={styles.mainScroll}
+            contentContainerStyle={styles.mainScrollContent}
+            refreshControl={<RefreshControl refreshing={todos.loading} onRefresh={todos.reload} />}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <View style={styles.scrollSections}>
         <AppCard style={styles.headerCard}>
           <View style={styles.filters}>
             <AppChip label={strings.daily} active={timeView === 'DAILY'} onPress={() => setTimeView('DAILY')} />
@@ -907,28 +908,27 @@ export function TodoListScreen({ token, onDone }: Props) {
             />
           </AppCard>
         ) : null}
-          </View>
-        </ScrollView>
+            </View>
+          </ScrollView>
 
-        <View style={styles.bottomComposerContainer}>
-          <View style={styles.bottomComposerBar}>
-            <AppInput
-              value={text}
-              placeholder={strings.addPlaceholder}
-              onChangeText={setText}
-              onFocus={() => {
-                applyAddDefaultScopeFromView();
-                setShowAddTodoSheet(true);
-              }}
-              showSoftInputOnFocus={false}
-            />
+          <View style={styles.bottomComposerContainer}>
+            <View style={styles.bottomComposerBar}>
+              <AppInput
+                value={text}
+                placeholder={strings.addPlaceholder}
+                onChangeText={setText}
+                onFocus={() => {
+                  applyAddDefaultScopeFromView();
+                  setShowAddTodoSheet(true);
+                }}
+                showSoftInputOnFocus={false}
+              />
+            </View>
           </View>
         </View>
       </View>
-
-        {showAddTodoSheet ? (
+      {showAddTodoSheet ? (
           <OverlaySheet onClose={closeAddTodoSheet} sheetStyle={styles.sheet}>
-            <View style={styles.sheetHandle} />
             <View style={styles.sheetLayout}>
               <ScrollView
                 style={styles.detailScroll}
@@ -1012,11 +1012,10 @@ export function TodoListScreen({ token, onDone }: Props) {
               </View>
             </View>
           </OverlaySheet>
-        ) : null}
+      ) : null}
 
         {showUnplannedSheet ? (
           <OverlaySheet onClose={() => setShowUnplannedSheet(false)} sheetStyle={[styles.sheet, styles.detailSheet]}>
-            <View style={styles.sheetHandle} />
             <View style={styles.sheetLayout}>
               <ScrollView
                 style={styles.detailScroll}
@@ -1045,7 +1044,6 @@ export function TodoListScreen({ token, onDone }: Props) {
 
         {showWeekGoalsSheet ? (
           <OverlaySheet onClose={() => setShowWeekGoalsSheet(false)} sheetStyle={[styles.sheet, styles.detailSheet]}>
-            <View style={styles.sheetHandle} />
             <View style={styles.sheetLayout}>
               <ScrollView
                 style={styles.detailScroll}
@@ -1076,7 +1074,6 @@ export function TodoListScreen({ token, onDone }: Props) {
 
         {showMonthGoalsSheet ? (
           <OverlaySheet onClose={() => setShowMonthGoalsSheet(false)} sheetStyle={[styles.sheet, styles.detailSheet]}>
-            <View style={styles.sheetHandle} />
             <View style={styles.sheetLayout}>
               <ScrollView
                 style={styles.detailScroll}
@@ -1121,7 +1118,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDatePicker(false)}>
             <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-              <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.pickDateTitle}</Text>
               <View style={styles.pickerList}>
                 {Array.from({ length: 7 }).map((_, idx) => {
@@ -1165,7 +1161,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowWeekPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <View style={styles.sheetHandle} />
                 <Text style={textStyles.h3}>{strings.pickWeekTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
@@ -1208,7 +1203,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowMonthPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <View style={styles.sheetHandle} />
                 <Text style={textStyles.h3}>{strings.pickMonthTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
@@ -1259,7 +1253,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowTimePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.pickTimeTitle}</Text>
               <View style={styles.pickerList}>
                 {['08:00', '12:00', '16:00', '20:00'].map((time) => (
@@ -1296,7 +1289,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDetailDatePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.pickDateTitle}</Text>
               <View style={styles.pickerList}>
                 {Array.from({ length: 7 }).map((_, idx) => {
@@ -1340,7 +1332,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowDetailWeekPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <View style={styles.sheetHandle} />
                 <Text style={textStyles.h3}>{strings.pickWeekTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
@@ -1383,7 +1374,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowDetailMonthPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <View style={styles.sheetHandle} />
                 <Text style={textStyles.h3}>{strings.pickMonthTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
@@ -1434,7 +1424,6 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDetailTimePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
-              <View style={styles.sheetHandle} />
               <Text style={textStyles.h3}>{strings.pickTimeTitle}</Text>
               <View style={styles.pickerList}>
                 {['08:00', '12:00', '16:00', '20:00'].map((time) => (
@@ -1457,7 +1446,6 @@ export function TodoListScreen({ token, onDone }: Props) {
 
         {detailsTodoId ? (
           <OverlaySheet onClose={() => setDetailsTodoId(null)} sheetStyle={[styles.sheet, styles.detailSheet]}>
-            <View style={styles.sheetHandle} />
             <View style={styles.sheetLayout}>
               <ScrollView
                 style={styles.detailScroll}
@@ -1555,7 +1543,6 @@ export function TodoListScreen({ token, onDone }: Props) {
 
         {scopePickerTarget ? (
           <OverlaySheet onClose={() => setScopePickerTarget(null)} sheetStyle={[styles.sheet, styles.scopePickerSheet]}>
-            <View style={styles.sheetHandle} />
             <ScrollView
               style={styles.detailScroll}
               contentContainerStyle={styles.detailContent}
@@ -1684,9 +1671,11 @@ export function TodoListScreen({ token, onDone }: Props) {
 
 const styles = StyleSheet.create({
   screenContent: {
-    padding: 0,
-    gap: 0,
     flex: 1,
+  },
+  contentOffset: {
+    flex: 1,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.md,
   },
   mainLayout: {
     flex: 1,
@@ -1695,12 +1684,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mainScrollContent: {
-    padding: theme.spacing.lg,
-    paddingTop: 90,
     paddingBottom: theme.spacing.md,
-    gap: theme.spacing.md,
   },
-  contentOffset: {
+  scrollSections: {
     gap: theme.spacing.md,
   },
   headerCard: {
@@ -1722,11 +1708,10 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   dailyProgressBlock: {
-    marginTop: theme.spacing.sm,
     gap: theme.spacing.xs,
   },
   weeklyOverviewList: {
-    gap: theme.spacing.sm + 2,
+    gap: theme.spacing.sm,
   },
   weeklyHeaderCard: {
     paddingTop: theme.spacing.sm,
@@ -1736,7 +1721,6 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   quickDateRow: {
-    marginTop: theme.spacing.sm,
     gap: theme.spacing.xs,
   },
   quickDateLabel: {
@@ -1773,12 +1757,10 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   quickTimeRow: {
-    marginTop: theme.spacing.sm,
     gap: theme.spacing.xs,
   },
   list: {
-    marginTop: theme.spacing.sm,
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   todoSection: {
     gap: theme.spacing.xs,
@@ -1802,19 +1784,19 @@ const styles = StyleSheet.create({
   weekProgressTrack: {
     flex: 1,
     height: 8,
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.border,
     overflow: 'hidden',
   },
   weekProgressFill: {
     height: '100%',
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.primary,
     minWidth: 0,
   },
   todoDeleteButton: {
     minHeight: 48,
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     borderWidth: 1,
     borderColor: theme.colors.danger,
     backgroundColor: theme.colors.surface,
@@ -1831,12 +1813,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     backgroundColor: theme.colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   weekDayOverviewRowEmpty: {
     opacity: 0.75,
@@ -1859,15 +1841,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     backgroundColor: theme.colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   weeklyShortcutRow: {
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     backgroundColor: theme.colors.surface,
   },
   monthGridHeaderRow: {
@@ -1897,7 +1879,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     backgroundColor: theme.colors.surfaceAlt,
-    padding: 6,
+    padding: theme.spacing.xs,
     justifyContent: 'space-between',
   },
   monthCellPlaceholder: {
@@ -1912,7 +1894,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     minWidth: 20,
     height: 20,
-    paddingHorizontal: 5,
+    paddingHorizontal: theme.spacing.xs,
   },
   monthCellToday: {
     backgroundColor: theme.colors.primarySoft,
@@ -1930,14 +1912,14 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     minWidth: 20,
     height: 20,
-    borderRadius: 999,
-    paddingHorizontal: 5,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.xs,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   monthCountBadgeText: {
-    color: '#fff',
+    color: theme.colors.card,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1945,25 +1927,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
     backgroundColor: theme.colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   itemRowDaily: {
     borderRadius: theme.radius.sm,
     backgroundColor: theme.colors.surface,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 0,
     paddingHorizontal: theme.spacing.sm,
   },
   checkboxPressable: {
-    padding: 2,
+    padding: theme.spacing.xs,
   },
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
     backgroundColor: theme.colors.surfaceAlt,
@@ -1975,7 +1957,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.success,
   },
   checkboxMark: {
-    color: '#ffffff',
+    color: theme.colors.card,
     fontWeight: '700',
   },
   itemInfo: {
@@ -1994,7 +1976,7 @@ const styles = StyleSheet.create({
   detailZone: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: theme.spacing.xs,
     paddingLeft: theme.spacing.sm,
     borderLeftWidth: 1,
     borderLeftColor: theme.colors.border,
@@ -2012,7 +1994,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
   backdrop: {
     position: 'absolute',
@@ -2020,33 +2002,26 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.colors.scrim,
     justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 0,
-    padding: theme.spacing.lg,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    padding: theme.layout.sheetPadding,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    maxWidth: 760,
-    maxHeight: Platform.OS === 'web' ? '94%' : '86%',
+    maxWidth: theme.layout.sheetMaxWidth,
+    maxHeight: Platform.OS === 'web' ? theme.layout.sheetMaxHeight.web : theme.layout.sheetMaxHeight.standard,
     alignSelf: 'center',
     overflow: 'hidden',
   },
   detailSheet: {
-    maxHeight: Platform.OS === 'web' ? '94%' : '76%',
+    maxHeight: Platform.OS === 'web' ? theme.layout.sheetMaxHeight.web : theme.layout.sheetMaxHeight.compact,
   },
   scopePickerSheet: {
-    maxHeight: Platform.OS === 'web' ? '94%' : '95%',
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: theme.colors.borderStrong,
-    marginBottom: theme.spacing.sm,
+    maxHeight: Platform.OS === 'web' ? theme.layout.sheetMaxHeight.web : theme.layout.sheetMaxHeight.tall,
   },
   pickerList: {
     gap: theme.spacing.sm,
@@ -2064,16 +2039,15 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   detailContent: {
-    gap: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
+    gap: theme.spacing.sm,
     minWidth: 0,
   },
   detailHeader: {
     gap: theme.spacing.xs,
   },
   detailSection: {
-    gap: theme.spacing.sm,
-    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
+    padding: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
@@ -2082,24 +2056,22 @@ const styles = StyleSheet.create({
   },
   todoSheetInput: {
     backgroundColor: theme.colors.surface,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
   },
   todoSheetChip: {
     backgroundColor: theme.colors.surface,
   },
   detailSubsection: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.xs,
+    gap: theme.spacing.xs,
   },
   sheetLayout: {
     maxHeight: '100%',
     flexShrink: 1,
   },
   sheetFooterActions: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
@@ -2110,8 +2082,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   bottomComposerBar: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
   },
 });
+

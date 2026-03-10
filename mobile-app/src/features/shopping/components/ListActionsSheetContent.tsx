@@ -29,7 +29,6 @@ export function ListActionsSheetContent({
 }: Props) {
   return (
     <>
-      <View style={styles.sheetHandle} />
       <Text style={textStyles.h3}>{title}</Text>
       <View style={styles.sheetActions}>
         <AppButton title={shareLabel} onPress={() => void onShare()} fullWidth />

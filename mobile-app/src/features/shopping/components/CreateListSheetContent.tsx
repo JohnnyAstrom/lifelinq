@@ -33,7 +33,6 @@ export function CreateListSheetContent({
 }: Props) {
   return (
     <>
-      <View style={styles.sheetHandle} />
       <Text style={textStyles.h3}>{title}</Text>
       <Subtle>{subtitle}</Subtle>
       <AppInput
