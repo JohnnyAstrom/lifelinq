@@ -72,7 +72,7 @@ export function AcceptInviteScreen({
     return (
       <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
         <AppCard style={{ gap: theme.spacing.sm }}>
-          <Text style={textStyles.h3}>Joining place</Text>
+          <Text style={textStyles.h2}>Joining place</Text>
           <Subtle>Please wait a moment.</Subtle>
         </AppCard>
       </AppScreen>
@@ -82,7 +82,7 @@ export function AcceptInviteScreen({
   return (
     <AppScreen scroll={false} contentStyle={{ justifyContent: 'center' }}>
       <AppCard style={{ gap: theme.spacing.md }}>
-        <Text style={textStyles.h3}>Unable to join</Text>
+        <Text style={textStyles.h2}>Unable to join</Text>
         <Subtle>This invitation is invalid or expired.</Subtle>
         <View style={{ paddingTop: theme.spacing.xs }}>
           <AppButton title="Back to Home" onPress={onBackHome} fullWidth />

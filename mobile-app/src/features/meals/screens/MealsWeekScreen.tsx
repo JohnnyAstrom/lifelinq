@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Keyboard,
   Modal,
@@ -32,7 +33,7 @@ import {
   Subtle,
   TopBar,
 } from '../../../shared/ui/components';
-import { textStyles, theme } from '../../../shared/ui/theme';
+import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -219,12 +220,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   return (
     <View style={styles.root}>
-      <AppScreen>
-        <TopBar
-          title={strings.title}
-          subtitle={strings.subtitle}
-          right={<BackIconButton onPress={onDone} />}
-        />
+      <AppScreen
+        header={(
+          <TopBar
+            title={strings.title}
+            subtitle={strings.subtitle}
+            icon={<Ionicons name="restaurant-outline" />}
+            accentKey="meals"
+            right={<BackIconButton onPress={onDone} />}
+          />
+        )}
+      >
 
         <View style={styles.contentOffset}>
           <AppCard style={styles.headerCard}>
@@ -233,16 +239,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                 label={strings.daily}
                 active={viewMode === 'daily'}
                 onPress={() => setViewMode('daily')}
+                accentKey="meals"
               />
               <AppChip
                 label={strings.weekly}
                 active={viewMode === 'weekly'}
                 onPress={() => setViewMode('weekly')}
+                accentKey="meals"
               />
               <AppChip
                 label={strings.monthly}
                 active={viewMode === 'monthly'}
                 onPress={() => setViewMode('monthly')}
+                accentKey="meals"
               />
             </View>
           </AppCard>
@@ -372,7 +381,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               <View style={styles.modalContent}>
                 <Pressable style={styles.sheet} onPress={() => null}>
                   <View style={styles.sheetStickyHeader}>
-                    <Text style={textStyles.h3}>{strings.planMealTitle}</Text>
+                    <Text style={textStyles.h2}>{strings.planMealTitle}</Text>
                     <Subtle>
                       {`${strings.selectedDayPrefix} ${formatDayLabel(
                         new Date(weekStart.getTime() + (editor.selectedDay - 1) * 86400000),
@@ -387,6 +396,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                             key={mealType}
                             label={MEAL_TYPE_LABELS[mealType]}
                             active={active}
+                            accentKey="meals"
                             onPress={() => {
                               Keyboard.dismiss();
                               editor.setSelectedMealType(mealType);
@@ -437,6 +447,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                             key={list.id}
                             label={list.name}
                             active={active}
+                            accentKey="meals"
                             onPress={() => editor.setSelectedListId(list.id)}
                           />
                         );
@@ -448,7 +459,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   <Text style={styles.error}>{strings.shoppingSyncFailed} {editor.shoppingSyncError}</Text>
                 ) : null}
                 <View style={styles.editorActions}>
-                  <AppButton title={strings.saveMeal} onPress={handleSave} fullWidth />
+                  <AppButton title={strings.saveMeal} onPress={handleSave} fullWidth accentKey="meals" />
                   {editor.selectedMeal?.recipeTitle && !isKeyboardVisible ? (
                     <AppButton
                       title={strings.removeMeal}
@@ -513,7 +524,7 @@ const styles = StyleSheet.create({
     ...textStyles.h2,
   },
   dailyHeaderText: {
-    ...textStyles.h3,
+    ...textStyles.h2,
     textTransform: 'capitalize',
   },
   navSubLabel: {
@@ -531,7 +542,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dayLabel: {
-    ...textStyles.h3,
+    ...textStyles.body,
   },
   mealList: {
     gap: theme.spacing.xs,
@@ -582,7 +593,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
   },
   weekTitle: {
-    ...textStyles.h3,
+    ...textStyles.body,
   },
   weekCount: {
     ...textStyles.subtle,
@@ -635,15 +646,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   monthCellToday: {
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.primary,
+    backgroundColor: iconBackground(theme.colors.feature.meals),
+    borderColor: theme.colors.feature.meals,
   },
   monthCellText: {
     ...textStyles.subtle,
     color: theme.colors.text,
   },
   monthCellTextToday: {
-    color: theme.colors.primary,
+    color: theme.colors.feature.meals,
     fontWeight: '700',
   },
   monthCountBadge: {
@@ -652,7 +663,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: theme.radius.pill,
     paddingHorizontal: 4,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.feature.meals,
     alignItems: 'center',
     justifyContent: 'center',
   },

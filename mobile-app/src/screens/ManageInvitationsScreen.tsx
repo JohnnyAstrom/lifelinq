@@ -432,7 +432,7 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
         presentation={emailInviteInputFocused ? 'large' : 'standard'}
       >
         <View style={styles.confirmContent}>
-          <Text style={textStyles.h3}>Invite by email</Text>
+          <Text style={textStyles.h2}>Invite by email</Text>
           <AppInput
             value={inviteEmail}
             onChangeText={setInviteEmail}
@@ -479,7 +479,7 @@ export function ManageInvitationsScreen({ token, me, onDone, onShowToast }: Prop
         presentation="standard"
       >
         <View style={styles.confirmContent}>
-          <Text style={textStyles.h3}>Revoke this invite?</Text>
+          <Text style={textStyles.h2}>Revoke this invite?</Text>
           <Subtle>
             {revokeTarget
               ? `Anyone with this invite (${revokeTarget.label}) will lose access to join.`
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   sectionTitle: {
-    ...textStyles.h3,
+    ...textStyles.h2,
     fontWeight: '700',
   },
   collapsibleHeaderRow: {

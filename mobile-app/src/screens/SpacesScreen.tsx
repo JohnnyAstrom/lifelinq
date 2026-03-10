@@ -67,11 +67,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   spaceName: {
-    ...textStyles.h3,
+    ...textStyles.body,
     flex: 1,
   },
   chevron: {
-    ...textStyles.h3,
+    ...textStyles.body,
   },
   createRow: {
     alignItems: 'flex-start',

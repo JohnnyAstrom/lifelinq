@@ -5,7 +5,7 @@ import { getActiveInvitationLink, listInvitations, renameCurrentPlace } from '..
 import { useGroupMembers } from '../features/group/hooks/useGroupMembers';
 import { formatApiError } from '../shared/api/client';
 import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { AppButton, AppCard, AppInput, AppScreen, BackIconButton, Subtle, TopBar } from '../shared/ui/components';
+import { AppButton, AppCard, AppInput, AppRow, AppScreen, BackIconButton, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 
 type Props = {
@@ -218,10 +218,13 @@ export function ManagePlaceScreen({
                   </View>
                 </View>
               ) : (
-                <>
-                  <Text style={styles.placeName}>{currentPlaceName}</Text>
-                  <Subtle>{strings.tapToRename}</Subtle>
-                </>
+                <AppRow
+                  title={currentPlaceName}
+                  subtitle={strings.tapToRename}
+                  trailing={<Text style={styles.chevron}>→</Text>}
+                  style={styles.placeRow}
+                  titleStyle={styles.placeName}
+                />
               )}
             </View>
           </AppCard>
@@ -274,11 +277,14 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
   },
   placeName: {
-    ...textStyles.h3,
+    ...textStyles.h2,
     flex: 1,
   },
+  placeRow: {
+    minHeight: 44,
+  },
   sectionTitle: {
-    ...textStyles.h3,
+    ...textStyles.h2,
     fontWeight: '700',
   },
   placeCardPressed: {
@@ -294,6 +300,9 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   memberName: {
+    ...textStyles.body,
+  },
+  chevron: {
     ...textStyles.body,
   },
   error: {

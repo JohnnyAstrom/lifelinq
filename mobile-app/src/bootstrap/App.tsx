@@ -1,4 +1,4 @@
-import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
@@ -57,13 +57,16 @@ export default function App() {
       <SafeAreaProvider>
         <KeyboardProvider>
           <BottomSheetModalProvider>
-            <View style={{ flex: 1 }}>
-              <AuthProvider>
-                <PendingInviteProvider>
-                  <AppShell />
-                </PendingInviteProvider>
-              </AuthProvider>
-            </View>
+            <StatusBar
+              translucent={false}
+              backgroundColor={theme.colors.background}
+              barStyle="dark-content"
+            />
+            <AuthProvider>
+              <PendingInviteProvider>
+                <AppShell />
+              </PendingInviteProvider>
+            </AuthProvider>
           </BottomSheetModalProvider>
         </KeyboardProvider>
       </SafeAreaProvider>

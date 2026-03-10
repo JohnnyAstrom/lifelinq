@@ -54,7 +54,7 @@ export function GroupSwitcher({ token, me, onSwitched }: Props) {
 
   return (
     <AppCard style={styles.card}>
-      <Text style={textStyles.h3}>{strings.title}</Text>
+      <Text style={textStyles.h2}>{strings.title}</Text>
       <Text style={styles.activeValue}>
         {me.activeGroupId ? activeGroupName : strings.noneSelected}
       </Text>

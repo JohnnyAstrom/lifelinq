@@ -1,7 +1,7 @@
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MeResponse } from '../features/auth/api/meApi';
 import { useAppBackHandler } from '../shared/hooks/useAppBackHandler';
-import { AppButton, AppCard, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
+import { AppButton, AppCard, AppRow, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../shared/ui/components';
 import { textStyles } from '../shared/ui/theme';
 import { theme } from '../shared/ui/theme';
 
@@ -55,12 +55,15 @@ export function SettingsScreen({
   });
 
   return (
-    <AppScreen>
-      <TopBar
-        title={strings.title}
-        subtitle={strings.subtitle}
-        right={<BackIconButton onPress={onDone} />}
-      />
+    <AppScreen
+      header={(
+        <TopBar
+          title={strings.title}
+          subtitle={strings.subtitle}
+          right={<BackIconButton onPress={onDone} />}
+        />
+      )}
+    >
 
       <View style={styles.contentOffset}>
         <View style={styles.section}>
@@ -117,19 +120,13 @@ export function SettingsScreen({
 
 function SettingRow({ label, onPress, disabled }: { label: string; onPress?: () => void; disabled?: boolean }) {
   return (
-    <Pressable
+    <AppRow
+      title={label}
       onPress={onPress}
       disabled={disabled || !onPress}
-      style={({ pressed }) => [
-        styles.settingRow,
-        (disabled || !onPress) ? styles.settingRowDisabled : null,
-        pressed ? styles.settingRowPressed : null,
-      ]}
-      accessibilityRole="button"
-    >
-      <Text style={styles.rowLabel}>{label}</Text>
-      {onPress && !disabled ? <Text style={styles.chevron}>→</Text> : null}
-    </Pressable>
+      style={styles.settingRow}
+      trailing={onPress && !disabled ? <Text style={styles.chevron}>→</Text> : null}
+    />
   );
 }
 
@@ -138,7 +135,9 @@ const styles = StyleSheet.create({
     paddingTop: theme.layout.topBarOffset + theme.spacing.lg,
     gap: theme.spacing.md,
   },
-  section: {},
+  section: {
+    gap: theme.spacing.sm,
+  },
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -146,12 +145,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  settingRowDisabled: {
-    opacity: 0.5,
-  },
-  settingRowPressed: {
-    opacity: 0.8,
   },
   rowLabel: {
     ...textStyles.body,

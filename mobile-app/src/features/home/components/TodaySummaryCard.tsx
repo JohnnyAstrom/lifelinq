@@ -43,6 +43,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   summary: {
-    ...textStyles.h3,
+    ...textStyles.body,
   },
 });
