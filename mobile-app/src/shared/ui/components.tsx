@@ -37,16 +37,16 @@ export function AppScreen({
   if (scroll) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.decorOne} />
-        <View style={styles.decorTwo} />
         <ScrollView
-          contentContainerStyle={[styles.content, contentStyle]}
+          contentContainerStyle={styles.scrollContent}
           refreshControl={refreshControl}
           stickyHeaderIndices={stickyHeaderIndices}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {children}
+          <View style={[styles.contentContainer, contentStyle]}>
+            {children}
+          </View>
         </ScrollView>
       </SafeAreaView>
     );
@@ -54,14 +54,14 @@ export function AppScreen({
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.decorOne} />
-      <View style={styles.decorTwo} />
       <KeyboardAvoidingView
         style={styles.contentNoScroll}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={[styles.content, styles.contentNoScroll, contentStyle]}>
-          {children}
+        <View style={styles.contentNoScroll}>
+          <View style={[styles.contentContainer, styles.contentNoScroll, contentStyle]}>
+            {children}
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -151,7 +151,7 @@ export function BackIconButton({ onPress }: { onPress: () => void }) {
         pressed ? styles.iconButtonPressed : null,
       ]}
     >
-      <Ionicons name="arrow-back-circle-outline" size={29} color={theme.colors.text} />
+      <Ionicons name="arrow-back-circle-outline" size={29} color={theme.colors.textPrimary} />
     </Pressable>
   );
 }
@@ -206,7 +206,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
       showSoftInputOnFocus={showSoftInputOnFocus}
       onLayout={onLayout}
       style={[styles.input, style]}
-      placeholderTextColor={theme.colors.subtle}
+      placeholderTextColor={theme.colors.textSecondary}
     />
   );
 });
@@ -244,47 +244,34 @@ export function TopBar({ title, subtitle, left, right }: TopBarProps) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: theme.colors.background,
   },
-  content: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
+  scrollContent: {
+    flexGrow: 1,
+  },
+  contentContainer: {
+    width: '100%',
+    maxWidth: theme.layout.maxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   contentNoScroll: {
     flex: 1,
   },
-  decorOne: {
-    position: 'absolute',
-    top: -120,
-    right: -80,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: theme.colors.accentSoft,
-    opacity: 0.5,
-  },
-  decorTwo: {
-    position: 'absolute',
-    bottom: -140,
-    left: -90,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: theme.colors.primarySoft,
-    opacity: 0.6,
-  },
   card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.cardRadius,
+    padding: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
     ...shadow,
   },
   buttonBase: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 999,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -292,9 +279,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   button_secondary: {
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
+    borderColor: theme.colors.border,
   },
   button_ghost: {
     backgroundColor: 'transparent',
@@ -307,13 +294,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   buttonText_primary: {
-    color: '#ffffff',
+    color: theme.colors.card,
   },
   buttonText_secondary: {
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
   },
   buttonText_ghost: {
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
   },
   buttonFull: {
     width: '100%',
@@ -336,12 +323,12 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 999,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surfaceSubtle,
   },
   chipActive: {
     backgroundColor: theme.colors.primary,
@@ -353,21 +340,21 @@ const styles = StyleSheet.create({
   chipText: {
     fontFamily: theme.typography.body,
     fontSize: 13,
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
   },
   chipTextActive: {
-    color: '#ffffff',
+    color: theme.colors.card,
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
+    borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     fontFamily: theme.typography.body,
     fontSize: 15,
-    backgroundColor: theme.colors.surfaceAlt,
-    color: theme.colors.text,
+    backgroundColor: theme.colors.surfaceSubtle,
+    color: theme.colors.textPrimary,
   },
   topBar: {
     position: 'absolute',
@@ -377,7 +364,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
     flexDirection: 'row',
@@ -397,6 +384,7 @@ const styles = StyleSheet.create({
   },
   topBarCenter: {
     flex: 1,
-    gap: 2,
+    gap: theme.spacing.xs,
   },
 });
+

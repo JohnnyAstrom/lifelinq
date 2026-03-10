@@ -69,12 +69,12 @@ const styles = StyleSheet.create({
   toast: {
     maxWidth: '88%',
     backgroundColor: 'rgba(20,20,24,0.92)',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    borderRadius: theme.radius.cardRadius,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
   },
   text: {
-    color: '#F5F5F7',
+    color: theme.colors.card,
     fontSize: 14,
     fontFamily: theme.typography.body,
   },

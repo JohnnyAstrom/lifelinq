@@ -87,9 +87,6 @@ export function LoginScreen({ onLoggedIn, authError = null, onClearAuthError }: 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'android' ? 12 : 0}
       >
-        <View style={styles.decorOne} />
-        <View style={styles.decorTwo} />
-
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -170,26 +167,6 @@ const styles = StyleSheet.create({
   },
   keyboardContainer: {
     flex: 1,
-  },
-  decorOne: {
-    position: 'absolute',
-    top: -120,
-    right: -80,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: theme.colors.accentSoft,
-    opacity: 0.5,
-  },
-  decorTwo: {
-    position: 'absolute',
-    bottom: -140,
-    left: -90,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: theme.colors.primarySoft,
-    opacity: 0.6,
   },
   scrollContent: {
     paddingTop: 48,
