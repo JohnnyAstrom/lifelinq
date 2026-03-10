@@ -63,8 +63,24 @@ export function OverlaySheet({
     ]).start();
   }, [backdropOpacity, sheetTranslateY]);
 
+  useEffect(() => {
+    console.log('[OverlaySheet]', {
+      screenHeight,
+      sheetHeight,
+      insetsTop: insets.top,
+      insetsBottom: insets.bottom,
+      hasAboveSheet: !!aboveSheet,
+    });
+  }, [aboveSheet, insets.bottom, insets.top, screenHeight, sheetHeight]);
+
   return (
-    <View style={styles.root} pointerEvents="box-none">
+    <View
+      style={styles.root}
+      pointerEvents="box-none"
+      onLayout={(event) => {
+        console.log('[OverlaySheet] root layout', event.nativeEvent.layout);
+      }}
+    >
       <RNAnimated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </RNAnimated.View>
@@ -86,7 +102,11 @@ export function OverlaySheet({
           ) : null}
           <Animated.View
             style={[styles.sheet, sheetStyle, { maxHeight: screenHeight - insets.top }, sheetAnimatedStyle]}
-            onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
+            onLayout={(event) => {
+              const nextHeight = event.nativeEvent.layout.height;
+              console.log('[OverlaySheet] sheet layout', event.nativeEvent.layout);
+              setSheetHeight(nextHeight);
+            }}
           >
             {children}
           </Animated.View>
