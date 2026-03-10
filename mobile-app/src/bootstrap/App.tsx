@@ -55,7 +55,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <KeyboardProvider>
+        <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
           <BottomSheetModalProvider>
             <StatusBar
               translucent={false}

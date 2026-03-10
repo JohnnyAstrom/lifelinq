@@ -13,7 +13,7 @@
       "supportsTablet": true
     },
     "android": {
-      "softwareKeyboardLayoutMode": "resize",
+      "softwareKeyboardLayoutMode": "adjustNothing",
       "navigationBar": {
         "backgroundColor": "#00000000"
       },
