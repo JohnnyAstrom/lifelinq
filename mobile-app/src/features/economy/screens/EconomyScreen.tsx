@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CreateTransactionSheetContent } from '../components/CreateTransactionSheetContent';
 import { EconomyRoundCard } from '../components/EconomyRoundCard';
 import { EconomySettlementCard } from '../components/EconomySettlementCard';
@@ -94,52 +95,65 @@ export function EconomyScreen({ token, onDone, onShowToast }: Props) {
   }
 
   return (
-    <AppScreen>
-      <TopBar
-        title="Economy"
-        subtitle="Settlement and transactions"
-        right={<BackIconButton onPress={onDone} />}
-      />
-
-      <View style={styles.contentOffset}>
-        {state.loading ? <Subtle>Loading economy data...</Subtle> : null}
-        {state.error ? <Text style={styles.error}>{state.error}</Text> : null}
-
-        <EconomySummaryCard
-          balances={state.balances}
-          recommendedPayments={state.recommendedPayments}
-          resolveUserName={resolveUserName}
+    <AppScreen
+      scroll={false}
+      contentStyle={styles.screenContent}
+      header={(
+        <TopBar
+          title="Economy"
+          subtitle="Settlement and transactions"
+          icon={<Ionicons name="wallet-outline" />}
+          accentKey="economy"
+          right={<BackIconButton onPress={onDone} />}
         />
+      )}
+    >
 
-        <EconomyTransactionsCard
-          transactions={state.transactions}
-          deletingTransactionId={deletingTransactionId}
-          resolveUserName={resolveUserName}
-          onDelete={(transactionId) => {
-            void handleDeleteTransaction(transactionId);
-          }}
-        />
+      <View style={styles.mainLayout}>
+        <ScrollView
+          style={styles.mainScroll}
+          contentContainerStyle={styles.contentOffset}
+          keyboardShouldPersistTaps="handled"
+        >
+          {state.loading ? <Subtle>Loading economy data...</Subtle> : null}
+          {state.error ? <Text style={styles.error}>{state.error}</Text> : null}
 
-        <AppButton title="+ Add expense" onPress={openCreateSheet} fullWidth />
+          <EconomySummaryCard
+            balances={state.balances}
+            recommendedPayments={state.recommendedPayments}
+            resolveUserName={resolveUserName}
+          />
 
-        <EconomySettlementCard
-          balances={state.balances}
-          recommendedPayments={state.recommendedPayments}
-          resolveUserName={resolveUserName}
-        />
+          <EconomyTransactionsCard
+            transactions={state.transactions}
+            deletingTransactionId={deletingTransactionId}
+            resolveUserName={resolveUserName}
+            onDelete={(transactionId) => {
+              void handleDeleteTransaction(transactionId);
+            }}
+          />
 
-        <EconomyRoundCard
-          period={state.period}
-          showPreviousPeriodClosed={showPreviousPeriodClosed}
-          resolveUserName={resolveUserName}
-          onCloseRound={() => {
-            void handleClosePeriod();
-          }}
-        />
+          <AppButton title="+ Add expense" onPress={openCreateSheet} fullWidth accentKey="economy" />
+
+          <EconomySettlementCard
+            balances={state.balances}
+            recommendedPayments={state.recommendedPayments}
+            resolveUserName={resolveUserName}
+          />
+
+          <EconomyRoundCard
+            period={state.period}
+            showPreviousPeriodClosed={showPreviousPeriodClosed}
+            resolveUserName={resolveUserName}
+            onCloseRound={() => {
+              void handleClosePeriod();
+            }}
+          />
+        </ScrollView>
       </View>
 
       {showCreateSheet ? (
-        <OverlaySheet onClose={() => setShowCreateSheet(false)}>
+        <OverlaySheet onClose={() => setShowCreateSheet(false)} sheetStyle={styles.sheet}>
           <CreateTransactionSheetContent
             amount={amountInput}
             description={descriptionInput}
@@ -164,9 +178,31 @@ export function EconomyScreen({ token, onDone, onShowToast }: Props) {
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    flex: 1,
+  },
+  mainLayout: {
+    flex: 1,
+  },
+  mainScroll: {
+    flex: 1,
+  },
   contentOffset: {
     paddingTop: theme.layout.topBarOffset + theme.spacing.md,
+    paddingBottom: theme.spacing.md,
     gap: theme.spacing.md,
+  },
+  sheet: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    maxWidth: theme.layout.sheetMaxWidth,
+    alignSelf: 'center',
+    width: '100%',
+    padding: theme.layout.sheetPadding,
+    gap: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   error: {
     color: theme.colors.danger,

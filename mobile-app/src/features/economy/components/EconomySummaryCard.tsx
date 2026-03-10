@@ -47,6 +47,6 @@ export function EconomySummaryCard({ balances, recommendedPayments, resolveUserN
 
 const styles = StyleSheet.create({
   summary: {
-    ...textStyles.h3,
+    ...textStyles.body,
   },
 });

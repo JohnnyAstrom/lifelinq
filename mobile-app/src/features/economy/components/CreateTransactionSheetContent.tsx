@@ -37,7 +37,7 @@ export function CreateTransactionSheetContent({
 
   return (
     <View style={styles.root}>
-      <Text style={textStyles.h3}>Add transaction</Text>
+      <Text style={textStyles.h2}>Add transaction</Text>
       <AppInput
         value={amount}
         onChangeText={onChangeAmount}
@@ -61,6 +61,7 @@ export function CreateTransactionSheetContent({
             key={userId}
             label={userId.slice(0, 8)}
             active={paidByUserId === userId}
+            accentKey="economy"
             onPress={() => {
               Keyboard.dismiss();
               onChangePaidByUserId(userId);
@@ -75,6 +76,7 @@ export function CreateTransactionSheetContent({
           onPress={onSubmit}
           disabled={!canSubmit}
           fullWidth
+          accentKey="economy"
         />
         <AppButton title="Cancel" onPress={onClose} variant="ghost" fullWidth />
       </View>
@@ -84,11 +86,7 @@ export function CreateTransactionSheetContent({
 
 const styles = StyleSheet.create({
   root: {
-    padding: theme.spacing.lg,
     gap: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   label: {
     ...textStyles.subtle,
