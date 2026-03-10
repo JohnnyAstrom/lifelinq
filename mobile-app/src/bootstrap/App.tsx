@@ -736,12 +736,13 @@ function AppStack({
     const activeMembership = activeGroupId
       ? switchItems.find((membership) => membership.groupId === activeGroupId) ?? null
       : null;
-    const currentSpaceName = activeMembership?.groupName ?? 'My space';
+    const currentSpaceName = activeMembership?.groupName ?? 'My place';
 
     screenContent = (
       <HomeScreen
         token={token}
         spaceName={currentSpaceName}
+        canSwitchSpaces={switchItems.length > 1}
         onContextInvalidated={() => {
           reloadMe();
         }}
@@ -883,4 +884,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
 
