@@ -124,6 +124,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
               label={strings.quickToday}
               active={!!pendingDate && isSameDay(pendingDate, new Date())}
               onPress={setDateToToday}
+              accentKey="todos"
             />
             <AppChip
               label={strings.quickTomorrow}
@@ -136,11 +137,13 @@ export function CreateTodoScreen({ token, onDone }: Props) {
                 return isSameDay(pendingDate, tomorrow);
               })()}
               onPress={setDateToTomorrow}
+              accentKey="todos"
             />
             <AppChip
               label={strings.quickPick}
               active={showDatePicker}
               onPress={() => setShowDatePicker(true)}
+              accentKey="todos"
             />
           </View>
           {pendingDate ? (
@@ -159,17 +162,20 @@ export function CreateTodoScreen({ token, onDone }: Props) {
                   label={option.label}
                   active={pendingTime === option.value}
                   onPress={() => setPendingTime(option.value)}
+                  accentKey="todos"
                 />
               ))}
               <AppChip
                 label={strings.timePick}
                 active={showTimePicker}
                 onPress={() => setShowTimePicker(true)}
+                accentKey="todos"
               />
               <AppChip
                 label={strings.timeNone}
                 active={!pendingTime}
                 onPress={() => setPendingTime(null)}
+                accentKey="todos"
               />
             </View>
           </View>
@@ -181,6 +187,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
             onPress={handleCreate}
             fullWidth
             disabled={todos.loading}
+            accentKey="todos"
           />
         ) : null}
         <AppButton title={strings.back} onPress={onDone} variant="ghost" fullWidth />
@@ -203,7 +210,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
         ) : (
         <Pressable style={styles.backdrop} onPress={() => setShowDatePicker(false)}>
           <Pressable style={styles.sheet} onPress={() => null}>
-            <Text style={textStyles.h3}>{strings.pickDateTitle}</Text>
+            <Text style={textStyles.h2}>{strings.pickDateTitle}</Text>
             <View style={styles.pickerList}>
               {Array.from({ length: 7 }).map((_, idx) => {
                 const date = new Date();
@@ -255,7 +262,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
         ) : (
         <Pressable style={styles.backdrop} onPress={() => setShowTimePicker(false)}>
           <Pressable style={styles.sheet} onPress={() => null}>
-            <Text style={textStyles.h3}>{strings.pickTimeTitle}</Text>
+            <Text style={textStyles.h2}>{strings.pickTimeTitle}</Text>
             <View style={styles.pickerList}>
               {['08:00', '12:00', '16:00', '20:00'].map((time) => (
                 <Pressable

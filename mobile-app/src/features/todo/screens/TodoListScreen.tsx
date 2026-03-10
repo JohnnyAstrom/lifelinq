@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
   Keyboard,
@@ -56,7 +57,7 @@ import {
   Subtle,
   TopBar,
 } from '../../../shared/ui/components';
-import { textStyles, theme } from '../../../shared/ui/theme';
+import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
@@ -722,12 +723,35 @@ export function TodoListScreen({ token, onDone }: Props) {
   }
 
   return (
-    <AppScreen scroll={false} contentStyle={styles.screenContent}>
-      <TopBar
-        title={strings.title}
-        subtitle={strings.subtitle}
-        right={<BackIconButton onPress={onDone} />}
-      />
+    <AppScreen
+      scroll={false}
+      contentStyle={styles.screenContent}
+      header={(
+        <TopBar
+          title={strings.title}
+          subtitle={strings.subtitle}
+          icon={<Ionicons name="checkmark-done-outline" />}
+          accentKey="todos"
+          right={<BackIconButton onPress={onDone} />}
+        />
+      )}
+      footer={(
+        <View style={styles.bottomComposerContainer}>
+          <View style={styles.bottomComposerBar}>
+            <AppInput
+              value={text}
+              placeholder={strings.addPlaceholder}
+              onChangeText={setText}
+              onFocus={() => {
+                applyAddDefaultScopeFromView();
+                setShowAddTodoSheet(true);
+              }}
+              showSoftInputOnFocus={false}
+            />
+          </View>
+        </View>
+      )}
+    >
 
       <View style={styles.contentOffset}>
         <View style={styles.mainLayout}>
@@ -741,9 +765,9 @@ export function TodoListScreen({ token, onDone }: Props) {
             <View style={styles.scrollSections}>
         <AppCard style={styles.headerCard}>
           <View style={styles.filters}>
-            <AppChip label={strings.daily} active={timeView === 'DAILY'} onPress={() => setTimeView('DAILY')} />
-            <AppChip label={strings.weekly} active={timeView === 'WEEKLY'} onPress={() => setTimeView('WEEKLY')} />
-            <AppChip label={strings.monthly} active={timeView === 'MONTHLY'} onPress={() => setTimeView('MONTHLY')} />
+            <AppChip label={strings.daily} active={timeView === 'DAILY'} onPress={() => setTimeView('DAILY')} accentKey="todos" />
+            <AppChip label={strings.weekly} active={timeView === 'WEEKLY'} onPress={() => setTimeView('WEEKLY')} accentKey="todos" />
+            <AppChip label={strings.monthly} active={timeView === 'MONTHLY'} onPress={() => setTimeView('MONTHLY')} accentKey="todos" />
           </View>
         </AppCard>
 
@@ -911,20 +935,6 @@ export function TodoListScreen({ token, onDone }: Props) {
             </View>
           </ScrollView>
 
-          <View style={styles.bottomComposerContainer}>
-            <View style={styles.bottomComposerBar}>
-              <AppInput
-                value={text}
-                placeholder={strings.addPlaceholder}
-                onChangeText={setText}
-                onFocus={() => {
-                  applyAddDefaultScopeFromView();
-                  setShowAddTodoSheet(true);
-                }}
-                showSoftInputOnFocus={false}
-              />
-            </View>
-          </View>
         </View>
       </View>
       {showAddTodoSheet ? (
@@ -941,7 +951,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                 alwaysBounceHorizontal={false}
               >
                 <View style={styles.detailHeader}>
-                  <Text style={textStyles.h3}>{strings.addTodoTitle}</Text>
+                  <Text style={textStyles.h2}>{strings.addTodoTitle}</Text>
                   {!isKeyboardVisible ? <Subtle>{strings.editSubtitle}</Subtle> : null}
                 </View>
 
@@ -979,6 +989,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                           active={isTimeOptionActive(pendingTime, option)}
                           onPress={() => setPendingTime(option.value)}
                           style={styles.todoSheetChip}
+                          accentKey="todos"
                         />
                       ))}
                       <AppChip
@@ -986,12 +997,14 @@ export function TodoListScreen({ token, onDone }: Props) {
                         active={showTimePicker}
                         onPress={() => setShowTimePicker(true)}
                         style={styles.todoSheetChip}
+                        accentKey="todos"
                       />
                       <AppChip
                         label={strings.timeNone}
                         active={!pendingTime}
                         onPress={() => setPendingTime(null)}
                         style={styles.todoSheetChip}
+                        accentKey="todos"
                       />
                     </View>
                   </View>
@@ -1005,6 +1018,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                   onPress={handleAdd}
                   fullWidth
                   disabled={todos.loading || !canAddTodo}
+                  accentKey="todos"
                 />
                 {!isKeyboardVisible ? (
                   <AppButton title={strings.close} onPress={closeAddTodoSheet} variant="ghost" fullWidth />
@@ -1024,7 +1038,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                 showsVerticalScrollIndicator={false}
               >
                 <View style={styles.detailHeader}>
-                  <Text style={textStyles.h3}>{strings.unplannedTitle}</Text>
+                  <Text style={textStyles.h2}>{strings.unplannedTitle}</Text>
                   <Subtle>Open todos without a schedule.</Subtle>
                 </View>
                 {dailyOpenLaterItems.length > 0 ? (
@@ -1052,7 +1066,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                 showsVerticalScrollIndicator={false}
               >
                 <View style={styles.detailHeader}>
-                  <Text style={textStyles.h3}>{strings.weekGoals}</Text>
+                  <Text style={textStyles.h2}>{strings.weekGoals}</Text>
                   <Subtle>{formatWeekRangeLabel(selectedWeeklyStart)}</Subtle>
                 </View>
                 {weeklyWeekOpenItems.length > 0 ? (
@@ -1082,7 +1096,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                 showsVerticalScrollIndicator={false}
               >
                 <View style={styles.detailHeader}>
-                  <Text style={textStyles.h3}>{strings.monthGoals}</Text>
+                  <Text style={textStyles.h2}>{strings.monthGoals}</Text>
                   <Subtle>{formatCalendarMonth(calendarMonth)}</Subtle>
                 </View>
                 {monthlyMonthOpenItems.length > 0 ? (
@@ -1118,7 +1132,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDatePicker(false)}>
             <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-              <Text style={textStyles.h3}>{strings.pickDateTitle}</Text>
+              <Text style={textStyles.h2}>{strings.pickDateTitle}</Text>
               <View style={styles.pickerList}>
                 {Array.from({ length: 7 }).map((_, idx) => {
                   const date = new Date();
@@ -1161,7 +1175,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowWeekPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <Text style={textStyles.h3}>{strings.pickWeekTitle}</Text>
+                <Text style={textStyles.h2}>{strings.pickWeekTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
                     const value = new Date(selectedWeeklyStart.getTime());
@@ -1203,7 +1217,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowMonthPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <Text style={textStyles.h3}>{strings.pickMonthTitle}</Text>
+                <Text style={textStyles.h2}>{strings.pickMonthTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
                     const value = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + idx, 1);
@@ -1253,7 +1267,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowTimePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
-              <Text style={textStyles.h3}>{strings.pickTimeTitle}</Text>
+              <Text style={textStyles.h2}>{strings.pickTimeTitle}</Text>
               <View style={styles.pickerList}>
                 {['08:00', '12:00', '16:00', '20:00'].map((time) => (
                   <Pressable
@@ -1289,7 +1303,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDetailDatePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
-              <Text style={textStyles.h3}>{strings.pickDateTitle}</Text>
+              <Text style={textStyles.h2}>{strings.pickDateTitle}</Text>
               <View style={styles.pickerList}>
                 {Array.from({ length: 7 }).map((_, idx) => {
                   const date = new Date();
@@ -1332,7 +1346,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowDetailWeekPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <Text style={textStyles.h3}>{strings.pickWeekTitle}</Text>
+                <Text style={textStyles.h2}>{strings.pickWeekTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
                     const value = new Date(selectedWeeklyStart.getTime());
@@ -1374,7 +1388,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
             <Pressable style={styles.backdrop} onPress={() => setShowDetailMonthPicker(false)}>
               <Pressable style={[styles.sheet, { width: modalWidth }]} onPress={() => null}>
-                <Text style={textStyles.h3}>{strings.pickMonthTitle}</Text>
+                <Text style={textStyles.h2}>{strings.pickMonthTitle}</Text>
                 <View style={styles.pickerList}>
                   {Array.from({ length: 12 }).map((_, idx) => {
                     const value = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + idx, 1);
@@ -1424,7 +1438,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           ) : (
           <Pressable style={styles.backdrop} onPress={() => setShowDetailTimePicker(false)}>
             <Pressable style={styles.sheet} onPress={() => null}>
-              <Text style={textStyles.h3}>{strings.pickTimeTitle}</Text>
+              <Text style={textStyles.h2}>{strings.pickTimeTitle}</Text>
               <View style={styles.pickerList}>
                 {['08:00', '12:00', '16:00', '20:00'].map((time) => (
                   <Pressable
@@ -1458,7 +1472,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                 keyboardShouldPersistTaps="handled"
               >
                 <View style={styles.detailHeader}>
-                  <Text style={textStyles.h3}>{strings.editTitle}</Text>
+                  <Text style={textStyles.h2}>{strings.editTitle}</Text>
                   {!isKeyboardVisible ? <Subtle>{strings.editSubtitle}</Subtle> : null}
                 </View>
 
@@ -1495,6 +1509,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                           active={isTimeOptionActive(detailTime, option)}
                           onPress={() => setDetailTime(option.value)}
                           style={styles.todoSheetChip}
+                          accentKey="todos"
                         />
                       ))}
                       <AppChip
@@ -1502,12 +1517,14 @@ export function TodoListScreen({ token, onDone }: Props) {
                         active={showDetailTimePicker}
                         onPress={() => setShowDetailTimePicker(true)}
                         style={styles.todoSheetChip}
+                        accentKey="todos"
                       />
                       <AppChip
                         label={strings.timeNone}
                         active={!detailTime}
                         onPress={() => setDetailTime(null)}
                         style={styles.todoSheetChip}
+                        accentKey="todos"
                       />
                     </View>
                   </View>
@@ -1521,6 +1538,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                   onPress={handleSaveDetails}
                   fullWidth
                   disabled={savingDetails || !detailText.trim()}
+                  accentKey="todos"
                 />
                 {!isKeyboardVisible ? (
                   <Pressable
@@ -1550,7 +1568,7 @@ export function TodoListScreen({ token, onDone }: Props) {
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.detailHeader}>
-                <Text style={textStyles.h3}>{strings.chooseScopeTitle}</Text>
+                <Text style={textStyles.h2}>{strings.chooseScopeTitle}</Text>
                 <Subtle>{strings.chooseScopeSubtitle}</Subtle>
               </View>
 
@@ -1578,6 +1596,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                     }
                     onPress={() => (scopePickerTarget === 'ADD' ? setDateToToday() : setDetailDateToToday())}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                   <AppChip
                     label={strings.forTomorrow}
@@ -1589,12 +1608,14 @@ export function TodoListScreen({ token, onDone }: Props) {
                     }
                     onPress={() => (scopePickerTarget === 'ADD' ? setDateToTomorrow() : setDetailDateToTomorrow())}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                   <AppChip
                     label={strings.quickPick}
                     active={scopePickerTarget === 'ADD' ? showDatePicker : showDetailDatePicker}
                     onPress={() => openScopeDatePicker(scopePickerTarget === 'ADD' ? 'ADD_DAY' : 'EDIT_DAY')}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                 </View>
               </View>
@@ -1611,12 +1632,14 @@ export function TodoListScreen({ token, onDone }: Props) {
                       )}
                     onPress={() => (scopePickerTarget === 'ADD' ? setPendingToCurrentWeek() : setDetailToCurrentWeek())}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                   <AppChip
                     label={strings.pickWeek}
                     active={scopePickerTarget === 'ADD' ? showWeekPicker : showDetailWeekPicker}
                     onPress={() => openScopeDatePicker(scopePickerTarget === 'ADD' ? 'ADD_WEEK' : 'EDIT_WEEK')}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                 </View>
               </View>
@@ -1634,12 +1657,14 @@ export function TodoListScreen({ token, onDone }: Props) {
                       })()}
                     onPress={() => (scopePickerTarget === 'ADD' ? setPendingToCurrentMonth() : setDetailToCurrentMonth())}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                   <AppChip
                     label={strings.pickMonth}
                     active={scopePickerTarget === 'ADD' ? showMonthPicker : showDetailMonthPicker}
                     onPress={() => openScopeDatePicker(scopePickerTarget === 'ADD' ? 'ADD_MONTH' : 'EDIT_MONTH')}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                 </View>
               </View>
@@ -1655,6 +1680,7 @@ export function TodoListScreen({ token, onDone }: Props) {
                       setScopePickerTarget(null);
                     }}
                     style={styles.todoSheetChip}
+                    accentKey="todos"
                   />
                 </View>
               </View>
@@ -1695,7 +1721,7 @@ const styles = StyleSheet.create({
   filters: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   calendarMonthRow: {
     flexDirection: 'row',
@@ -1711,7 +1737,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   weeklyOverviewList: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   weeklyHeaderCard: {
     paddingTop: theme.spacing.sm,
@@ -1791,7 +1817,7 @@ const styles = StyleSheet.create({
   weekProgressFill: {
     height: '100%',
     borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.feature.todos,
     minWidth: 0,
   },
   todoDeleteButton: {
@@ -1830,7 +1856,7 @@ const styles = StyleSheet.create({
   },
   weekDayOverviewTextToday: {
     fontWeight: '800',
-    color: theme.colors.primary,
+    color: theme.colors.feature.todos,
   },
   weekDayOverviewMeta: {
     ...textStyles.subtle,
@@ -1863,7 +1889,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   monthGrid: {
-    marginTop: theme.spacing.xs,
     gap: theme.spacing.xs,
   },
   monthGridRow: {
@@ -1897,15 +1922,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xs,
   },
   monthCellToday: {
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.primary,
+    backgroundColor: iconBackground(theme.colors.feature.todos),
+    borderColor: theme.colors.feature.todos,
   },
   monthCellText: {
     ...textStyles.subtle,
     color: theme.colors.text,
   },
   monthCellTextToday: {
-    color: theme.colors.primary,
+    color: theme.colors.feature.todos,
     fontWeight: '700',
   },
   monthCountBadge: {
@@ -1914,7 +1939,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: theme.radius.pill,
     paddingHorizontal: theme.spacing.xs,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.feature.todos,
     alignItems: 'center',
     justifyContent: 'center',
   },
