@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Animated as RNAnimated,
+  Dimensions,
   Easing,
   Pressable,
   StyleSheet,
@@ -26,6 +27,7 @@ export function OverlaySheet({
   sheetStyle,
   aboveSheet,
 }: OverlaySheetProps) {
+  const screenHeight = Dimensions.get('window').height;
   const backdropOpacity = useRef(new RNAnimated.Value(0)).current;
   const sheetTranslateY = useRef(new RNAnimated.Value(28)).current;
   const { height } = useReanimatedKeyboardAnimation();
@@ -83,7 +85,7 @@ export function OverlaySheet({
             </Animated.View>
           ) : null}
           <Animated.View
-            style={[styles.sheet, sheetStyle, sheetAnimatedStyle]}
+            style={[styles.sheet, sheetStyle, { maxHeight: screenHeight - insets.top }, sheetAnimatedStyle]}
             onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
           >
             {children}
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     zIndex: 2,
-    elevation: 2,
+    elevation: 0,
     overflow: 'visible',
   },
   aboveSheet: {
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 3,
-    elevation: 3,
+    elevation: 0,
   },
   sheet: {
     backgroundColor: theme.colors.surface,

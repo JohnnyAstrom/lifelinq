@@ -1,6 +1,7 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  GestureResponderEvent,
   LayoutChangeEvent,
   KeyboardAvoidingView,
   Platform,
@@ -17,10 +18,12 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { shadow, textStyles, theme } from './theme';
+import { type FeatureAccentKey, textStyles, theme } from './theme';
 
 type ScreenProps = {
   children: React.ReactNode;
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
@@ -29,6 +32,8 @@ type ScreenProps = {
 
 export function AppScreen({
   children,
+  header,
+  footer,
   contentStyle,
   scroll = true,
   refreshControl,
@@ -37,7 +42,9 @@ export function AppScreen({
   if (scroll) {
     return (
       <SafeAreaView style={styles.screen}>
+        {header ? <View style={styles.edgeSlot}>{header}</View> : null}
         <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           refreshControl={refreshControl}
           stickyHeaderIndices={stickyHeaderIndices}
@@ -48,12 +55,14 @@ export function AppScreen({
             {children}
           </View>
         </ScrollView>
+        {footer ? <View style={styles.edgeSlot}>{footer}</View> : null}
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.screen}>
+      {header ? <View style={styles.edgeSlot}>{header}</View> : null}
       <KeyboardAvoidingView
         style={styles.contentNoScroll}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -62,6 +71,7 @@ export function AppScreen({
           <View style={[styles.contentContainer, styles.contentNoScroll, contentStyle]}>
             {children}
           </View>
+          {footer ? <View style={styles.edgeSlot}>{footer}</View> : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -77,6 +87,74 @@ export function AppCard({ children, style }: CardProps) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
+type RowProps = {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  leading?: React.ReactNode;
+  trailing?: React.ReactNode;
+  onPress?: () => void;
+  onLongPress?: (event: GestureResponderEvent) => void;
+  disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
+  titleStyle?: StyleProp<TextStyle>;
+  subtitleStyle?: StyleProp<TextStyle>;
+  accessibilityRole?: 'button' | 'switch' | 'link';
+};
+
+export function AppRow({
+  title,
+  subtitle,
+  leading,
+  trailing,
+  onPress,
+  onLongPress,
+  disabled,
+  style,
+  contentStyle,
+  titleStyle,
+  subtitleStyle,
+  accessibilityRole = 'button',
+}: RowProps) {
+  const body = (
+    <>
+      {leading ? <View style={styles.rowLeading}>{leading}</View> : null}
+      <View style={[styles.rowContent, contentStyle]}>
+        {typeof title === 'string'
+          ? <Text style={[styles.rowTitle, titleStyle]}>{title}</Text>
+          : title}
+        {subtitle
+          ? (typeof subtitle === 'string'
+            ? <Text style={[styles.rowSubtitle, subtitleStyle]}>{subtitle}</Text>
+            : subtitle)
+          : null}
+      </View>
+      {trailing ? <View style={styles.rowTrailing}>{trailing}</View> : null}
+    </>
+  );
+
+  if (!onPress && !onLongPress) {
+    return <View style={[styles.rowBase, style]}>{body}</View>;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      style={({ pressed }) => [
+        styles.rowBase,
+        style,
+        disabled ? styles.rowDisabled : null,
+        pressed ? styles.rowPressed : null,
+      ]}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
 type ButtonProps = {
   title: string;
   onPress: () => void;
@@ -84,6 +162,8 @@ type ButtonProps = {
   variant?: 'primary' | 'secondary' | 'ghost';
   fullWidth?: boolean;
   disabled?: boolean;
+  accentKey?: FeatureAccentKey;
+  accentColor?: string;
 };
 
 export function AppButton({
@@ -93,12 +173,16 @@ export function AppButton({
   variant = 'primary',
   fullWidth,
   disabled,
+  accentKey,
+  accentColor,
 }: ButtonProps) {
+  const resolvedAccentColor = accentColor ?? (accentKey ? theme.colors.feature[accentKey] : null);
   return (
     <Pressable
       style={({ pressed }) => [
         styles.buttonBase,
         styles[`button_${variant}`],
+        variant === 'primary' && resolvedAccentColor ? { backgroundColor: resolvedAccentColor } : null,
         fullWidth ? styles.buttonFull : null,
         pressed ? styles.buttonPressed : null,
         disabled ? styles.buttonDisabled : null,
@@ -120,16 +204,23 @@ type ChipProps = {
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  accentKey?: FeatureAccentKey;
+  accentColor?: string;
 };
 
-export function AppChip({ label, active, onPress, style, textStyle }: ChipProps) {
+export function AppChip({ label, active, onPress, style, textStyle, accentKey, accentColor }: ChipProps) {
+  const resolvedAccentColor = accentColor ?? (accentKey ? theme.colors.feature[accentKey] : null);
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
         style,
-        active ? styles.chipActive : null,
+        active
+          ? (resolvedAccentColor
+            ? { backgroundColor: resolvedAccentColor, borderColor: resolvedAccentColor }
+            : styles.chipActive)
+          : null,
         pressed ? styles.chipPressed : null,
       ]}
     >
@@ -212,7 +303,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
 });
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <Text style={textStyles.h3}>{children}</Text>;
+  return <Text style={textStyles.h2}>{children}</Text>;
 }
 
 export function Subtle(
@@ -226,17 +317,34 @@ type TopBarProps = {
   subtitle?: string;
   left?: React.ReactNode;
   right?: React.ReactNode;
+  accentKey?: FeatureAccentKey;
+  icon?: React.ReactNode;
 };
 
-export function TopBar({ title, subtitle, left, right }: TopBarProps) {
+export function TopBar({ title, subtitle, left, right, accentKey, icon }: TopBarProps) {
+  const iconColor = accentKey ? theme.colors.feature[accentKey] : theme.colors.textSecondary;
+  const renderedIcon = React.isValidElement(icon)
+    ? React.cloneElement(icon as React.ReactElement<any>, {
+        color: (icon as React.ReactElement<any>).props.color ?? iconColor,
+        size: (icon as React.ReactElement<any>).props.size ?? 20,
+      })
+    : icon;
   return (
-    <View style={styles.topBar}>
-      {left ? <View style={[styles.topBarSide, styles.topBarSideLeft]}>{left}</View> : null}
-      <View style={styles.topBarCenter}>
-        <Text style={textStyles.h2}>{title}</Text>
-        {subtitle ? <Text style={textStyles.subtle}>{subtitle}</Text> : null}
+    <View>
+      <View style={styles.topBar}>
+        {left ? <View style={[styles.topBarSide, styles.topBarSideLeft]}>{left}</View> : null}
+        <View style={styles.topBarCenter}>
+          <View style={styles.topBarTitleRow}>
+            {renderedIcon ? <View style={styles.topBarIcon}>{renderedIcon}</View> : null}
+            <Text style={textStyles.h2}>{title}</Text>
+          </View>
+          {subtitle ? <Text style={textStyles.subtle}>{subtitle}</Text> : null}
+        </View>
+        {right ? <View style={[styles.topBarSide, styles.topBarSideRight]}>{right}</View> : null}
       </View>
-      {right ? <View style={[styles.topBarSide, styles.topBarSideRight]}>{right}</View> : null}
+      {accentKey ? (
+        <View style={[styles.topBarAccent, { backgroundColor: theme.colors.feature[accentKey] }]} />
+      ) : null}
     </View>
   );
 }
@@ -249,6 +357,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   contentContainer: {
     width: '100%',
     maxWidth: theme.layout.maxContentWidth,
@@ -260,13 +371,16 @@ const styles = StyleSheet.create({
   contentNoScroll: {
     flex: 1,
   },
+  edgeSlot: {
+    width: '100%',
+  },
   card: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.cardRadius,
     padding: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    ...shadow,
+    ...theme.elevation.card,
   },
   buttonBase: {
     paddingVertical: theme.spacing.xs,
@@ -385,6 +499,52 @@ const styles = StyleSheet.create({
   topBarCenter: {
     flex: 1,
     gap: theme.spacing.xs,
+  },
+  topBarTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  topBarIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarAccent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 2,
+    zIndex: 6,
+  },
+  rowBase: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  rowLeading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  rowTitle: {
+    ...textStyles.body,
+  },
+  rowSubtitle: {
+    ...textStyles.subtle,
+  },
+  rowTrailing: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowPressed: {
+    opacity: 0.8,
+  },
+  rowDisabled: {
+    opacity: 0.5,
   },
 });
 

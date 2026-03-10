@@ -33,6 +33,8 @@ const featureAccents = {
   documents: '#A3A3A3',
 } as const;
 
+export type FeatureAccentKey = keyof typeof featureAccents;
+
 const sheetMaxHeight = {
   web: '94%',
   compact: '76%',
@@ -91,6 +93,22 @@ export const theme = {
     sheetMaxHeight,
     sheetPadding,
   },
+  elevation: {
+    card: {
+      shadowColor: '#000000',
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 2,
+    },
+    floating: {
+      shadowColor: '#000000',
+      shadowOpacity: 0.16,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+  },
   typography: {
     heading: headingFont,
     body: bodyFont,
@@ -132,11 +150,5 @@ export const textStyles = {
   },
 };
 
-export const shadow = {
-  shadowColor: '#000000',
-  shadowOpacity: 0.08,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 6 },
-  elevation: 2,
-};
+export const shadow = theme.elevation.card;
 
