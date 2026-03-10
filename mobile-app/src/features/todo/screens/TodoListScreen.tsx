@@ -723,35 +723,19 @@ export function TodoListScreen({ token, onDone }: Props) {
   }
 
   return (
-    <AppScreen
-      scroll={false}
-      contentStyle={styles.screenContent}
-      header={(
-        <TopBar
-          title={strings.title}
-          subtitle={strings.subtitle}
-          icon={<Ionicons name="checkmark-done-outline" />}
-          accentKey="todos"
-          right={<BackIconButton onPress={onDone} />}
-        />
-      )}
-      footer={(
-        <View style={styles.bottomComposerContainer}>
-          <View style={styles.bottomComposerBar}>
-            <AppInput
-              value={text}
-              placeholder={strings.addPlaceholder}
-              onChangeText={setText}
-              onFocus={() => {
-                applyAddDefaultScopeFromView();
-                setShowAddTodoSheet(true);
-              }}
-              showSoftInputOnFocus={false}
-            />
-          </View>
-        </View>
-      )}
-    >
+      <AppScreen
+        scroll={false}
+        contentStyle={styles.screenContent}
+        header={(
+          <TopBar
+            title={strings.title}
+            subtitle={strings.subtitle}
+            icon={<Ionicons name="checkmark-done-outline" />}
+            accentKey="todos"
+            right={<BackIconButton onPress={onDone} />}
+          />
+        )}
+      >
 
       <View style={styles.contentOffset}>
         <View style={styles.mainLayout}>
@@ -937,6 +921,16 @@ export function TodoListScreen({ token, onDone }: Props) {
 
         </View>
       </View>
+      <Pressable
+        style={styles.fab}
+        onPress={() => {
+          applyAddDefaultScopeFromView();
+          setShowAddTodoSheet(true);
+        }}
+      >
+        <Text style={styles.fabLabel}>+</Text>
+      </Pressable>
+
       {showAddTodoSheet ? (
           <OverlaySheet onClose={closeAddTodoSheet} sheetStyle={styles.sheet}>
             <View style={styles.sheetLayout}>
@@ -1691,7 +1685,7 @@ export function TodoListScreen({ token, onDone }: Props) {
             </ScrollView>
           </OverlaySheet>
         ) : null}
-    </AppScreen>
+      </AppScreen>
   );
 }
 
@@ -2101,15 +2095,22 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
   },
-  bottomComposerContainer: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+  fab: {
+    position: 'absolute',
+    bottom: theme.spacing.lg,
+    right: theme.spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.feature.todos,
+    ...theme.elevation.floating,
   },
-  bottomComposerBar: {
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.xs,
-    paddingBottom: theme.spacing.xs,
+  fabLabel: {
+    fontSize: 28,
+    color: theme.colors.surface,
+    lineHeight: 32,
   },
 });
 
