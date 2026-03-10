@@ -22,7 +22,7 @@ export function ShoppingAddBar({
         <Pressable style={styles.bottomInputPressable} onPress={onPressInput}>
           <Text style={styles.bottomInputPlaceholder}>{placeholder}</Text>
         </Pressable>
-        <AppButton title={actionTitle} onPress={onPressAction} />
+        <AppButton title={actionTitle} onPress={onPressAction} accentKey="shopping" />
       </View>
     </View>
   );

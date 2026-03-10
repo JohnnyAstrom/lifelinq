@@ -29,7 +29,7 @@ export function ListActionsSheetContent({
 }: Props) {
   return (
     <>
-      <Text style={textStyles.h3}>{title}</Text>
+      <Text style={textStyles.h2}>{title}</Text>
       <View style={styles.sheetActions}>
         <AppButton title={shareLabel} onPress={() => void onShare()} fullWidth />
         <AppButton title={editNameLabel} onPress={onEditName} variant="secondary" fullWidth />

@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { Subtle } from '../../../shared/ui/components';
+import { AppRow } from '../../../shared/ui/components';
 import { type ShoppingListResponse } from '../api/shoppingApi';
 
 type Props = {
@@ -30,21 +30,14 @@ export function ShoppingListRow({
 }: Props) {
   return (
     <View style={[styles.listCard, isDragging ? styles.listCardDragging : null]}>
-      <Pressable
-        style={({ pressed }) => [styles.listMainPressable, pressed ? styles.listCardPressed : null]}
+      <AppRow
+        style={styles.listMainPressable}
         onPress={onPress}
         onLongPress={onLongPress}
-        delayLongPress={180}
-      >
-        <View style={styles.listMain}>
-          <Text style={styles.listTitle} numberOfLines={1} ellipsizeMode="tail">
-            {list.name}
-          </Text>
-          <Subtle>
-            {openCount} {strings.open} · {totalCount} {strings.total}
-          </Subtle>
-        </View>
-      </Pressable>
+        title={<Text style={styles.listTitle} numberOfLines={1} ellipsizeMode="tail">{list.name}</Text>}
+        subtitle={`${openCount} ${strings.open} · ${totalCount} ${strings.total}`}
+        contentStyle={styles.listMain}
+      />
       <Pressable
         style={({ pressed }) => [styles.listMenuButton, pressed ? styles.listMenuButtonPressed : null]}
         onPress={onOpenActions}

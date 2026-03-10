@@ -24,7 +24,7 @@ export function QuickAddSheetContent({
   return (
     <>
       <View style={styles.quickAddHeader}>
-        <Text style={textStyles.h3}>{title}</Text>
+        <Text style={textStyles.h2}>{title}</Text>
       </View>
       <AppInput
         ref={inputRef}

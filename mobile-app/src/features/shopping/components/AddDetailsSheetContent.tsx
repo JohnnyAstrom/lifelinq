@@ -62,7 +62,7 @@ export function AddDetailsSheetContent({
   return (
     <>
       <View style={styles.quickAddHeader}>
-        <Text style={textStyles.h3}>{title}</Text>
+        <Text style={textStyles.h2}>{title}</Text>
       </View>
       <AppInput
         ref={inputRef}
@@ -86,6 +86,7 @@ export function AddDetailsSheetContent({
             key={unit.value}
             label={unit.label}
             active={addUnit === unit.value}
+            accentKey="shopping"
             onPress={() => {
               Keyboard.dismiss();
               onSelectUnit(unit.value);
@@ -95,6 +96,7 @@ export function AddDetailsSheetContent({
         <AppChip
           label={unitNoneLabel}
           active={!addUnit}
+          accentKey="shopping"
           onPress={() => {
             Keyboard.dismiss();
             onSelectUnit(null);
@@ -103,6 +105,7 @@ export function AddDetailsSheetContent({
         <AppChip
           label={showMoreAddUnits ? unitToggleLessLabel : unitToggleMoreLabel}
           active={showMoreAddUnits}
+          accentKey="shopping"
           onPress={onToggleMoreUnits}
         />
       </View>
@@ -113,6 +116,7 @@ export function AddDetailsSheetContent({
               key={unit.value}
               label={unit.label}
               active={addUnit === unit.value}
+              accentKey="shopping"
               onPress={() => {
                 Keyboard.dismiss();
                 onSelectUnit(unit.value);
@@ -128,6 +132,7 @@ export function AddDetailsSheetContent({
           onPress={onAddItem}
           disabled={nameValue.trim().length === 0}
           fullWidth
+          accentKey="shopping"
         />
         <AppButton title={closeLabel} onPress={onClose} variant="ghost" fullWidth />
       </View>

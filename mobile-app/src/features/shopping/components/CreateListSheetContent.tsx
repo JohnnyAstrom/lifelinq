@@ -33,7 +33,7 @@ export function CreateListSheetContent({
 }: Props) {
   return (
     <>
-      <Text style={textStyles.h3}>{title}</Text>
+      <Text style={textStyles.h2}>{title}</Text>
       <Subtle>{subtitle}</Subtle>
       <AppInput
         placeholder={placeholder}
@@ -44,7 +44,7 @@ export function CreateListSheetContent({
         autoFocus
       />
       <View style={styles.sheetActions}>
-        <AppButton title={createActionLabel} onPress={onCreate} disabled={!canCreate} fullWidth />
+        <AppButton title={createActionLabel} onPress={onCreate} disabled={!canCreate} fullWidth accentKey="shopping" />
         <AppButton title={closeLabel} onPress={onClose} variant="ghost" fullWidth />
       </View>
     </>

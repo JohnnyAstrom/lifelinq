@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
   GestureResponderEvent,
@@ -323,11 +324,18 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   });
 
   return (
-    <AppScreen scroll={false} contentStyle={styles.screenContent}>
-      <TopBar
-        title={selected ? selected.name : strings.titleFallback}
-        right={<BackIconButton onPress={onBack} />}
-      />
+    <AppScreen
+      scroll={false}
+      contentStyle={styles.screenContent}
+      header={(
+        <TopBar
+          title={selected ? selected.name : strings.titleFallback}
+          icon={<Ionicons name="cart-outline" />}
+          accentKey="shopping"
+          right={<BackIconButton onPress={onBack} />}
+        />
+      )}
+    >
 
       <View style={styles.contentOffset}>
         <View style={styles.mainLayout}>
@@ -644,7 +652,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.success,
   },
   swipeActionOpen: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.feature.shopping,
   },
   swipeActionText: {
     color: '#ffffff',
@@ -803,7 +811,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemRowDragging: {
-    borderColor: theme.colors.primary,
+    borderColor: theme.colors.feature.shopping,
     opacity: 0.85,
   },
   bottomInputPressable: {

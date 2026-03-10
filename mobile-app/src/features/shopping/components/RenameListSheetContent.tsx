@@ -27,10 +27,10 @@ export function RenameListSheetContent({
 }: Props) {
   return (
     <>
-      <Text style={textStyles.h3}>{title}</Text>
+      <Text style={textStyles.h2}>{title}</Text>
       <AppInput placeholder={placeholder} value={value} onChangeText={onChangeText} autoFocus />
       <View style={styles.sheetActions}>
-        <AppButton title={saveLabel} onPress={onSave} fullWidth />
+        <AppButton title={saveLabel} onPress={onSave} fullWidth accentKey="shopping" />
         <AppButton title={closeLabel} onPress={onClose} variant="ghost" fullWidth />
       </View>
     </>

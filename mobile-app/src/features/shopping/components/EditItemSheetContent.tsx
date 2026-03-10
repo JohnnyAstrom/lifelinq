@@ -66,7 +66,7 @@ export function EditItemSheetContent({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.quickAddHeader}>
-          <Text style={textStyles.h3}>{title}</Text>
+          <Text style={textStyles.h2}>{title}</Text>
         </View>
         <AppInput placeholder={editNamePlaceholder} value={nameValue} onChangeText={onChangeName} />
         <AppInput
@@ -81,13 +81,15 @@ export function EditItemSheetContent({
               key={unit.value}
               label={unit.label}
               active={editUnit === unit.value}
+              accentKey="shopping"
               onPress={() => onSelectUnit(unit.value)}
             />
           ))}
-          <AppChip label={unitNoneLabel} active={!editUnit} onPress={() => onSelectUnit(null)} />
+          <AppChip label={unitNoneLabel} active={!editUnit} accentKey="shopping" onPress={() => onSelectUnit(null)} />
           <AppChip
             label={showMoreEditUnits ? unitToggleLessLabel : unitToggleMoreLabel}
             active={showMoreEditUnits}
+            accentKey="shopping"
             onPress={onToggleMoreUnits}
           />
         </View>
@@ -98,6 +100,7 @@ export function EditItemSheetContent({
                 key={unit.value}
                 label={unit.label}
                 active={editUnit === unit.value}
+                accentKey="shopping"
                 onPress={() => onSelectUnit(unit.value)}
               />
             ))}
@@ -105,7 +108,7 @@ export function EditItemSheetContent({
         ) : null}
         {editError ? <Text style={styles.error}>{editError}</Text> : null}
         <View style={styles.editorActions}>
-          <AppButton title={saveChangesLabel} onPress={onSave} fullWidth />
+          <AppButton title={saveChangesLabel} onPress={onSave} fullWidth accentKey="shopping" />
           <AppButton title={removeItemLabel} onPress={onRemove} variant="ghost" fullWidth />
           <AppButton title={closeLabel} onPress={onClose} variant="secondary" fullWidth />
         </View>

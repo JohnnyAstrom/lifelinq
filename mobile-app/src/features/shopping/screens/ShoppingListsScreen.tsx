@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
   GestureResponderEvent,
@@ -254,12 +255,19 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   }
 
   return (
-    <AppScreen scroll={false} contentStyle={styles.screenContent}>
-      <TopBar
-        title={strings.title}
-        subtitle={strings.subtitle}
-        right={<BackIconButton onPress={onDone} />}
-      />
+    <AppScreen
+      scroll={false}
+      contentStyle={styles.screenContent}
+      header={(
+        <TopBar
+          title={strings.title}
+          subtitle={strings.subtitle}
+          icon={<Ionicons name="cart-outline" />}
+          accentKey="shopping"
+          right={<BackIconButton onPress={onDone} />}
+        />
+      )}
+    >
 
       <View style={styles.contentOffset}>
         {shopping.loading ? <Subtle>{strings.loading}</Subtle> : null}
@@ -270,7 +278,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
           {shopping.lists.length === 0 ? (
             <Subtle>{strings.noLists}</Subtle>
           ) : (
-            <View style={styles.listGrid}>
+            <View style={styles.listSection}>
               <Subtle>{strings.reorderHint}</Subtle>
               <View
                 onTouchStart={(event: GestureResponderEvent) => {
@@ -406,7 +414,10 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   listsCard: {
-    gap: 0,
+    gap: theme.spacing.sm,
+  },
+  listSection: {
+    gap: theme.spacing.sm,
   },
   listGrid: {
     gap: theme.spacing.xs,
@@ -425,7 +436,7 @@ const styles = StyleSheet.create({
   },
   listCardDragging: {
     opacity: 0.85,
-    borderColor: theme.colors.primary,
+    borderColor: theme.colors.feature.shopping,
   },
   listMainPressable: {
     flex: 1,
@@ -444,7 +455,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   listTitle: {
-    ...textStyles.h3,
+    ...textStyles.body,
     lineHeight: 26,
   },
   listMenuButton: {
@@ -461,7 +472,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   listMenuText: {
-    ...textStyles.h3,
+    ...textStyles.body,
     lineHeight: 22,
   },
   fab: {
@@ -471,14 +482,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.feature.shopping,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    ...theme.elevation.floating,
   },
   fabText: {
     color: '#ffffff',
