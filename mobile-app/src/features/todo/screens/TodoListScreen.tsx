@@ -2032,15 +2032,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     maxWidth: theme.layout.sheetMaxWidth,
-    maxHeight: Platform.OS === 'web' ? theme.layout.sheetMaxHeight.web : theme.layout.sheetMaxHeight.standard,
     alignSelf: 'center',
     overflow: 'hidden',
   },
   detailSheet: {
-    maxHeight: Platform.OS === 'web' ? theme.layout.sheetMaxHeight.web : theme.layout.sheetMaxHeight.compact,
   },
   scopePickerSheet: {
-    maxHeight: Platform.OS === 'web' ? theme.layout.sheetMaxHeight.web : theme.layout.sheetMaxHeight.tall,
   },
   pickerList: {
     gap: theme.spacing.sm,
