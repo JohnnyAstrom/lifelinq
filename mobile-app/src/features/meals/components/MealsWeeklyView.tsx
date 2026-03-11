@@ -1,5 +1,5 @@
-import { Text, View } from 'react-native';
-import { AppButton, AppCard } from '../../../shared/ui/components';
+import { Pressable, Text, View } from 'react-native';
+import { AppCard } from '../../../shared/ui/components';
 import { MealRow } from './MealRow';
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
@@ -19,7 +19,6 @@ type Props = {
   DAY_LABELS: string[];
   MEAL_TYPE_LABELS: Record<MealType, string>;
   styles: Record<string, any>;
-  addMealLabel: string;
   emptyText: string;
 };
 
@@ -31,7 +30,6 @@ export function MealsWeeklyView({
   DAY_LABELS,
   MEAL_TYPE_LABELS,
   styles,
-  addMealLabel,
   emptyText,
 }: Props) {
   return (
@@ -43,32 +41,29 @@ export function MealsWeeklyView({
         const label = formatDayLabel(date, index);
         const meals = mealsByDay.get(day) ?? [];
         return (
-          <AppCard key={label} style={styles.dayCard}>
-            <View style={styles.dayHeader}>
-              <Text style={styles.dayLabel}>{label}</Text>
-              <AppButton
-                title={addMealLabel}
-                onPress={() => onOpenEditor(day, 'DINNER')}
-                variant="secondary"
-              />
-            </View>
-            {meals.length === 0 ? (
-              <Text style={styles.weeklyEmptyText}>{emptyText}</Text>
-            ) : (
-              <View style={styles.mealList}>
-                {meals.map((meal) => (
-                  <MealRow
-                    key={`${meal.dayOfWeek}-${meal.mealType}`}
-                    mealType={meal.mealType}
-                    recipeTitle={meal.recipeTitle}
-                    onPress={() => onOpenEditor(day, meal.mealType)}
-                    mealTypeLabels={MEAL_TYPE_LABELS}
-                    styles={styles}
-                  />
-                ))}
+          <Pressable key={label} onPress={() => onOpenEditor(day, 'DINNER')}>
+            <AppCard style={styles.dayCard}>
+              <View style={styles.dayHeader}>
+                <Text style={styles.dayLabel}>{label}</Text>
               </View>
-            )}
-          </AppCard>
+              {meals.length === 0 ? (
+                <Text style={styles.weeklyEmptyText}>{emptyText}</Text>
+              ) : (
+                <View style={styles.mealList}>
+                  {meals.map((meal) => (
+                    <MealRow
+                      key={`${meal.dayOfWeek}-${meal.mealType}`}
+                      mealType={meal.mealType}
+                      recipeTitle={meal.recipeTitle}
+                      onPress={() => onOpenEditor(day, meal.mealType)}
+                      mealTypeLabels={MEAL_TYPE_LABELS}
+                      styles={styles}
+                    />
+                  ))}
+                </View>
+              )}
+            </AppCard>
+          </Pressable>
         );
       })}
     </View>

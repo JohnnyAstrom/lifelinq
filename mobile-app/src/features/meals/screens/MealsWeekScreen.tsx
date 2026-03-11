@@ -1,17 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  Keyboard,
-  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MealsDailyView } from '../components/MealsDailyView';
+import { MealEditorSheet } from '../components/MealEditorSheet';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
 import {
@@ -29,7 +27,6 @@ import {
   BackIconButton,
   AppCard,
   AppChip,
-  AppInput,
   AppScreen,
   Subtle,
   TopBar,
@@ -44,12 +41,11 @@ type Props = {
 type ViewMode = 'daily' | 'weekly' | 'monthly';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER'] as const;
-const MEAL_TYPE_LABELS: Record<(typeof MEAL_TYPES)[number], string> = {
+const MEAL_TYPE_LABELS = {
   BREAKFAST: 'Breakfast',
   LUNCH: 'Lunch',
   DINNER: 'Dinner',
-};
+} as const;
 const MONTH_LABELS = [
   'Jan',
   'Feb',
@@ -107,13 +103,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     weekLabel: 'Week',
     monthlyOverview: 'Monthly overview. Only current week is loaded in V0.',
     loadingPlan: 'Loading week plan...',
-    addMeal: 'Add meal',
     noMeals: 'No meals planned yet.',
-    weeksTitle: 'Weeks',
-    mealsCount: 'meals',
-    back: 'Back',
     planMealTitle: 'Plan a meal',
-    selectedDayPrefix: 'Selected day:',
+    dayLabel: 'Day',
     mealTitlePlaceholder: 'Meal title',
     ingredientsPlaceholder: 'Ingredients (one per line)',
     addIngredientsToShopping: 'Add ingredients to shopping list',
@@ -137,27 +129,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const { editor, actions } = workflow;
   const plan = workflow.plan;
   const shopping = workflow.shopping;
-
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const mealsByDay = workflow.mealsByDay;
   const lists = shopping.lists;
   const effectiveListId = editor.effectiveListId;
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-  const wasEditorOpenRef = useRef(false);
-  useEffect(() => {
-    if (wasEditorOpenRef.current && !editor.isOpen) {
-      Keyboard.dismiss();
-    }
-    wasEditorOpenRef.current = editor.isOpen;
-  }, [editor.isOpen]);
 
   async function handleSave() {
     await actions.saveMeal();
@@ -180,14 +154,26 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   const dailyDayNumber = dailyDayIndex + 1;
   const dailyMeals = mealsByDay.get(dailyDayNumber) ?? [];
-
-  const currentWeekMealCount = useMemo(() => {
-    let count = 0;
-    for (const list of mealsByDay.values()) {
-      count += list.length;
+  const selectedEditorDate = useMemo(() => {
+    if (!editor.selectedDay) {
+      return anchorDate;
     }
-    return count;
-  }, [mealsByDay]);
+    const date = new Date(weekStart.getTime());
+    date.setUTCDate(weekStart.getUTCDate() + editor.selectedDay - 1);
+    return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  }, [anchorDate, editor.selectedDay, weekStart]);
+  const editorDayOptions = useMemo(() => {
+    return DAY_LABELS.map((_, index) => {
+      const date = new Date(weekStart.getTime());
+      date.setUTCDate(weekStart.getUTCDate() + index);
+      const localDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+      return {
+        dayNumber: index + 1,
+        date: localDate,
+        label: formatDayLabel(date, index),
+      };
+    });
+  }, [weekStart]);
 
   const monthGridCells = useMemo(() => buildMonthGridCells(anchorDate), [anchorDate]);
 
@@ -221,20 +207,21 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   });
 
   return (
-    <>
-      <AppScreen
-        header={(
-          <TopBar
-            title={strings.title}
-            subtitle={strings.subtitle}
-            icon={<Ionicons name="restaurant-outline" />}
-            accentKey="meals"
-            right={<BackIconButton onPress={onDone} />}
-          />
-        )}
-      >
-
-        <View style={styles.contentOffset}>
+    <AppScreen
+      scroll={false}
+      contentStyle={styles.screenContent}
+      header={(
+        <TopBar
+          title={strings.title}
+          subtitle={strings.subtitle}
+          icon={<Ionicons name="restaurant-outline" />}
+          accentKey="meals"
+          right={<BackIconButton onPress={onDone} />}
+        />
+      )}
+    >
+      <ScrollView contentContainerStyle={styles.contentOffset}>
+        <View style={styles.contentInner}>
           <AppCard style={styles.headerCard}>
             <View style={styles.viewSwitchRow}>
               <AppChip
@@ -258,246 +245,173 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             </View>
           </AppCard>
 
-        {viewMode === 'weekly' ? (
-          <AppCard style={styles.compactNavCard}>
-            <View style={[styles.headerRow, styles.compactHeaderRow]}>
-              <AppButton
-                title={strings.prev}
-                onPress={() => setAnchorDate(addDays(anchorDate, -7))}
-                variant="ghost"
-              />
-              <Text style={styles.dailyHeaderText}>
+          {viewMode === 'weekly' ? (
+            <AppCard style={styles.compactNavCard}>
+              <View style={[styles.headerRow, styles.compactHeaderRow]}>
+                <AppButton
+                  title={strings.prev}
+                  onPress={() => setAnchorDate(addDays(anchorDate, -7))}
+                  variant="ghost"
+                />
+                <Text style={styles.dailyHeaderText}>
+                  {strings.weekLabel} {isoWeek} · {year}
+                </Text>
+                <AppButton
+                  title={strings.next}
+                  onPress={() => setAnchorDate(addDays(anchorDate, 7))}
+                  variant="ghost"
+                />
+              </View>
+              <Subtle>
+                {formatDayLabel(weekStart, 0)} — {formatDayLabel(weekEnd, 6)}
+              </Subtle>
+            </AppCard>
+          ) : null}
+
+          {viewMode === 'daily' ? (
+            <AppCard style={styles.compactNavCard}>
+              <View style={[styles.headerRow, styles.compactHeaderRow]}>
+                <AppButton
+                  title={strings.prev}
+                  onPress={() => setAnchorDate(addDays(anchorDate, -1))}
+                  variant="ghost"
+                />
+                <Text style={styles.dailyHeaderText}>
+                  {formatRelativeDailyNavLabel(anchorDate)}
+                </Text>
+                <AppButton
+                  title={strings.next}
+                  onPress={() => setAnchorDate(addDays(anchorDate, 1))}
+                  variant="ghost"
+                />
+              </View>
+              <Subtle style={styles.navSubLabel}>
                 {strings.weekLabel} {isoWeek} · {year}
-              </Text>
-              <AppButton
-                title={strings.next}
-                onPress={() => setAnchorDate(addDays(anchorDate, 7))}
-                variant="ghost"
-              />
-            </View>
-            <Subtle>
-              {formatDayLabel(weekStart, 0)} — {formatDayLabel(weekEnd, 6)}
-            </Subtle>
-          </AppCard>
-        ) : null}
+              </Subtle>
+            </AppCard>
+          ) : null}
 
-        {viewMode === 'daily' ? (
-          <AppCard style={styles.compactNavCard}>
-            <View style={[styles.headerRow, styles.compactHeaderRow]}>
-              <AppButton
-                title={strings.prev}
-                onPress={() => setAnchorDate(addDays(anchorDate, -1))}
-                variant="ghost"
-              />
-              <Text style={styles.dailyHeaderText}>
-                {formatRelativeDailyNavLabel(anchorDate)}
-              </Text>
-              <AppButton
-                title={strings.next}
-                onPress={() => setAnchorDate(addDays(anchorDate, 1))}
-                variant="ghost"
-              />
-            </View>
-            <Subtle style={styles.navSubLabel}>
-              {strings.weekLabel} {isoWeek} · {year}
-            </Subtle>
-          </AppCard>
-        ) : null}
+          {viewMode === 'monthly' ? (
+            <AppCard style={styles.compactNavCard}>
+              <View style={[styles.headerRow, styles.compactHeaderRow]}>
+                <AppButton
+                  title={strings.prev}
+                  onPress={() => setAnchorDate(addDays(anchorDate, -30))}
+                  variant="ghost"
+                />
+                <Text style={styles.dailyHeaderText}>{formatMonthLabel(anchorDate)}</Text>
+                <AppButton
+                  title={strings.next}
+                  onPress={() => setAnchorDate(addDays(anchorDate, 30))}
+                  variant="ghost"
+                />
+              </View>
+            </AppCard>
+          ) : null}
 
-        {viewMode === 'monthly' ? (
-          <AppCard style={styles.compactNavCard}>
-            <View style={[styles.headerRow, styles.compactHeaderRow]}>
-              <AppButton
-                title={strings.prev}
-                onPress={() => setAnchorDate(addDays(anchorDate, -30))}
-                variant="ghost"
-              />
-              <Text style={styles.dailyHeaderText}>{formatMonthLabel(anchorDate)}</Text>
-              <AppButton
-                title={strings.next}
-                onPress={() => setAnchorDate(addDays(anchorDate, 30))}
-                variant="ghost"
-              />
-            </View>
-          </AppCard>
-        ) : null}
+          {plan.loading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
+          {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
 
-        {plan.loading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
-        {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
-
-        {viewMode === 'weekly' ? (
-          <MealsWeeklyView
-            weekStart={weekStart}
-            mealsByDay={mealsByDay}
-            onOpenEditor={actions.openEditor}
-            formatDayLabel={formatDayLabel}
-            DAY_LABELS={DAY_LABELS}
-            MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-            styles={styles}
-            addMealLabel={strings.addMeal}
-            emptyText={strings.noMeals}
-          />
-        ) : null}
-
-        {viewMode === 'daily' ? (
-          <MealsDailyView
-            dailyDayNumber={dailyDayNumber}
-            dailyMeals={dailyMeals}
-            onOpenEditor={actions.openEditor}
-            MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-            styles={styles}
-            emptyText={strings.noMeals}
-            title={strings.title}
-          />
-        ) : null}
-
-        {viewMode === 'monthly' ? (
-          <AppCard>
-            <MealsMonthlyView
-              monthGridCells={monthGridCells}
-              monthMealCountByDateKey={monthMealCountByDateKey}
-              toDateKey={toDateKey}
-              isTodayDate={isTodayDate}
+          {viewMode === 'weekly' ? (
+            <MealsWeeklyView
+              weekStart={weekStart}
+              mealsByDay={mealsByDay}
+              onOpenEditor={actions.openEditor}
+              formatDayLabel={formatDayLabel}
+              DAY_LABELS={DAY_LABELS}
+              MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
               styles={styles}
-              onPressDay={(date) => {
-                setAnchorDate(new Date(date.getTime()));
-                setViewMode('weekly');
-              }}
-              weekdayLabels={DAY_LABELS}
+              emptyText={strings.noMeals}
             />
-          </AppCard>
-        ) : null}
+          ) : null}
 
+          {viewMode === 'daily' ? (
+            <MealsDailyView
+              dailyDayNumber={dailyDayNumber}
+              dailyMeals={dailyMeals}
+              onOpenEditor={actions.openEditor}
+              MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+              styles={styles}
+              emptyText={strings.noMeals}
+              title={strings.title}
+            />
+          ) : null}
+
+          {viewMode === 'monthly' ? (
+            <AppCard>
+              <MealsMonthlyView
+                monthGridCells={monthGridCells}
+                monthMealCountByDateKey={monthMealCountByDateKey}
+                toDateKey={toDateKey}
+                isTodayDate={isTodayDate}
+                styles={styles}
+                onPressDay={(date) => {
+                  setAnchorDate(new Date(date.getTime()));
+                  setViewMode('weekly');
+                }}
+                weekdayLabels={DAY_LABELS}
+              />
+            </AppCard>
+          ) : null}
         </View>
-      </AppScreen>
+      </ScrollView>
 
-        {viewMode === 'daily' ? (
-          <Pressable
-            style={[styles.fab, { bottom: theme.spacing.lg + insets.bottom }]}
-            onPress={() => actions.openEditor(dailyDayNumber, 'DINNER')}
-          >
-            <Text style={styles.fabLabel}>+</Text>
+      {viewMode === 'daily' ? (
+        <Pressable
+          style={[styles.fab, { bottom: theme.spacing.lg + insets.bottom }]}
+          onPress={() => actions.openEditor(dailyDayNumber, 'DINNER')}
+        >
+          <Text style={styles.fabLabel}>+</Text>
         </Pressable>
       ) : null}
 
-      <Modal
-        visible={editor.isOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={closeEditor}
-      >
-        {editor.selectedDay && editor.selectedMealType ? (
-            <Pressable style={styles.backdrop} onPress={closeEditor}>
-              <View style={styles.modalContent}>
-                <Pressable style={styles.sheet} onPress={() => null}>
-                  <View style={styles.sheetStickyHeader}>
-                    <Text style={textStyles.h2}>{strings.planMealTitle}</Text>
-                    <Subtle>
-                      {`${strings.selectedDayPrefix} ${formatDayLabel(
-                        new Date(weekStart.getTime() + (editor.selectedDay - 1) * 86400000),
-                        editor.selectedDay - 1
-                      )}`}
-                    </Subtle>
-                    <View style={styles.mealTypeRow}>
-                      {MEAL_TYPES.map((mealType) => {
-                        const active = mealType === editor.selectedMealType;
-                        return (
-                          <AppChip
-                            key={mealType}
-                            label={MEAL_TYPE_LABELS[mealType]}
-                            active={active}
-                            accentKey="meals"
-                            onPress={() => {
-                              Keyboard.dismiss();
-                              editor.setSelectedMealType(mealType);
-                              const list = mealsByDay.get(editor.selectedDay!) ?? [];
-                              const existing = list.find((meal) => meal.mealType === mealType);
-                              editor.setRecipeTitle(existing?.recipeTitle ?? '');
-                              editor.setSelectedMealRecipeId(existing?.recipeId ?? null);
-                              editor.setIngredientsText('');
-                            }}
-                          />
-                        );
-                      })}
-                    </View>
-                  </View>
-                  <KeyboardAwareScrollView
-                    style={styles.sheetScroll}
-                    contentContainerStyle={styles.sheetScrollContent}
-                    keyboardShouldPersistTaps="handled"
-                    extraKeyboardSpace={-24}
-                    bottomOffset={0}
-                    showsVerticalScrollIndicator={false}
-                  >
-                <AppInput
-                  placeholder={strings.mealTitlePlaceholder}
-                  value={editor.recipeTitle}
-                  onChangeText={editor.setRecipeTitle}
-                />
-                <AppInput
-                  placeholder={strings.ingredientsPlaceholder}
-                  value={editor.ingredientsText}
-                  onChangeText={editor.setIngredientsText}
-                  multiline
-                  style={styles.ingredientsInput}
-                />
-                <View style={styles.toggleRow}>
-                  <Text style={styles.toggleLabel}>{strings.addIngredientsToShopping}</Text>
-                  <Switch value={editor.pushToShopping} onValueChange={editor.setPushToShopping} />
-                </View>
-                <View style={styles.lists}>
-                  {lists.length === 0 ? (
-                    <Subtle>{strings.noShoppingLists}</Subtle>
-                  ) : (
-                    <View style={styles.chipRow}>
-                      {lists.map((list) => {
-                        const active = list.id === effectiveListId;
-                        return (
-                          <AppChip
-                            key={list.id}
-                            label={list.name}
-                            active={active}
-                            accentKey="meals"
-                            onPress={() => editor.setSelectedListId(list.id)}
-                          />
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-                {editor.shoppingSyncError ? (
-                  <Text style={styles.error}>{strings.shoppingSyncFailed} {editor.shoppingSyncError}</Text>
-                ) : null}
-                <View style={styles.editorActions}>
-                  <AppButton title={strings.saveMeal} onPress={handleSave} fullWidth accentKey="meals" />
-                  {editor.selectedMeal?.recipeTitle && !isKeyboardVisible ? (
-                    <AppButton
-                      title={strings.removeMeal}
-                      onPress={handleRemove}
-                      variant="ghost"
-                      fullWidth
-                    />
-                  ) : null}
-                  {!isKeyboardVisible ? (
-                    <AppButton
-                      title={strings.close}
-                      onPress={closeEditor}
-                      variant="secondary"
-                      fullWidth
-                    />
-                  ) : null}
-                </View>
-                  </KeyboardAwareScrollView>
-                </Pressable>
-              </View>
-            </Pressable>
-        ) : null}
-      </Modal>
-    </>
+      {editor.isOpen ? (
+        <MealEditorSheet
+          initialDate={selectedEditorDate}
+          dayOptions={editorDayOptions}
+          onSelectDay={editor.setSelectedDay}
+          onClose={closeEditor}
+          onSave={handleSave}
+          onRemove={handleRemove}
+          selectedMealType={editor.selectedMealType}
+          onSelectMealType={editor.setSelectedMealType}
+          mealTypeLabels={MEAL_TYPE_LABELS}
+          recipeTitle={editor.recipeTitle}
+          onChangeRecipeTitle={editor.setRecipeTitle}
+          ingredientsText={editor.ingredientsText}
+          onChangeIngredientsText={editor.setIngredientsText}
+          pushToShopping={editor.pushToShopping}
+          onChangePushToShopping={editor.setPushToShopping}
+          lists={lists}
+          effectiveListId={effectiveListId}
+          onSelectListId={editor.setSelectedListId}
+          shoppingSyncError={editor.shoppingSyncError}
+          hasExistingMeal={!!editor.selectedMeal?.recipeTitle}
+          strings={{
+            planMealTitle: strings.planMealTitle,
+            dayLabel: strings.dayLabel,
+            mealTitlePlaceholder: strings.mealTitlePlaceholder,
+            ingredientsPlaceholder: strings.ingredientsPlaceholder,
+            addIngredientsToShopping: strings.addIngredientsToShopping,
+            noShoppingLists: strings.noShoppingLists,
+            shoppingSyncFailed: strings.shoppingSyncFailed,
+            saveMeal: strings.saveMeal,
+            removeMeal: strings.removeMeal,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    flex: 1,
+  },
+  contentInner: {
+    gap: theme.spacing.md,
+  },
   headerCard: {
     gap: theme.spacing.xs,
   },
@@ -511,6 +425,7 @@ const styles = StyleSheet.create({
   },
   contentOffset: {
     paddingTop: theme.layout.topBarOffset + theme.spacing.md,
+    paddingBottom: theme.spacing.md,
     gap: theme.spacing.md,
   },
   viewSwitchRow: {
@@ -678,76 +593,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  ingredientsInput: {
-    minHeight: 64,
-    textAlignVertical: 'top',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  toggleLabel: {
-    fontWeight: '600',
-    color: theme.colors.text,
-    fontFamily: theme.typography.body,
-  },
-  lists: {
-    gap: theme.spacing.xs,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  mealTypeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  editorActions: {
-    gap: theme.spacing.sm,
-  },
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
-  },
-  backdrop: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.scrim,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.radius.xl,
-    borderTopRightRadius: theme.radius.xl,
-    maxHeight: '95%',
-    paddingTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  sheetScroll: {
-    flexGrow: 0,
-  },
-  sheetScrollContent: {
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.sm,
-  },
-  sheetStickyHeader: {
-    gap: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
   },
   fab: {
     position: 'absolute',

@@ -73,7 +73,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     return list.find((meal) => meal.mealType === selectedMealType) ?? null;
   }, [selectedDay, selectedMealType, mealsByDay]);
 
-  function openEditor(day: number, mealType: MealType) {
+  function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
     setSelectedMealType(mealType);
     const list = mealsByDay.get(day) ?? [];
@@ -82,6 +82,21 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setSelectedMealRecipeId(existing?.recipeId ?? null);
     setIngredientsText('');
     setShoppingSyncError(null);
+  }
+
+  function openEditor(day: number, mealType: MealType) {
+    syncEditorSelection(day, mealType);
+  }
+
+  function selectEditorDay(day: number) {
+    syncEditorSelection(day, selectedMealType ?? 'DINNER');
+  }
+
+  function selectEditorMealType(mealType: MealType) {
+    if (!selectedDay) {
+      return;
+    }
+    syncEditorSelection(selectedDay, mealType);
   }
 
   function closeEditor() {
@@ -186,7 +201,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setIngredientsText,
       setPushToShopping,
       setSelectedListId,
-      setSelectedMealType,
+      setSelectedDay: selectEditorDay,
+      setSelectedMealType: selectEditorMealType,
       setSelectedMealRecipeId,
       setShoppingSyncError,
     },
