@@ -30,6 +30,35 @@ type ScreenProps = {
   stickyHeaderIndices?: number[];
 };
 
+function getTopLevelElementName(node: React.ReactNode): string | null {
+  if (!React.isValidElement(node)) {
+    return null;
+  }
+
+  if (typeof node.type === 'string') {
+    return null;
+  }
+
+  if ('displayName' in node.type && typeof node.type.displayName === 'string') {
+    return node.type.displayName;
+  }
+
+  if ('name' in node.type && typeof node.type.name === 'string') {
+    return node.type.name;
+  }
+
+  return null;
+}
+
+function isOverlayChild(node: React.ReactNode): boolean {
+  const name = getTopLevelElementName(node);
+  if (!name) {
+    return false;
+  }
+
+  return name.endsWith('Sheet') || name.endsWith('Modal');
+}
+
 export function AppScreen({
   children,
   header,
@@ -39,42 +68,52 @@ export function AppScreen({
   refreshControl,
   stickyHeaderIndices,
 }: ScreenProps) {
+  const allChildren = React.Children.toArray(children);
+  const contentChildren = allChildren.filter((child) => !isOverlayChild(child));
+  const overlayChildren = allChildren.filter((child) => isOverlayChild(child));
+
   if (scroll) {
     return (
-      <SafeAreaView style={styles.screen}>
-        {header ? <View style={styles.edgeSlot}>{header}</View> : null}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={refreshControl}
-          stickyHeaderIndices={stickyHeaderIndices}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          <View style={[styles.contentContainer, contentStyle]}>
-            {children}
-          </View>
-        </ScrollView>
-        {footer ? <View style={styles.edgeSlot}>{footer}</View> : null}
-      </SafeAreaView>
+      <View style={styles.screenRoot}>
+        <SafeAreaView style={styles.screen}>
+          {header ? <View style={styles.edgeSlot}>{header}</View> : null}
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={refreshControl}
+            stickyHeaderIndices={stickyHeaderIndices}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <View style={[styles.contentContainer, contentStyle]}>
+              {contentChildren}
+            </View>
+          </ScrollView>
+          {footer ? <View style={styles.edgeSlot}>{footer}</View> : null}
+        </SafeAreaView>
+        {overlayChildren}
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      {header ? <View style={styles.edgeSlot}>{header}</View> : null}
-      <KeyboardAvoidingView
-        style={styles.contentNoScroll}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.contentNoScroll}>
-          <View style={[styles.contentContainer, styles.contentNoScroll, contentStyle]}>
-            {children}
+    <View style={styles.screenRoot}>
+      <SafeAreaView style={styles.screen}>
+        {header ? <View style={styles.edgeSlot}>{header}</View> : null}
+        <KeyboardAvoidingView
+          style={styles.contentNoScroll}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.contentNoScroll}>
+            <View style={[styles.contentContainer, styles.contentNoScroll, contentStyle]}>
+              {contentChildren}
+            </View>
+            {footer ? <View style={styles.edgeSlot}>{footer}</View> : null}
           </View>
-          {footer ? <View style={styles.edgeSlot}>{footer}</View> : null}
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+      {overlayChildren}
+    </View>
   );
 }
 
@@ -350,6 +389,9 @@ export function TopBar({ title, subtitle, left, right, accentKey, icon }: TopBar
 }
 
 const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,

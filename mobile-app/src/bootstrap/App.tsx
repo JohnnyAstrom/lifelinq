@@ -27,6 +27,7 @@ import { AcceptInviteScreen } from '../screens/AcceptInviteScreen';
 import { AppToast } from '../shared/ui/AppToast';
 import { formatApiError } from '../shared/api/client';
 import { ActionSheet } from '../shared/ui/ActionSheet';
+import { OverlayHost } from '../shared/ui/OverlayHost';
 import { AppButton, AppCard, AppInput, AppScreen, Subtle } from '../shared/ui/components';
 import { textStyles, theme } from '../shared/ui/theme';
 import { AuthGate } from './AuthGate';
@@ -64,7 +65,10 @@ export default function App() {
             />
             <AuthProvider>
               <PendingInviteProvider>
-                <AppShell />
+                <View style={styles.appRoot}>
+                  <AppShell />
+                  <OverlayHost />
+                </View>
               </PendingInviteProvider>
             </AuthProvider>
           </BottomSheetModalProvider>
@@ -818,6 +822,9 @@ function AppStack({
 }
 
 const styles = StyleSheet.create({
+  appRoot: {
+    flex: 1,
+  },
   switchSheetContent: {
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.xl,

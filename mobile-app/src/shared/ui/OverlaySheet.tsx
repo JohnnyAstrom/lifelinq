@@ -12,6 +12,7 @@ import {
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { removeOverlayNode, setOverlayNode, useOverlayHostHeight } from './OverlayHost';
 import { theme } from './theme';
 
 type OverlaySheetProps = {
@@ -27,16 +28,25 @@ export function OverlaySheet({
   sheetStyle,
   aboveSheet,
 }: OverlaySheetProps) {
+  const overlayId = useRef(`overlay-sheet-${Math.random().toString(36).slice(2)}`).current;
   const screenHeight = Dimensions.get('window').height;
+  const hostHeight = useOverlayHostHeight();
   const backdropOpacity = useRef(new RNAnimated.Value(0)).current;
   const sheetTranslateY = useRef(new RNAnimated.Value(28)).current;
   const { height } = useReanimatedKeyboardAnimation();
   const insets = useSafeAreaInsets();
+  const viewportHeight = hostHeight
+    ? hostHeight - insets.top
+    : screenHeight;
   const [sheetHeight, setSheetHeight] = useState(0);
 
   const sheetAnimatedStyle = useAnimatedStyle(() => {
+    const keyboardHeight = -height.value;
+    const availableHeight = viewportHeight - keyboardHeight;
+
     return {
-      bottom: -height.value - insets.bottom,
+      bottom: keyboardHeight,
+      maxHeight: availableHeight,
     };
   });
 
@@ -66,14 +76,16 @@ export function OverlaySheet({
   useEffect(() => {
     console.log('[OverlaySheet]', {
       screenHeight,
+      hostHeight,
+      viewportHeight,
       sheetHeight,
       insetsTop: insets.top,
       insetsBottom: insets.bottom,
       hasAboveSheet: !!aboveSheet,
     });
-  }, [aboveSheet, insets.bottom, insets.top, screenHeight, sheetHeight]);
+  }, [aboveSheet, hostHeight, insets.bottom, insets.top, screenHeight, sheetHeight, viewportHeight]);
 
-  return (
+  const overlayNode = (
     <View
       style={styles.root}
       pointerEvents="box-none"
@@ -101,7 +113,7 @@ export function OverlaySheet({
             </Animated.View>
           ) : null}
           <Animated.View
-            style={[styles.sheet, sheetStyle, { maxHeight: screenHeight - insets.top }, sheetAnimatedStyle]}
+            style={[styles.sheet, sheetStyle, sheetAnimatedStyle]}
             onLayout={(event) => {
               const nextHeight = event.nativeEvent.layout.height;
               console.log('[OverlaySheet] sheet layout', event.nativeEvent.layout);
@@ -114,6 +126,34 @@ export function OverlaySheet({
       </RNAnimated.View>
     </View>
   );
+
+  useEffect(() => {
+    setOverlayNode(overlayId, overlayNode);
+  }, [overlayId, overlayNode]);
+
+  useEffect(() => {
+    return () => {
+      removeOverlayNode(overlayId);
+    };
+  }, [overlayId]);
+
+  useEffect(() => {
+    const keyboardHeight = -height.value;
+    const keyboardTop = screenHeight + height.value;
+    console.log('[OverlaySheet] metrics', {
+      screenHeight,
+      hostHeight,
+      viewportHeight,
+      sheetHeight,
+      keyboardHeight,
+      keyboardTop,
+      insetsTop: insets.top,
+      insetsBottom: insets.bottom,
+      hasAboveSheet: !!aboveSheet,
+    });
+  }, [aboveSheet, height.value, hostHeight, insets.bottom, insets.top, screenHeight, sheetHeight, viewportHeight]);
+
+  return null;
 }
 
 const styles = StyleSheet.create({
