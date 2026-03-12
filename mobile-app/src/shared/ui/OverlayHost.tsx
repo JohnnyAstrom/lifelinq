@@ -70,7 +70,6 @@ export function OverlayHost() {
       pointerEvents="box-none"
       onLayout={(event) => {
         const nextHeight = event.nativeEvent.layout.height;
-        console.log('[OverlayHost] layout', event.nativeEvent.layout);
         setOverlayHostHeight(nextHeight);
       }}
     >

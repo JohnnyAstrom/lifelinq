@@ -320,15 +320,15 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
   onLayout,
 }, ref) {
   return (
-    <TextInput
-      ref={ref}
-      value={value}
-      placeholder={placeholder}
-      onChangeText={onChangeText}
-      multiline={multiline}
-      autoFocus={autoFocus}
-      blurOnSubmit={blurOnSubmit}
-      keyboardType={keyboardType}
+      <TextInput
+        ref={ref}
+        value={value}
+        placeholder={placeholder}
+        onChangeText={onChangeText}
+        multiline={multiline}
+        autoFocus={autoFocus}
+        blurOnSubmit={blurOnSubmit}
+        keyboardType={keyboardType}
       onFocus={onFocus}
       onBlur={onBlur}
       onSubmitEditing={onSubmitEditing}
