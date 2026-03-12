@@ -12,6 +12,7 @@ type Props = {
   detailsHideLabel: string;
   addQuantityPlaceholder: string;
   addItemTitle: string;
+  successFeedback?: string | null;
   unitNoneLabel: string;
   unitToggleMoreLabel: string;
   unitToggleLessLabel: string;
@@ -42,6 +43,7 @@ export function AddDetailsSheetContent({
   detailsHideLabel,
   addQuantityPlaceholder,
   addItemTitle,
+  successFeedback,
   unitNoneLabel,
   unitToggleMoreLabel,
   unitToggleLessLabel,
@@ -77,6 +79,11 @@ export function AddDetailsSheetContent({
         returnKeyType={nameValue.trim().length > 0 ? 'done' : 'next'}
         autoFocus
       />
+      {successFeedback ? (
+        <View style={localStyles.successFeedbackRow}>
+          <Text style={localStyles.successFeedbackText}>{successFeedback}</Text>
+        </View>
+      ) : null}
       <Pressable style={({ pressed }) => [localStyles.detailsToggle, pressed ? localStyles.detailsTogglePressed : null]} onPress={onToggleDetails}>
         <Text style={localStyles.detailsToggleLabel}>{detailsExpanded ? detailsHideLabel : detailsToggleLabel}</Text>
       </Pressable>
@@ -232,5 +239,21 @@ const localStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#6b7280',
+  },
+  successFeedbackRow: {
+    minHeight: 34,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(47,122,79,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(47,122,79,0.22)',
+  },
+  successFeedbackText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.success,
+    fontFamily: theme.typography.body,
   },
 });

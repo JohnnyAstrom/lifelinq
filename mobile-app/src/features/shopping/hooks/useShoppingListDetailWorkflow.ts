@@ -14,7 +14,7 @@ type EditableShoppingItem = {
 type AddLikeStrings = {
   addErrorQuantity: string;
   addErrorQuantityUnit: string;
-  addDetailsAddedSuffix: string;
+  addDetailsAddedPrefix: string;
 };
 
 type EditStrings = {
@@ -112,11 +112,11 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     setAddQuantity('');
     setAddUnit(null);
     setAddError(null);
-    const quantityPrefix =
+    const quantityText =
       parsedQuantity !== null && effectiveUnit
-        ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} - `
+        ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} `
         : '';
-    setAddDetailsFeedback(`${quantityPrefix}${addedName} ${strings.addDetailsAddedSuffix}`);
+    setAddDetailsFeedback(`${strings.addDetailsAddedPrefix} ${quantityText}${addedName}`);
     if (addDetailsFeedbackTimerRef.current) {
       clearTimeout(addDetailsFeedbackTimerRef.current);
     }

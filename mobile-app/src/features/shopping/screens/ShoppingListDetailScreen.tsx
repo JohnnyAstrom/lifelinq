@@ -15,12 +15,13 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
 import { EditItemSheetContent } from '../components/EditItemSheetContent';
 import { ShoppingItemRow } from '../components/ShoppingItemRow';
+import { ShoppingItemSectionCard } from '../components/ShoppingItemSectionCard';
 import { useShoppingListDetailProjection } from '../hooks/useShoppingListDetailProjection';
 import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../api/shoppingApi';
-import { AppButton, AppCard, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { AppScreen, BackIconButton, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +40,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const [showMoreEditUnits, setShowMoreEditUnits] = useState(false);
   const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);
   const [showAddFormDetails, setShowAddFormDetails] = useState(false);
+  const [isBoughtExpanded, setIsBoughtExpanded] = useState(false);
   const orderedOpenItemIdsRef = useRef<string[]>([]);
   const draggingOpenItemIdRef = useRef<string | null>(null);
   const dragStartIndexRef = useRef<number | null>(null);
@@ -60,6 +62,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const openSections = projection.openSections;
   const boughtSection = projection.boughtSection;
   const boughtItems = boughtSection?.items ?? [];
+  const isBoughtCollapsed = boughtItems.length > 0 && !isBoughtExpanded;
   const canReorderOpenItems = openSections.length <= 1;
   const showOpenReorderHint = canReorderOpenItems && openItems.length > 0;
 
@@ -70,6 +73,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     boughtLabel: 'Bought',
     openCountSuffix: 'open',
     boughtCountSuffix: 'bought',
+    showBought: 'Show bought',
+    hideBought: 'Hide bought',
     details: 'Open item details',
     swipeBought: 'Bought',
     swipeOpen: 'Open',
@@ -88,7 +93,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addErrorQuantity: 'Quantity must be a positive number.',
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
     addDetailsTitle: 'Add details',
-    addDetailsAddedSuffix: 'added to shopping list.',
+    addDetailsAddedPrefix: 'Added',
     addItemTitle: 'Add item',
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
@@ -167,7 +172,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       {
         addErrorQuantity: strings.addErrorQuantity,
         addErrorQuantityUnit: strings.addErrorQuantityUnit,
-        addDetailsAddedSuffix: strings.addDetailsAddedSuffix,
+        addDetailsAddedPrefix: strings.addDetailsAddedPrefix,
       },
       { onRefocus: () => addDetailsInputRef.current?.focus() }
     );
@@ -341,21 +346,19 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
           {openSections.length === 0 ? (
-            <AppCard style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <SectionTitle>{strings.openLabel}</SectionTitle>
-                <Subtle>0 {strings.openCountSuffix}</Subtle>
-              </View>
-              <Subtle>{strings.noOpenItems}</Subtle>
-            </AppCard>
+            <ShoppingItemSectionCard
+              title={strings.openLabel}
+              countLabel={`0 ${strings.openCountSuffix}`}
+              emptyState={strings.noOpenItems}
+            />
           ) : openSections.map((section) => (
-            <AppCard key={section.id} style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <SectionTitle>{section.title}</SectionTitle>
-                <Subtle>{section.itemCount} {strings.openCountSuffix}</Subtle>
-              </View>
-              <View style={styles.items}>
-                {showOpenReorderHint ? <Subtle>{strings.reorderHint}</Subtle> : null}
+            <ShoppingItemSectionCard
+              key={section.id}
+              title={section.title}
+              countLabel={`${section.itemCount} ${strings.openCountSuffix}`}
+              hint={showOpenReorderHint ? strings.reorderHint : null}
+            >
+              <View style={styles.sectionItems}>
                 {section.items.map((item) => (
                   <Swipeable
                     key={item.id}
@@ -408,27 +411,30 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                   </Swipeable>
                 ))}
               </View>
-            </AppCard>
+            </ShoppingItemSectionCard>
           ))}
 
-          <AppCard style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <SectionTitle>{strings.boughtLabel}</SectionTitle>
-              <View style={styles.sectionHeaderRight}>
-                <Subtle>{boughtSection?.itemCount ?? 0} {strings.boughtCountSuffix}</Subtle>
-                {(boughtSection?.itemCount ?? 0) > 0 ? (
-                  <AppButton
-                    title={strings.clearBought}
-                    onPress={requestClearBought}
-                    variant="ghost"
-                  />
-                ) : null}
-              </View>
-            </View>
-            {boughtItems.length === 0 ? (
-              <Subtle>{strings.noBoughtItems}</Subtle>
-            ) : (
-              <View style={styles.items}>
+          <ShoppingItemSectionCard
+            title={strings.boughtLabel}
+            countLabel={`${boughtSection?.itemCount ?? 0} ${strings.boughtCountSuffix}`}
+            variant="bought"
+            collapsedSummary={isBoughtCollapsed ? `${boughtItems.length} bought item${boughtItems.length === 1 ? '' : 's'} hidden` : null}
+            emptyState={boughtItems.length === 0 ? strings.noBoughtItems : null}
+            actionLabel={(boughtSection?.itemCount ?? 0) > 0
+              ? (isBoughtCollapsed ? strings.showBought : strings.hideBought)
+              : undefined}
+            onActionPress={(boughtSection?.itemCount ?? 0) > 0
+              ? () => setIsBoughtExpanded((prev) => !prev)
+              : undefined}
+          >
+            {boughtItems.length > 0 && !isBoughtCollapsed ? (
+              <View style={styles.boughtContent}>
+                <View style={styles.boughtActions}>
+                  <Pressable onPress={requestClearBought} style={({ pressed }) => [styles.boughtActionButton, pressed ? styles.boughtActionButtonPressed : null]}>
+                    <Text style={styles.boughtActionLabel}>{strings.clearBought}</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.sectionItems}>
                 {boughtItems.map((item) => (
                   <Swipeable
                     key={item.id}
@@ -453,9 +459,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     />
                   </Swipeable>
                 ))}
+                </View>
               </View>
-            )}
-          </AppCard>
+            ) : null}
+          </ShoppingItemSectionCard>
           </ScrollView>
         </View>
       </View>
@@ -511,13 +518,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         <OverlaySheet
           onClose={closeAddDetails}
           sheetStyle={styles.quickAddSheet}
-          aboveSheet={
-            workflowState.addDetailsFeedback ? (
-              <View style={styles.quickAddFeedback}>
-                <Text style={styles.quickAddFeedbackText}>{workflowState.addDetailsFeedback}</Text>
-              </View>
-            ) : null
-          }
         >
           <AddDetailsSheetContent
             styles={styles}
@@ -527,6 +527,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             detailsHideLabel={strings.addDetailsHide}
             addQuantityPlaceholder={strings.addQuantityPlaceholder}
             addItemTitle={strings.addItemTitle}
+            successFeedback={workflowState.addDetailsFeedback}
             unitNoneLabel={strings.unitNone}
             unitToggleMoreLabel={strings.unitMore}
             unitToggleLessLabel={strings.unitLess}
@@ -607,19 +608,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 96,
-    gap: theme.spacing.md,
-  },
-  sectionCard: {
-    gap: theme.spacing.xs,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: theme.spacing.sm,
   },
   swipeAction: {
@@ -640,8 +628,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: theme.typography.heading,
   },
-  items: {
+  sectionItems: {
     gap: theme.spacing.xs,
+  },
+  boughtContent: {
+    gap: theme.spacing.xs,
+  },
+  boughtActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  boughtActionButton: {
+    minHeight: 28,
+    justifyContent: 'center',
+  },
+  boughtActionButtonPressed: {
+    opacity: 0.65,
+  },
+  boughtActionLabel: {
+    ...textStyles.subtle,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
   },
   quickEditRow: {
     marginTop: theme.spacing.xs,
@@ -706,19 +713,6 @@ const styles = StyleSheet.create({
   },
   quickAddHeader: {
     justifyContent: 'center',
-  },
-  quickAddFeedback: {
-    alignSelf: 'center',
-    maxWidth: '100%',
-    backgroundColor: theme.colors.success,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-  },
-  quickAddFeedbackText: {
-    color: '#ffffff',
-    fontFamily: theme.typography.body,
-    fontSize: 13,
   },
   error: {
     color: theme.colors.danger,
