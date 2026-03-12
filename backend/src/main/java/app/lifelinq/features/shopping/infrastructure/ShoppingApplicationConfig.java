@@ -3,6 +3,7 @@ package app.lifelinq.features.shopping.infrastructure;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
+import app.lifelinq.features.shopping.domain.ShoppingCategoryPreferenceRepository;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
@@ -14,10 +15,11 @@ public class ShoppingApplicationConfig {
     @Bean
     public ShoppingApplicationService shoppingApplicationService(
             ShoppingListRepository repository,
+            ShoppingCategoryPreferenceRepository shoppingCategoryPreferenceRepository,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             Clock clock
     ) {
-        return new ShoppingApplicationService(repository, ensureGroupMemberUseCase, clock);
+        return new ShoppingApplicationService(repository, shoppingCategoryPreferenceRepository, ensureGroupMemberUseCase, clock);
     }
 
     @Bean

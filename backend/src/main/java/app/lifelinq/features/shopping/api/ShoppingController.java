@@ -4,9 +4,11 @@ import app.lifelinq.config.RequestContext;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.AddShoppingItemOutput;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
+import app.lifelinq.features.shopping.contract.ShoppingCategoryPreferenceView;
 import app.lifelinq.features.shopping.contract.ShoppingItemView;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
 import app.lifelinq.features.shopping.contract.ToggleShoppingItemOutput;
+import app.lifelinq.features.shopping.domain.ShoppingCategory;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -65,6 +68,50 @@ public class ShoppingController {
             responses.add(toResponse(list));
         }
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/shopping/category-preferences")
+    public ResponseEntity<?> listCategoryPreferences() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<ShoppingCategoryPreferenceView> preferences = shoppingApplicationService.listShoppingCategoryPreferences(
+                context.getGroupId(),
+                context.getUserId()
+        );
+        List<ShoppingCategoryPreferenceResponse> responses = new ArrayList<>();
+        for (ShoppingCategoryPreferenceView preference : preferences) {
+            responses.add(new ShoppingCategoryPreferenceResponse(
+                    preference.normalizedTitle(),
+                    preference.preferredCategory()
+            ));
+        }
+        return ResponseEntity.ok(responses);
+    }
+
+    @PutMapping("/shopping/category-preferences")
+    public ResponseEntity<?> saveCategoryPreference(@RequestBody SaveShoppingCategoryPreferenceRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        ShoppingCategoryPreferenceView preference = shoppingApplicationService.saveShoppingCategoryPreference(
+                context.getGroupId(),
+                context.getUserId(),
+                request.getNormalizedTitle(),
+                ShoppingCategory.fromKey(request.getPreferredCategory())
+        );
+        return ResponseEntity.ok(new ShoppingCategoryPreferenceResponse(
+                preference.normalizedTitle(),
+                preference.preferredCategory()
+        ));
     }
 
     @PatchMapping("/shopping-lists/{listId}")

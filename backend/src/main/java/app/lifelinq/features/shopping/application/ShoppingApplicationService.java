@@ -3,11 +3,15 @@ package app.lifelinq.features.shopping.application;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.shopping.contract.AddShoppingItemOutput;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
+import app.lifelinq.features.shopping.contract.ShoppingCategoryPreferenceView;
 import app.lifelinq.features.shopping.contract.ShoppingItemStatusView;
 import app.lifelinq.features.shopping.contract.ShoppingItemView;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
 import app.lifelinq.features.shopping.contract.ShoppingUnitView;
 import app.lifelinq.features.shopping.contract.ToggleShoppingItemOutput;
+import app.lifelinq.features.shopping.domain.ShoppingCategory;
+import app.lifelinq.features.shopping.domain.ShoppingCategoryPreference;
+import app.lifelinq.features.shopping.domain.ShoppingCategoryPreferenceRepository;
 import app.lifelinq.features.shopping.domain.ShoppingItem;
 import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
 import app.lifelinq.features.shopping.domain.ShoppingList;
@@ -17,24 +21,31 @@ import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 public class ShoppingApplicationService {
     private final ShoppingListRepository shoppingListRepository;
+    private final ShoppingCategoryPreferenceRepository shoppingCategoryPreferenceRepository;
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final Clock clock;
 
     public ShoppingApplicationService(
             ShoppingListRepository shoppingListRepository,
+            ShoppingCategoryPreferenceRepository shoppingCategoryPreferenceRepository,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             Clock clock
     ) {
         if (shoppingListRepository == null) {
             throw new IllegalArgumentException("shoppingListRepository must not be null");
+        }
+        if (shoppingCategoryPreferenceRepository == null) {
+            throw new IllegalArgumentException("shoppingCategoryPreferenceRepository must not be null");
         }
         if (ensureGroupMemberUseCase == null) {
             throw new IllegalArgumentException("ensureGroupMemberUseCase must not be null");
@@ -43,6 +54,7 @@ public class ShoppingApplicationService {
             throw new IllegalArgumentException("clock must not be null");
         }
         this.shoppingListRepository = shoppingListRepository;
+        this.shoppingCategoryPreferenceRepository = shoppingCategoryPreferenceRepository;
         this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.clock = clock;
     }
@@ -178,6 +190,35 @@ public class ShoppingApplicationService {
         list.updateItem(itemId, normalizedName, quantity, unit);
         shoppingListRepository.save(list);
         return toView(list.getItemOrThrow(itemId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShoppingCategoryPreferenceView> listShoppingCategoryPreferences(UUID groupId, UUID actorUserId) {
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        List<ShoppingCategoryPreferenceView> result = new ArrayList<>();
+        for (ShoppingCategoryPreference preference : shoppingCategoryPreferenceRepository.findByGroupId(groupId)) {
+            result.add(toView(preference));
+        }
+        return result;
+    }
+
+    @Transactional
+    public ShoppingCategoryPreferenceView saveShoppingCategoryPreference(
+            UUID groupId,
+            UUID actorUserId,
+            String normalizedTitle,
+            ShoppingCategory preferredCategory
+    ) {
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        ShoppingCategoryPreference saved = shoppingCategoryPreferenceRepository.save(
+                new ShoppingCategoryPreference(
+                        groupId,
+                        normalizeCategoryPreferenceTitle(normalizedTitle),
+                        preferredCategory,
+                        clock.instant()
+                )
+        );
+        return toView(saved);
     }
 
     @Transactional(readOnly = true)
@@ -324,6 +365,13 @@ public class ShoppingApplicationService {
         return ShoppingUnitView.valueOf(unit.name());
     }
 
+    private ShoppingCategoryPreferenceView toView(ShoppingCategoryPreference preference) {
+        return new ShoppingCategoryPreferenceView(
+                preference.normalizedTitle(),
+                preference.preferredCategory().key()
+        );
+    }
+
     private String normalizeItemName(String name) {
         if (name == null) {
             return null;
@@ -336,5 +384,20 @@ public class ShoppingApplicationService {
             return null;
         }
         return name.trim();
+    }
+
+    private String normalizeCategoryPreferenceTitle(String title) {
+        if (title == null) {
+            throw new IllegalArgumentException("normalizedTitle must not be null");
+        }
+        String normalized = Normalizer.normalize(title.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFKD)
+                .replaceAll("\\p{M}+", "")
+                .replaceAll("[^a-z0-9]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.isBlank()) {
+            throw new IllegalArgumentException("normalizedTitle must not be blank");
+        }
+        return normalized;
     }
 }

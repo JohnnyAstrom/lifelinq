@@ -296,7 +296,7 @@ Current known interaction reality:
 - bought items are rendered separately from open items
 - the frontend feature now applies effective category through local feature-owned precedence:
   - explicit override
-  - local remembered category
+  - group-owned remembered category
   - basic inference
   - `other`
 
@@ -308,7 +308,8 @@ Current known limitations:
 - no provenance/source field in transport
 - no explicit order field in transport
 - no current transport-level grouping model beyond client-side open/bought separation
-- category override and remembered category are currently frontend-local feature behavior, not backend/API transport fields
+- category override is still frontend-local item behavior, not backend/API transport
+- remembered category is now durable shopping-specific backend state, but still not part of shopping item transport fields
 
 ### Future-ready frontend/domain direction
 

@@ -3,19 +3,22 @@ package app.lifelinq.features.shopping.api;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import app.lifelinq.config.AuthenticationFilter;
 import app.lifelinq.config.GroupContextFilter;
 import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.config.RequestContextExceptionHandler;
-import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
+import app.lifelinq.features.shopping.contract.ShoppingCategoryPreferenceView;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
+import app.lifelinq.test.FakeActiveGroupUserRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -183,6 +186,47 @@ class ShoppingControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(shoppingApplicationService).reorderShoppingItem(groupId, userId, listId, itemId, "DOWN");
+    }
+
+    @Test
+    void listCategoryPreferencesSucceedsWithValidToken() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(shoppingApplicationService.listShoppingCategoryPreferences(groupId, userId))
+                .thenReturn(List.of(new ShoppingCategoryPreferenceView("apple", "produce")));
+
+        mockMvc.perform(get("/shopping/category-preferences")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        verify(shoppingApplicationService).listShoppingCategoryPreferences(groupId, userId);
+    }
+
+    @Test
+    void saveCategoryPreferenceSucceedsWithValidToken() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(shoppingApplicationService.saveShoppingCategoryPreference(groupId, userId, "apple", app.lifelinq.features.shopping.domain.ShoppingCategory.PRODUCE))
+                .thenReturn(new ShoppingCategoryPreferenceView("apple", "produce"));
+
+        mockMvc.perform(put("/shopping/category-preferences")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"normalizedTitle\":\"apple\",\"preferredCategory\":\"produce\"}"))
+                .andExpect(status().isOk());
+
+        verify(shoppingApplicationService).saveShoppingCategoryPreference(
+                groupId,
+                userId,
+                "apple",
+                app.lifelinq.features.shopping.domain.ShoppingCategory.PRODUCE
+        );
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {
