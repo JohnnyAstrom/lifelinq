@@ -2,6 +2,8 @@ import { type ShoppingListResponse, type ShoppingItemResponse, type ShoppingUnit
 import {
   DEFAULT_SHOPPING_CATEGORY,
   type ShoppingCategoryKey,
+  type ShoppingCategoryDefinition,
+  getShoppingCategoryDefinition,
   inferShoppingCategory,
 } from './shoppingCategories';
 import { normalizeShoppingItemTitle } from './shoppingCategoryInference';
@@ -11,7 +13,7 @@ export type ShoppingListType = 'grocery' | 'consumables' | 'supplies' | 'mixed';
 export type ShoppingGroupingMode = 'effective-category';
 export type ShoppingItemStatus = 'OPEN' | 'BOUGHT';
 export type ShoppingItemSourceKind = 'unknown' | 'manual' | 'meal-plan' | 'recipe';
-export type ShoppingCategoryOrigin = 'fallback' | 'suggested' | 'override';
+export type ShoppingCategoryOrigin = 'fallback' | 'suggested' | 'memory' | 'override';
 
 export type ShoppingCategoryRef = {
   key: ShoppingCategoryKey;
@@ -49,7 +51,15 @@ export type ShoppingListModel = {
   items: ShoppingItemModel[];
 };
 
-export function mapShoppingListFromTransport(list: ShoppingListResponse): ShoppingListModel {
+export type ShoppingCategoryContext = {
+  getOverrideForItem: (itemId: string) => ShoppingCategoryKey | null;
+  getMemoryForTitle: (normalizedTitle: string) => ShoppingCategoryKey | null;
+};
+
+export function mapShoppingListFromTransport(
+  list: ShoppingListResponse,
+  categoryContext: ShoppingCategoryContext
+): ShoppingListModel {
   const listType = deriveListType(list);
   const groupingMode = deriveGroupingMode(listType);
 
@@ -58,26 +68,20 @@ export function mapShoppingListFromTransport(list: ShoppingListResponse): Shoppi
     name: list.name,
     type: listType,
     groupingMode,
-    items: list.items.map((item) => mapShoppingItemFromTransport(item)),
+    items: list.items.map((item) => mapShoppingItemFromTransport(item, categoryContext)),
   };
 }
 
-export function mapShoppingItemFromTransport(item: ShoppingItemResponse): ShoppingItemModel {
+export function mapShoppingItemFromTransport(
+  item: ShoppingItemResponse,
+  categoryContext: ShoppingCategoryContext
+): ShoppingItemModel {
   const normalizedTitle = normalizeShoppingItemTitle(item.name);
-  const inferredCategory = inferShoppingCategory(normalizedTitle);
-  const categorySuggestion: ShoppingCategoryRef | null =
-    inferredCategory.key === DEFAULT_SHOPPING_CATEGORY.key
-      ? null
-      : {
-        key: inferredCategory.key,
-        label: inferredCategory.label,
-        origin: 'suggested',
-      };
-  const effectiveCategory = categorySuggestion ?? {
-    key: DEFAULT_SHOPPING_CATEGORY.key,
-    label: DEFAULT_SHOPPING_CATEGORY.label,
-    origin: 'fallback' as const,
-  };
+  const categoryResolution = resolveShoppingCategory({
+    itemId: item.id,
+    normalizedTitle,
+    categoryContext,
+  });
 
   return {
     id: item.id,
@@ -87,9 +91,9 @@ export function mapShoppingItemFromTransport(item: ShoppingItemResponse): Shoppi
     quantity: item.quantity,
     unit: item.unit,
     note: null,
-    categorySuggestion,
-    categoryOverride: null,
-    effectiveCategory,
+    categorySuggestion: categoryResolution.categorySuggestion,
+    categoryOverride: categoryResolution.categoryOverride,
+    effectiveCategory: categoryResolution.effectiveCategory,
     source: { kind: 'unknown' },
     createdAt: item.createdAt,
     boughtAt: item.boughtAt,
@@ -102,6 +106,46 @@ export function mapShoppingItemFromTransport(item: ShoppingItemResponse): Shoppi
       quantity: item.quantity,
       unit: item.unit,
     }),
+  };
+}
+
+type ResolveShoppingCategoryArgs = {
+  itemId: string;
+  normalizedTitle: string;
+  categoryContext: ShoppingCategoryContext;
+};
+
+function resolveShoppingCategory({
+  itemId,
+  normalizedTitle,
+  categoryContext,
+}: ResolveShoppingCategoryArgs): Pick<ShoppingItemModel, 'categorySuggestion' | 'categoryOverride' | 'effectiveCategory'> {
+  const overrideKey = categoryContext.getOverrideForItem(itemId);
+  const memoryKey = categoryContext.getMemoryForTitle(normalizedTitle);
+  const inferredCategory = inferShoppingCategory(normalizedTitle);
+
+  const categoryOverride = overrideKey ? toCategoryRef(getShoppingCategoryDefinition(overrideKey), 'override') : null;
+  const categorySuggestion = memoryKey
+    ? toCategoryRef(getShoppingCategoryDefinition(memoryKey), 'memory')
+    : inferredCategory.key !== DEFAULT_SHOPPING_CATEGORY.key
+      ? toCategoryRef(inferredCategory, 'suggested')
+      : null;
+  const effectiveCategory = categoryOverride
+    ?? categorySuggestion
+    ?? toCategoryRef(DEFAULT_SHOPPING_CATEGORY, 'fallback');
+
+  return {
+    categorySuggestion,
+    categoryOverride,
+    effectiveCategory,
+  };
+}
+
+function toCategoryRef(definition: ShoppingCategoryDefinition, origin: ShoppingCategoryOrigin): ShoppingCategoryRef {
+  return {
+    key: definition.key,
+    label: definition.label,
+    origin,
   };
 }
 

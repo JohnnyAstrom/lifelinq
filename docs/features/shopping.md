@@ -294,6 +294,11 @@ Current known interaction reality:
 - add/edit/toggle/remove exists
 - quantity and unit are supported
 - bought items are rendered separately from open items
+- the frontend feature now applies effective category through local feature-owned precedence:
+  - explicit override
+  - local remembered category
+  - basic inference
+  - `other`
 
 Current known limitations:
 
@@ -303,6 +308,7 @@ Current known limitations:
 - no provenance/source field in transport
 - no explicit order field in transport
 - no current transport-level grouping model beyond client-side open/bought separation
+- category override and remembered category are currently frontend-local feature behavior, not backend/API transport fields
 
 ### Future-ready frontend/domain direction
 

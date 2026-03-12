@@ -16,11 +16,13 @@ import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
 import { EditItemSheetContent } from '../components/EditItemSheetContent';
 import { ShoppingItemRow } from '../components/ShoppingItemRow';
 import { ShoppingItemSectionCard } from '../components/ShoppingItemSectionCard';
+import { useShoppingCategoryPreferences } from '../hooks/useShoppingCategoryPreferences';
 import { useShoppingListDetailProjection } from '../hooks/useShoppingListDetailProjection';
 import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../api/shoppingApi';
+import { getShoppingCategoryDefinitions, type ShoppingCategoryKey } from '../utils/shoppingCategories';
 import { AppScreen, BackIconButton, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -35,6 +37,7 @@ type Props = {
 export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const insets = useSafeAreaInsets();
   const shopping = useShoppingLists(token);
+  const categoryPreferences = useShoppingCategoryPreferences();
   const workflow = useShoppingListDetailWorkflow({ shopping, listId });
   const { state: workflowState, actions: workflowActions } = workflow;
   const [showMoreEditUnits, setShowMoreEditUnits] = useState(false);
@@ -56,6 +59,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     lists: shopping.lists,
     listId,
     orderedOpenItemIds: workflowState.orderedOpenItemIds,
+    categoryContext: categoryPreferences,
+    categoryPreferencesVersion: categoryPreferences.version,
   });
   const selectedList = projection.list;
   const openItems = projection.openItems;
@@ -98,6 +103,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
     editQuantityPlaceholder: 'Quantity (optional)',
+    editCategoryLabel: 'Category',
+    autoCategoryLabel: 'Auto',
     saveChanges: 'Save changes',
     removeItem: 'Remove item',
     close: 'Close',
@@ -141,7 +148,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     Keyboard.dismiss();
   }
 
-  function openEdit(item: { id: string; title: string; quantity: number | null; unit: ShoppingUnit | null }) {
+  function openEdit(item: {
+    id: string;
+    title: string;
+    quantity: number | null;
+    unit: ShoppingUnit | null;
+    categoryOverrideKey: ShoppingCategoryKey | null;
+  }) {
     workflowActions.openEdit(item);
     setShowMoreEditUnits(false);
   }
@@ -387,7 +400,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                       }}
                       onOpenDetails={() => {
                         if (!draggingOpenItemIdRef.current) {
-                          openEdit(item);
+                          openEdit({
+                            id: item.id,
+                            title: item.title,
+                            quantity: item.quantity,
+                            unit: item.unit,
+                            categoryOverrideKey: item.categoryOverride?.key ?? null,
+                          });
                         }
                       }}
                       onMeasuredHeight={(height) => {
@@ -455,7 +474,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                           shopping.toggleItem(selectedList.id, item.id);
                         }
                       }}
-                      onOpenDetails={() => openEdit(item)}
+                      onOpenDetails={() => openEdit({
+                        id: item.id,
+                        title: item.title,
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        categoryOverrideKey: item.categoryOverride?.key ?? null,
+                      })}
                     />
                   </Swipeable>
                 ))}
@@ -485,6 +510,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             title={strings.editTitle}
             editNamePlaceholder={strings.editNamePlaceholder}
             editQuantityPlaceholder={strings.editQuantityPlaceholder}
+            editCategoryLabel={strings.editCategoryLabel}
+            autoCategoryLabel={strings.autoCategoryLabel}
             saveChangesLabel={strings.saveChanges}
             removeItemLabel={strings.removeItem}
             closeLabel={strings.close}
@@ -494,10 +521,12 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             nameValue={workflowState.editName}
             quantityValue={workflowState.editQuantity}
             editUnit={workflowState.editUnit}
+            editCategoryOverride={workflowState.editCategoryOverride}
             editError={workflowState.editError}
             showMoreEditUnits={showMoreEditUnits}
             primaryUnitOptions={PRIMARY_UNIT_OPTIONS}
             moreUnitOptions={MORE_UNIT_OPTIONS}
+            categoryOptions={CATEGORY_OPTIONS}
             onChangeName={workflowActions.setEditName}
             onChangeQuantity={workflowActions.setEditQuantity}
             onSelectUnit={(value) => {
@@ -506,6 +535,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 workflowActions.setEditQuantity('');
               }
             }}
+            onSelectCategoryOverride={(value) => workflowActions.setEditCategoryOverride(value)}
             onToggleMoreUnits={() => setShowMoreEditUnits((prev) => !prev)}
             onSave={handleSaveEdit}
             onRemove={handleRemoveEdit}
@@ -591,6 +621,11 @@ const MORE_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
   { label: 'dl', value: 'DL' },
   { label: 'ml', value: 'ML' },
 ];
+
+const CATEGORY_OPTIONS = getShoppingCategoryDefinitions().map((definition) => ({
+  label: definition.label,
+  value: definition.key,
+}));
 
 const styles = StyleSheet.create({
   screenContent: {

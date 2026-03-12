@@ -1,14 +1,18 @@
+import type { ShoppingCategoryKey } from '../utils/shoppingCategories';
 import { ScrollView, Text, View } from 'react-native';
 import { AppButton, AppChip, AppInput } from '../../../shared/ui/components';
 import { textStyles } from '../../../shared/ui/theme';
 
 type UnitOption = { label: string; value: string };
+type CategoryOption = { label: string; value: ShoppingCategoryKey };
 
 type Props = {
   styles: any;
   title: string;
   editNamePlaceholder: string;
   editQuantityPlaceholder: string;
+  editCategoryLabel: string;
+  autoCategoryLabel: string;
   saveChangesLabel: string;
   removeItemLabel: string;
   closeLabel: string;
@@ -18,13 +22,16 @@ type Props = {
   nameValue: string;
   quantityValue: string;
   editUnit: string | null;
+  editCategoryOverride: ShoppingCategoryKey | null;
   editError: string | null;
   showMoreEditUnits: boolean;
   primaryUnitOptions: UnitOption[];
   moreUnitOptions: UnitOption[];
+  categoryOptions: CategoryOption[];
   onChangeName: (value: string) => void;
   onChangeQuantity: (value: string) => void;
   onSelectUnit: (value: string | null) => void;
+  onSelectCategoryOverride: (value: ShoppingCategoryKey | null) => void;
   onToggleMoreUnits: () => void;
   onSave: () => void | Promise<void>;
   onRemove: () => void | Promise<void>;
@@ -36,6 +43,8 @@ export function EditItemSheetContent({
   title,
   editNamePlaceholder,
   editQuantityPlaceholder,
+  editCategoryLabel,
+  autoCategoryLabel,
   saveChangesLabel,
   removeItemLabel,
   closeLabel,
@@ -45,13 +54,16 @@ export function EditItemSheetContent({
   nameValue,
   quantityValue,
   editUnit,
+  editCategoryOverride,
   editError,
   showMoreEditUnits,
   primaryUnitOptions,
   moreUnitOptions,
+  categoryOptions,
   onChangeName,
   onChangeQuantity,
   onSelectUnit,
+  onSelectCategoryOverride,
   onToggleMoreUnits,
   onSave,
   onRemove,
@@ -106,6 +118,26 @@ export function EditItemSheetContent({
             ))}
           </View>
         ) : null}
+        <View style={styles.quickEditInputs}>
+          <Text style={textStyles.subtle}>{editCategoryLabel}</Text>
+          <View style={styles.unitRow}>
+            <AppChip
+              label={autoCategoryLabel}
+              active={!editCategoryOverride}
+              accentKey="shopping"
+              onPress={() => onSelectCategoryOverride(null)}
+            />
+            {categoryOptions.map((category) => (
+              <AppChip
+                key={category.value}
+                label={category.label}
+                active={editCategoryOverride === category.value}
+                accentKey="shopping"
+                onPress={() => onSelectCategoryOverride(category.value)}
+              />
+            ))}
+          </View>
+        </View>
         {editError ? <Text style={styles.error}>{editError}</Text> : null}
         <View style={styles.editorActions}>
           <AppButton title={saveChangesLabel} onPress={onSave} fullWidth accentKey="shopping" />

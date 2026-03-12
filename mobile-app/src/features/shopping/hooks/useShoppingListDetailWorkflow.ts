@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ShoppingUnit } from '../api/shoppingApi';
+import type { ShoppingCategoryKey } from '../utils/shoppingCategories';
+import { normalizeShoppingItemTitle } from '../utils/shoppingCategoryInference';
 import { formatQuantityForFeedback, formatUnitForFeedback, parseQuantity } from '../utils/shoppingQuantity';
 import { useShoppingLists } from './useShoppingLists';
+import { useShoppingCategoryPreferences } from './useShoppingCategoryPreferences';
 
 type ShoppingListsHook = ReturnType<typeof useShoppingLists>;
 type EditableShoppingItem = {
@@ -9,6 +12,7 @@ type EditableShoppingItem = {
   title: string;
   quantity: number | null;
   unit: ShoppingUnit | null;
+  categoryOverrideKey: ShoppingCategoryKey | null;
 };
 
 type AddLikeStrings = {
@@ -35,11 +39,13 @@ type FinishOpenDragArgs = {
 };
 
 export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingListDetailWorkflowArgs) {
+  const categoryPreferences = useShoppingCategoryPreferences();
   const [newItemName, setNewItemName] = useState('');
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editQuantity, setEditQuantity] = useState('');
   const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('PCS');
+  const [editCategoryOverride, setEditCategoryOverride] = useState<ShoppingCategoryKey | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [showAddDetails, setShowAddDetails] = useState(false);
   const [addQuantity, setAddQuantity] = useState('');
@@ -65,6 +71,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     setEditName(item.title);
     setEditQuantity(item.quantity ? String(item.quantity) : '');
     setEditUnit(item.unit ?? 'PCS');
+    setEditCategoryOverride(item.categoryOverrideKey);
     setEditError(null);
   }
 
@@ -73,6 +80,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     setEditName('');
     setEditQuantity('');
     setEditUnit('PCS');
+    setEditCategoryOverride(null);
     setEditError(null);
   }
 
@@ -150,6 +158,13 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     }
     const effectiveUnit = parsedQuantity === null ? null : editUnit;
     await shopping.updateItem(listId, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
+    const normalizedTitle = normalizeShoppingItemTitle(editName.trim());
+    if (editCategoryOverride) {
+      await categoryPreferences.rememberCategory(normalizedTitle, editCategoryOverride);
+      categoryPreferences.setCategoryOverride(editItemId, normalizedTitle, editCategoryOverride);
+    } else {
+      categoryPreferences.clearCategoryOverride(editItemId);
+    }
     if (options?.onClose) {
       options.onClose();
       return;
@@ -190,6 +205,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       editName,
       editQuantity,
       editUnit,
+      editCategoryOverride,
       editError,
       showAddDetails,
       addQuantity,
@@ -204,6 +220,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       setEditName,
       setEditQuantity,
       setEditUnit,
+      setEditCategoryOverride,
       setEditError,
       setShowAddDetails,
       setAddQuantity,
