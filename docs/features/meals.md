@@ -45,7 +45,7 @@ when `targetShoppingListId` is provided, once per ingredient occurrence.
 - `Recipe`
   - `id`, `groupId`, `name`, `createdAt`, `ingredients`
 - `Ingredient`
-  - `id`, `name`, `quantity` (BigDecimal, nullable), `unit` (ShoppingUnit, nullable), `position`
+  - `id`, `name`, `quantity` (BigDecimal, nullable), `unit` (shared quantity unit, nullable), `position`
 
 ### Invariants
 

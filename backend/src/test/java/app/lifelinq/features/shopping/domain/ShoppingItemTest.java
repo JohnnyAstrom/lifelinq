@@ -117,14 +117,14 @@ class ShoppingItemTest {
     @Test
     void rejectsUnitWithoutQuantity() {
         assertThrows(IllegalArgumentException.class, () ->
-                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, ShoppingUnit.ST)
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, ShoppingUnit.PCS)
         );
     }
 
     @Test
     void rejectsNonPositiveQuantity() {
         assertThrows(IllegalArgumentException.class, () ->
-                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), BigDecimal.ZERO, ShoppingUnit.ST)
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), BigDecimal.ZERO, ShoppingUnit.PCS)
         );
     }
 }

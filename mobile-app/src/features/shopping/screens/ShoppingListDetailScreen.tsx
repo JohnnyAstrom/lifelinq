@@ -542,7 +542,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onChangeQuantity={(value) => {
               workflowActions.setAddQuantity(value);
               if (value.trim().length > 0 && workflowState.addUnit == null) {
-                workflowActions.setAddUnit('ST');
+                workflowActions.setAddUnit('PCS');
               }
               if (value.trim().length === 0) {
                 workflowActions.setAddUnit(null);
@@ -568,8 +568,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 }
 
 const PRIMARY_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
-  { label: 'pcs', value: 'ST' },
-  { label: 'pack', value: 'FORP' },
+  { label: 'pcs', value: 'PCS' },
+  { label: 'pack', value: 'PACK' },
   { label: 'kg', value: 'KG' },
 ];
 

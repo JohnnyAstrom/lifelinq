@@ -67,7 +67,7 @@ export type UpdateShoppingItemRequest = {
 
 export type UpdateShoppingItemResponse = ShoppingItemResponse;
 
-export type ShoppingUnit = 'ST' | 'FORP' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
+export type ShoppingUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
 
 export async function createShoppingList(
   payload: CreateShoppingListRequest,

@@ -1,8 +1,8 @@
 package app.lifelinq.features.meals.contract;
 
 public enum IngredientUnitView {
-    ST,
-    FORP,
+    PCS,
+    PACK,
     KG,
     HG,
     G,

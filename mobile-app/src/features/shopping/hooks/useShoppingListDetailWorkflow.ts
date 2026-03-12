@@ -34,7 +34,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editQuantity, setEditQuantity] = useState('');
-  const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('ST');
+  const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('PCS');
   const [editError, setEditError] = useState<string | null>(null);
   const [showAddDetails, setShowAddDetails] = useState(false);
   const [addQuantity, setAddQuantity] = useState('');
@@ -70,7 +70,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     setEditItemId(item.id);
     setEditName(item.name);
     setEditQuantity(item.quantity ? String(item.quantity) : '');
-    setEditUnit(item.unit ?? 'ST');
+    setEditUnit(item.unit ?? 'PCS');
     setEditError(null);
   }
 
@@ -78,7 +78,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     setEditItemId(null);
     setEditName('');
     setEditQuantity('');
-    setEditUnit('ST');
+    setEditUnit('PCS');
     setEditError(null);
   }
 

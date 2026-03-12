@@ -1,8 +1,8 @@
 package app.lifelinq.features.shopping.contract;
 
 public enum ShoppingUnitView {
-    ST,
-    FORP,
+    PCS,
+    PACK,
     KG,
     HG,
     G,

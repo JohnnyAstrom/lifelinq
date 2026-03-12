@@ -281,8 +281,11 @@ public class ShoppingController {
             return null;
         }
         String normalized = unit.trim().toUpperCase().replace("Ö", "O").replace("Ä", "A").replace("Å", "A");
+        if ("ST".equals(normalized)) {
+            return ShoppingUnit.PCS;
+        }
         if ("FÖRP".equals(normalized) || "FORP".equals(normalized)) {
-            return ShoppingUnit.FORP;
+            return ShoppingUnit.PACK;
         }
         return ShoppingUnit.valueOf(normalized);
     }

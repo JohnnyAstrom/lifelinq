@@ -1,8 +1,8 @@
 import { type ShoppingItemResponse, type ShoppingUnit } from '../api/shoppingApi';
 
 const UNIT_LABELS: Record<ShoppingUnit, string> = {
-  ST: 'pcs',
-  FORP: 'pack',
+  PCS: 'pcs',
+  PACK: 'pack',
   KG: 'kg',
   HG: 'hg',
   G: 'g',

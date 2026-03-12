@@ -17,9 +17,9 @@ export function formatQuantityForFeedback(value: number): string {
 
 export function formatUnitForFeedback(unit: ShoppingUnit): string {
   switch (unit) {
-    case 'ST':
+    case 'PCS':
       return 'pcs';
-    case 'FORP':
+    case 'PACK':
       return 'pack';
     case 'KG':
       return 'kg';
