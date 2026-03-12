@@ -1,8 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
-import { type ShoppingItemResponse } from '../api/shoppingApi';
 
 type Props = {
-  item: ShoppingItemResponse;
   title: string;
   checked: boolean;
   detailLabel: string;
@@ -17,7 +15,6 @@ type Props = {
 };
 
 export function ShoppingItemRow({
-  item,
   title,
   checked,
   detailLabel,

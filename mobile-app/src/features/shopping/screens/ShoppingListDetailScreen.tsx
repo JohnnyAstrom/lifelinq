@@ -15,12 +15,12 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
 import { EditItemSheetContent } from '../components/EditItemSheetContent';
 import { ShoppingItemRow } from '../components/ShoppingItemRow';
+import { useShoppingListDetailProjection } from '../hooks/useShoppingListDetailProjection';
 import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
-import { formatItemMeta, formatItemTitle } from '../utils/shoppingFormatting';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../api/shoppingApi';
-import { AppButton, AppCard, AppChip, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { AppButton, AppCard, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,24 +50,18 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const pendingOpenReorderSyncRef = useRef(false);
   const addDetailsInputRef = useRef<TextInput | null>(null);
   const quantityRef = useRef<TextInput | null>(null);
-
-  const selected = useMemo(() => {
-    return shopping.lists.find((list) => list.id === listId) ?? null;
-  }, [shopping.lists, listId]);
-
-  const items = useMemo(() => selected?.items ?? [], [selected]);
-  const openItemsBase = useMemo(() => items.filter((item) => item.status !== 'BOUGHT'), [items]);
-  const openItems = useMemo(() => {
-    if (workflowState.orderedOpenItemIds.length === 0) {
-      return openItemsBase;
-    }
-    const byId = new Map(openItemsBase.map((item) => [item.id, item]));
-    const ordered = workflowState.orderedOpenItemIds
-      .map((id) => byId.get(id))
-      .filter((item): item is NonNullable<typeof item> => !!item);
-    return ordered.length === openItemsBase.length ? ordered : openItemsBase;
-  }, [openItemsBase, workflowState.orderedOpenItemIds]);
-  const boughtItems = items.filter((item) => item.status === 'BOUGHT');
+  const projection = useShoppingListDetailProjection({
+    lists: shopping.lists,
+    listId,
+    orderedOpenItemIds: workflowState.orderedOpenItemIds,
+  });
+  const selectedList = projection.list;
+  const openItems = projection.openItems;
+  const openSections = projection.openSections;
+  const boughtSection = projection.boughtSection;
+  const boughtItems = boughtSection?.items ?? [];
+  const canReorderOpenItems = openSections.length <= 1;
+  const showOpenReorderHint = canReorderOpenItems && openItems.length > 0;
 
   const strings = {
     titleFallback: 'Shopping list',
@@ -115,7 +109,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     if (workflowState.draggingOpenItemId || pendingOpenReorderSyncRef.current) {
       return;
     }
-    const next = openItemsBase.map((item) => item.id);
+    const next = openItems.map((item) => item.id);
     const current = orderedOpenItemIdsRef.current;
     const same = current.length === next.length && current.every((value, index) => value === next[index]);
     if (same) {
@@ -123,7 +117,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     }
     orderedOpenItemIdsRef.current = next;
     workflowActions.setOrderedOpenItemIds(next);
-  }, [workflowActions, workflowState.draggingOpenItemId, openItemsBase]);
+  }, [openItems, workflowActions, workflowState.draggingOpenItemId]);
 
   useEffect(() => {
     if (!workflowState.showAddDetails || !showAddFormDetails) {
@@ -142,7 +136,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     Keyboard.dismiss();
   }
 
-  function openEdit(item: typeof items[number]) {
+  function openEdit(item: { id: string; title: string; quantity: number | null; unit: ShoppingUnit | null }) {
     workflowActions.openEdit(item);
     setShowMoreEditUnits(false);
   }
@@ -180,16 +174,16 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   }
 
   async function handleClearBought() {
-    if (!selected || boughtItems.length === 0) {
+    if (!selectedList || boughtItems.length === 0) {
       return;
     }
     for (const item of boughtItems) {
-      await shopping.removeItem(selected.id, item.id);
+      await shopping.removeItem(selectedList.id, item.id);
     }
   }
 
   function requestClearBought() {
-    if (!selected || boughtItems.length === 0) {
+    if (!selectedList || boughtItems.length === 0) {
       return;
     }
     Alert.alert(strings.clearBoughtTitle, strings.clearBoughtBody, [
@@ -215,9 +209,12 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   }
 
   function startOpenDrag(itemId: string, pageY: number) {
+    if (!canReorderOpenItems) {
+      return;
+    }
     const currentIds = orderedOpenItemIdsRef.current.length > 0
       ? orderedOpenItemIdsRef.current
-      : openItemsBase.map((item) => item.id);
+      : openItems.map((item) => item.id);
     const index = currentIds.indexOf(itemId);
     if (index < 0) {
       return;
@@ -324,7 +321,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       contentStyle={styles.screenContent}
       header={(
         <TopBar
-          title={selected ? selected.name : strings.titleFallback}
+          title={selectedList ? selectedList.name : strings.titleFallback}
           icon={<Ionicons name="cart-outline" />}
           accentKey="shopping"
           right={<BackIconButton onPress={onBack} />}
@@ -343,30 +340,35 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-          <AppCard style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <SectionTitle>{strings.openLabel}</SectionTitle>
-              <Subtle>{openItems.length} {strings.openCountSuffix}</Subtle>
-            </View>
-            {openItems.length === 0 ? (
+          {openSections.length === 0 ? (
+            <AppCard style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <SectionTitle>{strings.openLabel}</SectionTitle>
+                <Subtle>0 {strings.openCountSuffix}</Subtle>
+              </View>
               <Subtle>{strings.noOpenItems}</Subtle>
-            ) : (
+            </AppCard>
+          ) : openSections.map((section) => (
+            <AppCard key={section.id} style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <SectionTitle>{section.title}</SectionTitle>
+                <Subtle>{section.itemCount} {strings.openCountSuffix}</Subtle>
+              </View>
               <View style={styles.items}>
-                <Subtle>{strings.reorderHint}</Subtle>
-                {openItems.map((item) => (
+                {showOpenReorderHint ? <Subtle>{strings.reorderHint}</Subtle> : null}
+                {section.items.map((item) => (
                   <Swipeable
                     key={item.id}
-                    enabled={!workflowState.draggingOpenItemId}
+                    enabled={!workflowState.draggingOpenItemId && canReorderOpenItems}
                     renderRightActions={() => (
                       <View style={[styles.swipeAction, styles.swipeActionBought]}>
                         <Text style={styles.swipeActionText}>{strings.swipeBought}</Text>
                       </View>
                     )}
-                    onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
+                    onSwipeableOpen={() => selectedList && shopping.toggleItem(selectedList.id, item.id)}
                   >
                     <ShoppingItemRow
-                      item={item}
-                      title={formatItemTitle(item)}
+                      title={item.displayTitle}
                       checked={false}
                       detailLabel={strings.details}
                       dragging={workflowState.draggingOpenItemId === item.id}
@@ -376,8 +378,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                           ignoreNextOpenPressRef.current = false;
                           return;
                         }
-                        if (selected && !draggingOpenItemIdRef.current) {
-                          shopping.toggleItem(selected.id, item.id);
+                        if (selectedList && !draggingOpenItemIdRef.current) {
+                          shopping.toggleItem(selectedList.id, item.id);
                         }
                       }}
                       onEdit={() => {
@@ -385,27 +387,33 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                           openEdit(item);
                         }
                       }}
-                      onToggleLongPress={(event) => startOpenDrag(item.id, event.nativeEvent.pageY)}
-                      onToggleTouchMove={handleOpenTouchMove}
-                      onToggleTouchEnd={() => {
-                        void finishOpenDrag();
-                      }}
-                      onToggleTouchCancel={() => {
-                        void finishOpenDrag();
-                      }}
+                      onToggleLongPress={canReorderOpenItems
+                        ? (event) => startOpenDrag(item.id, event.nativeEvent.pageY)
+                        : undefined}
+                      onToggleTouchMove={canReorderOpenItems ? handleOpenTouchMove : undefined}
+                      onToggleTouchEnd={canReorderOpenItems
+                        ? () => {
+                          void finishOpenDrag();
+                        }
+                        : undefined}
+                      onToggleTouchCancel={canReorderOpenItems
+                        ? () => {
+                          void finishOpenDrag();
+                        }
+                        : undefined}
                     />
                   </Swipeable>
                 ))}
               </View>
-            )}
-          </AppCard>
+            </AppCard>
+          ))}
 
           <AppCard style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <SectionTitle>{strings.boughtLabel}</SectionTitle>
               <View style={styles.sectionHeaderRight}>
-                <Subtle>{boughtItems.length} {strings.boughtCountSuffix}</Subtle>
-                {boughtItems.length > 0 ? (
+                <Subtle>{boughtSection?.itemCount ?? 0} {strings.boughtCountSuffix}</Subtle>
+                {(boughtSection?.itemCount ?? 0) > 0 ? (
                   <AppButton
                     title={strings.clearBought}
                     onPress={requestClearBought}
@@ -426,17 +434,16 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                         <Text style={styles.swipeActionText}>{strings.swipeOpen}</Text>
                       </View>
                     )}
-                    onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
+                    onSwipeableOpen={() => selectedList && shopping.toggleItem(selectedList.id, item.id)}
                   >
                     <ShoppingItemRow
-                      item={item}
-                      title={formatItemTitle(item)}
+                      title={item.displayTitle}
                       checked
                       detailLabel={strings.details}
                       styles={styles}
                       onToggle={() => {
-                        if (selected) {
-                          shopping.toggleItem(selected.id, item.id);
+                        if (selectedList) {
+                          shopping.toggleItem(selectedList.id, item.id);
                         }
                       }}
                       onEdit={() => openEdit(item)}

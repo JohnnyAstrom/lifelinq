@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ShoppingListResponse, ShoppingUnit } from '../api/shoppingApi';
+import { useEffect, useRef, useState } from 'react';
+import type { ShoppingUnit } from '../api/shoppingApi';
 import { formatQuantityForFeedback, formatUnitForFeedback, parseQuantity } from '../utils/shoppingQuantity';
 import { useShoppingLists } from './useShoppingLists';
 
 type ShoppingListsHook = ReturnType<typeof useShoppingLists>;
-type ShoppingItem = ShoppingListResponse['items'][number];
+type EditableShoppingItem = {
+  id: string;
+  title: string;
+  quantity: number | null;
+  unit: ShoppingUnit | null;
+};
 
 type AddLikeStrings = {
   addErrorQuantity: string;
@@ -46,17 +51,6 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
 
   const addDetailsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const selected = useMemo(() => {
-    return shopping.lists.find((list) => list.id === listId) ?? null;
-  }, [shopping.lists, listId]);
-
-  const selectedMeal = useMemo(() => {
-    if (!selected || !editItemId) {
-      return null;
-    }
-    return selected.items.find((item) => item.id === editItemId) ?? null;
-  }, [selected, editItemId]);
-
   useEffect(() => {
     return () => {
       if (addDetailsFeedbackTimerRef.current) {
@@ -66,9 +60,9 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     };
   }, []);
 
-  function openEdit(item: ShoppingItem) {
+  function openEdit(item: EditableShoppingItem) {
     setEditItemId(item.id);
-    setEditName(item.name);
+    setEditName(item.title);
     setEditQuantity(item.quantity ? String(item.quantity) : '');
     setEditUnit(item.unit ?? 'PCS');
     setEditError(null);
@@ -99,7 +93,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     strings: AddLikeStrings,
     options?: { onRefocus?: () => void }
   ) {
-    if (!selected || !newItemName.trim()) {
+    if (!newItemName.trim()) {
       return;
     }
     const addedName = newItemName.trim();
@@ -113,7 +107,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       return;
     }
     const effectiveUnit = parsedQuantity === null ? null : addUnit;
-    await shopping.addItem(selected.id, addedName, parsedQuantity, effectiveUnit);
+    await shopping.addItem(listId, addedName, parsedQuantity, effectiveUnit);
     setNewItemName('');
     setAddQuantity('');
     setAddUnit(null);
@@ -138,7 +132,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
   }
 
   async function handleSaveEdit(strings: EditStrings, options?: { onClose?: () => void }) {
-    if (!selected || !editItemId) {
+    if (!editItemId) {
       return;
     }
     if (!editName.trim()) {
@@ -155,7 +149,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       return;
     }
     const effectiveUnit = parsedQuantity === null ? null : editUnit;
-    await shopping.updateItem(selected.id, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
+    await shopping.updateItem(listId, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
     if (options?.onClose) {
       options.onClose();
       return;
@@ -164,10 +158,10 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
   }
 
   async function handleRemoveEdit(options?: { onClose?: () => void }) {
-    if (!selected || !editItemId) {
+    if (!editItemId) {
       return;
     }
-    await shopping.removeItem(selected.id, editItemId);
+    await shopping.removeItem(listId, editItemId);
     if (options?.onClose) {
       options.onClose();
       return;
@@ -176,9 +170,6 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
   }
 
   async function finishOpenDrag(args: FinishOpenDragArgs) {
-    if (!selected) {
-      return;
-    }
     const { draggedId, startIndex, finalIds } = args;
     if (!draggedId || startIndex === null) {
       return;
@@ -189,7 +180,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     }
     const direction = finalIndex > startIndex ? 'DOWN' : 'UP';
     const steps = Math.abs(finalIndex - startIndex);
-    await shopping.reorderItem(selected.id, draggedId, direction, steps);
+    await shopping.reorderItem(listId, draggedId, direction, steps);
   }
 
   return {
@@ -207,7 +198,6 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       addDetailsFeedback,
       orderedOpenItemIds,
       draggingOpenItemId,
-      selectedMeal,
     },
     actions: {
       setNewItemName,
