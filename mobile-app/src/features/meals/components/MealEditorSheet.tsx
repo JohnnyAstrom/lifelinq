@@ -93,98 +93,97 @@ export function MealEditorSheet({
       <View style={styles.sheetLayout}>
         <View style={styles.sheetStickyHeader}>
           <Text style={textStyles.h2}>{strings.planMealTitle}</Text>
-
-          <View style={styles.daySection}>
-            <Text style={styles.sectionLabel}>{strings.dayLabel}</Text>
-            <View style={styles.dayChipRow}>
-              {dayOptions.map((option) => (
-                <AppChip
-                  key={option.dayNumber}
-                  label={option.label.split(' ')[0]}
-                  active={sameCalendarDay(option.date, initialDate)}
-                  accentKey="meals"
-                  onPress={() => onSelectDay(option.dayNumber)}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.mealTypeRow}>
-            {MEAL_TYPES.map((mealType) => (
-              <AppChip
-                key={mealType}
-                label={mealTypeLabels[mealType]}
-                active={mealType === selectedMealType}
-                accentKey="meals"
-                onPress={() => {
-                  Keyboard.dismiss();
-                  onSelectMealType(mealType);
-                }}
-              />
-            ))}
-          </View>
         </View>
 
-        <ScrollView
-          style={styles.sheetScroll}
-          contentContainerStyle={styles.sheetScrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <AppInput
-            placeholder={strings.mealTitlePlaceholder}
-            value={recipeTitle}
-            onChangeText={onChangeRecipeTitle}
-          />
-          <AppInput
-            placeholder={strings.ingredientsPlaceholder}
-            value={ingredientsText}
-            onChangeText={onChangeIngredientsText}
-            multiline
-            style={styles.ingredientsInput}
-          />
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>{strings.addIngredientsToShopping}</Text>
-            <Switch value={pushToShopping} onValueChange={onChangePushToShopping} />
-          </View>
-          <View style={styles.lists}>
-            {lists.length === 0 ? (
-              <Subtle>{strings.noShoppingLists}</Subtle>
-            ) : (
-              <View style={styles.chipRow}>
-                {lists.map((list) => (
+        <View style={styles.sheetBody}>
+          <ScrollView
+            style={styles.sheetScroll}
+            contentContainerStyle={styles.sheetScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.daySection}>
+              <Text style={styles.sectionLabel}>{strings.dayLabel}</Text>
+              <View style={styles.dayChipRow}>
+                {dayOptions.map((option) => (
                   <AppChip
-                    key={list.id}
-                    label={list.name}
-                    active={list.id === effectiveListId}
+                    key={option.dayNumber}
+                    label={option.label.split(' ')[0]}
+                    active={sameCalendarDay(option.date, initialDate)}
                     accentKey="meals"
-                    onPress={() => onSelectListId(list.id)}
+                    onPress={() => onSelectDay(option.dayNumber)}
                   />
                 ))}
               </View>
-            )}
-          </View>
-          {shoppingSyncError ? (
-            <Text style={styles.error}>{strings.shoppingSyncFailed} {shoppingSyncError}</Text>
-          ) : null}
-        </ScrollView>
-
-        <View style={styles.sheetFooterActions}>
-          <AppButton title={strings.saveMeal} onPress={onSave} fullWidth accentKey="meals" />
-          {hasExistingMeal ? (
-            <AppButton
-              title={strings.removeMeal}
-              onPress={onRemove}
-              variant="ghost"
-              fullWidth
+            </View>
+            <View style={styles.mealTypeRow}>
+              {MEAL_TYPES.map((mealType) => (
+                <AppChip
+                  key={mealType}
+                  label={mealTypeLabels[mealType]}
+                  active={mealType === selectedMealType}
+                  accentKey="meals"
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    onSelectMealType(mealType);
+                  }}
+                />
+              ))}
+            </View>
+            <AppInput
+              placeholder={strings.mealTitlePlaceholder}
+              value={recipeTitle}
+              onChangeText={onChangeRecipeTitle}
             />
-          ) : null}
-          <AppButton
-            title={strings.close}
-            onPress={onClose}
-            variant="secondary"
-            fullWidth
-          />
+            <AppInput
+              placeholder={strings.ingredientsPlaceholder}
+              value={ingredientsText}
+              onChangeText={onChangeIngredientsText}
+              multiline
+              style={styles.ingredientsInput}
+            />
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>{strings.addIngredientsToShopping}</Text>
+              <Switch value={pushToShopping} onValueChange={onChangePushToShopping} />
+            </View>
+            <View style={styles.lists}>
+              {lists.length === 0 ? (
+                <Subtle>{strings.noShoppingLists}</Subtle>
+              ) : (
+                <View style={styles.chipRow}>
+                  {lists.map((list) => (
+                    <AppChip
+                      key={list.id}
+                      label={list.name}
+                      active={list.id === effectiveListId}
+                      accentKey="meals"
+                      onPress={() => onSelectListId(list.id)}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+            {shoppingSyncError ? (
+              <Text style={styles.error}>{strings.shoppingSyncFailed} {shoppingSyncError}</Text>
+            ) : null}
+            <View style={styles.sheetFooterActions}>
+              <AppButton title={strings.saveMeal} onPress={onSave} fullWidth accentKey="meals" />
+              {hasExistingMeal ? (
+                <AppButton
+                  title={strings.removeMeal}
+                  onPress={onRemove}
+                  variant="ghost"
+                  fullWidth
+                />
+              ) : null}
+              <AppButton
+                title={strings.close}
+                onPress={onClose}
+                variant="secondary"
+                fullWidth
+              />
+            </View>
+          </ScrollView>
         </View>
       </View>
     </OverlaySheet>
@@ -207,13 +206,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sheetStickyHeader: {
-    gap: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   sheetLayout: {
-    flex: 1,
+    maxHeight: '100%',
+    flexShrink: 1,
+    minHeight: 0,
+  },
+  sheetBody: {
+    flexShrink: 1,
     minHeight: 0,
   },
   daySection: {
@@ -235,14 +238,14 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   sheetScroll: {
-    flex: 1,
     minHeight: 0,
+    maxHeight: '100%',
     marginTop: theme.spacing.sm,
   },
   sheetScrollContent: {
     gap: theme.spacing.sm,
-    flexGrow: 1,
     minWidth: 0,
+    paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
   },
   ingredientsInput: {
@@ -272,7 +275,6 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
   },
   error: {
     color: theme.colors.danger,
