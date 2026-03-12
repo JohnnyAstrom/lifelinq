@@ -70,7 +70,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     boughtLabel: 'Bought',
     openCountSuffix: 'open',
     boughtCountSuffix: 'bought',
-    details: 'Edit',
+    details: 'Open item details',
     swipeBought: 'Bought',
     swipeOpen: 'Open',
     noOpenItems: 'No open items.',
@@ -368,11 +368,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     onSwipeableOpen={() => selectedList && shopping.toggleItem(selectedList.id, item.id)}
                   >
                     <ShoppingItemRow
-                      title={item.displayTitle}
+                      title={item.title}
+                      meta={item.displayMeta}
                       checked={false}
-                      detailLabel={strings.details}
                       dragging={workflowState.draggingOpenItemId === item.id}
-                      styles={styles}
+                      secondaryActionLabel={strings.details}
                       onToggle={() => {
                         if (ignoreNextOpenPressRef.current) {
                           ignoreNextOpenPressRef.current = false;
@@ -382,10 +382,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                           shopping.toggleItem(selectedList.id, item.id);
                         }
                       }}
-                      onEdit={() => {
+                      onOpenDetails={() => {
                         if (!draggingOpenItemIdRef.current) {
                           openEdit(item);
                         }
+                      }}
+                      onMeasuredHeight={(height) => {
+                        rowHeightRef.current = height + theme.spacing.xs;
                       }}
                       onToggleLongPress={canReorderOpenItems
                         ? (event) => startOpenDrag(item.id, event.nativeEvent.pageY)
@@ -437,16 +440,16 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                     onSwipeableOpen={() => selectedList && shopping.toggleItem(selectedList.id, item.id)}
                   >
                     <ShoppingItemRow
-                      title={item.displayTitle}
+                      title={item.title}
+                      meta={item.displayMeta}
                       checked
-                      detailLabel={strings.details}
-                      styles={styles}
+                      secondaryActionLabel={strings.details}
                       onToggle={() => {
                         if (selectedList) {
                           shopping.toggleItem(selectedList.id, item.id);
                         }
                       }}
-                      onEdit={() => openEdit(item)}
+                      onOpenDetails={() => openEdit(item)}
                     />
                   </Swipeable>
                 ))}
@@ -640,73 +643,6 @@ const styles = StyleSheet.create({
   items: {
     gap: theme.spacing.xs,
   },
-  itemRow: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  checkboxPressable: {
-    padding: theme.spacing.xs,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    backgroundColor: theme.colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: theme.colors.success,
-    borderColor: theme.colors.success,
-  },
-  checkboxMark: {
-    fontSize: 14,
-    color: 'transparent',
-    fontWeight: '700',
-  },
-  checkboxMarkChecked: {
-    color: '#ffffff',
-  },
-  itemText: {
-    ...textStyles.body,
-  },
-  itemHintText: {
-    ...textStyles.subtle,
-  },
-  itemHintChevron: {
-    ...textStyles.subtle,
-    fontSize: 18,
-    lineHeight: 18,
-  },
-  itemMeta: {
-    ...textStyles.subtle,
-  },
-  itemContent: {
-    flex: 1,
-    gap: theme.spacing.xs,
-  },
-  toggleZone: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  detailZone: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    paddingLeft: theme.spacing.sm,
-    borderLeftWidth: 1,
-    borderLeftColor: theme.colors.border,
-  },
   quickEditRow: {
     marginTop: theme.spacing.xs,
     marginLeft: 36,
@@ -736,10 +672,6 @@ const styles = StyleSheet.create({
   },
   quickInput: {
     maxWidth: 140,
-  },
-  itemTextDone: {
-    color: theme.colors.subtle,
-    textDecorationLine: 'line-through',
   },
   addDetailsBar: {
     paddingHorizontal: theme.spacing.md,
@@ -771,10 +703,6 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: theme.layout.sheetPadding,
     gap: theme.spacing.xs,
-  },
-  itemRowDragging: {
-    borderColor: theme.colors.feature.shopping,
-    opacity: 0.85,
   },
   quickAddHeader: {
     justifyContent: 'center',
