@@ -195,6 +195,9 @@ Cross-feature orchestration must not bypass backend feature boundaries.
 - auth context
 - generic API client and helpers
 
+Shared overlay primitives own viewport clamping, keyboard offset, and bounded sheet-body behavior.
+Feature sheets should provide header/body/footer composition inside that shell rather than reimplementing positioning rules locally.
+
 `shared/` should not accumulate feature-specific business rules or domain workflows.
 If a module is domain-specific (e.g. shopping or meals API), it should be accessed through a feature-owned API façade.
 
@@ -213,4 +216,3 @@ If a module is domain-specific (e.g. shopping or meals API), it should be access
 
 Update this document when frontend structure, dependency direction, or hook layering rules change.
 This file is intended to describe the actual architecture in the codebase, not a future wishlist.
-

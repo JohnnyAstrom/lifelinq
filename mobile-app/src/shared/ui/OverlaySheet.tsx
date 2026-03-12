@@ -40,19 +40,24 @@ export function OverlaySheet({
     : screenHeight;
   const [sheetHeight, setSheetHeight] = useState(0);
 
+  const keyboardHeight = useAnimatedStyle(() => {
+    return {
+      paddingBottom: Math.max(0, -height.value),
+    };
+  });
+
   const sheetAnimatedStyle = useAnimatedStyle(() => {
-    const keyboardHeight = -height.value;
-    const availableHeight = viewportHeight - keyboardHeight;
+    const keyboardOffset = Math.max(0, -height.value);
+    const availableHeight = Math.max(0, viewportHeight - keyboardOffset);
 
     return {
-      bottom: keyboardHeight,
       maxHeight: availableHeight,
     };
   });
 
   const aboveSheetAnimatedStyle = useAnimatedStyle(() => {
     return {
-      bottom: sheetHeight + theme.spacing.sm - height.value - insets.bottom,
+      bottom: sheetHeight + theme.spacing.sm,
     };
   });
 
@@ -73,25 +78,10 @@ export function OverlaySheet({
     ]).start();
   }, [backdropOpacity, sheetTranslateY]);
 
-  useEffect(() => {
-    console.log('[OverlaySheet]', {
-      screenHeight,
-      hostHeight,
-      viewportHeight,
-      sheetHeight,
-      insetsTop: insets.top,
-      insetsBottom: insets.bottom,
-      hasAboveSheet: !!aboveSheet,
-    });
-  }, [aboveSheet, hostHeight, insets.bottom, insets.top, screenHeight, sheetHeight, viewportHeight]);
-
   const overlayNode = (
     <View
       style={styles.root}
       pointerEvents="box-none"
-      onLayout={(event) => {
-        console.log('[OverlaySheet] root layout', event.nativeEvent.layout);
-      }}
     >
       <RNAnimated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -102,11 +92,11 @@ export function OverlaySheet({
           {
             transform: [{ translateY: sheetTranslateY }],
           },
-          styles.overlaySheet,
+          styles.sheetRail,
         ]}
         pointerEvents="box-none"
       >
-        <Animated.View style={styles.overlaySheet} pointerEvents="box-none">
+        <Animated.View style={[styles.sheetRail, keyboardHeight]} pointerEvents="box-none">
           {aboveSheet ? (
             <Animated.View style={[styles.aboveSheetFloating, aboveSheetAnimatedStyle]} pointerEvents="box-none">
               <View style={styles.aboveSheet}>{aboveSheet}</View>
@@ -116,7 +106,6 @@ export function OverlaySheet({
             style={[styles.sheet, sheetStyle, sheetAnimatedStyle]}
             onLayout={(event) => {
               const nextHeight = event.nativeEvent.layout.height;
-              console.log('[OverlaySheet] sheet layout', event.nativeEvent.layout);
               setSheetHeight(nextHeight);
             }}
           >
@@ -137,22 +126,6 @@ export function OverlaySheet({
     };
   }, [overlayId]);
 
-  useEffect(() => {
-    const keyboardHeight = -height.value;
-    const keyboardTop = screenHeight + height.value;
-    console.log('[OverlaySheet] metrics', {
-      screenHeight,
-      hostHeight,
-      viewportHeight,
-      sheetHeight,
-      keyboardHeight,
-      keyboardTop,
-      insetsTop: insets.top,
-      insetsBottom: insets.bottom,
-      hasAboveSheet: !!aboveSheet,
-    });
-  }, [aboveSheet, height.value, hostHeight, insets.bottom, insets.top, screenHeight, sheetHeight, viewportHeight]);
-
   return null;
 }
 
@@ -169,8 +142,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.scrim,
     zIndex: 1,
   },
-  overlaySheet: {
-    flex: 1,
+  sheetRail: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     zIndex: 2,
     elevation: 0,
@@ -191,12 +164,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     width: '100%',
     alignSelf: 'stretch',
+    flexShrink: 1,
+    minHeight: 0,
   },
 });
 
