@@ -1,6 +1,6 @@
-import { Keyboard, Text, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppButton, AppChip, AppInput } from '../../../shared/ui/components';
-import { textStyles } from '../../../shared/ui/theme';
+import { textStyles, theme } from '../../../shared/ui/theme';
 
 type UnitOption = { label: string; value: string };
 
@@ -8,9 +8,10 @@ type Props = {
   styles: any;
   title: string;
   addPlaceholderExtended: string;
+  detailsToggleLabel: string;
+  detailsHideLabel: string;
   addQuantityPlaceholder: string;
   addItemTitle: string;
-  closeLabel: string;
   unitNoneLabel: string;
   unitToggleMoreLabel: string;
   unitToggleLessLabel: string;
@@ -18,6 +19,7 @@ type Props = {
   quantityValue: string;
   addUnit: string | null;
   addError: string | null;
+  detailsExpanded: boolean;
   showMoreAddUnits: boolean;
   inputRef: any;
   quantityRef: any;
@@ -25,20 +27,21 @@ type Props = {
   moreUnitOptions: UnitOption[];
   onChangeName: (value: string) => void;
   onSubmitName: () => void | Promise<void>;
+  onToggleDetails: () => void;
   onChangeQuantity: (value: string) => void;
   onSelectUnit: (value: string | null) => void;
   onToggleMoreUnits: () => void;
   onAddItem: () => void | Promise<void>;
-  onClose: () => void;
 };
 
 export function AddDetailsSheetContent({
   styles,
   title,
   addPlaceholderExtended,
+  detailsToggleLabel,
+  detailsHideLabel,
   addQuantityPlaceholder,
   addItemTitle,
-  closeLabel,
   unitNoneLabel,
   unitToggleMoreLabel,
   unitToggleLessLabel,
@@ -46,6 +49,7 @@ export function AddDetailsSheetContent({
   quantityValue,
   addUnit,
   addError,
+  detailsExpanded,
   showMoreAddUnits,
   inputRef,
   quantityRef,
@@ -53,11 +57,11 @@ export function AddDetailsSheetContent({
   moreUnitOptions,
   onChangeName,
   onSubmitName,
+  onToggleDetails,
   onChangeQuantity,
   onSelectUnit,
   onToggleMoreUnits,
   onAddItem,
-  onClose,
 }: Props) {
   return (
     <>
@@ -70,60 +74,92 @@ export function AddDetailsSheetContent({
         value={nameValue}
         onChangeText={onChangeName}
         onSubmitEditing={onSubmitName}
-        returnKeyType="done"
+        returnKeyType={nameValue.trim().length > 0 ? 'done' : 'next'}
+        autoFocus
       />
-      <AppInput
-        ref={quantityRef}
-        value={quantityValue}
-        onChangeText={onChangeQuantity}
-        placeholder={addQuantityPlaceholder}
-        keyboardType="decimal-pad"
-        style={styles.addQuantityInput}
-      />
-      <View style={styles.addUnitRow}>
-        {primaryUnitOptions.map((unit) => (
-          <AppChip
-            key={unit.value}
-            label={unit.label}
-            active={addUnit === unit.value}
-            accentKey="shopping"
-            onPress={() => {
-              Keyboard.dismiss();
-              onSelectUnit(unit.value);
-            }}
-          />
-        ))}
-        <AppChip
-          label={unitNoneLabel}
-          active={!addUnit}
-          accentKey="shopping"
-          onPress={() => {
-            Keyboard.dismiss();
-            onSelectUnit(null);
-          }}
-        />
-        <AppChip
-          label={showMoreAddUnits ? unitToggleLessLabel : unitToggleMoreLabel}
-          active={showMoreAddUnits}
-          accentKey="shopping"
-          onPress={onToggleMoreUnits}
-        />
-      </View>
-      {showMoreAddUnits ? (
-        <View style={styles.addUnitRow}>
-          {moreUnitOptions.map((unit) => (
-            <AppChip
-              key={unit.value}
-              label={unit.label}
-              active={addUnit === unit.value}
-              accentKey="shopping"
-              onPress={() => {
-                Keyboard.dismiss();
-                onSelectUnit(unit.value);
-              }}
+      <Pressable style={({ pressed }) => [localStyles.detailsToggle, pressed ? localStyles.detailsTogglePressed : null]} onPress={onToggleDetails}>
+        <Text style={localStyles.detailsToggleLabel}>{detailsExpanded ? detailsHideLabel : detailsToggleLabel}</Text>
+      </Pressable>
+      {detailsExpanded ? (
+        <>
+          <View style={localStyles.detailsPanel}>
+            <Text style={localStyles.amountLabel}>Quantity</Text>
+            <AppInput
+              ref={quantityRef}
+              value={quantityValue}
+              onChangeText={onChangeQuantity}
+              placeholder={addQuantityPlaceholder}
+              keyboardType="decimal-pad"
+              style={styles.addQuantityInput}
             />
-          ))}
-        </View>
+            {quantityValue.trim().length > 0 ? (
+              <View style={localStyles.unitSection}>
+                <View style={styles.addUnitRow}>
+                  {primaryUnitOptions.map((unit) => (
+                    <AppChip
+                      key={unit.value}
+                      label={unit.label}
+                      active={addUnit === unit.value}
+                      accentKey="shopping"
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        onSelectUnit(unit.value);
+                      }}
+                    />
+                  ))}
+                  <Pressable
+                    style={({ pressed }) => [
+                      localStyles.moreUnitsToggle,
+                      pressed ? localStyles.moreUnitsTogglePressed : null,
+                    ]}
+                    onPress={onToggleMoreUnits}
+                  >
+                    <Text style={localStyles.moreUnitsToggleLabel}>
+                      {showMoreAddUnits ? unitToggleLessLabel : unitToggleMoreLabel}
+                    </Text>
+                  </Pressable>
+                </View>
+                {showMoreAddUnits ? (
+                  <View style={styles.addUnitRow}>
+                    {moreUnitOptions.map((unit) => (
+                      <AppChip
+                        key={unit.value}
+                        label={unit.label}
+                        active={addUnit === unit.value}
+                        accentKey="shopping"
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          onSelectUnit(unit.value);
+                        }}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+                {!addUnit ? (
+                  <Pressable
+                    style={({ pressed }) => [localStyles.clearUnitRow, pressed ? localStyles.clearUnitRowPressed : null]}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      onSelectUnit(null);
+                    }}
+                  >
+                    <Text style={localStyles.clearUnitLabel}>{unitNoneLabel}</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={({ pressed }) => [localStyles.clearUnitRow, pressed ? localStyles.clearUnitRowPressed : null]}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      onSelectUnit(null);
+                    }}
+                  >
+                    <Text style={localStyles.clearUnitLabel}>Clear unit</Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : null}
+          </View>
+        </>
       ) : null}
       {addError ? <Text style={styles.error}>{addError}</Text> : null}
       <View style={styles.sheetActions}>
@@ -134,8 +170,67 @@ export function AddDetailsSheetContent({
           fullWidth
           accentKey="shopping"
         />
-        <AppButton title={closeLabel} onPress={onClose} variant="ghost" fullWidth />
       </View>
     </>
   );
 }
+
+const localStyles = StyleSheet.create({
+  detailsToggle: {
+    minHeight: 36,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+  },
+  detailsTogglePressed: {
+    opacity: 0.65,
+  },
+  detailsToggleLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#5b6f95',
+  },
+  detailsPanel: {
+    gap: 6,
+  },
+  amountLabel: {
+    fontSize: textStyles.subtle.fontSize,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.typography.body,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  unitSection: {
+    gap: 6,
+  },
+  moreUnitsToggle: {
+    minHeight: 36,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eef2f7',
+    borderWidth: 1,
+    borderColor: '#d8dde6',
+  },
+  moreUnitsTogglePressed: {
+    opacity: 0.8,
+  },
+  moreUnitsToggleLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#5b6f95',
+  },
+  clearUnitRow: {
+    minHeight: 28,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+  },
+  clearUnitRowPressed: {
+    opacity: 0.65,
+  },
+  clearUnitLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+});

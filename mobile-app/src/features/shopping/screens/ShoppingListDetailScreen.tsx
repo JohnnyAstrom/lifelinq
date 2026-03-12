@@ -14,8 +14,6 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
 import { EditItemSheetContent } from '../components/EditItemSheetContent';
-import { QuickAddSheetContent } from '../components/QuickAddSheetContent';
-import { ShoppingAddBar } from '../components/ShoppingAddBar';
 import { ShoppingItemRow } from '../components/ShoppingItemRow';
 import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
@@ -25,6 +23,7 @@ import { type ShoppingUnit } from '../api/shoppingApi';
 import { AppButton, AppCard, AppChip, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   token: string;
@@ -33,11 +32,13 @@ type Props = {
 };
 
 export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
+  const insets = useSafeAreaInsets();
   const shopping = useShoppingLists(token);
   const workflow = useShoppingListDetailWorkflow({ shopping, listId });
   const { state: workflowState, actions: workflowActions } = workflow;
   const [showMoreEditUnits, setShowMoreEditUnits] = useState(false);
   const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);
+  const [showAddFormDetails, setShowAddFormDetails] = useState(false);
   const orderedOpenItemIdsRef = useRef<string[]>([]);
   const draggingOpenItemIdRef = useRef<string | null>(null);
   const dragStartIndexRef = useRef<number | null>(null);
@@ -47,7 +48,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const finishingDragRef = useRef(false);
   const ignoreNextOpenPressRef = useRef(false);
   const pendingOpenReorderSyncRef = useRef(false);
-  const quickAddInputRef = useRef<TextInput | null>(null);
   const addDetailsInputRef = useRef<TextInput | null>(null);
   const quantityRef = useRef<TextInput | null>(null);
 
@@ -83,14 +83,14 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     noBoughtItems: 'No bought items yet.',
     addPlaceholder: 'Add item…',
     addPlaceholderExtended: 'Add item…',
-    addAction: 'Details',
-    quickAddTitle: 'Add item',
-    quickAddAddedSuffix: 'added to shopping list.',
+    addAction: 'Add item',
+    addDetailsToggle: '+ Add amount',
+    addDetailsHide: '- Hide amount',
     loadingItems: 'Loading items...',
     clearBought: 'Clear bought',
     clearBoughtTitle: 'Clear bought items?',
     clearBoughtBody: 'This will remove all bought items from the list.',
-    addQuantityPlaceholder: 'Quantity (optional)',
+    addQuantityPlaceholder: 'Amount',
     addErrorQuantity: 'Quantity must be a positive number.',
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
     addDetailsTitle: 'Add details',
@@ -125,14 +125,20 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     workflowActions.setOrderedOpenItemIds(next);
   }, [workflowActions, workflowState.draggingOpenItemId, openItemsBase]);
 
-  function closeQuickAdd() {
-    workflowActions.closeQuickAdd();
-    Keyboard.dismiss();
-  }
+  useEffect(() => {
+    if (!workflowState.showAddDetails || !showAddFormDetails) {
+      return;
+    }
+    const focusTimeout = setTimeout(() => {
+      quantityRef.current?.focus();
+    }, 40);
+    return () => clearTimeout(focusTimeout);
+  }, [showAddFormDetails, workflowState.showAddDetails]);
 
   function closeAddDetails() {
     workflowActions.closeAddDetails();
     setShowMoreAddUnits(false);
+    setShowAddFormDetails(false);
     Keyboard.dismiss();
   }
 
@@ -160,13 +166,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 
   async function handleRemoveEdit() {
     await workflowActions.handleRemoveEdit({ onClose: closeEdit });
-  }
-
-  async function handleQuickAdd() {
-    await workflowActions.handleQuickAdd(
-      { quickAddAddedSuffix: strings.quickAddAddedSuffix },
-      { onRefocus: () => quickAddInputRef.current?.focus() }
-    );
   }
 
   async function handleAddItem() {
@@ -307,12 +306,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onBack,
-    isOverlayOpen: workflowState.showQuickAdd || !!workflowState.editItemId || workflowState.showAddDetails,
+    isOverlayOpen: !!workflowState.editItemId || workflowState.showAddDetails,
     onCloseOverlay: () => {
-      if (workflowState.showQuickAdd) {
-        closeQuickAdd();
-        return;
-      }
       if (workflowState.editItemId) {
         closeEdit();
         return;
@@ -452,23 +447,19 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             )}
           </AppCard>
           </ScrollView>
-
-          <ShoppingAddBar
-            styles={styles}
-            placeholder={strings.addPlaceholder}
-            actionTitle={strings.addAction}
-            onPressInput={() => {
-              workflowActions.setQuickAddName('');
-              workflowActions.setShowQuickAdd(true);
-            }}
-            onPressAction={() => {
-              Keyboard.dismiss();
-              workflowActions.setShowAddDetails(true);
-            }}
-          />
         </View>
       </View>
 
+      <Pressable
+        style={[styles.fab, { bottom: Math.max(insets.bottom + 8, 12) }]}
+        onPress={() => {
+          setShowAddFormDetails(false);
+          setShowMoreAddUnits(false);
+          workflowActions.setShowAddDetails(true);
+        }}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </Pressable>
 
       {workflowState.editItemId ? (
         <OverlaySheet onClose={closeEdit} sheetStyle={styles.quickAddSheet}>
@@ -506,36 +497,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         </OverlaySheet>
       ) : null}
 
-      {workflowState.showQuickAdd ? (
-        <OverlaySheet
-          onClose={closeQuickAdd}
-          sheetStyle={styles.quickAddSheet}
-          aboveSheet={
-            workflowState.quickAddFeedback ? (
-              <View style={styles.quickAddFeedback}>
-                <Text style={styles.quickAddFeedbackText}>{workflowState.quickAddFeedback}</Text>
-              </View>
-            ) : null
-          }
-        >
-          <QuickAddSheetContent
-            styles={styles}
-            title={strings.quickAddTitle}
-            placeholder={strings.addPlaceholder}
-            value={workflowState.quickAddName}
-            inputRef={quickAddInputRef}
-            onChangeText={workflowActions.setQuickAddName}
-            onSubmitEditing={async () => {
-              if (workflowState.quickAddName.trim()) {
-                await handleQuickAdd();
-                return;
-              }
-              closeQuickAdd();
-            }}
-          />
-        </OverlaySheet>
-      ) : null}
-
       {workflowState.showAddDetails ? (
         <OverlaySheet
           onClose={closeAddDetails}
@@ -550,11 +511,12 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         >
           <AddDetailsSheetContent
             styles={styles}
-            title={strings.addDetailsTitle}
+            title={strings.addAction}
             addPlaceholderExtended={strings.addPlaceholderExtended}
+            detailsToggleLabel={strings.addDetailsToggle}
+            detailsHideLabel={strings.addDetailsHide}
             addQuantityPlaceholder={strings.addQuantityPlaceholder}
             addItemTitle={strings.addItemTitle}
-            closeLabel={strings.close}
             unitNoneLabel={strings.unitNone}
             unitToggleMoreLabel={strings.unitMore}
             unitToggleLessLabel={strings.unitLess}
@@ -562,6 +524,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             quantityValue={workflowState.addQuantity}
             addUnit={workflowState.addUnit}
             addError={workflowState.addError}
+            detailsExpanded={showAddFormDetails}
             showMoreAddUnits={showMoreAddUnits}
             inputRef={addDetailsInputRef}
             quantityRef={quantityRef}
@@ -571,10 +534,19 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onSubmitName={async () => {
               if (workflowState.newItemName.trim()) {
                 await handleAddItem();
+                return;
               }
+              setShowAddFormDetails(true);
             }}
+            onToggleDetails={() => setShowAddFormDetails((prev) => !prev)}
             onChangeQuantity={(value) => {
               workflowActions.setAddQuantity(value);
+              if (value.trim().length > 0 && workflowState.addUnit == null) {
+                workflowActions.setAddUnit('ST');
+              }
+              if (value.trim().length === 0) {
+                workflowActions.setAddUnit(null);
+              }
               workflowActions.setAddError(null);
             }}
             onSelectUnit={(value) => {
@@ -588,7 +560,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onAddItem={async () => {
               await handleAddItem();
             }}
-            onClose={closeAddDetails}
           />
         </OverlaySheet>
       ) : null}
@@ -625,7 +596,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: theme.spacing.md,
+    paddingBottom: 96,
     gap: theme.spacing.md,
   },
   sectionCard: {
@@ -763,19 +734,6 @@ const styles = StyleSheet.create({
     color: theme.colors.subtle,
     textDecorationLine: 'line-through',
   },
-  bottomContainer: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  bottomBar: {
-    paddingTop: theme.spacing.xs,
-    paddingBottom: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    flexDirection: 'row',
-    gap: theme.spacing.xs,
-    alignItems: 'center',
-  },
   addDetailsBar: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.xs,
@@ -807,27 +765,9 @@ const styles = StyleSheet.create({
     padding: theme.layout.sheetPadding,
     gap: theme.spacing.xs,
   },
-  bottomInput: {
-    flex: 1,
-  },
   itemRowDragging: {
     borderColor: theme.colors.feature.shopping,
     opacity: 0.85,
-  },
-  bottomInputPressable: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
-    justifyContent: 'center',
-  },
-  bottomInputPlaceholder: {
-    fontFamily: theme.typography.body,
-    fontSize: 15,
-    color: theme.colors.subtle,
   },
   quickAddHeader: {
     justifyContent: 'center',
@@ -874,6 +814,24 @@ const styles = StyleSheet.create({
   },
   editorScrollContent: {
     gap: theme.spacing.xs,
+  },
+  fab: {
+    position: 'absolute',
+    right: theme.spacing.lg,
+    bottom: theme.spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.feature.shopping,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.elevation.floating,
+  },
+  fabText: {
+    color: '#ffffff',
+    fontSize: 28,
+    lineHeight: 28,
+    fontFamily: theme.typography.heading,
   },
 });
 
