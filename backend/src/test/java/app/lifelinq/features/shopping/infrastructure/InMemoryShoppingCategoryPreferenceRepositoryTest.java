@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.shopping.domain.ShoppingCategory;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreference;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,7 @@ class InMemoryShoppingCategoryPreferenceRepositoryTest {
         UUID groupId = UUID.randomUUID();
         ShoppingCategoryPreference preference = new ShoppingCategoryPreference(
                 groupId,
+                ShoppingListType.GROCERY,
                 "apple",
                 ShoppingCategory.PRODUCE,
                 Instant.now()
@@ -38,12 +40,14 @@ class InMemoryShoppingCategoryPreferenceRepositoryTest {
 
         repository.save(new ShoppingCategoryPreference(
                 groupId,
+                ShoppingListType.GROCERY,
                 "apple",
                 ShoppingCategory.PRODUCE,
                 Instant.now()
         ));
         repository.save(new ShoppingCategoryPreference(
                 groupId,
+                ShoppingListType.GROCERY,
                 "apple",
                 ShoppingCategory.PANTRY,
                 Instant.now().plusSeconds(10)
@@ -52,6 +56,6 @@ class InMemoryShoppingCategoryPreferenceRepositoryTest {
         List<ShoppingCategoryPreference> preferences = repository.findByGroupId(groupId);
         assertEquals(1, preferences.size());
         assertEquals(ShoppingCategory.PANTRY, preferences.get(0).preferredCategory());
-        assertTrue(repository.findByGroupIdAndNormalizedTitle(groupId, "apple").isPresent());
+        assertTrue(repository.findByGroupIdAndListTypeAndNormalizedTitle(groupId, ShoppingListType.GROCERY, "apple").isPresent());
     }
 }

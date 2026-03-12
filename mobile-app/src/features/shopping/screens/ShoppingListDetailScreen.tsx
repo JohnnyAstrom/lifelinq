@@ -38,7 +38,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const insets = useSafeAreaInsets();
   const shopping = useShoppingLists(token);
   const categoryPreferences = useShoppingCategoryPreferences();
-  const workflow = useShoppingListDetailWorkflow({ shopping, listId });
+  const selectedTransportListType = useMemo(
+    () => shopping.lists.find((list) => list.id === listId)?.type ?? 'mixed',
+    [listId, shopping.lists]
+  );
+  const workflow = useShoppingListDetailWorkflow({ shopping, listId, listType: selectedTransportListType });
   const { state: workflowState, actions: workflowActions } = workflow;
   const [showMoreEditUnits, setShowMoreEditUnits] = useState(false);
   const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);

@@ -13,6 +13,7 @@ export type ShoppingItemResponse = {
 export type ShoppingListResponse = {
   id: string;
   name: string;
+  type: ShoppingListType;
   items: ShoppingItemResponse[];
 };
 
@@ -26,11 +27,13 @@ export type ReorderShoppingListRequest = {
 
 export type CreateShoppingListRequest = {
   name: string;
+  type?: ShoppingListType;
 };
 
 export type CreateShoppingListResponse = {
   listId: string;
   name: string;
+  type: ShoppingListType;
 };
 
 export type AddShoppingItemRequest = {
@@ -68,6 +71,7 @@ export type UpdateShoppingItemRequest = {
 export type UpdateShoppingItemResponse = ShoppingItemResponse;
 
 export type ShoppingUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
+export type ShoppingListType = 'grocery' | 'consumables' | 'supplies' | 'mixed';
 
 export async function createShoppingList(
   payload: CreateShoppingListRequest,

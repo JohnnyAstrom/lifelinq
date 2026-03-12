@@ -18,7 +18,7 @@ import java.util.UUID;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_shopping_category_preferences_group_title",
-                        columnNames = {"group_id", "normalized_title"}
+                        columnNames = {"group_id", "list_type", "normalized_title"}
                 )
         }
 )
@@ -29,6 +29,9 @@ public class ShoppingCategoryPreferenceEntity {
 
     @Column(name = "group_id", nullable = false)
     private UUID groupId;
+
+    @Column(name = "list_type", nullable = false)
+    private String listType;
 
     @Column(name = "normalized_title", nullable = false)
     private String normalizedTitle;
@@ -45,12 +48,14 @@ public class ShoppingCategoryPreferenceEntity {
     ShoppingCategoryPreferenceEntity(
             UUID id,
             UUID groupId,
+            String listType,
             String normalizedTitle,
             String preferredCategory,
             Instant updatedAt
     ) {
         this.id = id;
         this.groupId = groupId;
+        this.listType = listType;
         this.normalizedTitle = normalizedTitle;
         this.preferredCategory = preferredCategory;
         this.updatedAt = updatedAt;
@@ -62,6 +67,10 @@ public class ShoppingCategoryPreferenceEntity {
 
     UUID getGroupId() {
         return groupId;
+    }
+
+    String getListType() {
+        return listType;
     }
 
     String getNormalizedTitle() {

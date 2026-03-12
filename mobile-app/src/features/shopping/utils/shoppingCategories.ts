@@ -1,3 +1,5 @@
+import type { ShoppingListType } from '../api/shoppingApi';
+
 export type ShoppingCategoryKey =
   | 'produce'
   | 'dairy'
@@ -349,8 +351,11 @@ export function getShoppingCategoryDefinitions(): ShoppingCategoryDefinition[] {
   return CATEGORY_DEFINITIONS;
 }
 
-export function inferShoppingCategory(normalizedTitle: string): ShoppingCategoryDefinition {
-  for (const definition of CATEGORY_DEFINITIONS) {
+export function inferShoppingCategory(
+  normalizedTitle: string,
+  listType: ShoppingListType
+): ShoppingCategoryDefinition {
+  for (const definition of getShoppingCategoryDefinitionsForListType(listType)) {
     if (definition.key === 'other') {
       continue;
     }
@@ -359,6 +364,39 @@ export function inferShoppingCategory(normalizedTitle: string): ShoppingCategory
     }
   }
   return DEFAULT_SHOPPING_CATEGORY;
+}
+
+export function getShoppingCategoryOrder(
+  key: ShoppingCategoryKey,
+  listType: ShoppingListType
+): number {
+  const definitions = getShoppingCategoryDefinitionsForListType(listType);
+  const index = definitions.findIndex((definition) => definition.key === key);
+  if (index >= 0) {
+    return index;
+  }
+  return definitions.length;
+}
+
+function getShoppingCategoryDefinitionsForListType(
+  listType: ShoppingListType
+): ShoppingCategoryDefinition[] {
+  const ordering = getCategoryPriorityForListType(listType);
+  return ordering.map((key) => getShoppingCategoryDefinition(key));
+}
+
+function getCategoryPriorityForListType(listType: ShoppingListType): ShoppingCategoryKey[] {
+  switch (listType) {
+    case 'grocery':
+      return ['produce', 'dairy', 'bakery', 'meat-seafood', 'pantry', 'frozen', 'snacks-drinks', 'household', 'health-beauty', 'other'];
+    case 'consumables':
+      return ['household', 'health-beauty', 'dairy', 'pantry', 'snacks-drinks', 'frozen', 'produce', 'bakery', 'meat-seafood', 'other'];
+    case 'supplies':
+      return ['household', 'health-beauty', 'pantry', 'snacks-drinks', 'frozen', 'bakery', 'dairy', 'produce', 'meat-seafood', 'other'];
+    case 'mixed':
+    default:
+      return ['pantry', 'household', 'health-beauty', 'snacks-drinks', 'produce', 'dairy', 'bakery', 'meat-seafood', 'frozen', 'other'];
+  }
 }
 
 function matchesKeyword(normalizedTitle: string, keyword: string): boolean {

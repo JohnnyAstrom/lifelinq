@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import app.lifelinq.features.shopping.domain.ShoppingCategory;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreference;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreferenceRepository;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +28,7 @@ class JpaShoppingCategoryPreferenceRepositoryAdapterTest {
         Instant updatedAt = Instant.now();
         repository.save(new ShoppingCategoryPreference(
                 groupId,
+                ShoppingListType.GROCERY,
                 "apple",
                 ShoppingCategory.PRODUCE,
                 updatedAt
@@ -36,7 +38,7 @@ class JpaShoppingCategoryPreferenceRepositoryAdapterTest {
         assertEquals(1, preferences.size());
         assertEquals("apple", preferences.get(0).normalizedTitle());
         assertEquals(ShoppingCategory.PRODUCE, preferences.get(0).preferredCategory());
-        assertTrue(repository.findByGroupIdAndNormalizedTitle(groupId, "apple").isPresent());
+        assertTrue(repository.findByGroupIdAndListTypeAndNormalizedTitle(groupId, ShoppingListType.GROCERY, "apple").isPresent());
     }
 
     @Test
@@ -44,12 +46,14 @@ class JpaShoppingCategoryPreferenceRepositoryAdapterTest {
         UUID groupId = UUID.randomUUID();
         repository.save(new ShoppingCategoryPreference(
                 groupId,
+                ShoppingListType.GROCERY,
                 "apple",
                 ShoppingCategory.PRODUCE,
                 Instant.now()
         ));
         repository.save(new ShoppingCategoryPreference(
                 groupId,
+                ShoppingListType.GROCERY,
                 "apple",
                 ShoppingCategory.PANTRY,
                 Instant.now().plusSeconds(5)

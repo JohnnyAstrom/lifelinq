@@ -13,6 +13,7 @@ import {
   updateShoppingList,
   updateShoppingItem,
   type ShoppingUnit,
+  type ShoppingListType,
   type AddShoppingItemResponse,
   type ShoppingListResponse,
 } from '../api/shoppingApi';
@@ -57,13 +58,13 @@ export function useShoppingLists(token: string | null) {
     load();
   }, [token]);
 
-  const createList = async (name: string) => {
+  const createList = async (name: string, type: ShoppingListType = 'mixed') => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      await createShoppingList({ name }, { token });
+      await createShoppingList({ name, type }, { token });
       await load();
     } catch (err) {
       await handleApiError(err);

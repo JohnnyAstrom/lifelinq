@@ -1,11 +1,14 @@
+import type { ShoppingListType } from './shoppingApi';
 import { fetchJson, type ApiClientOptions } from '../../../shared/api/client';
 
 export type ShoppingCategoryPreferenceResponse = {
+  listType: ShoppingListType;
   normalizedTitle: string;
   preferredCategory: string;
 };
 
 export type SaveShoppingCategoryPreferenceRequest = {
+  listType: ShoppingListType;
   normalizedTitle: string;
   preferredCategory: string;
 };

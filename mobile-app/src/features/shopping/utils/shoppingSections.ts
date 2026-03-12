@@ -1,5 +1,5 @@
 import type { ShoppingItemModel, ShoppingListModel } from './shoppingDomain';
-import { getShoppingCategoryDefinition } from './shoppingCategories';
+import { getShoppingCategoryOrder } from './shoppingCategories';
 
 export type ShoppingItemSection = {
   id: string;
@@ -35,7 +35,7 @@ export function projectShoppingListDetail(
 
   const openItemsBase = list.items.filter((item) => item.status !== 'BOUGHT');
   const openItems = applyOpenOrdering(openItemsBase, orderedOpenItemIds);
-  const openSections = groupOpenItems(openItems);
+  const openSections = groupOpenItems(openItems, list.type);
   const boughtItems = list.items.filter((item) => item.status === 'BOUGHT');
 
   return {
@@ -70,7 +70,10 @@ function applyOpenOrdering(
   return ordered.length === openItems.length ? ordered : openItems;
 }
 
-function groupOpenItems(openItems: ShoppingItemModel[]): ShoppingItemSection[] {
+function groupOpenItems(
+  openItems: ShoppingItemModel[],
+  listType: ShoppingListModel['type']
+): ShoppingItemSection[] {
   const sections = new Map<string, ShoppingItemSection>();
 
   for (const item of openItems) {
@@ -92,8 +95,8 @@ function groupOpenItems(openItems: ShoppingItemModel[]): ShoppingItemSection[] {
   }
 
   return Array.from(sections.values()).sort((left, right) => {
-    const leftOrder = getShoppingCategoryDefinition(left.items[0]?.effectiveCategory.key ?? 'other').order;
-    const rightOrder = getShoppingCategoryDefinition(right.items[0]?.effectiveCategory.key ?? 'other').order;
+    const leftOrder = getShoppingCategoryOrder(left.items[0]?.effectiveCategory.key ?? 'other', listType);
+    const rightOrder = getShoppingCategoryOrder(right.items[0]?.effectiveCategory.key ?? 'other', listType);
     return leftOrder - rightOrder;
   });
 }

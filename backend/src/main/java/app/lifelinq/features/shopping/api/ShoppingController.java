@@ -9,6 +9,7 @@ import app.lifelinq.features.shopping.contract.ShoppingItemView;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
 import app.lifelinq.features.shopping.contract.ToggleShoppingItemOutput;
 import app.lifelinq.features.shopping.domain.ShoppingCategory;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,10 +45,11 @@ public class ShoppingController {
         CreateShoppingListOutput output = shoppingApplicationService.createShoppingList(
                 context.getGroupId(),
                 context.getUserId(),
-                request.getName()
+                request.getName(),
+                parseListType(request.getType())
         );
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateShoppingListResponse(output.listId(), output.name()));
+                .body(new CreateShoppingListResponse(output.listId(), output.name(), output.type()));
     }
 
     @GetMapping("/shopping-lists")
@@ -86,6 +88,7 @@ public class ShoppingController {
         List<ShoppingCategoryPreferenceResponse> responses = new ArrayList<>();
         for (ShoppingCategoryPreferenceView preference : preferences) {
             responses.add(new ShoppingCategoryPreferenceResponse(
+                    preference.listType(),
                     preference.normalizedTitle(),
                     preference.preferredCategory()
             ));
@@ -105,10 +108,12 @@ public class ShoppingController {
         ShoppingCategoryPreferenceView preference = shoppingApplicationService.saveShoppingCategoryPreference(
                 context.getGroupId(),
                 context.getUserId(),
+                parseListType(request.getListType()),
                 request.getNormalizedTitle(),
                 ShoppingCategory.fromKey(request.getPreferredCategory())
         );
         return ResponseEntity.ok(new ShoppingCategoryPreferenceResponse(
+                preference.listType(),
                 preference.normalizedTitle(),
                 preference.preferredCategory()
         ));
@@ -320,7 +325,11 @@ public class ShoppingController {
                     item.boughtAt()
             ));
         }
-        return new ShoppingListResponse(list.id(), list.name(), items);
+        return new ShoppingListResponse(list.id(), list.name(), list.type(), items);
+    }
+
+    private ShoppingListType parseListType(String rawListType) {
+        return ShoppingListType.fromKey(rawListType);
     }
 
     private ShoppingUnit parseUnit(String unit) {

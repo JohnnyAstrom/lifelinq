@@ -9,5 +9,9 @@ public interface ShoppingCategoryPreferenceRepository {
 
     List<ShoppingCategoryPreference> findByGroupId(UUID groupId);
 
-    Optional<ShoppingCategoryPreference> findByGroupIdAndNormalizedTitle(UUID groupId, String normalizedTitle);
+    Optional<ShoppingCategoryPreference> findByGroupIdAndListTypeAndNormalizedTitle(
+            UUID groupId,
+            ShoppingListType listType,
+            String normalizedTitle
+    );
 }

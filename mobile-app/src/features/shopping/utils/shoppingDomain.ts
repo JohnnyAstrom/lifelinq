@@ -1,4 +1,4 @@
-import { type ShoppingListResponse, type ShoppingItemResponse, type ShoppingUnit } from '../api/shoppingApi';
+import { type ShoppingListResponse, type ShoppingItemResponse, type ShoppingListType, type ShoppingUnit } from '../api/shoppingApi';
 import {
   DEFAULT_SHOPPING_CATEGORY,
   type ShoppingCategoryKey,
@@ -9,7 +9,6 @@ import {
 import { normalizeShoppingItemTitle } from './shoppingCategoryInference';
 import { formatItemMeta, formatItemTitle } from './shoppingFormatting';
 
-export type ShoppingListType = 'grocery' | 'consumables' | 'supplies' | 'mixed';
 export type ShoppingGroupingMode = 'effective-category';
 export type ShoppingItemStatus = 'OPEN' | 'BOUGHT';
 export type ShoppingItemSourceKind = 'unknown' | 'manual' | 'meal-plan' | 'recipe';
@@ -53,7 +52,7 @@ export type ShoppingListModel = {
 
 export type ShoppingCategoryContext = {
   getOverrideForItem: (itemId: string) => ShoppingCategoryKey | null;
-  getMemoryForTitle: (normalizedTitle: string) => ShoppingCategoryKey | null;
+  getMemoryForTitle: (listType: ShoppingListType, normalizedTitle: string) => ShoppingCategoryKey | null;
 };
 
 export function mapShoppingListFromTransport(
@@ -68,17 +67,19 @@ export function mapShoppingListFromTransport(
     name: list.name,
     type: listType,
     groupingMode,
-    items: list.items.map((item) => mapShoppingItemFromTransport(item, categoryContext)),
+    items: list.items.map((item) => mapShoppingItemFromTransport(item, listType, categoryContext)),
   };
 }
 
 export function mapShoppingItemFromTransport(
   item: ShoppingItemResponse,
+  listType: ShoppingListType,
   categoryContext: ShoppingCategoryContext
 ): ShoppingItemModel {
   const normalizedTitle = normalizeShoppingItemTitle(item.name);
   const categoryResolution = resolveShoppingCategory({
     itemId: item.id,
+    listType,
     normalizedTitle,
     categoryContext,
   });
@@ -111,18 +112,20 @@ export function mapShoppingItemFromTransport(
 
 type ResolveShoppingCategoryArgs = {
   itemId: string;
+  listType: ShoppingListType;
   normalizedTitle: string;
   categoryContext: ShoppingCategoryContext;
 };
 
 function resolveShoppingCategory({
   itemId,
+  listType,
   normalizedTitle,
   categoryContext,
 }: ResolveShoppingCategoryArgs): Pick<ShoppingItemModel, 'categorySuggestion' | 'categoryOverride' | 'effectiveCategory'> {
   const overrideKey = categoryContext.getOverrideForItem(itemId);
-  const memoryKey = categoryContext.getMemoryForTitle(normalizedTitle);
-  const inferredCategory = inferShoppingCategory(normalizedTitle);
+  const memoryKey = categoryContext.getMemoryForTitle(listType, normalizedTitle);
+  const inferredCategory = inferShoppingCategory(normalizedTitle, listType);
 
   const categoryOverride = overrideKey ? toCategoryRef(getShoppingCategoryDefinition(overrideKey), 'override') : null;
   const categorySuggestion = memoryKey
@@ -149,9 +152,8 @@ function toCategoryRef(definition: ShoppingCategoryDefinition, origin: ShoppingC
   };
 }
 
-function deriveListType(_list: ShoppingListResponse): ShoppingListType {
-  // Current transport has no list type, so the feature keeps a neutral default.
-  return 'mixed';
+function deriveListType(list: ShoppingListResponse): ShoppingListType {
+  return list.type ?? 'mixed';
 }
 
 function deriveGroupingMode(_listType: ShoppingListType): ShoppingGroupingMode {

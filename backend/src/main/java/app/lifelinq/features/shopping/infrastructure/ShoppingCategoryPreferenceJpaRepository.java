@@ -8,5 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ShoppingCategoryPreferenceJpaRepository extends JpaRepository<ShoppingCategoryPreferenceEntity, UUID> {
     List<ShoppingCategoryPreferenceEntity> findByGroupId(UUID groupId);
 
-    Optional<ShoppingCategoryPreferenceEntity> findByGroupIdAndNormalizedTitle(UUID groupId, String normalizedTitle);
+    Optional<ShoppingCategoryPreferenceEntity> findByGroupIdAndListTypeAndNormalizedTitle(
+            UUID groupId,
+            String listType,
+            String normalizedTitle
+    );
 }

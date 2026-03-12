@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ShoppingUnit } from '../api/shoppingApi';
+import type { ShoppingListType, ShoppingUnit } from '../api/shoppingApi';
 import type { ShoppingCategoryKey } from '../utils/shoppingCategories';
 import { normalizeShoppingItemTitle } from '../utils/shoppingCategoryInference';
 import { formatQuantityForFeedback, formatUnitForFeedback, parseQuantity } from '../utils/shoppingQuantity';
@@ -30,6 +30,7 @@ type EditStrings = {
 type UseShoppingListDetailWorkflowArgs = {
   shopping: ShoppingListsHook;
   listId: string;
+  listType: ShoppingListType;
 };
 
 type FinishOpenDragArgs = {
@@ -38,7 +39,7 @@ type FinishOpenDragArgs = {
   finalIds: string[];
 };
 
-export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingListDetailWorkflowArgs) {
+export function useShoppingListDetailWorkflow({ shopping, listId, listType }: UseShoppingListDetailWorkflowArgs) {
   const categoryPreferences = useShoppingCategoryPreferences();
   const [newItemName, setNewItemName] = useState('');
   const [editItemId, setEditItemId] = useState<string | null>(null);
@@ -160,8 +161,8 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     await shopping.updateItem(listId, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
     const normalizedTitle = normalizeShoppingItemTitle(editName.trim());
     if (editCategoryOverride) {
-      await categoryPreferences.rememberCategory(normalizedTitle, editCategoryOverride);
-      categoryPreferences.setCategoryOverride(editItemId, normalizedTitle, editCategoryOverride);
+      await categoryPreferences.rememberCategory(listType, normalizedTitle, editCategoryOverride);
+      categoryPreferences.setCategoryOverride(editItemId, listType, normalizedTitle, editCategoryOverride);
     } else {
       categoryPreferences.clearCategoryOverride(editItemId);
     }

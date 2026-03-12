@@ -18,6 +18,7 @@ import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.ShoppingCategoryPreferenceView;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import app.lifelinq.test.FakeActiveGroupUserRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -98,8 +99,8 @@ class ShoppingControllerTest {
         userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(shoppingApplicationService.createShoppingList(groupId, userId, "Groceries"))
-                .thenReturn(new CreateShoppingListOutput(listId, "groceries"));
+        when(shoppingApplicationService.createShoppingList(groupId, userId, "Groceries", ShoppingListType.MIXED))
+                .thenReturn(new CreateShoppingListOutput(listId, "groceries", "mixed"));
 
         mockMvc.perform(post("/shopping-lists")
                         .header("Authorization", "Bearer " + token)
@@ -107,7 +108,7 @@ class ShoppingControllerTest {
                         .content("{\"name\":\"Groceries\"}"))
                 .andExpect(status().isCreated());
 
-        verify(shoppingApplicationService).createShoppingList(groupId, userId, "Groceries");
+        verify(shoppingApplicationService).createShoppingList(groupId, userId, "Groceries", ShoppingListType.MIXED);
     }
 
     @Test
@@ -142,7 +143,7 @@ class ShoppingControllerTest {
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(shoppingApplicationService.updateShoppingListName(groupId, userId, listId, "Renamed"))
-                .thenReturn(new ShoppingListView(listId, "Renamed", List.of()));
+                .thenReturn(new ShoppingListView(listId, "Renamed", "mixed", List.of()));
 
         mockMvc.perform(patch("/shopping-lists/{listId}", listId)
                         .header("Authorization", "Bearer " + token)
@@ -196,7 +197,7 @@ class ShoppingControllerTest {
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
         when(shoppingApplicationService.listShoppingCategoryPreferences(groupId, userId))
-                .thenReturn(List.of(new ShoppingCategoryPreferenceView("apple", "produce")));
+                .thenReturn(List.of(new ShoppingCategoryPreferenceView("mixed", "apple", "produce")));
 
         mockMvc.perform(get("/shopping/category-preferences")
                         .header("Authorization", "Bearer " + token))
@@ -212,8 +213,8 @@ class ShoppingControllerTest {
         userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(shoppingApplicationService.saveShoppingCategoryPreference(groupId, userId, "apple", app.lifelinq.features.shopping.domain.ShoppingCategory.PRODUCE))
-                .thenReturn(new ShoppingCategoryPreferenceView("apple", "produce"));
+        when(shoppingApplicationService.saveShoppingCategoryPreference(groupId, userId, ShoppingListType.MIXED, "apple", app.lifelinq.features.shopping.domain.ShoppingCategory.PRODUCE))
+                .thenReturn(new ShoppingCategoryPreferenceView("mixed", "apple", "produce"));
 
         mockMvc.perform(put("/shopping/category-preferences")
                         .header("Authorization", "Bearer " + token)
@@ -224,6 +225,7 @@ class ShoppingControllerTest {
         verify(shoppingApplicationService).saveShoppingCategoryPreference(
                 groupId,
                 userId,
+                ShoppingListType.MIXED,
                 "apple",
                 app.lifelinq.features.shopping.domain.ShoppingCategory.PRODUCE
         );

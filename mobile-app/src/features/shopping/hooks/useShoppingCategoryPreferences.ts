@@ -4,6 +4,7 @@ import {
   listShoppingCategoryPreferences,
   saveShoppingCategoryPreference,
 } from '../api/shoppingCategoryPreferencesApi';
+import type { ShoppingListType } from '../api/shoppingApi';
 import type { ShoppingCategoryKey } from '../utils/shoppingCategories';
 
 const itemCategoryOverrides = new Map<string, ShoppingCategoryKey>();
@@ -37,8 +38,8 @@ function getOverrideForItem(itemId: string): ShoppingCategoryKey | null {
   return itemCategoryOverrides.get(itemId) ?? null;
 }
 
-function getMemoryForTitle(normalizedTitle: string): ShoppingCategoryKey | null {
-  return rememberedCategoriesByTitle.get(normalizedTitle) ?? null;
+function getMemoryForTitle(listType: ShoppingListType, normalizedTitle: string): ShoppingCategoryKey | null {
+  return rememberedCategoriesByTitle.get(memoryKey(listType, normalizedTitle)) ?? null;
 }
 
 function resetCategoryMemoryStore(nextGroupId: string | null) {
@@ -49,9 +50,14 @@ function resetCategoryMemoryStore(nextGroupId: string | null) {
   emitChange();
 }
 
-function setCategoryOverride(itemId: string, normalizedTitle: string, categoryKey: ShoppingCategoryKey) {
+function setCategoryOverride(
+  itemId: string,
+  listType: ShoppingListType,
+  normalizedTitle: string,
+  categoryKey: ShoppingCategoryKey
+) {
   itemCategoryOverrides.set(itemId, categoryKey);
-  rememberedCategoriesByTitle.set(normalizedTitle, categoryKey);
+  rememberedCategoriesByTitle.set(memoryKey(listType, normalizedTitle), categoryKey);
   emitChange();
 }
 
@@ -59,6 +65,10 @@ function clearCategoryOverride(itemId: string) {
   if (itemCategoryOverrides.delete(itemId)) {
     emitChange();
   }
+}
+
+function memoryKey(listType: ShoppingListType, normalizedTitle: string): string {
+  return `${listType}::${normalizedTitle}`;
 }
 
 export function useShoppingCategoryPreferences() {
@@ -92,7 +102,7 @@ export function useShoppingCategoryPreferences() {
         rememberedCategoriesByTitle.clear();
         for (const preference of preferences) {
           rememberedCategoriesByTitle.set(
-            preference.normalizedTitle,
+            memoryKey(preference.listType, preference.normalizedTitle),
             preference.preferredCategory as ShoppingCategoryKey
           );
         }
@@ -106,21 +116,29 @@ export function useShoppingCategoryPreferences() {
     })();
   }, [activeGroupId, handleApiError, token]);
 
-  async function persistCategoryPreference(normalizedTitle: string, categoryKey: ShoppingCategoryKey) {
+  async function persistCategoryPreference(
+    listType: ShoppingListType,
+    normalizedTitle: string,
+    categoryKey: ShoppingCategoryKey
+  ) {
     if (!token || !activeGroupId) {
-      rememberedCategoriesByTitle.set(normalizedTitle, categoryKey);
+      rememberedCategoriesByTitle.set(memoryKey(listType, normalizedTitle), categoryKey);
       emitChange();
       return;
     }
     try {
       const saved = await saveShoppingCategoryPreference(
         {
+          listType,
           normalizedTitle,
           preferredCategory: categoryKey,
         },
         { token }
       );
-      rememberedCategoriesByTitle.set(saved.normalizedTitle, saved.preferredCategory as ShoppingCategoryKey);
+      rememberedCategoriesByTitle.set(
+        memoryKey(saved.listType, saved.normalizedTitle),
+        saved.preferredCategory as ShoppingCategoryKey
+      );
       loadedGroupId = activeGroupId;
       emitChange();
     } catch (error) {

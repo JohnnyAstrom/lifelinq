@@ -17,6 +17,7 @@ import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
 import app.lifelinq.features.shopping.domain.ShoppingList;
 import app.lifelinq.features.shopping.domain.ShoppingListNotFoundException;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -65,15 +66,25 @@ public class ShoppingApplicationService {
             UUID actorUserId,
             String name
     ) {
+        return createShoppingList(groupId, actorUserId, name, ShoppingListType.MIXED);
+    }
+
+    @Transactional
+    public CreateShoppingListOutput createShoppingList(
+            UUID groupId,
+            UUID actorUserId,
+            String name,
+            ShoppingListType type
+    ) {
         ensureGroupMemberUseCase.execute(groupId, actorUserId);
         String normalizedName = normalizeListName(name);
         UUID listId = UUID.randomUUID();
         List<ShoppingList> existingLists = loadOrderedLists(groupId);
         normalizeOrderAndPersist(existingLists);
         int nextOrderIndex = existingLists.size();
-        ShoppingList list = new ShoppingList(listId, groupId, normalizedName, nextOrderIndex, clock.instant());
+        ShoppingList list = new ShoppingList(listId, groupId, normalizedName, type, nextOrderIndex, clock.instant());
         shoppingListRepository.save(list);
-        return new CreateShoppingListOutput(listId, normalizedName);
+        return new CreateShoppingListOutput(listId, normalizedName, type.key());
     }
 
     @Transactional
@@ -206,6 +217,7 @@ public class ShoppingApplicationService {
     public ShoppingCategoryPreferenceView saveShoppingCategoryPreference(
             UUID groupId,
             UUID actorUserId,
+            ShoppingListType listType,
             String normalizedTitle,
             ShoppingCategory preferredCategory
     ) {
@@ -213,6 +225,7 @@ public class ShoppingApplicationService {
         ShoppingCategoryPreference saved = shoppingCategoryPreferenceRepository.save(
                 new ShoppingCategoryPreference(
                         groupId,
+                        listType,
                         normalizeCategoryPreferenceTitle(normalizedTitle),
                         preferredCategory,
                         clock.instant()
@@ -336,7 +349,7 @@ public class ShoppingApplicationService {
         for (ShoppingItem item : list.getItems()) {
             items.add(toView(item));
         }
-        return new ShoppingListView(list.getId(), list.getName(), items);
+        return new ShoppingListView(list.getId(), list.getName(), list.getType().key(), items);
     }
 
     private ShoppingItemView toView(ShoppingItem item) {
@@ -367,6 +380,7 @@ public class ShoppingApplicationService {
 
     private ShoppingCategoryPreferenceView toView(ShoppingCategoryPreference preference) {
         return new ShoppingCategoryPreferenceView(
+                preference.listType().key(),
                 preference.normalizedTitle(),
                 preference.preferredCategory().key()
         );

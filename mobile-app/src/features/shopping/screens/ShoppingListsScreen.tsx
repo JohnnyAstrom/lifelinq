@@ -17,6 +17,7 @@ import { RenameListSheetContent } from '../components/RenameListSheetContent';
 import { ShoppingListRow } from '../components/ShoppingListRow';
 import { useShoppingListsWorkflow } from '../hooks/useShoppingListsWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
+import { getShoppingListTypeDefinitions } from '../utils/shoppingListTypes';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppCard, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
@@ -52,6 +53,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     noLists: 'No lists yet.',
     createListTitle: 'Create list',
     createListSubtitle: 'Give your list a name so everyone can add items.',
+    createListTypeLabel: 'List type',
     listNamePlaceholder: 'List name',
     createListAction: 'Create list',
     back: 'Back',
@@ -69,6 +71,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     renameTitle: 'Edit list name',
     renameSave: 'Save',
   };
+  const listTypeOptions = getShoppingListTypeDefinitions();
 
   useEffect(() => {
     if (workflowState.draggingListId || pendingListReorderSyncRef.current) {
@@ -346,12 +349,16 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             styles={styles}
             title={strings.createListTitle}
             subtitle={strings.createListSubtitle}
+            typeLabel={strings.createListTypeLabel}
+            selectedType={workflowState.newListType}
+            typeOptions={listTypeOptions}
             placeholder={strings.listNamePlaceholder}
             createActionLabel={strings.createListAction}
             closeLabel={strings.close}
             value={workflowState.newListName}
             canCreate={canCreateList}
             onChangeText={workflowActions.setNewListName}
+            onSelectType={workflowActions.setNewListType}
             onSubmitEditing={async () => {
               if (canCreateList) {
                 await handleCreateList();
@@ -506,6 +513,19 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   sheetActions: {
+    gap: theme.spacing.xs,
+  },
+  sheetTypeSection: {
+    gap: theme.spacing.xs,
+  },
+  sheetTypeLabel: {
+    ...textStyles.subtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  sheetTypeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.xs,
   },
   error: {

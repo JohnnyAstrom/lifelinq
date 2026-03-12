@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record ShoppingCategoryPreference(
         UUID groupId,
+        ShoppingListType listType,
         String normalizedTitle,
         ShoppingCategory preferredCategory,
         Instant updatedAt
@@ -15,6 +16,9 @@ public record ShoppingCategoryPreference(
         }
         if (normalizedTitle == null || normalizedTitle.isBlank()) {
             throw new IllegalArgumentException("normalizedTitle must not be blank");
+        }
+        if (listType == null) {
+            throw new IllegalArgumentException("listType must not be null");
         }
         if (preferredCategory == null) {
             throw new IllegalArgumentException("preferredCategory must not be null");

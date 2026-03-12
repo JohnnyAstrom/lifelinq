@@ -277,7 +277,7 @@ Different groups may intentionally keep repeated entries until a stronger merge/
 
 Current known frontend transport shape includes:
 
-- list: `id`, `name`, `items`
+- list: `id`, `name`, `type`, `items`
 - item: `id`, `name`, `status`, `quantity`, `unit`, `createdAt`, `boughtAt`
 
 Current known item state usage in frontend:
@@ -292,6 +292,7 @@ Current known interaction reality:
 - list reorder exists
 - item reorder exists for open items
 - add/edit/toggle/remove exists
+- create-list now sets explicit list type
 - quantity and unit are supported
 - bought items are rendered separately from open items
 - the frontend feature now applies effective category through local feature-owned precedence:
@@ -299,10 +300,13 @@ Current known interaction reality:
   - group-owned remembered category
   - basic inference
   - `other`
+- remembered category is now scoped by:
+  - group
+  - list type
+  - normalized title
 
 Current known limitations:
 
-- no list type field in transport
 - no taxonomy/category field in transport
 - no note field in transport
 - no provenance/source field in transport
@@ -400,6 +404,7 @@ Current known transport contracts in frontend code expose:
 
 - `id: string`
 - `name: string`
+- `type: ShoppingListType`
 - `items: ShoppingItemResponse[]`
 
 ### Shopping item
@@ -428,6 +433,7 @@ These values reflect current canonical transport reality.
 ### Current known mutation shape
 
 - create list
+- create list with `name` and `type`
 - list lists
 - delete list
 - update list name

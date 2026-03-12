@@ -3,6 +3,7 @@ package app.lifelinq.features.shopping.infrastructure;
 import app.lifelinq.features.shopping.domain.ShoppingCategory;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreference;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreferenceRepository;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,11 @@ public final class JpaShoppingCategoryPreferenceRepositoryAdapter implements Sho
             throw new IllegalArgumentException("preference must not be null");
         }
         ShoppingCategoryPreferenceEntity entity = repository
-                .findByGroupIdAndNormalizedTitle(preference.groupId(), preference.normalizedTitle())
+                .findByGroupIdAndListTypeAndNormalizedTitle(
+                        preference.groupId(),
+                        preference.listType().key(),
+                        preference.normalizedTitle()
+                )
                 .map(existing -> {
                     existing.updatePreferredCategory(preference.preferredCategory().key(), preference.updatedAt());
                     return existing;
@@ -32,6 +37,7 @@ public final class JpaShoppingCategoryPreferenceRepositoryAdapter implements Sho
                 .orElseGet(() -> new ShoppingCategoryPreferenceEntity(
                         UUID.randomUUID(),
                         preference.groupId(),
+                        preference.listType().key(),
                         preference.normalizedTitle(),
                         preference.preferredCategory().key(),
                         preference.updatedAt()
@@ -53,19 +59,28 @@ public final class JpaShoppingCategoryPreferenceRepositoryAdapter implements Sho
     }
 
     @Override
-    public Optional<ShoppingCategoryPreference> findByGroupIdAndNormalizedTitle(UUID groupId, String normalizedTitle) {
+    public Optional<ShoppingCategoryPreference> findByGroupIdAndListTypeAndNormalizedTitle(
+            UUID groupId,
+            ShoppingListType listType,
+            String normalizedTitle
+    ) {
         if (groupId == null) {
             throw new IllegalArgumentException("groupId must not be null");
+        }
+        if (listType == null) {
+            throw new IllegalArgumentException("listType must not be null");
         }
         if (normalizedTitle == null || normalizedTitle.isBlank()) {
             throw new IllegalArgumentException("normalizedTitle must not be blank");
         }
-        return repository.findByGroupIdAndNormalizedTitle(groupId, normalizedTitle).map(this::toDomain);
+        return repository.findByGroupIdAndListTypeAndNormalizedTitle(groupId, listType.key(), normalizedTitle)
+                .map(this::toDomain);
     }
 
     private ShoppingCategoryPreference toDomain(ShoppingCategoryPreferenceEntity entity) {
         return new ShoppingCategoryPreference(
                 entity.getGroupId(),
+                ShoppingListType.fromKey(entity.getListType()),
                 entity.getNormalizedTitle(),
                 ShoppingCategory.fromKey(entity.getPreferredCategory()),
                 entity.getUpdatedAt()

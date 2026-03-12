@@ -6,5 +6,6 @@ import java.util.UUID;
 public record ShoppingListView(
         UUID id,
         String name,
+        String type,
         List<ShoppingItemView> items
 ) {}

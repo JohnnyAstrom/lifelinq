@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useShoppingLists } from './useShoppingLists';
+import type { ShoppingListType } from '../api/shoppingApi';
 
 type ShoppingListsHook = ReturnType<typeof useShoppingLists>;
 
@@ -15,6 +16,7 @@ type FinishDragListArgs = {
 
 export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowArgs) {
   const [newListName, setNewListName] = useState('');
+  const [newListType, setNewListType] = useState<ShoppingListType>('grocery');
   const [showCreate, setShowCreate] = useState(false);
   const [activeListId, setActiveListId] = useState<string | null>(null);
   const [renameListId, setRenameListId] = useState<string | null>(null);
@@ -73,8 +75,9 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     if (!newListName.trim()) {
       return;
     }
-    await shopping.createList(newListName.trim());
+    await shopping.createList(newListName.trim(), newListType);
     setNewListName('');
+    setNewListType('grocery');
     closeCreate();
   }
 
@@ -117,6 +120,7 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
   return {
     state: {
       newListName,
+      newListType,
       showCreate,
       activeListId,
       renameListId,
@@ -128,6 +132,7 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     },
     actions: {
       setNewListName,
+      setNewListType,
       setShowCreate,
       setActiveListId,
       setRenameListId,

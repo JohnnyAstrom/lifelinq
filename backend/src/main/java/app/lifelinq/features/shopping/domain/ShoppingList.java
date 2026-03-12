@@ -11,26 +11,40 @@ public final class ShoppingList {
     private final UUID id;
     private final UUID groupId;
     private String name;
+    private final ShoppingListType type;
     private int orderIndex;
     private final Instant createdAt;
     private final List<ShoppingItem> items;
 
     public ShoppingList(UUID id, UUID groupId, String name, Instant createdAt) {
-        this(id, groupId, name, 0, createdAt, List.of());
+        this(id, groupId, name, ShoppingListType.MIXED, 0, createdAt, List.of());
+    }
+
+    public ShoppingList(UUID id, UUID groupId, String name, ShoppingListType type, Instant createdAt) {
+        this(id, groupId, name, type, 0, createdAt, List.of());
     }
 
     public ShoppingList(UUID id, UUID groupId, String name, int orderIndex, Instant createdAt) {
-        this(id, groupId, name, orderIndex, createdAt, List.of());
+        this(id, groupId, name, ShoppingListType.MIXED, orderIndex, createdAt, List.of());
+    }
+
+    public ShoppingList(UUID id, UUID groupId, String name, ShoppingListType type, int orderIndex, Instant createdAt) {
+        this(id, groupId, name, type, orderIndex, createdAt, List.of());
     }
 
     public ShoppingList(UUID id, UUID groupId, String name, Instant createdAt, List<ShoppingItem> items) {
-        this(id, groupId, name, 0, createdAt, items);
+        this(id, groupId, name, ShoppingListType.MIXED, 0, createdAt, items);
+    }
+
+    public ShoppingList(UUID id, UUID groupId, String name, ShoppingListType type, Instant createdAt, List<ShoppingItem> items) {
+        this(id, groupId, name, type, 0, createdAt, items);
     }
 
     public ShoppingList(
             UUID id,
             UUID groupId,
             String name,
+            ShoppingListType type,
             int orderIndex,
             Instant createdAt,
             List<ShoppingItem> items
@@ -44,6 +58,9 @@ public final class ShoppingList {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
         }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
         if (orderIndex < 0) {
             throw new IllegalArgumentException("orderIndex must be >= 0");
         }
@@ -56,6 +73,7 @@ public final class ShoppingList {
         this.id = id;
         this.groupId = groupId;
         this.name = name;
+        this.type = type;
         this.orderIndex = orderIndex;
         this.createdAt = createdAt;
         this.items = new ArrayList<>(items);
@@ -174,6 +192,10 @@ public final class ShoppingList {
 
     public String getName() {
         return name;
+    }
+
+    public ShoppingListType getType() {
+        return type;
     }
 
     public int getOrderIndex() {
