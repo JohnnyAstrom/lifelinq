@@ -17,6 +17,7 @@ Consequences: Meals never accesses Shopping repositories; it calls a Shopping us
 Integration is one-way (Meals → Shopping).
 Current implementation: Meals calls `ShoppingApplicationService.addShoppingItem(...)`
 when `targetShoppingListId` is provided, once per ingredient occurrence.
+Current product reality: meals-pushed shopping items now carry narrow shopping provenance so Shopping can show that they came from meal planning.
 
 ## Meals Model (Phase 1)
 

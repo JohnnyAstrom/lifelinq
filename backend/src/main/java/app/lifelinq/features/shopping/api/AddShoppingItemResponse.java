@@ -10,6 +10,8 @@ public record AddShoppingItemResponse(
         String status,
         BigDecimal quantity,
         String unit,
+        String sourceKind,
+        String sourceLabel,
         Instant createdAt,
         Instant boughtAt
 ) {}

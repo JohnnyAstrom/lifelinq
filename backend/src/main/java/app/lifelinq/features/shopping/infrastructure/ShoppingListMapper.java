@@ -2,6 +2,7 @@ package app.lifelinq.features.shopping.infrastructure;
 
 import app.lifelinq.features.shopping.domain.ShoppingItem;
 import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
+import app.lifelinq.features.shopping.domain.ShoppingItemSourceKind;
 import app.lifelinq.features.shopping.domain.ShoppingList;
 import app.lifelinq.features.shopping.domain.ShoppingListType;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
@@ -50,6 +51,8 @@ final class ShoppingListMapper {
                 toEntityStatus(item.getStatus()),
                 item.getQuantity(),
                 toEntityUnit(item.getUnit()),
+                item.getSourceKind() != null ? item.getSourceKind().key() : null,
+                item.getSourceLabel(),
                 item.getCreatedAt(),
                 item.getBoughtAt()
         );
@@ -64,7 +67,9 @@ final class ShoppingListMapper {
                 toDomainStatus(entity.getStatus()),
                 entity.getBoughtAt(),
                 entity.getQuantity(),
-                toDomainUnit(entity.getUnit())
+                toDomainUnit(entity.getUnit()),
+                toDomainSourceKind(entity.getSourceKind()),
+                entity.getSourceLabel()
         );
     }
 
@@ -94,5 +99,12 @@ final class ShoppingListMapper {
             return null;
         }
         return ShoppingUnit.valueOf(unit.name());
+    }
+
+    private ShoppingItemSourceKind toDomainSourceKind(String sourceKind) {
+        if (sourceKind == null || sourceKind.isBlank()) {
+            return null;
+        }
+        return ShoppingItemSourceKind.fromKey(sourceKind);
     }
 }

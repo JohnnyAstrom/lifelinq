@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ShoppingListType, ShoppingUnit } from '../api/shoppingApi';
 import type { ShoppingCategoryKey } from '../utils/shoppingCategories';
 import { normalizeShoppingItemTitle } from '../utils/shoppingCategoryInference';
+import { resolveShoppingCategory, type ShoppingCategoryOrigin } from '../utils/shoppingDomain';
 import { formatQuantityForFeedback, formatUnitForFeedback, parseQuantity } from '../utils/shoppingQuantity';
 import { useShoppingLists } from './useShoppingLists';
 import { useShoppingCategoryPreferences } from './useShoppingCategoryPreferences';
@@ -13,6 +14,8 @@ type EditableShoppingItem = {
   quantity: number | null;
   unit: ShoppingUnit | null;
   categoryOverrideKey: ShoppingCategoryKey | null;
+  sourceKind: 'unknown' | 'meal-plan';
+  sourceLabel: string | null;
 };
 
 type AddLikeStrings = {
@@ -47,6 +50,8 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
   const [editQuantity, setEditQuantity] = useState('');
   const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('PCS');
   const [editCategoryOverride, setEditCategoryOverride] = useState<ShoppingCategoryKey | null>(null);
+  const [editSourceKind, setEditSourceKind] = useState<'unknown' | 'meal-plan'>('unknown');
+  const [editSourceLabel, setEditSourceLabel] = useState<string | null>(null);
   const [editShouldRememberCategory, setEditShouldRememberCategory] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [showAddDetails, setShowAddDetails] = useState(false);
@@ -57,6 +62,16 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
   const [orderedOpenItemIds, setOrderedOpenItemIds] = useState<string[]>([]);
   const [draggingOpenItemId, setDraggingOpenItemId] = useState<string | null>(null);
   const normalizedEditTitle = normalizeShoppingItemTitle(editName.trim());
+  const editCategoryResolution = normalizedEditTitle.length > 0
+    ? resolveShoppingCategory({
+      itemId: editItemId,
+      explicitOverrideKey: editCategoryOverride,
+      listType,
+      normalizedTitle: normalizedEditTitle,
+      categoryContext: categoryPreferences,
+    })
+    : null;
+  const editCategoryOrigin: ShoppingCategoryOrigin | null = editCategoryResolution?.effectiveCategory.origin ?? null;
   const editHasLearnedCategory = normalizedEditTitle.length > 0
     && categoryPreferences.getMemoryForTitle(listType, normalizedEditTitle) !== null;
 
@@ -77,6 +92,8 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
     setEditQuantity(item.quantity ? String(item.quantity) : '');
     setEditUnit(item.unit ?? 'PCS');
     setEditCategoryOverride(item.categoryOverrideKey);
+    setEditSourceKind(item.sourceKind);
+    setEditSourceLabel(item.sourceLabel);
     setEditShouldRememberCategory(false);
     setEditError(null);
   }
@@ -87,6 +104,8 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
     setEditQuantity('');
     setEditUnit('PCS');
     setEditCategoryOverride(null);
+    setEditSourceKind('unknown');
+    setEditSourceLabel(null);
     setEditShouldRememberCategory(false);
     setEditError(null);
   }
@@ -229,7 +248,10 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       editQuantity,
       editUnit,
       editCategoryOverride,
+      editSourceKind,
+      editSourceLabel,
       editShouldRememberCategory,
+      editCategoryOrigin,
       editHasLearnedCategory,
       editError,
       showAddDetails,

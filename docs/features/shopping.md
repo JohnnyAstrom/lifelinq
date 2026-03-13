@@ -295,6 +295,7 @@ Current known interaction reality:
 - create-list now sets explicit list type
 - quantity and unit are supported
 - bought items are rendered separately from open items
+- meal-created shopping items can now carry narrow provenance (`sourceKind`, `sourceLabel`) from the Meals integration path
 - the frontend feature now applies effective category through local feature-owned precedence:
   - explicit override
   - group-owned remembered category
@@ -309,12 +310,12 @@ Current known limitations:
 
 - no taxonomy/category field in transport
 - no note field in transport
-- no provenance/source field in transport
-- no explicit order field in transport
+ - no explicit order field in transport
 - no current transport-level grouping model beyond client-side open/bought separation
 - category override is still frontend-local item behavior, not backend/API transport
 - remembered category is now durable shopping-specific backend state, but still not part of shopping item transport fields
 - learned category memory can be cleared through the shopping edit flow, but this remains a shopping-specific interaction rather than transport-level item state
+- provenance is now transport-visible for meal-created items, but still intentionally narrow and not yet a broader shopping lifecycle/synchronization model
 
 ### Future-ready frontend/domain direction
 
@@ -415,6 +416,8 @@ Current known transport contracts in frontend code expose:
 - `status: string`
 - `quantity: number | null`
 - `unit: ShoppingUnit | null`
+- `sourceKind: string | null`
+- `sourceLabel: string | null`
 - `createdAt: string`
 - `boughtAt: string | null`
 
@@ -455,7 +458,6 @@ Current transport does not expose:
 - category suggestion
 - category override
 - effective category
-- source/provenance
 - explicit item order value
 
 That omission is architectural reality and must be acknowledged when evolving the feature.

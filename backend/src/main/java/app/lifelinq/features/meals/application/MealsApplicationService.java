@@ -157,7 +157,7 @@ public class MealsApplicationService {
 
         if (targetShoppingListId != null) {
             // V0.5c intent: recipe ingredients primarily act as shopping-item generators.
-            pushIngredientsToShopping(groupId, actorUserId, targetShoppingListId, recipe.getIngredients());
+            pushIngredientsToShopping(groupId, actorUserId, targetShoppingListId, recipe.getName(), recipe.getIngredients());
         }
 
         PlannedMeal savedMeal = saved.getMealOrThrow(dayOfWeek, mealType);
@@ -307,6 +307,7 @@ public class MealsApplicationService {
             UUID groupId,
             UUID actorUserId,
             UUID targetShoppingListId,
+            String recipeName,
             List<Ingredient> ingredients
     ) {
         // Shopping inserts new items at the top. Reverse recipe order here so the
@@ -319,7 +320,9 @@ public class MealsApplicationService {
                     targetShoppingListId,
                     normalizeIngredientName(ingredient.getName()),
                     ingredient.getQuantity(),
-                    ingredient.getUnit() == null ? null : ingredient.getUnit().name()
+                    ingredient.getUnit() == null ? null : ingredient.getUnit().name(),
+                    "meal-plan",
+                    normalizeRecipeName(recipeName)
             );
         }
     }

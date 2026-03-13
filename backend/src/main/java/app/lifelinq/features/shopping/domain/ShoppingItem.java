@@ -13,13 +13,27 @@ public final class ShoppingItem {
     private Instant boughtAt;
     private BigDecimal quantity;
     private ShoppingUnit unit;
+    private final ShoppingItemSourceKind sourceKind;
+    private final String sourceLabel;
 
     public ShoppingItem(UUID id, String name, Instant createdAt) {
-        this(id, name, 0, createdAt, null, null);
+        this(id, name, 0, createdAt, null, null, null, null);
     }
 
     public ShoppingItem(UUID id, String name, Instant createdAt, BigDecimal quantity, ShoppingUnit unit) {
-        this(id, name, 0, createdAt, quantity, unit);
+        this(id, name, 0, createdAt, quantity, unit, null, null);
+    }
+
+    public ShoppingItem(
+            UUID id,
+            String name,
+            Instant createdAt,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel
+    ) {
+        this(id, name, 0, createdAt, quantity, unit, sourceKind, sourceLabel);
     }
 
     public ShoppingItem(
@@ -28,7 +42,9 @@ public final class ShoppingItem {
             int orderIndex,
             Instant createdAt,
             BigDecimal quantity,
-            ShoppingUnit unit
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel
     ) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
@@ -43,6 +59,7 @@ public final class ShoppingItem {
             throw new IllegalArgumentException("createdAt must not be null");
         }
         validateQuantityAndUnit(quantity, unit);
+        validateSource(sourceKind, sourceLabel);
         this.id = id;
         this.name = name;
         this.orderIndex = orderIndex;
@@ -51,6 +68,8 @@ public final class ShoppingItem {
         this.boughtAt = null;
         this.quantity = quantity;
         this.unit = unit;
+        this.sourceKind = sourceKind;
+        this.sourceLabel = normalizeSourceLabel(sourceLabel);
     }
 
     public static ShoppingItem rehydrate(
@@ -61,7 +80,9 @@ public final class ShoppingItem {
             ShoppingItemStatus status,
             Instant boughtAt,
             BigDecimal quantity,
-            ShoppingUnit unit
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel
     ) {
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
@@ -72,7 +93,7 @@ public final class ShoppingItem {
         if (status == ShoppingItemStatus.BOUGHT && boughtAt == null) {
             throw new IllegalArgumentException("boughtAt must not be null when status is BOUGHT");
         }
-        ShoppingItem item = new ShoppingItem(id, name, orderIndex, createdAt, quantity, unit);
+        ShoppingItem item = new ShoppingItem(id, name, orderIndex, createdAt, quantity, unit, sourceKind, sourceLabel);
         item.status = status;
         item.boughtAt = boughtAt;
         return item;
@@ -140,6 +161,14 @@ public final class ShoppingItem {
         return unit;
     }
 
+    public ShoppingItemSourceKind getSourceKind() {
+        return sourceKind;
+    }
+
+    public String getSourceLabel() {
+        return sourceLabel;
+    }
+
     private static void validateQuantityAndUnit(BigDecimal quantity, ShoppingUnit unit) {
         if (quantity == null && unit == null) {
             return;
@@ -150,5 +179,20 @@ public final class ShoppingItem {
         if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("quantity must be greater than 0");
         }
+    }
+
+    private static void validateSource(ShoppingItemSourceKind sourceKind, String sourceLabel) {
+        String normalizedLabel = normalizeSourceLabel(sourceLabel);
+        if (sourceKind == null && normalizedLabel != null) {
+            throw new IllegalArgumentException("sourceLabel requires sourceKind");
+        }
+    }
+
+    private static String normalizeSourceLabel(String sourceLabel) {
+        if (sourceLabel == null) {
+            return null;
+        }
+        String normalized = sourceLabel.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

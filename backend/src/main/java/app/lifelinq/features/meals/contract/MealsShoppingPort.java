@@ -10,6 +10,8 @@ public interface MealsShoppingPort {
             UUID listId,
             String itemName,
             BigDecimal quantity,
-            String unitName
+            String unitName,
+            String sourceKind,
+            String sourceLabel
     );
 }

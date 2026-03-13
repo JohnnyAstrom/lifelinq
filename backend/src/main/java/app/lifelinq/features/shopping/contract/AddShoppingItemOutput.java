@@ -11,6 +11,8 @@ public record AddShoppingItemOutput(
         ShoppingItemStatusView status,
         BigDecimal quantity,
         ShoppingUnitView unit,
+        String sourceKind,
+        String sourceLabel,
         Instant createdAt,
         Instant boughtAt
 ) {}

@@ -6,6 +6,8 @@ export type ShoppingItemResponse = {
   status: string;
   quantity: number | null;
   unit: ShoppingUnit | null;
+  sourceKind: ShoppingItemSourceKind | null;
+  sourceLabel: string | null;
   createdAt: string;
   boughtAt: string | null;
 };
@@ -48,6 +50,8 @@ export type AddShoppingItemResponse = {
   status: string;
   quantity: number | null;
   unit: ShoppingUnit | null;
+  sourceKind: ShoppingItemSourceKind | null;
+  sourceLabel: string | null;
   createdAt: string;
   boughtAt: string | null;
 };
@@ -72,6 +76,7 @@ export type UpdateShoppingItemResponse = ShoppingItemResponse;
 
 export type ShoppingUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
 export type ShoppingListType = 'grocery' | 'consumables' | 'supplies' | 'mixed';
+export type ShoppingItemSourceKind = 'meal-plan';
 
 export async function createShoppingList(
   payload: CreateShoppingListRequest,

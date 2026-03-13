@@ -210,6 +210,8 @@ public class ShoppingController {
                         output.status().name(),
                         output.quantity(),
                         output.unit() != null ? output.unit().name() : null,
+                        output.sourceKind(),
+                        output.sourceLabel(),
                         output.createdAt(),
                         output.boughtAt()
                 ));
@@ -243,6 +245,8 @@ public class ShoppingController {
                 item.status().name(),
                 item.quantity(),
                 item.unit() != null ? item.unit().name() : null,
+                item.sourceKind(),
+                item.sourceLabel(),
                 item.createdAt(),
                 item.boughtAt()
         ));
@@ -343,6 +347,8 @@ public class ShoppingController {
                     item.status().name(),
                     item.quantity(),
                     item.unit() != null ? item.unit().name() : null,
+                    item.sourceKind(),
+                    item.sourceLabel(),
                     item.createdAt(),
                     item.boughtAt()
             ));

@@ -1,4 +1,10 @@
-import { type ShoppingListResponse, type ShoppingItemResponse, type ShoppingListType, type ShoppingUnit } from '../api/shoppingApi';
+import {
+  type ShoppingItemResponse,
+  type ShoppingItemSourceKind,
+  type ShoppingListResponse,
+  type ShoppingListType,
+  type ShoppingUnit,
+} from '../api/shoppingApi';
 import {
   DEFAULT_SHOPPING_CATEGORY,
   type ShoppingCategoryKey,
@@ -11,7 +17,7 @@ import { formatItemMeta, formatItemTitle } from './shoppingFormatting';
 
 export type ShoppingGroupingMode = 'effective-category';
 export type ShoppingItemStatus = 'OPEN' | 'BOUGHT';
-export type ShoppingItemSourceKind = 'unknown' | 'manual' | 'meal-plan' | 'recipe';
+export type ShoppingItemSourceKindModel = 'unknown' | ShoppingItemSourceKind;
 export type ShoppingCategoryOrigin = 'fallback' | 'suggested' | 'memory' | 'override';
 
 export type ShoppingCategoryRef = {
@@ -21,7 +27,8 @@ export type ShoppingCategoryRef = {
 };
 
 export type ShoppingItemSource = {
-  kind: ShoppingItemSourceKind;
+  kind: ShoppingItemSourceKindModel;
+  label: string | null;
 };
 
 export type ShoppingItemModel = {
@@ -53,6 +60,14 @@ export type ShoppingListModel = {
 export type ShoppingCategoryContext = {
   getOverrideForItem: (itemId: string) => ShoppingCategoryKey | null;
   getMemoryForTitle: (listType: ShoppingListType, normalizedTitle: string) => ShoppingCategoryKey | null;
+};
+
+type ResolveShoppingCategoryArgs = {
+  itemId?: string | null;
+  explicitOverrideKey?: ShoppingCategoryKey | null;
+  listType: ShoppingListType;
+  normalizedTitle: string;
+  categoryContext: ShoppingCategoryContext;
 };
 
 export function mapShoppingListFromTransport(
@@ -95,7 +110,10 @@ export function mapShoppingItemFromTransport(
     categorySuggestion: categoryResolution.categorySuggestion,
     categoryOverride: categoryResolution.categoryOverride,
     effectiveCategory: categoryResolution.effectiveCategory,
-    source: { kind: 'unknown' },
+    source: {
+      kind: item.sourceKind ?? 'unknown',
+      label: item.sourceLabel ?? null,
+    },
     createdAt: item.createdAt,
     boughtAt: item.boughtAt,
     displayMeta: formatItemMeta({
@@ -110,20 +128,14 @@ export function mapShoppingItemFromTransport(
   };
 }
 
-type ResolveShoppingCategoryArgs = {
-  itemId: string;
-  listType: ShoppingListType;
-  normalizedTitle: string;
-  categoryContext: ShoppingCategoryContext;
-};
-
-function resolveShoppingCategory({
+export function resolveShoppingCategory({
   itemId,
+  explicitOverrideKey,
   listType,
   normalizedTitle,
   categoryContext,
 }: ResolveShoppingCategoryArgs): Pick<ShoppingItemModel, 'categorySuggestion' | 'categoryOverride' | 'effectiveCategory'> {
-  const overrideKey = categoryContext.getOverrideForItem(itemId);
+  const overrideKey = explicitOverrideKey ?? (itemId ? categoryContext.getOverrideForItem(itemId) : null);
   const memoryKey = categoryContext.getMemoryForTitle(listType, normalizedTitle);
   const inferredCategory = inferShoppingCategory(normalizedTitle, listType);
 

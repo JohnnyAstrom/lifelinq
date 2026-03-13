@@ -74,7 +74,9 @@ class ShoppingItemTest {
                 ShoppingItemStatus.BOUGHT,
                 boughtAt,
                 new BigDecimal("2.5"),
-                ShoppingUnit.DL
+                ShoppingUnit.DL,
+                null,
+                null
         );
         assertEquals(ShoppingItemStatus.BOUGHT, bought.getStatus());
         assertEquals(boughtAt, bought.getBoughtAt());
@@ -90,6 +92,8 @@ class ShoppingItemTest {
                         ShoppingItemStatus.BOUGHT,
                         null,
                         null,
+                        null,
+                        null,
                         null
                 )
         );
@@ -101,6 +105,8 @@ class ShoppingItemTest {
                         createdAt,
                         ShoppingItemStatus.TO_BUY,
                         Instant.now(),
+                        null,
+                        null,
                         null,
                         null
                 )
@@ -125,6 +131,13 @@ class ShoppingItemTest {
     void rejectsNonPositiveQuantity() {
         assertThrows(IllegalArgumentException.class, () ->
                 new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), BigDecimal.ZERO, ShoppingUnit.PCS)
+        );
+    }
+
+    @Test
+    void rejectsSourceLabelWithoutSourceKind() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, null, null, "Pasta")
         );
     }
 }

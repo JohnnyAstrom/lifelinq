@@ -17,6 +17,7 @@ export {
   type ReorderShoppingItemRequest,
   type ReorderShoppingListRequest,
   type ShoppingItemResponse,
+  type ShoppingItemSourceKind,
   type ShoppingListResponse,
   type ShoppingListType,
   type ShoppingUnit,

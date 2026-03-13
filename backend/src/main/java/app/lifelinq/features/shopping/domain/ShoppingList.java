@@ -90,6 +90,18 @@ public final class ShoppingList {
             ShoppingUnit unit,
             Instant now
     ) {
+        return addItem(itemId, normalizedName, quantity, unit, null, null, now);
+    }
+
+    public UUID addItem(
+            UUID itemId,
+            String normalizedName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel,
+            Instant now
+    ) {
         if (itemId == null) {
             throw new IllegalArgumentException("itemId must not be null");
         }
@@ -100,7 +112,7 @@ public final class ShoppingList {
             throw new IllegalArgumentException("now must not be null");
         }
         shiftItemOrderIndexesForInsertAtTop();
-        ShoppingItem item = new ShoppingItem(itemId, normalizedName, 0, now, quantity, unit);
+        ShoppingItem item = new ShoppingItem(itemId, normalizedName, 0, now, quantity, unit, sourceKind, sourceLabel);
         items.add(item);
         return itemId;
     }

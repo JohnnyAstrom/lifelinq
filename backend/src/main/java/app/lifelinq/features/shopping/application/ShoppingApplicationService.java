@@ -14,6 +14,7 @@ import app.lifelinq.features.shopping.domain.ShoppingCategoryPreference;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreferenceRepository;
 import app.lifelinq.features.shopping.domain.ShoppingItem;
 import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
+import app.lifelinq.features.shopping.domain.ShoppingItemSourceKind;
 import app.lifelinq.features.shopping.domain.ShoppingList;
 import app.lifelinq.features.shopping.domain.ShoppingListNotFoundException;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
@@ -106,12 +107,26 @@ public class ShoppingApplicationService {
             BigDecimal quantity,
             ShoppingUnit unit
     ) {
+        return addShoppingItem(groupId, actorUserId, listId, itemName, quantity, unit, null, null);
+    }
+
+    @Transactional
+    public AddShoppingItemOutput addShoppingItem(
+            UUID groupId,
+            UUID actorUserId,
+            UUID listId,
+            String itemName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel
+    ) {
         ensureGroupMemberUseCase.execute(groupId, actorUserId);
         ShoppingList list = getListForGroup(groupId, listId);
         String normalizedName = normalizeItemName(itemName);
         UUID itemId = UUID.randomUUID();
         Instant now = clock.instant();
-        list.addItem(itemId, normalizedName, quantity, unit, now);
+        list.addItem(itemId, normalizedName, quantity, unit, sourceKind, sourceLabel, now);
         shoppingListRepository.save(list);
         ShoppingItem item = list.getItemOrThrow(itemId);
         return new AddShoppingItemOutput(
@@ -121,6 +136,8 @@ public class ShoppingApplicationService {
                 toViewStatus(item.getStatus()),
                 item.getQuantity(),
                 toViewUnit(item.getUnit()),
+                toViewSourceKind(item.getSourceKind()),
+                item.getSourceLabel(),
                 item.getCreatedAt(),
                 item.getBoughtAt()
         );
@@ -374,6 +391,8 @@ public class ShoppingApplicationService {
                 toViewStatus(item.getStatus()),
                 item.getQuantity(),
                 toViewUnit(item.getUnit()),
+                toViewSourceKind(item.getSourceKind()),
+                item.getSourceLabel(),
                 item.getCreatedAt(),
                 item.getBoughtAt()
         );
@@ -391,6 +410,13 @@ public class ShoppingApplicationService {
             return null;
         }
         return ShoppingUnitView.valueOf(unit.name());
+    }
+
+    private String toViewSourceKind(ShoppingItemSourceKind sourceKind) {
+        if (sourceKind == null) {
+            return null;
+        }
+        return sourceKind.key();
     }
 
     private ShoppingCategoryPreferenceView toView(ShoppingCategoryPreference preference) {

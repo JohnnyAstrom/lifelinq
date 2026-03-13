@@ -12,6 +12,8 @@ type Props = {
   editNamePlaceholder: string;
   editQuantityPlaceholder: string;
   editCategoryLabel: string;
+  editCategorySourceLabel: string | null;
+  editProvenanceLabel: string | null;
   autoCategoryLabel: string;
   resetLearnedCategoryLabel: string;
   saveChangesLabel: string;
@@ -47,6 +49,8 @@ export function EditItemSheetContent({
   editNamePlaceholder,
   editQuantityPlaceholder,
   editCategoryLabel,
+  editCategorySourceLabel,
+  editProvenanceLabel,
   autoCategoryLabel,
   resetLearnedCategoryLabel,
   saveChangesLabel,
@@ -93,6 +97,9 @@ export function EditItemSheetContent({
           onChangeText={onChangeQuantity}
           keyboardType="decimal-pad"
         />
+        {editProvenanceLabel ? (
+          <Text style={styles.categorySourceHint}>{editProvenanceLabel}</Text>
+        ) : null}
         <View style={styles.unitRow}>
           {primaryUnitOptions.map((unit) => (
             <AppChip
@@ -126,6 +133,9 @@ export function EditItemSheetContent({
         ) : null}
         <View style={styles.quickEditInputs}>
           <Text style={textStyles.subtle}>{editCategoryLabel}</Text>
+          {editCategorySourceLabel ? (
+            <Text style={styles.categorySourceHint}>{editCategorySourceLabel}</Text>
+          ) : null}
           <View style={styles.unitRow}>
             <AppChip
               label={autoCategoryLabel}

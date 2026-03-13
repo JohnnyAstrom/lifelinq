@@ -23,6 +23,7 @@ import { useShoppingLists } from '../hooks/useShoppingLists';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../api/shoppingApi';
 import { getShoppingCategoryDefinitions, type ShoppingCategoryKey } from '../utils/shoppingCategories';
+import type { ShoppingCategoryOrigin } from '../utils/shoppingDomain';
 import { AppScreen, BackIconButton, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -107,7 +108,12 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
     editQuantityPlaceholder: 'Quantity (optional)',
+    sourceMealPlanPrefix: 'From meal plan',
     editCategoryLabel: 'Category',
+    categorySourceOverride: 'Set for this item',
+    categorySourceMemory: 'Learned from group',
+    categorySourceSuggested: 'Suggested automatically',
+    categorySourceFallback: 'Using Other for now',
     autoCategoryLabel: 'Auto',
     resetLearnedCategoryLabel: 'Reset learned category',
     saveChanges: 'Save changes',
@@ -121,6 +127,30 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     unitLess: 'Show less',
     reorderHint: 'Hold and drag to reorder open items',
   };
+
+  function getCategorySourceLabel(origin: ShoppingCategoryOrigin | null): string | null {
+    switch (origin) {
+      case 'override':
+        return strings.categorySourceOverride;
+      case 'memory':
+        return strings.categorySourceMemory;
+      case 'suggested':
+        return strings.categorySourceSuggested;
+      case 'fallback':
+        return strings.categorySourceFallback;
+      default:
+        return null;
+    }
+  }
+
+  function getItemSourceLabel(sourceKind: 'unknown' | 'meal-plan', sourceLabel: string | null): string | null {
+    switch (sourceKind) {
+      case 'meal-plan':
+        return sourceLabel ? `${strings.sourceMealPlanPrefix}: ${sourceLabel}` : strings.sourceMealPlanPrefix;
+      default:
+        return null;
+    }
+  }
 
   useEffect(() => {
     if (workflowState.draggingOpenItemId || pendingOpenReorderSyncRef.current) {
@@ -159,6 +189,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     quantity: number | null;
     unit: ShoppingUnit | null;
     categoryOverrideKey: ShoppingCategoryKey | null;
+    sourceKind: 'unknown' | 'meal-plan';
+    sourceLabel: string | null;
   }) {
     workflowActions.openEdit(item);
     setShowMoreEditUnits(false);
@@ -411,6 +443,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                             quantity: item.quantity,
                             unit: item.unit,
                             categoryOverrideKey: item.categoryOverride?.key ?? null,
+                            sourceKind: item.source.kind,
+                            sourceLabel: item.source.label,
                           });
                         }
                       }}
@@ -485,6 +519,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                         quantity: item.quantity,
                         unit: item.unit,
                         categoryOverrideKey: item.categoryOverride?.key ?? null,
+                        sourceKind: item.source.kind,
+                        sourceLabel: item.source.label,
                       })}
                     />
                   </Swipeable>
@@ -516,6 +552,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             editNamePlaceholder={strings.editNamePlaceholder}
             editQuantityPlaceholder={strings.editQuantityPlaceholder}
             editCategoryLabel={strings.editCategoryLabel}
+            editCategorySourceLabel={getCategorySourceLabel(workflowState.editCategoryOrigin)}
+            editProvenanceLabel={getItemSourceLabel(workflowState.editSourceKind, workflowState.editSourceLabel)}
             autoCategoryLabel={strings.autoCategoryLabel}
             resetLearnedCategoryLabel={strings.resetLearnedCategoryLabel}
             saveChangesLabel={strings.saveChanges}
@@ -710,6 +748,10 @@ const styles = StyleSheet.create({
   },
   quickEditInputs: {
     gap: theme.spacing.xs,
+  },
+  categorySourceHint: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   quickUnitRow: {
     flexDirection: 'row',
