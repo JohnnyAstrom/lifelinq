@@ -6,6 +6,7 @@ type Props = {
   title: string;
   meta?: string | null;
   checked: boolean;
+  shoppingFocused?: boolean;
   dragging?: boolean;
   secondaryActionLabel?: string;
   onToggle: () => void;
@@ -21,6 +22,7 @@ export function ShoppingItemRow({
   title,
   meta,
   checked,
+  shoppingFocused = false,
   dragging = false,
   secondaryActionLabel = 'Item details',
   onToggle,
@@ -58,7 +60,7 @@ export function ShoppingItemRow({
             <Text style={styles.checkboxMarkChecked}>✓</Text>
           </View>
         ) : (
-          <View style={styles.checkbox} />
+          <View style={[styles.checkbox, shoppingFocused ? styles.checkboxShoppingFocused : null]} />
         )}
         <View style={styles.content}>
           <Text
@@ -78,7 +80,11 @@ export function ShoppingItemRow({
         </View>
       </Pressable>
       <Pressable
-        style={[styles.secondaryAction, checked ? styles.secondaryActionChecked : null]}
+        style={[
+          styles.secondaryAction,
+          shoppingFocused && !checked ? styles.secondaryActionShoppingFocused : null,
+          checked ? styles.secondaryActionChecked : null,
+        ]}
         onPress={onOpenDetails}
         accessibilityRole="button"
         accessibilityLabel={secondaryActionLabel}
@@ -131,6 +137,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
+  checkboxShoppingFocused: {
+    width: 26,
+    height: 26,
+    borderWidth: 2,
+  },
   checkboxChecked: {
     backgroundColor: theme.colors.success,
     borderColor: theme.colors.success,
@@ -166,6 +177,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: iconBackground(theme.colors.feature.shopping, 0.12),
+  },
+  secondaryActionShoppingFocused: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   secondaryActionChecked: {
     backgroundColor: iconBackground(theme.colors.subtle, 0.12),

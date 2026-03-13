@@ -16,7 +16,9 @@ import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
 import { EditItemSheetContent } from '../components/EditItemSheetContent';
 import { ShoppingItemRow } from '../components/ShoppingItemRow';
 import { ShoppingItemSectionCard } from '../components/ShoppingItemSectionCard';
+import { ShoppingFocusSummary } from '../components/ShoppingFocusSummary';
 import { useShoppingCategoryPreferences } from '../hooks/useShoppingCategoryPreferences';
+import { useShoppingListDetailFocus } from '../hooks/useShoppingListDetailFocus';
 import { useShoppingListDetailProjection } from '../hooks/useShoppingListDetailProjection';
 import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
@@ -74,7 +76,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const boughtItems = boughtSection?.items ?? [];
   const isBoughtCollapsed = boughtItems.length > 0 && !isBoughtExpanded;
   const canReorderOpenItems = openSections.length <= 1;
-  const showOpenReorderHint = canReorderOpenItems && openItems.length > 0;
+  const focus = useShoppingListDetailFocus({
+    openItemCount: openItems.length,
+    canReorderOpenItems,
+  });
+  const showOpenReorderHint = focus.showReorderHint;
 
   const strings = {
     titleFallback: 'Shopping list',
@@ -395,6 +401,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
+          {focus.isShoppingFocused ? (
+            <ShoppingFocusSummary
+              title={focus.summaryTitle}
+              subtitle={focus.summarySubtitle}
+            />
+          ) : null}
+
           {openSections.length === 0 ? (
             <ShoppingItemSectionCard
               title={strings.openLabel}
@@ -424,6 +437,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                       title={item.title}
                       meta={item.displayMeta}
                       checked={false}
+                      shoppingFocused={focus.isShoppingFocused}
                       dragging={workflowState.draggingOpenItemId === item.id}
                       secondaryActionLabel={strings.details}
                       onToggle={() => {
@@ -507,6 +521,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                       title={item.title}
                       meta={item.displayMeta}
                       checked
+                      shoppingFocused={focus.isShoppingFocused}
                       secondaryActionLabel={strings.details}
                       onToggle={() => {
                         if (selectedList) {
@@ -534,14 +549,18 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       </View>
 
       <Pressable
-        style={[styles.fab, { bottom: Math.max(insets.bottom + 8, 12) }]}
+        style={[
+          styles.fab,
+          focus.isShoppingFocused ? styles.fabShoppingFocused : null,
+          { bottom: Math.max(insets.bottom + 8, 12) },
+        ]}
         onPress={() => {
           setShowAddFormDetails(false);
           setShowMoreAddUnits(false);
           workflowActions.setShowAddDetails(true);
         }}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={[styles.fabText, focus.isShoppingFocused ? styles.fabTextShoppingFocused : null]}>+</Text>
       </Pressable>
 
       {workflowState.editItemId ? (
@@ -844,11 +863,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...theme.elevation.floating,
   },
+  fabShoppingFocused: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
   fabText: {
     color: '#ffffff',
     fontSize: 28,
     lineHeight: 28,
     fontFamily: theme.typography.heading,
+  },
+  fabTextShoppingFocused: {
+    color: theme.colors.feature.shopping,
   },
 });
 
