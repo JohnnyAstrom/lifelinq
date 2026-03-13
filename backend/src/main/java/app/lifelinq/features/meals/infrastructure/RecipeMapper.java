@@ -12,8 +12,14 @@ final class RecipeMapper {
                 recipe.getName(),
                 recipe.getCreatedAt()
         );
+        entity.replaceIngredients(toIngredientEntities(recipe, entity));
+        return entity;
+    }
+
+    java.util.List<RecipeIngredientEntity> toIngredientEntities(Recipe recipe, RecipeEntity entity) {
+        java.util.List<RecipeIngredientEntity> ingredients = new java.util.ArrayList<>();
         for (Ingredient ingredient : recipe.getIngredients()) {
-            entity.getIngredients().add(new RecipeIngredientEntity(
+            ingredients.add(new RecipeIngredientEntity(
                     ingredient.getId(),
                     entity,
                     ingredient.getName(),
@@ -22,7 +28,7 @@ final class RecipeMapper {
                     ingredient.getPosition()
             ));
         }
-        return entity;
+        return ingredients;
     }
 
     Recipe toDomain(RecipeEntity entity) {

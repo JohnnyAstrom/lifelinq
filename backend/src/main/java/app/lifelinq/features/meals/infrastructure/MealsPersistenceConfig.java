@@ -31,8 +31,9 @@ public class MealsPersistenceConfig {
     @Bean
     public RecipeRepository recipeRepository(
             RecipeJpaRepository repository,
+            RecipeIngredientJpaRepository ingredientRepository,
             RecipeMapper mapper
     ) {
-        return new JpaRecipeRepositoryAdapter(repository, mapper);
+        return new JpaRecipeRepositoryAdapter(repository, ingredientRepository, mapper);
     }
 }

@@ -7,29 +7,51 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
-public final class JpaRecipeRepositoryAdapter implements RecipeRepository {
+public class JpaRecipeRepositoryAdapter implements RecipeRepository {
     private final RecipeJpaRepository repository;
+    private final RecipeIngredientJpaRepository ingredientRepository;
     private final RecipeMapper mapper;
 
-    public JpaRecipeRepositoryAdapter(RecipeJpaRepository repository, RecipeMapper mapper) {
+    public JpaRecipeRepositoryAdapter(
+            RecipeJpaRepository repository,
+            RecipeIngredientJpaRepository ingredientRepository,
+            RecipeMapper mapper
+    ) {
         if (repository == null) {
             throw new IllegalArgumentException("repository must not be null");
+        }
+        if (ingredientRepository == null) {
+            throw new IllegalArgumentException("ingredientRepository must not be null");
         }
         if (mapper == null) {
             throw new IllegalArgumentException("mapper must not be null");
         }
         this.repository = repository;
+        this.ingredientRepository = ingredientRepository;
         this.mapper = mapper;
     }
 
     @Override
+    @Transactional
     public Recipe save(Recipe recipe) {
         if (recipe == null) {
             throw new IllegalArgumentException("recipe must not be null");
         }
-        RecipeEntity saved = repository.save(mapper.toEntity(recipe));
+        RecipeEntity saved = repository.findByIdAndGroupId(recipe.getId(), recipe.getGroupId())
+                .map(existing -> updateManagedEntity(existing, recipe))
+                .orElseGet(() -> repository.save(mapper.toEntity(recipe)));
         return mapper.toDomain(saved);
+    }
+
+    private RecipeEntity updateManagedEntity(RecipeEntity existing, Recipe recipe) {
+        existing.rename(recipe.getName());
+        existing.getIngredients().clear();
+        ingredientRepository.deleteByRecipeId(recipe.getId());
+        repository.flush();
+        existing.replaceIngredients(mapper.toIngredientEntities(recipe, existing));
+        return repository.saveAndFlush(existing);
     }
 
     @Override
