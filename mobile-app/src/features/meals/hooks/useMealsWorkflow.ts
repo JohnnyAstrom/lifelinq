@@ -66,8 +66,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [recipeTitle, setRecipeTitle] = useState('');
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
   const [isIngredientEditorOpen, setIsIngredientEditorOpen] = useState(false);
+  const [isShoppingReviewOpen, setIsShoppingReviewOpen] = useState(false);
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
-  const [pushToShopping, setPushToShopping] = useState(true);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
 
@@ -82,6 +82,11 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     return list.find((meal) => meal.mealType === selectedMealType) ?? null;
   }, [selectedDay, selectedMealType, mealsByDay]);
 
+  const hasIngredients = useMemo(
+    () => toIngredientRequests(ingredientRows).length > 0,
+    [ingredientRows]
+  );
+
   function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
     setSelectedMealType(mealType);
@@ -90,8 +95,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setRecipeTitle(existing?.recipeTitle ?? '');
     setSelectedMealRecipeId(existing?.recipeId ?? null);
     setIngredientRows([]);
-    setPushToShopping(existing ? false : true);
     setIsIngredientEditorOpen(false);
+    setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
     setShoppingSyncError(null);
   }
@@ -156,6 +161,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setSelectedMealRecipeId(null);
     setIngredientRows([]);
     setIsIngredientEditorOpen(false);
+    setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
   }
 
@@ -167,6 +173,17 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
 
   function closeIngredientEditor() {
     setIsIngredientEditorOpen(false);
+  }
+
+  function openShoppingReview() {
+    if (!isRecipeLoading && hasIngredients) {
+      setShoppingSyncError(null);
+      setIsShoppingReviewOpen(true);
+    }
+  }
+
+  function closeShoppingReview() {
+    setIsShoppingReviewOpen(false);
   }
 
   function addIngredientRow() {
@@ -213,19 +230,19 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     }));
   }
 
-  async function saveMeal() {
+  async function persistMeal(targetShoppingListId: string | null) {
     if (!selectedDay || !selectedMealType) {
-      return;
+      return false;
     }
     if (!recipeTitle.trim()) {
-      return;
+      return false;
     }
     if (isRecipeLoading) {
-      return;
+      return false;
     }
 
     const ingredients = toIngredientRequests(ingredientRows);
-    const shouldPushToShopping = pushToShopping && ingredients.length > 0 && effectiveListId;
+    const shouldPushToShopping = ingredients.length > 0 && !!targetShoppingListId;
 
     try {
       let recipeId = selectedMealRecipeId;
@@ -252,23 +269,51 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       await plan.addMeal(selectedDay, selectedMealType, {
         recipeId,
         mealType: selectedMealType,
-        targetShoppingListId: shouldPushToShopping ? effectiveListId : null,
+        targetShoppingListId: shouldPushToShopping ? targetShoppingListId : null,
       });
 
       if (shouldPushToShopping) {
         await shopping.reload();
       }
 
-      setRecipeTitle('');
-      setSelectedMealRecipeId(null);
-      setIngredientRows([]);
-      setSelectedMealType('DINNER');
       setShoppingSyncError(null);
-      closeEditor();
+      return true;
     } catch (err) {
       await handleApiError(err);
       setShoppingSyncError(formatApiError(err));
+      return false;
     }
+  }
+
+  async function saveMeal() {
+    const saved = await persistMeal(null);
+    if (!saved) {
+      return;
+    }
+
+    setRecipeTitle('');
+    setSelectedMealRecipeId(null);
+    setIngredientRows([]);
+    setSelectedMealType('DINNER');
+    closeEditor();
+  }
+
+  async function addIngredientsToShopping() {
+    const targetShoppingListId = effectiveListId;
+    if (!targetShoppingListId || !hasIngredients) {
+      return;
+    }
+
+    const saved = await persistMeal(targetShoppingListId);
+    if (!saved) {
+      return;
+    }
+
+    setRecipeTitle('');
+    setSelectedMealRecipeId(null);
+    setIngredientRows([]);
+    setSelectedMealType('DINNER');
+    closeEditor();
   }
 
   async function removeMeal() {
@@ -301,8 +346,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       recipeTitle,
       ingredientRows,
       isIngredientEditorOpen,
+      isShoppingReviewOpen,
       isRecipeLoading,
-      pushToShopping,
+      hasIngredients,
       selectedListId,
       effectiveListId,
       shoppingSyncError,
@@ -310,12 +356,13 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setRecipeTitle,
       openIngredientEditor,
       closeIngredientEditor,
+      openShoppingReview,
+      closeShoppingReview,
       addIngredientRow,
       removeIngredientRow,
       setIngredientName,
       setIngredientQuantity,
       setIngredientUnit,
-      setPushToShopping,
       setSelectedListId,
       setSelectedDay: selectEditorDay,
       setSelectedMealType: selectEditorMealType,
@@ -326,6 +373,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       openEditor,
       closeEditor,
       saveMeal,
+      addIngredientsToShopping,
       removeMeal,
     },
   };

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MealsDailyView } from '../components/MealsDailyView';
 import { MealEditorSheet } from '../components/MealEditorSheet';
 import { MealIngredientsSheet } from '../components/MealIngredientsSheet';
+import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
 import {
@@ -95,7 +96,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const insets = useSafeAreaInsets();
   const strings = {
     title: 'Meals',
-    subtitle: 'Plan your week and keep shopping in sync.',
+    subtitle: 'Plan your week and add ingredients to shopping when needed.',
     daily: 'Daily',
     weekly: 'Weekly',
     monthly: 'Monthly',
@@ -119,9 +120,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     editIngredients: 'Edit ingredients',
     removeIngredient: 'Remove',
     loadingIngredients: 'Loading ingredients...',
-    addIngredientsToShopping: 'Add ingredients to shopping list',
+    shoppingLabel: 'Shopping',
+    addIngredientsToShoppingAction: 'Add ingredients to shopping',
+    shoppingReviewTitle: 'Add ingredients to shopping',
+    shoppingListLabel: 'Shopping list',
+    ingredientsToAddLabel: 'Ingredients to add',
+    confirmAddIngredientsToShopping: 'Add all ingredients',
     noShoppingLists: 'No shopping lists yet.',
-    shoppingSyncFailed: 'Meal saved, but shopping sync failed:',
+    shoppingSyncFailed: 'Meal saved, but adding ingredients to shopping failed:',
     saveMeal: 'Save meal',
     removeMeal: 'Remove meal',
     close: 'Close',
@@ -150,6 +156,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   async function handleRemove() {
     await actions.removeMeal();
+  }
+
+  async function handleAddIngredientsToShopping() {
+    await actions.addIngredientsToShopping();
   }
 
   const weekEnd = useMemo(() => {
@@ -213,8 +223,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: editor.isOpen || editor.isIngredientEditorOpen,
-    onCloseOverlay: editor.isIngredientEditorOpen ? editor.closeIngredientEditor : closeEditor,
+    isOverlayOpen: editor.isOpen || editor.isIngredientEditorOpen || editor.isShoppingReviewOpen,
+    onCloseOverlay: editor.isIngredientEditorOpen
+      ? editor.closeIngredientEditor
+      : editor.isShoppingReviewOpen
+        ? editor.closeShoppingReview
+        : closeEditor,
   });
 
   return (
@@ -392,12 +406,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           ingredientRows={editor.ingredientRows}
           isRecipeLoading={editor.isRecipeLoading}
           onOpenIngredients={editor.openIngredientEditor}
-          pushToShopping={editor.pushToShopping}
-          onChangePushToShopping={editor.setPushToShopping}
-          lists={lists}
-          effectiveListId={effectiveListId}
-          onSelectListId={editor.setSelectedListId}
-          shoppingSyncError={editor.shoppingSyncError}
+          hasIngredients={editor.hasIngredients}
+          onOpenShoppingReview={editor.openShoppingReview}
           hasExistingMeal={!!editor.selectedMeal?.recipeTitle}
           strings={{
             planMealTitle: strings.planMealTitle,
@@ -409,11 +419,31 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             ingredientsEmptyState: strings.ingredientsEmptyState,
             ingredientsSummarySuffix: strings.ingredientsSummarySuffix,
             loadingIngredients: strings.loadingIngredients,
-            addIngredientsToShopping: strings.addIngredientsToShopping,
-            noShoppingLists: strings.noShoppingLists,
-            shoppingSyncFailed: strings.shoppingSyncFailed,
+            shoppingLabel: strings.shoppingLabel,
+            addIngredientsToShoppingAction: strings.addIngredientsToShoppingAction,
             saveMeal: strings.saveMeal,
             removeMeal: strings.removeMeal,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
+      {editor.isOpen && editor.isShoppingReviewOpen ? (
+        <MealShoppingReviewSheet
+          ingredientRows={editor.ingredientRows}
+          lists={lists}
+          effectiveListId={effectiveListId}
+          onSelectListId={editor.setSelectedListId}
+          shoppingSyncError={editor.shoppingSyncError}
+          onConfirm={handleAddIngredientsToShopping}
+          onClose={editor.closeShoppingReview}
+          strings={{
+            title: strings.shoppingReviewTitle,
+            ingredientsLabel: strings.ingredientsToAddLabel,
+            selectedListLabel: strings.shoppingListLabel,
+            noShoppingLists: strings.noShoppingLists,
+            shoppingSyncFailed: strings.shoppingSyncFailed,
+            confirm: strings.confirmAddIngredientsToShopping,
             close: strings.close,
           }}
         />

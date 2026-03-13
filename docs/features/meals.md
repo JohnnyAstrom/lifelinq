@@ -18,7 +18,7 @@ Integration is one-way (Meals → Shopping).
 Current implementation: Meals calls `ShoppingApplicationService.addShoppingItem(...)`
 when `targetShoppingListId` is provided, once per ingredient occurrence.
 Current product reality: meals-pushed shopping items now carry narrow shopping provenance so Shopping can show that they came from meal planning. Shopping may also conservatively absorb compatible meal-plan intake into an existing open shopping item instead of always creating a new row.
-Current frontend capture direction: ingredient entry is a lightweight structured row editor with `name`, optional `quantity`, optional `unit`, and implicit `position` from row order. The main `Plan a meal` sheet keeps ingredients as a light summary and opens a secondary ingredient sheet for full editing.
+Current frontend capture direction: ingredient entry is a lightweight structured row editor with `name`, optional `quantity`, optional `unit`, and implicit `position` from row order. The main `Plan a meal` sheet keeps ingredients as a light summary and opens a secondary ingredient sheet for full editing. Shopping intake is now triggered from a separate explicit review/confirm sheet rather than as a passive save-time toggle.
 
 ## Meals Model (Phase 1)
 
