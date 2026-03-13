@@ -341,6 +341,170 @@ const CATEGORY_BY_KEY = new Map(
   CATEGORY_DEFINITIONS.map((definition) => [definition.key, definition])
 );
 
+const TYPE_SPECIFIC_KEYWORDS: Partial<Record<ShoppingListType, Partial<Record<ShoppingCategoryKey, string[]>>>> = {
+  supplies: {
+    household: [
+      'tape',
+      'duct tape',
+      'masking tape',
+      'packing tape',
+      'napkin',
+      'napkins',
+      'serviette',
+      'serviettes',
+      'paper plate',
+      'paper plates',
+      'plastic plate',
+      'plastic plates',
+      'paper cup',
+      'paper cups',
+      'plastic cup',
+      'plastic cups',
+      'plastic glass',
+      'plastic glasses',
+      'cup lids',
+      'coffee filter',
+      'coffee filters',
+      'table cloth',
+      'tablecloth',
+      'bin bag',
+      'bin bags',
+      'wipes',
+      'wet wipes',
+      'disinfectant',
+      'bleach',
+      'sponge',
+      'sponges',
+      'scrub',
+      'bucket',
+      'mop',
+      'broom',
+      'dustpan',
+      'extension cord',
+      'power strip',
+      'cable tie',
+      'cable ties',
+      'zip tie',
+      'zip ties',
+      'marker',
+      'markers',
+      'pen',
+      'pens',
+      'notebook',
+      'notebooks',
+      'clipboard',
+      'lighter',
+      'matches',
+      'candles',
+      'gloves',
+      'paper plates',
+      'plastmugg',
+      'plastmuggar',
+      'pappersmugg',
+      'pappersmuggar',
+      'papperstallrik',
+      'papperstallrikar',
+      'plasttallrik',
+      'plasttallrikar',
+      'servett',
+      'servetter',
+      'tejp',
+      'maskeringstejp',
+      'packtejp',
+      'forlangningssladd',
+      'grenuttag',
+      'buntband',
+      'vatservetter',
+      'vatservetter',
+      'desinfektion',
+      'blekmedel',
+      'svamp',
+      'hink',
+      'mopp',
+      'kvast',
+      'skyffel',
+      'anteckningsblock',
+      'block',
+      'penna',
+      'pennor',
+      'handskar',
+      'tandstickor',
+    ],
+    'health-beauty': [
+      'first aid',
+      'first aid kit',
+      'gauze',
+      'medical tape',
+      'antiseptic',
+      'sanitizer',
+      'hand sanitizer',
+      'wound wash',
+      'thermometer',
+      'cold pack',
+      'suncream',
+      'sunscreen',
+      'bug spray',
+      'insect repellent',
+      'forsta hjalpen',
+      'forsta hjalpen kit',
+      'gasbinda',
+      'medicintejp',
+      'antiseptisk',
+      'handsprit',
+      'termometer',
+      'kylpase',
+      'kylpasar',
+      'solkram',
+      'solkram',
+      'myggspray',
+      'myggmedel',
+    ],
+  },
+  mixed: {
+    household: [
+      'tape',
+      'napkin',
+      'napkins',
+      'paper plate',
+      'paper plates',
+      'plastic cup',
+      'plastic cups',
+      'trash bag',
+      'trash bags',
+      'light bulb',
+      'light bulbs',
+      'cleaning spray',
+      'wipes',
+      'sponge',
+      'tejp',
+      'servett',
+      'servetter',
+      'papperstallrik',
+      'papperstallrikar',
+      'plastmugg',
+      'plastmuggar',
+      'soppase',
+      'soppasar',
+      'glodlampa',
+      'glodlampor',
+      'rengoringsspray',
+      'svamp',
+    ],
+    'health-beauty': [
+      'first aid',
+      'first aid kit',
+      'sanitizer',
+      'hand sanitizer',
+      'bandage',
+      'bandages',
+      'forsta hjalpen',
+      'forsta hjalpen kit',
+      'handsprit',
+      'plaster',
+    ],
+  },
+};
+
 export const DEFAULT_SHOPPING_CATEGORY = CATEGORY_BY_KEY.get('other')!;
 
 export function getShoppingCategoryDefinition(key: ShoppingCategoryKey): ShoppingCategoryDefinition {
@@ -359,7 +523,7 @@ export function inferShoppingCategory(
     if (definition.key === 'other') {
       continue;
     }
-    if (definition.keywords.some((keyword) => matchesKeyword(normalizedTitle, keyword))) {
+    if (getKeywordsForCategory(definition, listType).some((keyword) => matchesKeyword(normalizedTitle, keyword))) {
       return definition;
     }
   }
@@ -385,6 +549,14 @@ function getShoppingCategoryDefinitionsForListType(
   return ordering.map((key) => getShoppingCategoryDefinition(key));
 }
 
+function getKeywordsForCategory(
+  definition: ShoppingCategoryDefinition,
+  listType: ShoppingListType
+): string[] {
+  const typeSpecific = TYPE_SPECIFIC_KEYWORDS[listType]?.[definition.key] ?? [];
+  return [...typeSpecific, ...definition.keywords];
+}
+
 function getCategoryPriorityForListType(listType: ShoppingListType): ShoppingCategoryKey[] {
   switch (listType) {
     case 'grocery':
@@ -392,10 +564,10 @@ function getCategoryPriorityForListType(listType: ShoppingListType): ShoppingCat
     case 'consumables':
       return ['household', 'health-beauty', 'dairy', 'pantry', 'snacks-drinks', 'frozen', 'produce', 'bakery', 'meat-seafood', 'other'];
     case 'supplies':
-      return ['household', 'health-beauty', 'pantry', 'snacks-drinks', 'frozen', 'bakery', 'dairy', 'produce', 'meat-seafood', 'other'];
+      return ['household', 'health-beauty', 'snacks-drinks', 'pantry', 'frozen', 'dairy', 'bakery', 'produce', 'meat-seafood', 'other'];
     case 'mixed':
     default:
-      return ['pantry', 'household', 'health-beauty', 'snacks-drinks', 'produce', 'dairy', 'bakery', 'meat-seafood', 'frozen', 'other'];
+      return ['household', 'pantry', 'snacks-drinks', 'health-beauty', 'produce', 'dairy', 'bakery', 'meat-seafood', 'frozen', 'other'];
   }
 }
 
