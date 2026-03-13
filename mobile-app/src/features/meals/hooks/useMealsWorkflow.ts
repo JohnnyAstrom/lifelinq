@@ -64,7 +64,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [selectedMealType, setSelectedMealType] = useState<MealType | null>('DINNER');
   const [selectedMealRecipeId, setSelectedMealRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
-  const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([createEmptyIngredientRow()]);
+  const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
+  const [isIngredientEditorOpen, setIsIngredientEditorOpen] = useState(false);
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [pushToShopping, setPushToShopping] = useState(true);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
@@ -88,7 +89,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     const existing = list.find((meal) => meal.mealType === mealType);
     setRecipeTitle(existing?.recipeTitle ?? '');
     setSelectedMealRecipeId(existing?.recipeId ?? null);
-    setIngredientRows([createEmptyIngredientRow()]);
+    setIngredientRows([]);
+    setPushToShopping(existing ? false : true);
+    setIsIngredientEditorOpen(false);
     setIsRecipeLoading(false);
     setShoppingSyncError(null);
   }
@@ -151,12 +154,27 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   function closeEditor() {
     setSelectedDay(null);
     setSelectedMealRecipeId(null);
-    setIngredientRows([createEmptyIngredientRow()]);
+    setIngredientRows([]);
+    setIsIngredientEditorOpen(false);
     setIsRecipeLoading(false);
   }
 
+  function openIngredientEditor() {
+    if (!isRecipeLoading) {
+      setIsIngredientEditorOpen(true);
+    }
+  }
+
+  function closeIngredientEditor() {
+    setIsIngredientEditorOpen(false);
+  }
+
   function addIngredientRow() {
-    setIngredientRows((current) => [...current, createEmptyIngredientRow()]);
+    setIngredientRows((current) => {
+      const next = [...current, createEmptyIngredientRow()];
+      return next;
+    });
+    setIsIngredientEditorOpen(true);
   }
 
   function updateIngredientRow(
@@ -169,7 +187,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   function removeIngredientRow(rowId: string) {
     setIngredientRows((current) => {
       if (current.length === 1) {
-        return [createEmptyIngredientRow()];
+        return [];
       }
       return current.filter((row) => row.id !== rowId);
     });
@@ -207,6 +225,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     }
 
     const ingredients = toIngredientRequests(ingredientRows);
+    const shouldPushToShopping = pushToShopping && ingredients.length > 0 && effectiveListId;
 
     try {
       let recipeId = selectedMealRecipeId;
@@ -233,16 +252,16 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       await plan.addMeal(selectedDay, selectedMealType, {
         recipeId,
         mealType: selectedMealType,
-        targetShoppingListId: pushToShopping && effectiveListId ? effectiveListId : null,
+        targetShoppingListId: shouldPushToShopping ? effectiveListId : null,
       });
 
-      if (pushToShopping && ingredients.length > 0 && effectiveListId) {
+      if (shouldPushToShopping) {
         await shopping.reload();
       }
 
       setRecipeTitle('');
       setSelectedMealRecipeId(null);
-      setIngredientRows([createEmptyIngredientRow()]);
+      setIngredientRows([]);
       setSelectedMealType('DINNER');
       setShoppingSyncError(null);
       closeEditor();
@@ -262,7 +281,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setSelectedMealType('DINNER');
       setSelectedMealRecipeId(null);
       setRecipeTitle('');
-      setIngredientRows([createEmptyIngredientRow()]);
+      setIngredientRows([]);
       setShoppingSyncError(null);
     } catch (err) {
       await handleApiError(err);
@@ -281,6 +300,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       selectedMealRecipeId,
       recipeTitle,
       ingredientRows,
+      isIngredientEditorOpen,
       isRecipeLoading,
       pushToShopping,
       selectedListId,
@@ -288,6 +308,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       shoppingSyncError,
       selectedMeal,
       setRecipeTitle,
+      openIngredientEditor,
+      closeIngredientEditor,
       addIngredientRow,
       removeIngredientRow,
       setIngredientName,

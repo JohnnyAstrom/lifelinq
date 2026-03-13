@@ -40,7 +40,7 @@ export function createEmptyIngredientRow(): MealIngredientRow {
 
 export function ingredientRowsFromResponse(ingredients: IngredientResponse[]): MealIngredientRow[] {
   if (ingredients.length === 0) {
-    return [createEmptyIngredientRow()];
+    return [];
   }
 
   return ingredients.map((ingredient) => ({

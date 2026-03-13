@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MealsDailyView } from '../components/MealsDailyView';
 import { MealEditorSheet } from '../components/MealEditorSheet';
+import { MealIngredientsSheet } from '../components/MealIngredientsSheet';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
 import {
@@ -108,9 +109,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     dayLabel: 'Day',
     mealTitlePlaceholder: 'Meal title',
     ingredientsLabel: 'Ingredients',
+    ingredientsEmptyState: 'Optional. Add ingredients when you need them.',
+    ingredientsSummarySuffix: 'ingredients',
+    ingredientsSheetTitle: 'Ingredients',
     ingredientNamePlaceholder: 'Ingredient name',
     quantityPlaceholder: 'Amount',
     addIngredient: 'Add ingredient',
+    addIngredients: 'Add ingredients',
+    editIngredients: 'Edit ingredients',
     removeIngredient: 'Remove',
     loadingIngredients: 'Loading ingredients...',
     addIngredientsToShopping: 'Add ingredients to shopping list',
@@ -207,8 +213,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: editor.isOpen,
-    onCloseOverlay: closeEditor,
+    isOverlayOpen: editor.isOpen || editor.isIngredientEditorOpen,
+    onCloseOverlay: editor.isIngredientEditorOpen ? editor.closeIngredientEditor : closeEditor,
   });
 
   return (
@@ -385,11 +391,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onChangeRecipeTitle={editor.setRecipeTitle}
           ingredientRows={editor.ingredientRows}
           isRecipeLoading={editor.isRecipeLoading}
-          onAddIngredientRow={editor.addIngredientRow}
-          onRemoveIngredientRow={editor.removeIngredientRow}
-          onChangeIngredientName={editor.setIngredientName}
-          onChangeIngredientQuantity={editor.setIngredientQuantity}
-          onToggleIngredientUnit={editor.setIngredientUnit}
+          onOpenIngredients={editor.openIngredientEditor}
           pushToShopping={editor.pushToShopping}
           onChangePushToShopping={editor.setPushToShopping}
           lists={lists}
@@ -402,16 +404,38 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             dayLabel: strings.dayLabel,
             mealTitlePlaceholder: strings.mealTitlePlaceholder,
             ingredientsLabel: strings.ingredientsLabel,
-            ingredientNamePlaceholder: strings.ingredientNamePlaceholder,
-            quantityPlaceholder: strings.quantityPlaceholder,
-            addIngredient: strings.addIngredient,
-            removeIngredient: strings.removeIngredient,
+            addIngredients: strings.addIngredients,
+            editIngredients: strings.editIngredients,
+            ingredientsEmptyState: strings.ingredientsEmptyState,
+            ingredientsSummarySuffix: strings.ingredientsSummarySuffix,
             loadingIngredients: strings.loadingIngredients,
             addIngredientsToShopping: strings.addIngredientsToShopping,
             noShoppingLists: strings.noShoppingLists,
             shoppingSyncFailed: strings.shoppingSyncFailed,
             saveMeal: strings.saveMeal,
             removeMeal: strings.removeMeal,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
+      {editor.isOpen && editor.isIngredientEditorOpen ? (
+        <MealIngredientsSheet
+          ingredientRows={editor.ingredientRows}
+          isRecipeLoading={editor.isRecipeLoading}
+          onAddIngredientRow={editor.addIngredientRow}
+          onRemoveIngredientRow={editor.removeIngredientRow}
+          onChangeIngredientName={editor.setIngredientName}
+          onChangeIngredientQuantity={editor.setIngredientQuantity}
+          onToggleIngredientUnit={editor.setIngredientUnit}
+          onClose={editor.closeIngredientEditor}
+          strings={{
+            title: strings.ingredientsSheetTitle,
+            ingredientNamePlaceholder: strings.ingredientNamePlaceholder,
+            quantityPlaceholder: strings.quantityPlaceholder,
+            addIngredient: strings.addIngredient,
+            removeIngredient: strings.removeIngredient,
+            loadingIngredients: strings.loadingIngredients,
             close: strings.close,
           }}
         />
