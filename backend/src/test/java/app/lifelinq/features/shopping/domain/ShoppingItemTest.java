@@ -140,4 +140,39 @@ class ShoppingItemTest {
                 new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, null, null, "Pasta")
         );
     }
+
+    @Test
+    void absorbsCompatibleMealPlanQuantityAndClearsSource() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "milk",
+                Instant.now(),
+                new BigDecimal("2"),
+                ShoppingUnit.PCS,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pasta"
+        );
+
+        item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.PCS);
+
+        assertEquals(new BigDecimal("5"), item.getQuantity());
+        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getSourceKind());
+        assertEquals(null, item.getSourceLabel());
+    }
+
+    @Test
+    void rejectsIncompatibleMealPlanAbsorb() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "milk",
+                Instant.now(),
+                new BigDecimal("2"),
+                ShoppingUnit.PCS
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.KG)
+        );
+    }
 }

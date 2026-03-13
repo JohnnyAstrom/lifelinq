@@ -111,6 +111,13 @@ public final class ShoppingList {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
+        if (sourceKind == ShoppingItemSourceKind.MEAL_PLAN) {
+            ShoppingItem mergeCandidate = findMealPlanMergeCandidate(normalizedName, quantity, unit);
+            if (mergeCandidate != null) {
+                mergeCandidate.absorbMealPlanIntake(quantity, unit);
+                return mergeCandidate.getId();
+            }
+        }
         shiftItemOrderIndexesForInsertAtTop();
         ShoppingItem item = new ShoppingItem(itemId, normalizedName, 0, now, quantity, unit, sourceKind, sourceLabel);
         items.add(item);
@@ -245,6 +252,18 @@ public final class ShoppingList {
         for (ShoppingItem item : items) {
             item.setOrderIndex(item.getOrderIndex() + 1);
         }
+    }
+
+    private ShoppingItem findMealPlanMergeCandidate(String normalizedName, BigDecimal quantity, ShoppingUnit unit) {
+        List<ShoppingItem> matchingOpenItems = items.stream()
+                .filter(item -> item.getStatus() == ShoppingItemStatus.TO_BUY)
+                .filter(item -> item.getName().equals(normalizedName))
+                .toList();
+        if (matchingOpenItems.size() != 1) {
+            return null;
+        }
+        ShoppingItem candidate = matchingOpenItems.get(0);
+        return candidate.canAbsorbMealPlanIntake(quantity, unit) ? candidate : null;
     }
 
     private void normalizeItemOrderIndexes() {

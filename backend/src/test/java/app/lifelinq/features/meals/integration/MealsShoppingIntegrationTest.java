@@ -1,6 +1,7 @@
 package app.lifelinq.features.meals.integration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.group.domain.Group;
@@ -122,7 +123,46 @@ class MealsShoppingIntegrationTest {
         );
 
         ShoppingList list = shoppingListRepository.findById(listOutput.listId()).orElseThrow();
-        assertEquals(2, list.getItems().size());
+        assertEquals(1, list.getItems().size());
         assertTrue(list.getItems().stream().allMatch(item -> item.getName().equals("tomato")));
+        assertNull(list.getItems().get(0).getSourceKind());
+        assertNull(list.getItems().get(0).getSourceLabel());
+    }
+
+    @Test
+    void mealIntakeDoesNotMergeIntoManualOpenItemWhenQuantityCompatibilityIsUnclear() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        groupRepository.save(new Group(groupId, "Home"));
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.ADMIN));
+
+        CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
+                groupId,
+                userId,
+                "Groceries"
+        );
+
+        shoppingApplicationService.addShoppingItem(groupId, userId, listOutput.listId(), "tomato");
+
+        RecipeView recipe = mealsApplicationService.createRecipe(
+                groupId,
+                userId,
+                "Salad",
+                List.of(new IngredientInput("Tomato", new BigDecimal("2"), IngredientUnit.PCS, 1))
+        );
+
+        mealsApplicationService.addOrReplaceMeal(
+                groupId,
+                userId,
+                2025,
+                10,
+                1,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                recipe.recipeId(),
+                listOutput.listId()
+        );
+
+        ShoppingList list = shoppingListRepository.findById(listOutput.listId()).orElseThrow();
+        assertEquals(2, list.getItems().size());
     }
 }

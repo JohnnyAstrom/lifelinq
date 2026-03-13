@@ -126,9 +126,9 @@ public class ShoppingApplicationService {
         String normalizedName = normalizeItemName(itemName);
         UUID itemId = UUID.randomUUID();
         Instant now = clock.instant();
-        list.addItem(itemId, normalizedName, quantity, unit, sourceKind, sourceLabel, now);
+        UUID resolvedItemId = list.addItem(itemId, normalizedName, quantity, unit, sourceKind, sourceLabel, now);
         shoppingListRepository.save(list);
-        ShoppingItem item = list.getItemOrThrow(itemId);
+        ShoppingItem item = list.getItemOrThrow(resolvedItemId);
         return new AddShoppingItemOutput(
                 list.getId(),
                 item.getId(),

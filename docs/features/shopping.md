@@ -296,6 +296,7 @@ Current known interaction reality:
 - quantity and unit are supported
 - bought items are rendered separately from open items
 - meal-created shopping items can now carry narrow provenance (`sourceKind`, `sourceLabel`) from the Meals integration path
+- meal-plan intake may conservatively merge into an existing open item when title and quantity/unit compatibility are unambiguous
 - the frontend feature now applies effective category through local feature-owned precedence:
   - explicit override
   - group-owned remembered category
@@ -316,6 +317,7 @@ Current known limitations:
 - remembered category is now durable shopping-specific backend state, but still not part of shopping item transport fields
 - learned category memory can be cleared through the shopping edit flow, but this remains a shopping-specific interaction rather than transport-level item state
 - provenance is now transport-visible for meal-created items, but still intentionally narrow and not yet a broader shopping lifecycle/synchronization model
+- merged meal-plan intake does not create a broader source history model; a merged row now keeps the simplified shopping item semantics rather than accumulated provenance
 
 ### Future-ready frontend/domain direction
 

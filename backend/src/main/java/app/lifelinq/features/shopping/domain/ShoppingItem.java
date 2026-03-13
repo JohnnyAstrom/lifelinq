@@ -13,8 +13,8 @@ public final class ShoppingItem {
     private Instant boughtAt;
     private BigDecimal quantity;
     private ShoppingUnit unit;
-    private final ShoppingItemSourceKind sourceKind;
-    private final String sourceLabel;
+    private ShoppingItemSourceKind sourceKind;
+    private String sourceLabel;
 
     public ShoppingItem(UUID id, String name, Instant createdAt) {
         this(id, name, 0, createdAt, null, null, null, null);
@@ -122,6 +122,32 @@ public final class ShoppingItem {
         this.unit = unit;
     }
 
+    public boolean canAbsorbMealPlanIntake(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        if (status != ShoppingItemStatus.TO_BUY) {
+            return false;
+        }
+        if (quantity == null && unit == null && incomingQuantity == null && incomingUnit == null) {
+            return true;
+        }
+        if (quantity == null || unit == null) {
+            return false;
+        }
+        if (incomingQuantity == null || incomingUnit == null) {
+            return false;
+        }
+        return unit == incomingUnit;
+    }
+
+    public void absorbMealPlanIntake(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        if (!canAbsorbMealPlanIntake(incomingQuantity, incomingUnit)) {
+            throw new IllegalArgumentException("incoming meal-plan item is not compatible with existing item");
+        }
+        if (quantity != null && incomingQuantity != null) {
+            quantity = quantity.add(incomingQuantity);
+        }
+        clearSource();
+    }
+
     public UUID getId() {
         return id;
     }
@@ -167,6 +193,11 @@ public final class ShoppingItem {
 
     public String getSourceLabel() {
         return sourceLabel;
+    }
+
+    private void clearSource() {
+        sourceKind = null;
+        sourceLabel = null;
     }
 
     private static void validateQuantityAndUnit(BigDecimal quantity, ShoppingUnit unit) {
