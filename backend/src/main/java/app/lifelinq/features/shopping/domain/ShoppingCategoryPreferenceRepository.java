@@ -14,4 +14,10 @@ public interface ShoppingCategoryPreferenceRepository {
             ShoppingListType listType,
             String normalizedTitle
     );
+
+    void deleteByGroupIdAndListTypeAndNormalizedTitle(
+            UUID groupId,
+            ShoppingListType listType,
+            String normalizedTitle
+    );
 }

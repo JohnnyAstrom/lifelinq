@@ -314,6 +314,7 @@ Current known limitations:
 - no current transport-level grouping model beyond client-side open/bought separation
 - category override is still frontend-local item behavior, not backend/API transport
 - remembered category is now durable shopping-specific backend state, but still not part of shopping item transport fields
+- learned category memory can be cleared through the shopping edit flow, but this remains a shopping-specific interaction rather than transport-level item state
 
 ### Future-ready frontend/domain direction
 

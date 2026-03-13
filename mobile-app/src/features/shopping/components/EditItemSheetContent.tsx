@@ -13,6 +13,7 @@ type Props = {
   editQuantityPlaceholder: string;
   editCategoryLabel: string;
   autoCategoryLabel: string;
+  resetLearnedCategoryLabel: string;
   saveChangesLabel: string;
   removeItemLabel: string;
   closeLabel: string;
@@ -23,6 +24,7 @@ type Props = {
   quantityValue: string;
   editUnit: string | null;
   editCategoryOverride: ShoppingCategoryKey | null;
+  showResetLearnedCategory: boolean;
   editError: string | null;
   showMoreEditUnits: boolean;
   primaryUnitOptions: UnitOption[];
@@ -32,6 +34,7 @@ type Props = {
   onChangeQuantity: (value: string) => void;
   onSelectUnit: (value: string | null) => void;
   onSelectCategoryOverride: (value: ShoppingCategoryKey | null) => void;
+  onResetLearnedCategory: () => void | Promise<void>;
   onToggleMoreUnits: () => void;
   onSave: () => void | Promise<void>;
   onRemove: () => void | Promise<void>;
@@ -45,6 +48,7 @@ export function EditItemSheetContent({
   editQuantityPlaceholder,
   editCategoryLabel,
   autoCategoryLabel,
+  resetLearnedCategoryLabel,
   saveChangesLabel,
   removeItemLabel,
   closeLabel,
@@ -55,6 +59,7 @@ export function EditItemSheetContent({
   quantityValue,
   editUnit,
   editCategoryOverride,
+  showResetLearnedCategory,
   editError,
   showMoreEditUnits,
   primaryUnitOptions,
@@ -64,6 +69,7 @@ export function EditItemSheetContent({
   onChangeQuantity,
   onSelectUnit,
   onSelectCategoryOverride,
+  onResetLearnedCategory,
   onToggleMoreUnits,
   onSave,
   onRemove,
@@ -137,6 +143,11 @@ export function EditItemSheetContent({
               />
             ))}
           </View>
+          {showResetLearnedCategory ? (
+            <View style={styles.editCategoryActions}>
+              <AppButton title={resetLearnedCategoryLabel} onPress={onResetLearnedCategory} variant="ghost" fullWidth />
+            </View>
+          ) : null}
         </View>
         {editError ? <Text style={styles.error}>{editError}</Text> : null}
         <View style={styles.editorActions}>

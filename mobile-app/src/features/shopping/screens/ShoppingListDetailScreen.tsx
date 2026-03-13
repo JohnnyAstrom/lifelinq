@@ -109,6 +109,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     editQuantityPlaceholder: 'Quantity (optional)',
     editCategoryLabel: 'Category',
     autoCategoryLabel: 'Auto',
+    resetLearnedCategoryLabel: 'Reset learned category',
     saveChanges: 'Save changes',
     removeItem: 'Remove item',
     close: 'Close',
@@ -516,6 +517,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             editQuantityPlaceholder={strings.editQuantityPlaceholder}
             editCategoryLabel={strings.editCategoryLabel}
             autoCategoryLabel={strings.autoCategoryLabel}
+            resetLearnedCategoryLabel={strings.resetLearnedCategoryLabel}
             saveChangesLabel={strings.saveChanges}
             removeItemLabel={strings.removeItem}
             closeLabel={strings.close}
@@ -526,6 +528,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             quantityValue={workflowState.editQuantity}
             editUnit={workflowState.editUnit}
             editCategoryOverride={workflowState.editCategoryOverride}
+            showResetLearnedCategory={workflowState.editHasLearnedCategory}
             editError={workflowState.editError}
             showMoreEditUnits={showMoreEditUnits}
             primaryUnitOptions={PRIMARY_UNIT_OPTIONS}
@@ -540,6 +543,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
               }
             }}
             onSelectCategoryOverride={(value) => workflowActions.setEditCategoryOverride(value)}
+            onResetLearnedCategory={() => void workflowActions.handleResetLearnedCategory()}
             onToggleMoreUnits={() => setShowMoreEditUnits((prev) => !prev)}
             onSave={handleSaveEdit}
             onRemove={handleRemoveEdit}
@@ -773,6 +777,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.xs,
+  },
+  editCategoryActions: {
+    paddingTop: theme.spacing.xs,
   },
   editorActions: {
     gap: theme.spacing.xs,

@@ -63,4 +63,20 @@ class JpaShoppingCategoryPreferenceRepositoryAdapterTest {
         assertEquals(1, preferences.size());
         assertEquals(ShoppingCategory.PANTRY, preferences.get(0).preferredCategory());
     }
+
+    @Test
+    void deletesExistingPreferenceForGroupTypeAndTitle() {
+        UUID groupId = UUID.randomUUID();
+        repository.save(new ShoppingCategoryPreference(
+                groupId,
+                ShoppingListType.SUPPLIES,
+                "tape",
+                ShoppingCategory.HOUSEHOLD,
+                Instant.now()
+        ));
+
+        repository.deleteByGroupIdAndListTypeAndNormalizedTitle(groupId, ShoppingListType.SUPPLIES, "tape");
+
+        assertTrue(repository.findByGroupIdAndListTypeAndNormalizedTitle(groupId, ShoppingListType.SUPPLIES, "tape").isEmpty());
+    }
 }

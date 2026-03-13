@@ -234,6 +234,21 @@ public class ShoppingApplicationService {
         return toView(saved);
     }
 
+    @Transactional
+    public void clearShoppingCategoryPreference(
+            UUID groupId,
+            UUID actorUserId,
+            ShoppingListType listType,
+            String normalizedTitle
+    ) {
+        ensureGroupMemberUseCase.execute(groupId, actorUserId);
+        shoppingCategoryPreferenceRepository.deleteByGroupIdAndListTypeAndNormalizedTitle(
+                groupId,
+                listType,
+                normalizeCategoryPreferenceTitle(normalizedTitle)
+        );
+    }
+
     @Transactional(readOnly = true)
     public List<ShoppingListView> listShoppingLists(UUID groupId, UUID actorUserId) {
         ensureGroupMemberUseCase.execute(groupId, actorUserId);

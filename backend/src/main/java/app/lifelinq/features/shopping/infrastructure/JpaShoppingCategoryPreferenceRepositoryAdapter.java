@@ -77,6 +77,24 @@ public final class JpaShoppingCategoryPreferenceRepositoryAdapter implements Sho
                 .map(this::toDomain);
     }
 
+    @Override
+    public void deleteByGroupIdAndListTypeAndNormalizedTitle(
+            UUID groupId,
+            ShoppingListType listType,
+            String normalizedTitle
+    ) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        if (listType == null) {
+            throw new IllegalArgumentException("listType must not be null");
+        }
+        if (normalizedTitle == null || normalizedTitle.isBlank()) {
+            throw new IllegalArgumentException("normalizedTitle must not be blank");
+        }
+        repository.deleteByGroupIdAndListTypeAndNormalizedTitle(groupId, listType.key(), normalizedTitle);
+    }
+
     private ShoppingCategoryPreference toDomain(ShoppingCategoryPreferenceEntity entity) {
         return new ShoppingCategoryPreference(
                 entity.getGroupId(),

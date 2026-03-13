@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import {
+  clearShoppingCategoryPreference,
   listShoppingCategoryPreferences,
   saveShoppingCategoryPreference,
 } from '../api/shoppingCategoryPreferencesApi';
@@ -52,17 +53,22 @@ function resetCategoryMemoryStore(nextGroupId: string | null) {
 
 function setCategoryOverride(
   itemId: string,
-  listType: ShoppingListType,
-  normalizedTitle: string,
+  _listType: ShoppingListType,
+  _normalizedTitle: string,
   categoryKey: ShoppingCategoryKey
 ) {
   itemCategoryOverrides.set(itemId, categoryKey);
-  rememberedCategoriesByTitle.set(memoryKey(listType, normalizedTitle), categoryKey);
   emitChange();
 }
 
 function clearCategoryOverride(itemId: string) {
   if (itemCategoryOverrides.delete(itemId)) {
+    emitChange();
+  }
+}
+
+function clearRememberedCategory(listType: ShoppingListType, normalizedTitle: string) {
+  if (rememberedCategoriesByTitle.delete(memoryKey(listType, normalizedTitle))) {
     emitChange();
   }
 }
@@ -147,11 +153,30 @@ export function useShoppingCategoryPreferences() {
     }
   }
 
+  async function removeCategoryPreference(
+    listType: ShoppingListType,
+    normalizedTitle: string
+  ) {
+    if (!token || !activeGroupId) {
+      clearRememberedCategory(listType, normalizedTitle);
+      return;
+    }
+    try {
+      await clearShoppingCategoryPreference(listType, normalizedTitle, { token });
+      clearRememberedCategory(listType, normalizedTitle);
+      loadedGroupId = activeGroupId;
+    } catch (error) {
+      await handleApiError(error);
+      throw error;
+    }
+  }
+
   return {
     version: currentVersion,
     getOverrideForItem,
     getMemoryForTitle,
     rememberCategory: persistCategoryPreference,
+    forgetCategory: removeCategoryPreference,
     setCategoryOverride,
     clearCategoryOverride,
   };

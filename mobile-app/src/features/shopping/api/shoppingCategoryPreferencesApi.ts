@@ -32,3 +32,17 @@ export async function saveShoppingCategoryPreference(
     clientOptions
   );
 }
+
+export async function clearShoppingCategoryPreference(
+  listType: ShoppingListType,
+  normalizedTitle: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<void> {
+  return fetchJson<void>(
+    `/shopping/category-preferences?listType=${encodeURIComponent(listType)}&normalizedTitle=${encodeURIComponent(normalizedTitle)}`,
+    {
+      method: 'DELETE',
+    },
+    clientOptions
+  );
+}

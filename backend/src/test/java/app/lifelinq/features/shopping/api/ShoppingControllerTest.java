@@ -231,6 +231,27 @@ class ShoppingControllerTest {
         );
     }
 
+    @Test
+    void clearCategoryPreferenceSucceedsWithValidToken() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(delete("/shopping/category-preferences")
+                        .header("Authorization", "Bearer " + token)
+                        .queryParam("listType", "mixed")
+                        .queryParam("normalizedTitle", "apple"))
+                .andExpect(status().isNoContent());
+
+        verify(shoppingApplicationService).clearShoppingCategoryPreference(
+                groupId,
+                userId,
+                ShoppingListType.MIXED,
+                "apple"
+        );
+    }
+
     private String createToken(UUID userId, Instant exp) throws Exception {
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(

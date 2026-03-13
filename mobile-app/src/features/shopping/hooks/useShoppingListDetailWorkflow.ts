@@ -47,6 +47,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
   const [editQuantity, setEditQuantity] = useState('');
   const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('PCS');
   const [editCategoryOverride, setEditCategoryOverride] = useState<ShoppingCategoryKey | null>(null);
+  const [editShouldRememberCategory, setEditShouldRememberCategory] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [showAddDetails, setShowAddDetails] = useState(false);
   const [addQuantity, setAddQuantity] = useState('');
@@ -55,6 +56,9 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
   const [addDetailsFeedback, setAddDetailsFeedback] = useState<string | null>(null);
   const [orderedOpenItemIds, setOrderedOpenItemIds] = useState<string[]>([]);
   const [draggingOpenItemId, setDraggingOpenItemId] = useState<string | null>(null);
+  const normalizedEditTitle = normalizeShoppingItemTitle(editName.trim());
+  const editHasLearnedCategory = normalizedEditTitle.length > 0
+    && categoryPreferences.getMemoryForTitle(listType, normalizedEditTitle) !== null;
 
   const addDetailsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -73,6 +77,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
     setEditQuantity(item.quantity ? String(item.quantity) : '');
     setEditUnit(item.unit ?? 'PCS');
     setEditCategoryOverride(item.categoryOverrideKey);
+    setEditShouldRememberCategory(false);
     setEditError(null);
   }
 
@@ -82,7 +87,22 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
     setEditQuantity('');
     setEditUnit('PCS');
     setEditCategoryOverride(null);
+    setEditShouldRememberCategory(false);
     setEditError(null);
+  }
+
+  function selectEditCategoryOverride(value: ShoppingCategoryKey | null) {
+    setEditCategoryOverride(value);
+    setEditShouldRememberCategory(value !== null);
+  }
+
+  async function handleResetLearnedCategory() {
+    const normalizedTitle = normalizeShoppingItemTitle(editName.trim());
+    if (!normalizedTitle) {
+      return;
+    }
+    await categoryPreferences.forgetCategory(listType, normalizedTitle);
+    setEditShouldRememberCategory(false);
   }
 
   function closeAddDetails() {
@@ -161,7 +181,9 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
     await shopping.updateItem(listId, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
     const normalizedTitle = normalizeShoppingItemTitle(editName.trim());
     if (editCategoryOverride) {
-      await categoryPreferences.rememberCategory(listType, normalizedTitle, editCategoryOverride);
+      if (editShouldRememberCategory) {
+        await categoryPreferences.rememberCategory(listType, normalizedTitle, editCategoryOverride);
+      }
       categoryPreferences.setCategoryOverride(editItemId, listType, normalizedTitle, editCategoryOverride);
     } else {
       categoryPreferences.clearCategoryOverride(editItemId);
@@ -207,6 +229,8 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       editQuantity,
       editUnit,
       editCategoryOverride,
+      editShouldRememberCategory,
+      editHasLearnedCategory,
       editError,
       showAddDetails,
       addQuantity,
@@ -221,7 +245,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       setEditName,
       setEditQuantity,
       setEditUnit,
-      setEditCategoryOverride,
+      setEditCategoryOverride: selectEditCategoryOverride,
       setEditError,
       setShowAddDetails,
       setAddQuantity,
@@ -233,6 +257,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       openEdit,
       closeEdit,
       closeAddDetails,
+      handleResetLearnedCategory,
       handleAddItem,
       handleSaveEdit,
       handleRemoveEdit,

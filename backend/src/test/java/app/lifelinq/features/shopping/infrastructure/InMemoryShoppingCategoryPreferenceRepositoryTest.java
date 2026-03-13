@@ -58,4 +58,22 @@ class InMemoryShoppingCategoryPreferenceRepositoryTest {
         assertEquals(ShoppingCategory.PANTRY, preferences.get(0).preferredCategory());
         assertTrue(repository.findByGroupIdAndListTypeAndNormalizedTitle(groupId, ShoppingListType.GROCERY, "apple").isPresent());
     }
+
+    @Test
+    void deletesExistingPreferenceForGroupTypeAndTitle() {
+        InMemoryShoppingCategoryPreferenceRepository repository = new InMemoryShoppingCategoryPreferenceRepository();
+        UUID groupId = UUID.randomUUID();
+
+        repository.save(new ShoppingCategoryPreference(
+                groupId,
+                ShoppingListType.SUPPLIES,
+                "tape",
+                ShoppingCategory.HOUSEHOLD,
+                Instant.now()
+        ));
+
+        repository.deleteByGroupIdAndListTypeAndNormalizedTitle(groupId, ShoppingListType.SUPPLIES, "tape");
+
+        assertTrue(repository.findByGroupIdAndListTypeAndNormalizedTitle(groupId, ShoppingListType.SUPPLIES, "tape").isEmpty());
+    }
 }

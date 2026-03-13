@@ -54,6 +54,24 @@ public final class InMemoryShoppingCategoryPreferenceRepository implements Shopp
         return Optional.ofNullable(preferences.get(key(groupId, listType, normalizedTitle)));
     }
 
+    @Override
+    public void deleteByGroupIdAndListTypeAndNormalizedTitle(
+            UUID groupId,
+            ShoppingListType listType,
+            String normalizedTitle
+    ) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        if (listType == null) {
+            throw new IllegalArgumentException("listType must not be null");
+        }
+        if (normalizedTitle == null || normalizedTitle.isBlank()) {
+            throw new IllegalArgumentException("normalizedTitle must not be blank");
+        }
+        preferences.remove(key(groupId, listType, normalizedTitle));
+    }
+
     private String key(UUID groupId, ShoppingListType listType, String normalizedTitle) {
         return groupId + "::" + listType.key() + "::" + normalizedTitle;
     }
