@@ -1,6 +1,7 @@
 export {
   addOrReplaceMeal,
   createRecipe,
+  getRecipe,
   getWeekPlan,
   removeMeal,
   updateRecipe,
@@ -13,4 +14,3 @@ export {
   type RecipeResponse,
   type WeekPlanResponse,
 } from '../../../shared/api/meals';
-

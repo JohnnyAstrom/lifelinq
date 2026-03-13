@@ -107,7 +107,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     planMealTitle: 'Plan a meal',
     dayLabel: 'Day',
     mealTitlePlaceholder: 'Meal title',
-    ingredientsPlaceholder: 'Ingredients (one per line)',
+    ingredientsLabel: 'Ingredients',
+    ingredientNamePlaceholder: 'Ingredient name',
+    quantityPlaceholder: 'Amount',
+    addIngredient: 'Add ingredient',
+    removeIngredient: 'Remove',
+    loadingIngredients: 'Loading ingredients...',
     addIngredientsToShopping: 'Add ingredients to shopping list',
     noShoppingLists: 'No shopping lists yet.',
     shoppingSyncFailed: 'Meal saved, but shopping sync failed:',
@@ -378,8 +383,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           mealTypeLabels={MEAL_TYPE_LABELS}
           recipeTitle={editor.recipeTitle}
           onChangeRecipeTitle={editor.setRecipeTitle}
-          ingredientsText={editor.ingredientsText}
-          onChangeIngredientsText={editor.setIngredientsText}
+          ingredientRows={editor.ingredientRows}
+          isRecipeLoading={editor.isRecipeLoading}
+          onAddIngredientRow={editor.addIngredientRow}
+          onRemoveIngredientRow={editor.removeIngredientRow}
+          onChangeIngredientName={editor.setIngredientName}
+          onChangeIngredientQuantity={editor.setIngredientQuantity}
+          onToggleIngredientUnit={editor.setIngredientUnit}
           pushToShopping={editor.pushToShopping}
           onChangePushToShopping={editor.setPushToShopping}
           lists={lists}
@@ -391,7 +401,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             planMealTitle: strings.planMealTitle,
             dayLabel: strings.dayLabel,
             mealTitlePlaceholder: strings.mealTitlePlaceholder,
-            ingredientsPlaceholder: strings.ingredientsPlaceholder,
+            ingredientsLabel: strings.ingredientsLabel,
+            ingredientNamePlaceholder: strings.ingredientNamePlaceholder,
+            quantityPlaceholder: strings.quantityPlaceholder,
+            addIngredient: strings.addIngredient,
+            removeIngredient: strings.removeIngredient,
+            loadingIngredients: strings.loadingIngredients,
             addIngredientsToShopping: strings.addIngredientsToShopping,
             noShoppingLists: strings.noShoppingLists,
             shoppingSyncFailed: strings.shoppingSyncFailed,
