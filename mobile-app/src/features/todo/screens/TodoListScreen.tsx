@@ -115,7 +115,6 @@ export function TodoListScreen({ token, onDone }: Props) {
   const [showDetailMonthPicker, setShowDetailMonthPicker] = useState(false);
   const [showDetailTimePicker, setShowDetailTimePicker] = useState(false);
   const [scopePickerTarget, setScopePickerTarget] = useState<ScopePickerTarget>(null);
-  const [savingDetails, setSavingDetails] = useState(false);
   const todos = useTodos(token, 'ALL');
   const strings = {
     title: 'Todos',
@@ -132,6 +131,7 @@ export function TodoListScreen({ token, onDone }: Props) {
     addPlaceholder: 'What needs to be done?',
     addAction: 'Add',
     adding: 'Adding...',
+    loadingTodos: 'Loading todos...',
     back: 'Back',
     quickDateTitle: 'Date',
     quickToday: 'Today',
@@ -163,6 +163,7 @@ export function TodoListScreen({ token, onDone }: Props) {
     saveChanges: 'Save changes',
     savingChanges: 'Saving...',
     deleteTodo: 'Delete todo',
+    deletingTodo: 'Deleting...',
     confirmDeleteTitle: 'Delete todo?',
     confirmDeleteBody: 'This action cannot be undone.',
     confirmDeleteAction: 'Delete',
@@ -254,7 +255,7 @@ export function TodoListScreen({ token, onDone }: Props) {
         return;
       }
       if (detailsTodoId) {
-        setDetailsTodoId(null);
+        closeDetailSheet();
       }
     },
   });
@@ -303,7 +304,7 @@ export function TodoListScreen({ token, onDone }: Props) {
   }
 
   async function handleAdd() {
-    if (!text.trim() || todos.loading) {
+    if (!text.trim() || todos.isMutating) {
       return;
     }
     const scheduling = buildSchedulingPayload(pendingScope, pendingDate, pendingTime, pendingWeekStart, pendingMonthDate);
@@ -319,6 +320,9 @@ export function TodoListScreen({ token, onDone }: Props) {
   }
 
   function closeAddTodoSheet() {
+    if (isAddPending) {
+      return;
+    }
     setShowAddTodoSheet(false);
     setScopePickerTarget(null);
     setText('');
@@ -330,6 +334,13 @@ export function TodoListScreen({ token, onDone }: Props) {
     setShowMonthPicker(false);
     setShowTimePicker(false);
     Keyboard.dismiss();
+  }
+
+  function closeDetailSheet() {
+    if (isEditSavePending || isEditRemovePending) {
+      return;
+    }
+    setDetailsTodoId(null);
   }
 
   function setDateToToday() {
@@ -418,6 +429,12 @@ export function TodoListScreen({ token, onDone }: Props) {
   const selectedScopedTodo = detailsTodoId
     ? frontendScopedItems.find((item) => item.id === detailsTodoId)
     : null;
+  const showInitialLoad = todos.isInitialLoading && todos.items.length === 0;
+  const isAddPending = todos.pendingMutation?.kind === 'add';
+  const isEditSavePending = todos.pendingMutation?.kind === 'update'
+    && todos.pendingMutation.id === detailsTodoId;
+  const isEditRemovePending = todos.pendingMutation?.kind === 'remove'
+    && todos.pendingMutation.id === detailsTodoId;
   const canAddTodo = text.trim().length > 0;
   const horizontalGutter = theme.spacing.sm * 2;
   const modalWidth = Math.max(280, Math.min(760, viewportWidth - horizontalGutter));
@@ -464,23 +481,21 @@ export function TodoListScreen({ token, onDone }: Props) {
   }, [selectedTodo, selectedScopedTodo, selectedWeeklyStart, calendarMonth]);
 
   async function handleSaveDetails() {
-    if (!selectedTodo || savingDetails) {
+    if (!selectedTodo || isEditSavePending || isEditRemovePending) {
       return;
     }
     if (!detailText.trim()) {
       return;
     }
-    setSavingDetails(true);
     const scheduling = buildSchedulingPayload(detailScope, detailDate, detailTime, detailWeekStart, detailMonthDate);
     const updated = await todos.update(selectedTodo.id, detailText.trim(), scheduling);
-    setSavingDetails(false);
     if (updated) {
-      setDetailsTodoId(null);
+      closeDetailSheet();
     }
   }
 
   function handleDeleteDetails() {
-    if (!selectedTodo || savingDetails) {
+    if (!selectedTodo || isEditSavePending || isEditRemovePending) {
       return;
     }
     Alert.alert(
@@ -495,7 +510,7 @@ export function TodoListScreen({ token, onDone }: Props) {
             void (async () => {
               const removed = await todos.remove(selectedTodo.id);
               if (removed) {
-                setDetailsTodoId(null);
+                closeDetailSheet();
               }
             })();
           },
@@ -742,7 +757,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           <ScrollView
             style={styles.mainScroll}
             contentContainerStyle={styles.mainScrollContent}
-            refreshControl={<RefreshControl refreshing={todos.loading} onRefresh={todos.reload} />}
+            refreshControl={<RefreshControl refreshing={todos.isRefreshing} onRefresh={todos.reload} />}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
@@ -796,6 +811,7 @@ export function TodoListScreen({ token, onDone }: Props) {
           </AppCard>
         ) : null}
 
+        {showInitialLoad ? <Subtle>{strings.loadingTodos}</Subtle> : null}
         {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
 
         {timeView === 'DAILY' ? (
@@ -804,7 +820,7 @@ export function TodoListScreen({ token, onDone }: Props) {
               {dailyOpenDayItems.length === 0
                 && dailyDoneItems.length === 0
                 && (!isViewingToday || dailyOpenLaterItems.length === 0)
-                && !todos.loading ? (
+                && !showInitialLoad ? (
                 <Subtle>{strings.noTodos}</Subtle>
               ) : null}
 
@@ -1008,14 +1024,20 @@ export function TodoListScreen({ token, onDone }: Props) {
 
               <View style={styles.sheetFooterActions}>
                 <AppButton
-                  title={todos.loading ? strings.adding : strings.addAction}
+                  title={isAddPending ? strings.adding : strings.addAction}
                   onPress={handleAdd}
                   fullWidth
-                  disabled={todos.loading || !canAddTodo}
+                  disabled={todos.isMutating || !canAddTodo}
                   accentKey="todos"
                 />
                 {!isKeyboardVisible ? (
-                  <AppButton title={strings.close} onPress={closeAddTodoSheet} variant="ghost" fullWidth />
+                  <AppButton
+                    title={strings.close}
+                    onPress={closeAddTodoSheet}
+                    variant="ghost"
+                    fullWidth
+                    disabled={isAddPending}
+                  />
                 ) : null}
               </View>
             </View>
@@ -1453,7 +1475,7 @@ export function TodoListScreen({ token, onDone }: Props) {
         ) : null}
 
         {detailsTodoId ? (
-          <OverlaySheet onClose={() => setDetailsTodoId(null)} sheetStyle={[styles.sheet, styles.detailSheet]}>
+          <OverlaySheet onClose={closeDetailSheet} sheetStyle={[styles.sheet, styles.detailSheet]}>
             <View style={styles.sheetLayout}>
               <ScrollView
                 style={styles.detailScroll}
@@ -1528,25 +1550,35 @@ export function TodoListScreen({ token, onDone }: Props) {
 
               <View style={styles.sheetFooterActions}>
                 <AppButton
-                  title={savingDetails ? strings.savingChanges : strings.saveChanges}
+                  title={isEditSavePending ? strings.savingChanges : strings.saveChanges}
                   onPress={handleSaveDetails}
                   fullWidth
-                  disabled={savingDetails || !detailText.trim()}
+                  disabled={isEditSavePending || isEditRemovePending || !detailText.trim()}
                   accentKey="todos"
                 />
                 {!isKeyboardVisible ? (
                   <Pressable
                     style={({ pressed }) => [
                       styles.todoDeleteButton,
+                      isEditSavePending || isEditRemovePending ? { opacity: 0.5 } : null,
                       pressed ? { opacity: 0.92 } : null,
                     ]}
                     onPress={handleDeleteDetails}
+                    disabled={isEditSavePending || isEditRemovePending}
                   >
-                    <Text style={styles.todoDeleteButtonText}>{strings.deleteTodo}</Text>
+                    <Text style={styles.todoDeleteButtonText}>
+                      {isEditRemovePending ? strings.deletingTodo : strings.deleteTodo}
+                    </Text>
                   </Pressable>
                 ) : null}
                 {!isKeyboardVisible ? (
-                  <AppButton title={strings.close} onPress={() => setDetailsTodoId(null)} variant="ghost" fullWidth />
+                  <AppButton
+                    title={strings.close}
+                    onPress={closeDetailSheet}
+                    variant="ghost"
+                    fullWidth
+                    disabled={isEditSavePending || isEditRemovePending}
+                  />
                 ) : null}
               </View>
             </View>

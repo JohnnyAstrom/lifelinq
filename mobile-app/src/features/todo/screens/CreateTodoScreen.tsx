@@ -25,6 +25,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const todos = useTodos(token, 'OPEN');
+  const isCreatePending = todos.pendingMutation?.kind === 'add';
   const canCreateTodo = text.trim().length > 0;
   const strings = {
     title: 'New todo',
@@ -52,7 +53,7 @@ export function CreateTodoScreen({ token, onDone }: Props) {
     if (!text.trim()) {
       return;
     }
-    if (todos.loading) {
+    if (todos.isMutating) {
       return;
     }
     const dueDate = pendingDate ? toApiDate(pendingDate) : undefined;
@@ -181,16 +182,16 @@ export function CreateTodoScreen({ token, onDone }: Props) {
           </View>
         ) : null}
         {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
-        {canCreateTodo || todos.loading ? (
+        {canCreateTodo || isCreatePending ? (
           <AppButton
-            title={todos.loading ? strings.saving : strings.save}
+            title={isCreatePending ? strings.saving : strings.save}
             onPress={handleCreate}
             fullWidth
-            disabled={todos.loading}
+            disabled={!canCreateTodo || todos.isMutating}
             accentKey="todos"
           />
         ) : null}
-        <AppButton title={strings.back} onPress={onDone} variant="ghost" fullWidth />
+        <AppButton title={strings.back} onPress={onDone} variant="ghost" fullWidth disabled={isCreatePending} />
       </AppCard>
 
       {showDatePicker ? (
