@@ -54,6 +54,7 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     createListTypeLabel: 'List type',
     listNamePlaceholder: 'List name',
     createListAction: 'Create list',
+    creatingListAction: 'Creating...',
     back: 'Back',
     toBuy: 'to buy',
     allBought: 'Everything bought',
@@ -70,8 +71,13 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     editListTitle: 'Edit list',
     editListSubtitle: 'Update the list name and type.',
     editListSave: 'Save changes',
+    editListSaving: 'Saving...',
   };
   const listTypeOptions = getShoppingListTypeDefinitions();
+  const showInitialLoad = shopping.isInitialLoading && shopping.lists.length === 0;
+  const isCreatePending = shopping.pendingMutation?.kind === 'create-list';
+  const isEditPending = shopping.pendingMutation?.kind === 'update-list'
+    && shopping.pendingMutation.listId === workflowState.editListId;
 
   useEffect(() => {
     if (workflowState.draggingListId || pendingListReorderSyncRef.current) {
@@ -95,6 +101,9 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   const canCreateList = workflowState.canCreateList;
 
   function closeCreate() {
+    if (isCreatePending) {
+      return;
+    }
     workflowActions.closeCreate();
     Keyboard.dismiss();
   }
@@ -118,6 +127,9 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
   }
 
   function closeEdit() {
+    if (isEditPending) {
+      return;
+    }
     workflowActions.closeEdit();
     Keyboard.dismiss();
   }
@@ -273,12 +285,12 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     >
 
       <View style={styles.contentOffset}>
-        {shopping.loading ? <Subtle>{strings.loading}</Subtle> : null}
+        {showInitialLoad ? <Subtle>{strings.loading}</Subtle> : null}
         {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
         <AppCard style={styles.listsCard}>
           <SectionTitle>{strings.yourLists}</SectionTitle>
-          {shopping.lists.length === 0 ? (
+          {showInitialLoad ? null : shopping.lists.length === 0 ? (
             <Subtle>{strings.noLists}</Subtle>
           ) : (
             <View style={styles.listSection}>
@@ -357,9 +369,11 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             typeOptions={listTypeOptions}
             placeholder={strings.listNamePlaceholder}
             createActionLabel={strings.createListAction}
+            createActionPendingLabel={strings.creatingListAction}
             closeLabel={strings.close}
             value={workflowState.newListName}
             canCreate={canCreateList}
+            isSubmitting={isCreatePending}
             onChangeText={workflowActions.setNewListName}
             onSelectType={workflowActions.setNewListType}
             onSubmitEditing={async () => {
@@ -407,9 +421,11 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             typeOptions={listTypeOptions}
             placeholder={strings.listNamePlaceholder}
             createActionLabel={strings.editListSave}
+            createActionPendingLabel={strings.editListSaving}
             closeLabel={strings.close}
             value={workflowState.editListName}
             canCreate={workflowState.canEditList}
+            isSubmitting={isEditPending}
             onChangeText={workflowActions.setEditListName}
             onSelectType={workflowActions.setEditListType}
             onSubmitEditing={async () => {

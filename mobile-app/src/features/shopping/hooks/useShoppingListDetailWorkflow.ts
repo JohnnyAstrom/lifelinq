@@ -259,7 +259,10 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       return;
     }
     const effectiveUnit = parsedQuantity === null ? null : editUnit;
-    await shopping.updateItem(listId, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
+    const updated = await shopping.updateItem(listId, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
+    if (!updated) {
+      return;
+    }
     const normalizedTitle = normalizeShoppingItemTitle(editName.trim());
     if (editCategoryOverride) {
       if (editShouldRememberCategory) {
@@ -280,7 +283,10 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
     if (!editItemId) {
       return;
     }
-    await shopping.removeItem(listId, editItemId);
+    const removed = await shopping.removeItem(listId, editItemId);
+    if (!removed) {
+      return;
+    }
     if (options?.onClose) {
       options.onClose();
       return;

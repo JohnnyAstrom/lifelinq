@@ -20,7 +20,9 @@ type Props = {
   autoCategoryLabel: string;
   resetLearnedCategoryLabel: string;
   saveChangesLabel: string;
+  saveChangesPendingLabel: string;
   removeItemLabel: string;
+  removeItemPendingLabel: string;
   closeLabel: string;
   unitNoneLabel: string;
   unitToggleMoreLabel: string;
@@ -44,6 +46,8 @@ type Props = {
   onSave: () => void | Promise<void>;
   onRemove: () => void | Promise<void>;
   onClose: () => void;
+  isSaving?: boolean;
+  isRemoving?: boolean;
 };
 
 export function EditItemSheetContent({
@@ -59,7 +63,9 @@ export function EditItemSheetContent({
   autoCategoryLabel,
   resetLearnedCategoryLabel,
   saveChangesLabel,
+  saveChangesPendingLabel,
   removeItemLabel,
+  removeItemPendingLabel,
   closeLabel,
   unitNoneLabel,
   unitToggleMoreLabel,
@@ -83,6 +89,8 @@ export function EditItemSheetContent({
   onSave,
   onRemove,
   onClose,
+  isSaving = false,
+  isRemoving = false,
 }: Props) {
   const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
 
@@ -199,13 +207,25 @@ export function EditItemSheetContent({
         ) : null}
         {editError ? <Text style={styles.error}>{editError}</Text> : null}
         <View style={styles.editorActions}>
-          <AppButton title={saveChangesLabel} onPress={onSave} fullWidth accentKey="shopping" />
+          <AppButton
+            title={isSaving ? saveChangesPendingLabel : saveChangesLabel}
+            onPress={onSave}
+            disabled={isSaving || isRemoving}
+            fullWidth
+            accentKey="shopping"
+          />
           <View style={styles.editorSecondaryActions}>
-            <AppButton title={removeItemLabel} onPress={onRemove} variant="ghost" />
+            <AppButton
+              title={isRemoving ? removeItemPendingLabel : removeItemLabel}
+              onPress={onRemove}
+              disabled={isSaving || isRemoving}
+              variant="ghost"
+            />
             <Pressable onPress={onClose} style={({ pressed }) => [
               styles.editorCloseLink,
+              isSaving || isRemoving ? styles.editorCloseLinkDisabled : null,
               pressed ? styles.editorCloseLinkPressed : null,
-            ]}>
+            ]} disabled={isSaving || isRemoving}>
               <Text style={styles.editorCloseText}>{closeLabel}</Text>
             </Pressable>
           </View>
