@@ -13,7 +13,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreateListSheetContent } from '../components/CreateListSheetContent';
 import { ListActionsSheetContent } from '../components/ListActionsSheetContent';
-import { RenameListSheetContent } from '../components/RenameListSheetContent';
 import { ShoppingListRow } from '../components/ShoppingListRow';
 import { useShoppingListsWorkflow } from '../hooks/useShoppingListsWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
@@ -66,10 +65,11 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     removeConfirm: 'Remove',
     actionsTitle: 'List actions',
     actionShare: 'Share',
-    actionEditName: 'Edit name',
+    actionEditList: 'Edit list',
     actionDelete: 'Delete',
-    renameTitle: 'Edit list name',
-    renameSave: 'Save',
+    editListTitle: 'Edit list',
+    editListSubtitle: 'Update the list name and type.',
+    editListSave: 'Save changes',
   };
   const listTypeOptions = getShoppingListTypeDefinitions();
 
@@ -117,18 +117,18 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     Keyboard.dismiss();
   }
 
-  function closeRename() {
-    workflowActions.closeRename();
+  function closeEdit() {
+    workflowActions.closeEdit();
     Keyboard.dismiss();
   }
 
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: workflowState.showCreate || !!workflowState.activeListId || !!workflowState.renameListId,
+    isOverlayOpen: workflowState.showCreate || !!workflowState.activeListId || !!workflowState.editListId,
     onCloseOverlay: () => {
-      if (workflowState.renameListId) {
-        closeRename();
+      if (workflowState.editListId) {
+        closeEdit();
         return;
       }
       if (workflowState.activeListId) {
@@ -153,14 +153,14 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     });
   }
 
-  function openRename() {
-    workflowActions.openRename();
+  function openEdit() {
+    workflowActions.openEdit();
     closeActions();
   }
 
-  async function handleRenameList() {
-    await workflowActions.handleRenameList();
-    closeRename();
+  async function handleEditList() {
+    await workflowActions.handleEditList();
+    closeEdit();
   }
 
   function moveId(ids: string[], from: number, to: number) {
@@ -379,11 +379,11 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             styles={styles}
             title={strings.actionsTitle}
             shareLabel={strings.actionShare}
-            editNameLabel={strings.actionEditName}
+            editNameLabel={strings.actionEditList}
             deleteLabel={strings.actionDelete}
             closeLabel={strings.close}
             onShare={handleShareList}
-            onEditName={openRename}
+            onEditName={openEdit}
             onDelete={() => {
               const list = workflowActions.selectedActionList();
               closeActions();
@@ -396,18 +396,29 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
         </OverlaySheet>
       ) : null}
 
-      {workflowState.renameListId ? (
-        <OverlaySheet onClose={closeRename} sheetStyle={styles.sheet}>
-          <RenameListSheetContent
+      {workflowState.editListId ? (
+        <OverlaySheet onClose={closeEdit} sheetStyle={styles.sheet}>
+          <CreateListSheetContent
             styles={styles}
-            title={strings.renameTitle}
+            title={strings.editListTitle}
+            subtitle={strings.editListSubtitle}
+            typeLabel={strings.createListTypeLabel}
+            selectedType={workflowState.editListType}
+            typeOptions={listTypeOptions}
             placeholder={strings.listNamePlaceholder}
-            saveLabel={strings.renameSave}
+            createActionLabel={strings.editListSave}
             closeLabel={strings.close}
-            value={workflowState.renameListName}
-            onChangeText={workflowActions.setRenameListName}
-            onSave={() => void handleRenameList()}
-            onClose={closeRename}
+            value={workflowState.editListName}
+            canCreate={workflowState.canEditList}
+            onChangeText={workflowActions.setEditListName}
+            onSelectType={workflowActions.setEditListType}
+            onSubmitEditing={async () => {
+              if (workflowState.canEditList) {
+                await handleEditList();
+              }
+            }}
+            onCreate={handleEditList}
+            onClose={closeEdit}
           />
         </OverlaySheet>
       ) : null}

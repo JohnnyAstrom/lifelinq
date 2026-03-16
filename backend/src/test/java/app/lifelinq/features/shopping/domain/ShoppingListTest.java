@@ -76,6 +76,22 @@ class ShoppingListTest {
     }
 
     @Test
+    void updateIdentityUpdatesNameAndType() {
+        ShoppingList list = new ShoppingList(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "Groceries",
+                ShoppingListType.GROCERY,
+                Instant.now()
+        );
+
+        list.updateIdentity("Cabin supplies", ShoppingListType.SUPPLIES);
+
+        assertEquals("Cabin supplies", list.getName());
+        assertEquals(ShoppingListType.SUPPLIES, list.getType());
+    }
+
+    @Test
     void mealPlanIntakeMergesIntoSingleCompatibleOpenItem() {
         ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
         UUID existingId = UUID.randomUUID();

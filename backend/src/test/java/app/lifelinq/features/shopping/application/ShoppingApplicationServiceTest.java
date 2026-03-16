@@ -10,6 +10,7 @@ import app.lifelinq.features.shopping.domain.ShoppingItemSourceKind;
 import app.lifelinq.features.shopping.domain.ShoppingList;
 import app.lifelinq.features.shopping.domain.ShoppingListType;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
+import app.lifelinq.features.shopping.contract.ShoppingListView;
 import app.lifelinq.features.shopping.infrastructure.InMemoryShoppingCategoryPreferenceRepository;
 import app.lifelinq.features.shopping.infrastructure.InMemoryShoppingListRepository;
 import java.math.BigDecimal;
@@ -20,6 +21,42 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ShoppingApplicationServiceTest {
+
+    @Test
+    void updateShoppingListIdentityUpdatesNameAndType() {
+        InMemoryShoppingListRepository listRepository = new InMemoryShoppingListRepository();
+        ShoppingApplicationService service = new ShoppingApplicationService(
+                listRepository,
+                new InMemoryShoppingCategoryPreferenceRepository(),
+                allowAllMembership(),
+                Clock.fixed(Instant.parse("2026-03-13T09:00:00Z"), ZoneOffset.UTC)
+        );
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+
+        listRepository.save(new ShoppingList(
+                listId,
+                groupId,
+                "Groceries",
+                ShoppingListType.GROCERY,
+                Instant.parse("2026-03-13T08:00:00Z")
+        ));
+
+        ShoppingListView updated = service.updateShoppingListIdentity(
+                groupId,
+                userId,
+                listId,
+                "Cabin supplies",
+                ShoppingListType.SUPPLIES
+        );
+
+        assertEquals("Cabin supplies", updated.name());
+        assertEquals("supplies", updated.type());
+        ShoppingList saved = listRepository.findById(listId).orElseThrow();
+        assertEquals("Cabin supplies", saved.getName());
+        assertEquals(ShoppingListType.SUPPLIES, saved.getType());
+    }
 
     @Test
     void addShoppingItemReturnsMergedItemWhenMealPlanIntakeIsAbsorbed() {

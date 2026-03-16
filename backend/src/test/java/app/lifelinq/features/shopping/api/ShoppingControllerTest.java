@@ -142,16 +142,16 @@ class ShoppingControllerTest {
         userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(shoppingApplicationService.updateShoppingListName(groupId, userId, listId, "Renamed"))
-                .thenReturn(new ShoppingListView(listId, "Renamed", "mixed", List.of()));
+        when(shoppingApplicationService.updateShoppingListIdentity(groupId, userId, listId, "Renamed", ShoppingListType.SUPPLIES))
+                .thenReturn(new ShoppingListView(listId, "Renamed", "supplies", List.of()));
 
         mockMvc.perform(patch("/shopping-lists/{listId}", listId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Renamed\"}"))
+                        .content("{\"name\":\"Renamed\",\"type\":\"supplies\"}"))
                 .andExpect(status().isOk());
 
-        verify(shoppingApplicationService).updateShoppingListName(groupId, userId, listId, "Renamed");
+        verify(shoppingApplicationService).updateShoppingListIdentity(groupId, userId, listId, "Renamed", ShoppingListType.SUPPLIES);
     }
 
     @Test

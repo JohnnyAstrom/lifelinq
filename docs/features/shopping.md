@@ -442,7 +442,7 @@ These values reflect current canonical transport reality.
 - create list with `name` and `type`
 - list lists
 - delete list
-- update list name
+- update list identity with `name` and `type`
 - reorder list with `direction: UP | DOWN`
 - add item with `name`, optional `quantity`, optional `unit`
 - toggle item bought/open

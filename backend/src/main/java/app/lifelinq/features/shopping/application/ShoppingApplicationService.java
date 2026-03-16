@@ -338,16 +338,17 @@ public class ShoppingApplicationService {
     }
 
     @Transactional
-    public ShoppingListView updateShoppingListName(
+    public ShoppingListView updateShoppingListIdentity(
             UUID groupId,
             UUID actorUserId,
             UUID listId,
-            String name
+            String name,
+            ShoppingListType type
     ) {
         ensureGroupMemberUseCase.execute(groupId, actorUserId);
         ShoppingList list = getListForGroup(groupId, listId);
         String normalizedName = normalizeListName(name);
-        list.rename(normalizedName);
+        list.updateIdentity(normalizedName, type);
         shoppingListRepository.save(list);
         return toView(list);
     }

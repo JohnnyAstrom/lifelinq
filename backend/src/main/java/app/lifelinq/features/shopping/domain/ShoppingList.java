@@ -11,7 +11,7 @@ public final class ShoppingList {
     private final UUID id;
     private final UUID groupId;
     private String name;
-    private final ShoppingListType type;
+    private ShoppingListType type;
     private int orderIndex;
     private final Instant createdAt;
     private final List<ShoppingItem> items;
@@ -219,6 +219,17 @@ public final class ShoppingList {
             throw new IllegalArgumentException("name must not be blank");
         }
         this.name = normalizedName;
+    }
+
+    public void updateIdentity(String normalizedName, ShoppingListType type) {
+        if (normalizedName == null || normalizedName.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        this.name = normalizedName;
+        this.type = type;
     }
 
     public void setOrderIndex(int orderIndex) {

@@ -21,6 +21,7 @@ export type ShoppingListResponse = {
 
 export type UpdateShoppingListRequest = {
   name: string;
+  type: ShoppingListType;
 };
 
 export type ReorderShoppingListRequest = {

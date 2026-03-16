@@ -153,11 +153,12 @@ public class ShoppingController {
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        ShoppingListView list = shoppingApplicationService.updateShoppingListName(
+        ShoppingListView list = shoppingApplicationService.updateShoppingListIdentity(
                 context.getGroupId(),
                 context.getUserId(),
                 listId,
-                request.getName()
+                request.getName(),
+                parseListType(request.getType())
         );
         return ResponseEntity.ok(toResponse(list));
     }
