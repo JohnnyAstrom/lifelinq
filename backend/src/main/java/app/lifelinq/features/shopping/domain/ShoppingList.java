@@ -127,10 +127,15 @@ public final class ShoppingList {
         if (sourceKind == ShoppingItemSourceKind.MEAL_PLAN) {
             ShoppingItem mergeCandidate = findMealPlanMergeCandidate(normalizedName, quantity, unit);
             if (mergeCandidate != null) {
+                boolean candidateHadNoQuantityDetails = mergeCandidate.hasNoQuantityDetails();
                 mergeCandidate.absorbMealPlanIntake(quantity, unit);
                 return new ShoppingAddItemResult(
                         mergeCandidate.getId(),
-                        quantity != null ? ShoppingAddItemOutcome.INCREASED_EXISTING : ShoppingAddItemOutcome.REUSED_EXISTING
+                        quantity == null
+                                ? ShoppingAddItemOutcome.REUSED_EXISTING
+                                : candidateHadNoQuantityDetails
+                                ? ShoppingAddItemOutcome.UPDATED_EXISTING
+                                : ShoppingAddItemOutcome.INCREASED_EXISTING
                 );
             }
         }

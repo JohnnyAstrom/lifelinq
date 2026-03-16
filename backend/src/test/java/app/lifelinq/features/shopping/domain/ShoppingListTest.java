@@ -108,6 +108,39 @@ class ShoppingListTest {
     }
 
     @Test
+    void mealPlanIntakeReusesSingleMatchingQuantifiedOpenItemWhenIncomingHasNoQuantity() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID existingId = UUID.randomUUID();
+        list.addItem(
+                existingId,
+                "banana",
+                new BigDecimal("3"),
+                ShoppingUnit.PCS,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Smoothie",
+                Instant.now()
+        );
+
+        ShoppingAddItemResult result = list.addItem(
+                UUID.randomUUID(),
+                "banana",
+                null,
+                null,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pancakes",
+                Instant.now()
+        );
+
+        assertEquals(existingId, result.itemId());
+        assertEquals(ShoppingAddItemOutcome.REUSED_EXISTING, result.outcome());
+        assertEquals(1, list.getItems().size());
+        assertEquals(new BigDecimal("3"), list.getItems().get(0).getQuantity());
+        assertEquals(ShoppingUnit.PCS, list.getItems().get(0).getUnit());
+        assertNull(list.getItems().get(0).getSourceKind());
+        assertNull(list.getItems().get(0).getSourceLabel());
+    }
+
+    @Test
     void mealPlanIntakeDoesNotMergeWhenMatchingOpenItemsAreAmbiguous() {
         ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
         list.addItem(UUID.randomUUID(), "tomato", null, null, null, null, true, Instant.now());
@@ -144,9 +177,39 @@ class ShoppingListTest {
                 Instant.now()
         );
 
+        assertEquals(existingId, result.itemId());
+        assertEquals(1, list.getItems().size());
+        assertEquals(ShoppingAddItemOutcome.UPDATED_EXISTING, result.outcome());
+        assertEquals(new BigDecimal("2"), list.getItems().get(0).getQuantity());
+        assertEquals(ShoppingUnit.PCS, list.getItems().get(0).getUnit());
+    }
+
+    @Test
+    void mealPlanIntakeDoesNotMergeIntoBoughtItem() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID boughtId = UUID.randomUUID();
+        list.addItem(
+                boughtId,
+                "banana",
+                new BigDecimal("3"),
+                ShoppingUnit.PCS,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Smoothie",
+                Instant.now()
+        );
+        list.toggleItem(boughtId, Instant.now());
+
+        ShoppingAddItemResult result = list.addItem(
+                UUID.randomUUID(),
+                "banana",
+                null,
+                null,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pancakes",
+                Instant.now()
+        );
+
         assertEquals(2, list.getItems().size());
-        assertNotEquals(existingId, result.itemId());
-        assertEquals(result.itemId(), list.getItems().get(0).getId());
         assertEquals(ShoppingAddItemOutcome.CREATED, result.outcome());
     }
 

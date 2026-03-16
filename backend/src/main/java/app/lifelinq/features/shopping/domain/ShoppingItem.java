@@ -129,8 +129,14 @@ public final class ShoppingItem {
         if (quantity == null && unit == null && incomingQuantity == null && incomingUnit == null) {
             return true;
         }
+        if (quantity == null && unit == null) {
+            return incomingQuantity != null && incomingUnit != null;
+        }
         if (quantity == null || unit == null) {
             return false;
+        }
+        if (incomingQuantity == null && incomingUnit == null) {
+            return true;
         }
         if (incomingQuantity == null || incomingUnit == null) {
             return false;
@@ -141,6 +147,16 @@ public final class ShoppingItem {
     public void absorbMealPlanIntake(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
         if (!canAbsorbMealPlanIntake(incomingQuantity, incomingUnit)) {
             throw new IllegalArgumentException("incoming meal-plan item is not compatible with existing item");
+        }
+        if (quantity == null && unit == null) {
+            quantity = incomingQuantity;
+            unit = incomingUnit;
+            clearSource();
+            return;
+        }
+        if (incomingQuantity == null && incomingUnit == null) {
+            clearSource();
+            return;
         }
         if (quantity != null && incomingQuantity != null) {
             quantity = quantity.add(incomingQuantity);

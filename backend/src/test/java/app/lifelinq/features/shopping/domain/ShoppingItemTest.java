@@ -162,6 +162,46 @@ class ShoppingItemTest {
     }
 
     @Test
+    void absorbsMealPlanQuantityIntoExistingItemWithoutQuantityDetails() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "milk",
+                Instant.now(),
+                null,
+                null,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pasta"
+        );
+
+        item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.PCS);
+
+        assertEquals(new BigDecimal("3"), item.getQuantity());
+        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getSourceKind());
+        assertEquals(null, item.getSourceLabel());
+    }
+
+    @Test
+    void reusesMealPlanItemWithoutChangingExistingQuantityWhenIncomingHasNoQuantity() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "banana",
+                Instant.now(),
+                new BigDecimal("3"),
+                ShoppingUnit.PCS,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pasta"
+        );
+
+        item.absorbMealPlanIntake(null, null);
+
+        assertEquals(new BigDecimal("3"), item.getQuantity());
+        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getSourceKind());
+        assertEquals(null, item.getSourceLabel());
+    }
+
+    @Test
     void rejectsIncompatibleMealPlanAbsorb() {
         ShoppingItem item = new ShoppingItem(
                 UUID.randomUUID(),
