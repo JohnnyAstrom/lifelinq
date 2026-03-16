@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
 import { handleScopedApiError } from '../../../shared/api/handleScopedApiError';
 import { useAuth } from '../../../shared/auth/AuthContext';
@@ -14,25 +14,85 @@ type ScopedTodoOptions = {
   onContextInvalidated?: () => void | Promise<void>;
 };
 
+type State = {
+  items: TodoResponse[];
+  error: string | null;
+  loading: boolean;
+  isInitialLoading: boolean;
+  isRefreshing: boolean;
+  isMutating: boolean;
+  hasLoaded: boolean;
+  pendingMutation: PendingMutation | null;
+};
+
+type PendingMutation =
+  | { kind: 'add' }
+  | { kind: 'complete'; id: string }
+  | { kind: 'update'; id: string }
+  | { kind: 'remove'; id: string };
+
 export function useTodos(
   token: string | null,
   status: 'OPEN' | 'COMPLETED' | 'ALL' = 'OPEN',
   calendarMonthQuery?: CalendarMonthQuery,
   scopedOptions?: ScopedTodoOptions
 ) {
-  const [items, setItems] = useState<TodoResponse[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<State>({
+    items: [],
+    error: null,
+    loading: true,
+    isInitialLoading: true,
+    isRefreshing: false,
+    isMutating: false,
+    hasLoaded: false,
+    pendingMutation: null,
+  });
+  const pendingMutationRef = useRef<PendingMutation | null>(null);
   const { handleApiError } = useAuth();
 
-  async function load() {
+  function setPendingMutation(pendingMutation: PendingMutation | null) {
+    pendingMutationRef.current = pendingMutation;
+    setState((prev) => ({
+      ...prev,
+      pendingMutation,
+      isMutating: pendingMutation !== null,
+    }));
+  }
+
+  async function load(options?: { mode?: 'initial' | 'refresh' | 'mutation-followup' | 'silent' }) {
+    const mode = options?.mode ?? 'refresh';
     if (!token) {
-      setItems([]);
+      pendingMutationRef.current = null;
+      setState({
+        items: [],
+        error: null,
+        loading: false,
+        isInitialLoading: false,
+        isRefreshing: false,
+        isMutating: false,
+        hasLoaded: false,
+        pendingMutation: null,
+      });
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    if (mode === 'initial') {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        isInitialLoading: true,
+        isRefreshing: false,
+        error: null,
+      }));
+    } else if (mode === 'refresh') {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        isInitialLoading: false,
+        isRefreshing: true,
+        error: null,
+      }));
+    }
 
     try {
       if (calendarMonthQuery?.enabled) {
@@ -40,20 +100,80 @@ export function useTodos(
         const filtered = status === 'ALL'
           ? result
           : result.filter((item) => item.status === status);
-        setItems(filtered);
+        setState((prev) => ({
+          ...prev,
+          items: filtered,
+          error: null,
+          loading: false,
+          isInitialLoading: false,
+          isRefreshing: false,
+          hasLoaded: true,
+        }));
       } else {
         const queryStatus = status === 'ALL' ? undefined : status;
         const result = await fetchTodos(token, queryStatus);
-        setItems(result);
+        setState((prev) => ({
+          ...prev,
+          items: result,
+          error: null,
+          loading: false,
+          isInitialLoading: false,
+          isRefreshing: false,
+          hasLoaded: true,
+        }));
       }
     } catch (err) {
       await handleScopedApiError(err, {
         onContextInvalidated: scopedOptions?.onContextInvalidated,
       });
       await handleApiError(err);
-      setError(formatApiError(err));
+      setState((prev) => ({
+        ...prev,
+        error: formatApiError(err),
+        loading: false,
+        isInitialLoading: false,
+        isRefreshing: false,
+        items: prev.hasLoaded ? prev.items : [],
+      }));
+    }
+  }
+
+  async function runMutation(
+    pendingMutation: PendingMutation,
+    mutation: () => Promise<void>,
+    options?: { reloadMode?: 'mutation-followup' | 'silent'; reloadAfter?: boolean }
+  ): Promise<boolean> {
+    if (pendingMutationRef.current) {
+      return false;
+    }
+
+    setPendingMutation(pendingMutation);
+    setState((prev) => ({
+      ...prev,
+      error: null,
+    }));
+
+    try {
+      await mutation();
+      if (options?.reloadAfter !== false) {
+        await load({ mode: options?.reloadMode ?? 'mutation-followup' });
+      }
+      return true;
+    } catch (err) {
+      await handleScopedApiError(err, {
+        onContextInvalidated: scopedOptions?.onContextInvalidated,
+      });
+      await handleApiError(err);
+      setState((prev) => ({
+        ...prev,
+        error: formatApiError(err),
+        loading: false,
+        isInitialLoading: false,
+        isRefreshing: false,
+      }));
+      return false;
     } finally {
-      setLoading(false);
+      setPendingMutation(null);
     }
   }
 
@@ -71,38 +191,20 @@ export function useTodos(
     if (!token) {
       throw new Error('Missing token');
     }
-    setError(null);
-    try {
-      await createTodo(token, text, options);
-      await load();
-      return true;
-    } catch (err) {
-      await handleScopedApiError(err, {
-        onContextInvalidated: scopedOptions?.onContextInvalidated,
-      });
-      await handleApiError(err);
-      setError(formatApiError(err));
-      return false;
-    }
+    return runMutation(
+      { kind: 'add' },
+      () => createTodo(token, text, options)
+    );
   }
 
   async function complete(id: string): Promise<boolean> {
     if (!token) {
       throw new Error('Missing token');
     }
-    setError(null);
-    try {
-      await completeTodo(token, id);
-      await load();
-      return true;
-    } catch (err) {
-      await handleScopedApiError(err, {
-        onContextInvalidated: scopedOptions?.onContextInvalidated,
-      });
-      await handleApiError(err);
-      setError(formatApiError(err));
-      return false;
-    }
+    return runMutation(
+      { kind: 'complete', id },
+      () => completeTodo(token, id)
+    );
   }
 
   async function update(
@@ -120,43 +222,32 @@ export function useTodos(
     if (!token) {
       throw new Error('Missing token');
     }
-    setError(null);
-    try {
-      await updateTodo(token, id, text, options);
-      await load();
-      return true;
-    } catch (err) {
-      await handleScopedApiError(err, {
-        onContextInvalidated: scopedOptions?.onContextInvalidated,
-      });
-      await handleApiError(err);
-      setError(formatApiError(err));
-      return false;
-    }
+    return runMutation(
+      { kind: 'update', id },
+      () => updateTodo(token, id, text, options)
+    );
   }
 
   async function remove(id: string): Promise<boolean> {
     if (!token) {
       throw new Error('Missing token');
     }
-    setError(null);
-    try {
-      await deleteTodo(token, id);
-      await load();
-      return true;
-    } catch (err) {
-      await handleScopedApiError(err, {
-        onContextInvalidated: scopedOptions?.onContextInvalidated,
-      });
-      await handleApiError(err);
-      setError(formatApiError(err));
-      return false;
-    }
+    return runMutation(
+      { kind: 'remove', id },
+      () => deleteTodo(token, id)
+    );
   }
 
   useEffect(() => {
-    load();
+    void load({ mode: 'initial' });
   }, [token, status, calendarMonthQuery?.enabled, calendarMonthQuery?.year, calendarMonthQuery?.month]);
 
-  return { items, error, loading, reload: load, add, complete, update, remove };
+  return {
+    ...state,
+    reload: () => load({ mode: state.hasLoaded ? 'refresh' : 'initial' }),
+    add,
+    complete,
+    update,
+    remove,
+  };
 }
