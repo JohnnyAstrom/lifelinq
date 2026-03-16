@@ -25,7 +25,9 @@ type MealEditorSheetStrings = {
   shoppingLabel: string;
   addIngredientsToShoppingAction: string;
   saveMeal: string;
+  savingMeal: string;
   removeMeal: string;
+  removingMeal: string;
   close: string;
 };
 
@@ -47,6 +49,9 @@ type Props = {
   hasIngredients: boolean;
   onOpenShoppingReview: () => void;
   hasExistingMeal: boolean;
+  isSavingMeal: boolean;
+  isRemovingMeal: boolean;
+  isActionPending: boolean;
   strings: MealEditorSheetStrings;
 };
 
@@ -76,6 +81,9 @@ export function MealEditorSheet({
   hasIngredients,
   onOpenShoppingReview,
   hasExistingMeal,
+  isSavingMeal,
+  isRemovingMeal,
+  isActionPending,
   strings,
 }: Props) {
   if (!selectedMealType) {
@@ -97,6 +105,8 @@ export function MealEditorSheet({
   const ingredientActionLabel = hasIngredients
     ? strings.editIngredients
     : strings.addIngredients;
+  const saveActionLabel = isSavingMeal ? strings.savingMeal : strings.saveMeal;
+  const removeActionLabel = isRemovingMeal ? strings.removingMeal : strings.removeMeal;
 
   const ingredientEntryHint = !hasIngredients && !isRecipeLoading
     ? strings.addIngredients
@@ -156,6 +166,7 @@ export function MealEditorSheet({
                   title={ingredientActionLabel}
                   onPress={onOpenIngredients}
                   variant="ghost"
+                  disabled={isActionPending}
                 />
               </View>
               {isRecipeLoading ? (
@@ -180,23 +191,36 @@ export function MealEditorSheet({
                   title={strings.addIngredientsToShoppingAction}
                   onPress={onOpenShoppingReview}
                   variant="ghost"
+                  disabled={isActionPending}
                 />
               </View>
             ) : null}
             <View style={styles.sheetFooterActions}>
-              <AppButton title={strings.saveMeal} onPress={onSave} fullWidth accentKey="meals" />
+              <AppButton
+                title={saveActionLabel}
+                onPress={onSave}
+                fullWidth
+                accentKey="meals"
+                disabled={isActionPending}
+              />
               <View style={styles.sheetFooterSecondaryActions}>
                 {hasExistingMeal ? (
                   <AppButton
-                    title={strings.removeMeal}
+                    title={removeActionLabel}
                     onPress={onRemove}
                     variant="ghost"
+                    disabled={isActionPending}
                   />
                 ) : null}
-                <Pressable onPress={onClose} style={({ pressed }) => [
-                  styles.footerCloseLink,
-                  pressed ? styles.footerCloseLinkPressed : null,
-                ]}>
+                <Pressable
+                  onPress={onClose}
+                  disabled={isActionPending}
+                  style={({ pressed }) => [
+                    styles.footerCloseLink,
+                    isActionPending ? styles.footerCloseLinkDisabled : null,
+                    pressed ? styles.footerCloseLinkPressed : null,
+                  ]}
+                >
                   <Text style={styles.footerCloseText}>{strings.close}</Text>
                 </Pressable>
               </View>
@@ -323,6 +347,9 @@ const styles = StyleSheet.create({
   },
   footerCloseLinkPressed: {
     opacity: 0.7,
+  },
+  footerCloseLinkDisabled: {
+    opacity: 0.5,
   },
   footerCloseText: {
     ...textStyles.subtle,

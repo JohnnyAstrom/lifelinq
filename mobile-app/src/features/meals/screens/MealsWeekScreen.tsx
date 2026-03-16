@@ -129,8 +129,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     noShoppingLists: 'No shopping lists yet.',
     shoppingSyncFailed: 'Meal saved, but adding ingredients to shopping failed:',
     saveMeal: 'Save meal',
+    savingMeal: 'Saving meal...',
     removeMeal: 'Remove meal',
+    removingMeal: 'Removing meal...',
     close: 'Close',
+    addingIngredientsToShopping: 'Adding ingredients...',
   };
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
@@ -175,6 +178,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   const dailyDayNumber = dailyDayIndex + 1;
   const dailyMeals = mealsByDay.get(dailyDayNumber) ?? [];
+  const showInitialPlanLoading = plan.isInitialLoading && !plan.data;
+  const shouldRenderPlanViews = !showInitialPlanLoading && (plan.data !== null || !plan.error);
   const selectedEditorDate = useMemo(() => {
     if (!editor.selectedDay) {
       return anchorDate;
@@ -334,49 +339,53 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             </AppCard>
           ) : null}
 
-          {plan.loading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
+          {showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
           {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
 
-          {viewMode === 'weekly' ? (
-            <MealsWeeklyView
-              weekStart={weekStart}
-              mealsByDay={mealsByDay}
-              onOpenEditor={actions.openEditor}
-              formatDayLabel={formatDayLabel}
-              DAY_LABELS={DAY_LABELS}
-              MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-              styles={styles}
-              emptyText={strings.noMeals}
-            />
-          ) : null}
+          {shouldRenderPlanViews ? (
+            <>
+              {viewMode === 'weekly' ? (
+                <MealsWeeklyView
+                  weekStart={weekStart}
+                  mealsByDay={mealsByDay}
+                  onOpenEditor={actions.openEditor}
+                  formatDayLabel={formatDayLabel}
+                  DAY_LABELS={DAY_LABELS}
+                  MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+                  styles={styles}
+                  emptyText={strings.noMeals}
+                />
+              ) : null}
 
-          {viewMode === 'daily' ? (
-            <MealsDailyView
-              dailyDayNumber={dailyDayNumber}
-              dailyMeals={dailyMeals}
-              onOpenEditor={actions.openEditor}
-              MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-              styles={styles}
-              emptyText={strings.noMeals}
-              title={strings.title}
-            />
-          ) : null}
+              {viewMode === 'daily' ? (
+                <MealsDailyView
+                  dailyDayNumber={dailyDayNumber}
+                  dailyMeals={dailyMeals}
+                  onOpenEditor={actions.openEditor}
+                  MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+                  styles={styles}
+                  emptyText={strings.noMeals}
+                  title={strings.title}
+                />
+              ) : null}
 
-          {viewMode === 'monthly' ? (
-            <AppCard>
-              <MealsMonthlyView
-                monthGridCells={monthGridCells}
-                monthMealCountByDateKey={monthMealCountByDateKey}
-                toDateKey={toDateKey}
-                isTodayDate={isTodayDate}
-                styles={styles}
-                onPressDay={(date) => {
-                  setAnchorDate(new Date(date.getTime()));
-                  setViewMode('weekly');
-                }}
-                weekdayLabels={DAY_LABELS}
-              />
-            </AppCard>
+              {viewMode === 'monthly' ? (
+                <AppCard>
+                  <MealsMonthlyView
+                    monthGridCells={monthGridCells}
+                    monthMealCountByDateKey={monthMealCountByDateKey}
+                    toDateKey={toDateKey}
+                    isTodayDate={isTodayDate}
+                    styles={styles}
+                    onPressDay={(date) => {
+                      setAnchorDate(new Date(date.getTime()));
+                      setViewMode('weekly');
+                    }}
+                    weekdayLabels={DAY_LABELS}
+                  />
+                </AppCard>
+              ) : null}
+            </>
           ) : null}
         </View>
       </ScrollView>
@@ -409,6 +418,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           hasIngredients={editor.hasIngredients}
           onOpenShoppingReview={editor.openShoppingReview}
           hasExistingMeal={!!editor.selectedMeal?.recipeTitle}
+          isSavingMeal={editor.isSavingMeal}
+          isRemovingMeal={editor.isRemovingMeal}
+          isActionPending={editor.isActionPending}
           strings={{
             planMealTitle: strings.planMealTitle,
             dayLabel: strings.dayLabel,
@@ -422,7 +434,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             shoppingLabel: strings.shoppingLabel,
             addIngredientsToShoppingAction: strings.addIngredientsToShoppingAction,
             saveMeal: strings.saveMeal,
+            savingMeal: strings.savingMeal,
             removeMeal: strings.removeMeal,
+            removingMeal: strings.removingMeal,
             close: strings.close,
           }}
         />
@@ -435,6 +449,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           effectiveListId={effectiveListId}
           onSelectListId={editor.setSelectedListId}
           shoppingSyncError={editor.shoppingSyncError}
+          isSubmitting={editor.isAddingIngredientsToShopping}
           onConfirm={handleAddIngredientsToShopping}
           onClose={editor.closeShoppingReview}
           strings={{
@@ -444,6 +459,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             noShoppingLists: strings.noShoppingLists,
             shoppingSyncFailed: strings.shoppingSyncFailed,
             confirm: strings.confirmAddIngredientsToShopping,
+            confirming: strings.addingIngredientsToShopping,
             close: strings.close,
           }}
         />

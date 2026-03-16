@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { formatApiError } from '../../../shared/api/client';
 import {
@@ -11,9 +11,18 @@ import {
 
 type State = {
   loading: boolean;
+  isInitialLoading: boolean;
+  isReloading: boolean;
+  isMutating: boolean;
   error: string | null;
+  hasLoaded: boolean;
+  pendingMutation: PendingMutation | null;
   data: WeekPlanResponse | null;
 };
+
+type PendingMutation =
+  | { kind: 'save-meal'; dayOfWeek: number; mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER' }
+  | { kind: 'remove-meal'; dayOfWeek: number; mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER' };
 
 export function useWeekPlan(
   token: string | null,
@@ -23,28 +32,123 @@ export function useWeekPlan(
   const { handleApiError } = useAuth();
   const [state, setState] = useState<State>({
     loading: true,
+    isInitialLoading: true,
+    isReloading: false,
+    isMutating: false,
     error: null,
+    hasLoaded: false,
+    pendingMutation: null,
     data: null,
   });
+  const pendingMutationRef = useRef<PendingMutation | null>(null);
 
-  const load = async () => {
+  function setPendingMutation(pendingMutation: PendingMutation | null) {
+    pendingMutationRef.current = pendingMutation;
+    setState((prev) => ({
+      ...prev,
+      pendingMutation,
+      isMutating: pendingMutation !== null,
+    }));
+  }
+
+  const load = async (options?: { mode?: 'initial' | 'reload' | 'mutation-followup' | 'silent' }) => {
+    const mode = options?.mode ?? 'reload';
     if (!token) {
-      setState({ loading: false, error: 'Missing token', data: null });
+      pendingMutationRef.current = null;
+      setState({
+        loading: false,
+        isInitialLoading: false,
+        isReloading: false,
+        isMutating: false,
+        error: 'Missing token',
+        hasLoaded: false,
+        pendingMutation: null,
+        data: null,
+      });
       return;
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    if (mode === 'initial') {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        isInitialLoading: true,
+        isReloading: false,
+        error: null,
+      }));
+    } else if (mode === 'reload') {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        isInitialLoading: false,
+        isReloading: true,
+        error: null,
+      }));
+    }
+
     try {
       const data = await getWeekPlan(year, isoWeek, { token });
-      setState({ loading: false, error: null, data });
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        isInitialLoading: false,
+        isReloading: false,
+        error: null,
+        hasLoaded: true,
+        data,
+      }));
     } catch (err) {
       await handleApiError(err);
-      setState({ loading: false, error: formatApiError(err), data: null });
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        isInitialLoading: false,
+        isReloading: false,
+        error: formatApiError(err),
+        data: prev.hasLoaded ? prev.data : null,
+      }));
     }
   };
 
   useEffect(() => {
-    load();
+    void load({ mode: 'initial' });
   }, [token, year, isoWeek]);
+
+  const runMutation = async (
+    pendingMutation: PendingMutation,
+    mutation: () => Promise<unknown>,
+    options?: { reloadMode?: 'mutation-followup' | 'silent'; reloadAfter?: boolean }
+  ): Promise<boolean> => {
+    if (pendingMutationRef.current) {
+      return false;
+    }
+
+    setPendingMutation(pendingMutation);
+    setState((prev) => ({
+      ...prev,
+      error: null,
+    }));
+
+    try {
+      await mutation();
+      if (options?.reloadAfter !== false) {
+        await load({ mode: options?.reloadMode ?? 'mutation-followup' });
+      }
+      return true;
+    } catch (err) {
+      await handleApiError(err);
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        isInitialLoading: false,
+        isReloading: false,
+        error: formatApiError(err),
+      }));
+      throw err;
+    } finally {
+      setPendingMutation(null);
+    }
+  };
 
   const addMeal = async (
     dayOfWeek: number,
@@ -54,21 +158,12 @@ export function useWeekPlan(
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await addOrReplaceMeal(year, isoWeek, dayOfWeek, mealType, payload, {
+    return runMutation(
+      { kind: 'save-meal', dayOfWeek, mealType },
+      () => addOrReplaceMeal(year, isoWeek, dayOfWeek, mealType, payload, {
         token,
-      });
-      await load();
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-      throw err;
-    }
+      })
+    );
   };
 
   const remove = async (
@@ -78,24 +173,15 @@ export function useWeekPlan(
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await removeMeal(year, isoWeek, dayOfWeek, mealType, { token });
-      await load();
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-      throw err;
-    }
+    return runMutation(
+      { kind: 'remove-meal', dayOfWeek, mealType },
+      () => removeMeal(year, isoWeek, dayOfWeek, mealType, { token })
+    );
   };
 
   return {
     ...state,
-    reload: load,
+    reload: () => load({ mode: state.hasLoaded ? 'reload' : 'initial' }),
     addMeal,
     removeMeal: remove,
   };

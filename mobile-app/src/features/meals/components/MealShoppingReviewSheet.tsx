@@ -19,6 +19,7 @@ type Strings = {
   noShoppingLists: string;
   shoppingSyncFailed: string;
   confirm: string;
+  confirming: string;
   close: string;
 };
 
@@ -28,6 +29,7 @@ type Props = {
   effectiveListId: string | null;
   onSelectListId: (id: string) => void;
   shoppingSyncError: string | null;
+  isSubmitting: boolean;
   onConfirm: () => void;
   onClose: () => void;
   strings: Strings;
@@ -48,6 +50,7 @@ export function MealShoppingReviewSheet({
   effectiveListId,
   onSelectListId,
   shoppingSyncError,
+  isSubmitting,
   onConfirm,
   onClose,
   strings,
@@ -112,13 +115,19 @@ export function MealShoppingReviewSheet({
 
             <View style={styles.footer}>
               <AppButton
-                title={strings.confirm}
+                title={isSubmitting ? strings.confirming : strings.confirm}
                 onPress={onConfirm}
                 fullWidth
                 accentKey="meals"
-                disabled={!effectiveListId || ingredients.length === 0}
+                disabled={!effectiveListId || ingredients.length === 0 || isSubmitting}
               />
-              <AppButton title={strings.close} onPress={onClose} variant="ghost" fullWidth />
+              <AppButton
+                title={strings.close}
+                onPress={onClose}
+                variant="ghost"
+                fullWidth
+                disabled={isSubmitting}
+              />
             </View>
           </ScrollView>
         </View>
