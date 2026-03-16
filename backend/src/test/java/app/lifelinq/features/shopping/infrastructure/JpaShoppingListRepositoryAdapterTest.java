@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import app.lifelinq.features.shopping.domain.ShoppingItem;
 import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
+import app.lifelinq.features.shopping.domain.ShoppingItemSourceKind;
 import app.lifelinq.features.shopping.domain.ShoppingList;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
@@ -34,7 +35,7 @@ class JpaShoppingListRepositoryAdapterTest {
         ShoppingList list = new ShoppingList(listId, groupId, "Groceries", 3, createdAt);
         UUID itemId = UUID.randomUUID();
         Instant itemCreatedAt = createdAt.plusSeconds(5);
-        list.addItem(itemId, "milk", new BigDecimal("2"), ShoppingUnit.DL, itemCreatedAt);
+        list.addItem(itemId, "milk", new BigDecimal("2"), ShoppingUnit.DL, ShoppingItemSourceKind.MEAL_PLAN, "Pasta", itemCreatedAt);
         Instant boughtAt = itemCreatedAt.plusSeconds(10);
         list.toggleItem(itemId, boughtAt);
 
@@ -57,6 +58,8 @@ class JpaShoppingListRepositoryAdapterTest {
         assertEquals(ShoppingItemStatus.BOUGHT, loadedItem.getStatus());
         assertEquals(0, loadedItem.getQuantity().compareTo(new BigDecimal("2")));
         assertEquals(ShoppingUnit.DL, loadedItem.getUnit());
+        assertEquals(ShoppingItemSourceKind.MEAL_PLAN, loadedItem.getSourceKind());
+        assertEquals("Pasta", loadedItem.getSourceLabel());
         long boughtDiffNanos = Math.abs(Duration.between(boughtAt, loadedItem.getBoughtAt()).toNanos());
         assertTrue(boughtDiffNanos <= 1_000);
     }

@@ -48,4 +48,11 @@ public class ShoppingJpaTestApplication {
     ) {
         return new JpaShoppingListRepositoryAdapter(repository, mapper);
     }
+
+    @Bean
+    public JpaShoppingCategoryPreferenceRepositoryAdapter shoppingCategoryPreferenceRepository(
+            ShoppingCategoryPreferenceJpaRepository repository
+    ) {
+        return new JpaShoppingCategoryPreferenceRepositoryAdapter(repository);
+    }
 }

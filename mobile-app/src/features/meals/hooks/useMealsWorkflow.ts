@@ -1,9 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { useShoppingLists } from '../../shopping/hooks/useShoppingLists';
-import { createRecipe, updateRecipe } from '../api/mealsApi';
-import { toIngredientsList } from '../utils/mealParsing';
+import { createRecipe, getRecipe, updateRecipe } from '../api/mealsApi';
+import {
+  createEmptyIngredientRow,
+  ingredientRowsFromResponse,
+  sanitizeIngredientQuantityInput,
+  toIngredientRequests,
+  type MealIngredientRow,
+  type MealIngredientUnit,
+} from '../utils/ingredientRows';
 import { useWeekPlan } from './useWeekPlan';
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
@@ -57,8 +64,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [selectedMealType, setSelectedMealType] = useState<MealType | null>('DINNER');
   const [selectedMealRecipeId, setSelectedMealRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
-  const [ingredientsText, setIngredientsText] = useState('');
-  const [pushToShopping, setPushToShopping] = useState(true);
+  const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
+  const [isIngredientEditorOpen, setIsIngredientEditorOpen] = useState(false);
+  const [isShoppingReviewOpen, setIsShoppingReviewOpen] = useState(false);
+  const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
 
@@ -73,6 +82,11 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     return list.find((meal) => meal.mealType === selectedMealType) ?? null;
   }, [selectedDay, selectedMealType, mealsByDay]);
 
+  const hasIngredients = useMemo(
+    () => toIngredientRequests(ingredientRows).length > 0,
+    [ingredientRows]
+  );
+
   function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
     setSelectedMealType(mealType);
@@ -80,9 +94,52 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     const existing = list.find((meal) => meal.mealType === mealType);
     setRecipeTitle(existing?.recipeTitle ?? '');
     setSelectedMealRecipeId(existing?.recipeId ?? null);
-    setIngredientsText('');
+    setIngredientRows([]);
+    setIsIngredientEditorOpen(false);
+    setIsShoppingReviewOpen(false);
+    setIsRecipeLoading(false);
     setShoppingSyncError(null);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedMealRecipeId) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsRecipeLoading(true);
+
+    void getRecipe(selectedMealRecipeId, { token })
+      .then((recipe) => {
+        if (cancelled) {
+          return;
+        }
+        setRecipeTitle(recipe.name);
+        setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
+      })
+      .catch(async (err) => {
+        if (cancelled) {
+          return;
+        }
+        await handleApiError(err);
+        if (cancelled) {
+          return;
+        }
+        setShoppingSyncError(formatApiError(err));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsRecipeLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMealRecipeId, token, handleApiError]);
 
   function openEditor(day: number, mealType: MealType) {
     syncEditorSelection(day, mealType);
@@ -102,22 +159,90 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   function closeEditor() {
     setSelectedDay(null);
     setSelectedMealRecipeId(null);
+    setIngredientRows([]);
+    setIsIngredientEditorOpen(false);
+    setIsShoppingReviewOpen(false);
+    setIsRecipeLoading(false);
   }
 
-  async function saveMeal() {
+  function openIngredientEditor() {
+    if (!isRecipeLoading) {
+      setIsIngredientEditorOpen(true);
+    }
+  }
+
+  function closeIngredientEditor() {
+    setIsIngredientEditorOpen(false);
+  }
+
+  function openShoppingReview() {
+    if (!isRecipeLoading && hasIngredients) {
+      setShoppingSyncError(null);
+      setIsShoppingReviewOpen(true);
+    }
+  }
+
+  function closeShoppingReview() {
+    setIsShoppingReviewOpen(false);
+  }
+
+  function addIngredientRow() {
+    setIngredientRows((current) => {
+      const next = [...current, createEmptyIngredientRow()];
+      return next;
+    });
+    setIsIngredientEditorOpen(true);
+  }
+
+  function updateIngredientRow(
+    rowId: string,
+    updater: (row: MealIngredientRow) => MealIngredientRow
+  ) {
+    setIngredientRows((current) => current.map((row) => (row.id === rowId ? updater(row) : row)));
+  }
+
+  function removeIngredientRow(rowId: string) {
+    setIngredientRows((current) => {
+      if (current.length === 1) {
+        return [];
+      }
+      return current.filter((row) => row.id !== rowId);
+    });
+  }
+
+  function setIngredientName(rowId: string, value: string) {
+    updateIngredientRow(rowId, (row) => ({ ...row, name: value }));
+  }
+
+  function setIngredientQuantity(rowId: string, value: string) {
+    const quantityText = sanitizeIngredientQuantityInput(value);
+    updateIngredientRow(rowId, (row) => ({
+      ...row,
+      quantityText,
+      unit: quantityText.length === 0 ? null : row.unit,
+    }));
+  }
+
+  function setIngredientUnit(rowId: string, unit: MealIngredientUnit) {
+    updateIngredientRow(rowId, (row) => ({
+      ...row,
+      unit: row.unit === unit ? null : unit,
+    }));
+  }
+
+  async function persistMeal(targetShoppingListId: string | null) {
     if (!selectedDay || !selectedMealType) {
-      return;
+      return false;
     }
     if (!recipeTitle.trim()) {
-      return;
+      return false;
+    }
+    if (isRecipeLoading) {
+      return false;
     }
 
-    const ingredients = toIngredientsList(ingredientsText).map((name, index) => ({
-      name,
-      quantity: null,
-      unit: null,
-      position: index + 1,
-    }));
+    const ingredients = toIngredientRequests(ingredientRows);
+    const shouldPushToShopping = ingredients.length > 0 && !!targetShoppingListId;
 
     try {
       let recipeId = selectedMealRecipeId;
@@ -144,23 +269,51 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       await plan.addMeal(selectedDay, selectedMealType, {
         recipeId,
         mealType: selectedMealType,
-        targetShoppingListId: pushToShopping && effectiveListId ? effectiveListId : null,
+        targetShoppingListId: shouldPushToShopping ? targetShoppingListId : null,
       });
 
-      if (pushToShopping && ingredients.length > 0 && effectiveListId) {
+      if (shouldPushToShopping) {
         await shopping.reload();
       }
 
-      setRecipeTitle('');
-      setSelectedMealRecipeId(null);
-      setIngredientsText('');
-      setSelectedMealType('DINNER');
       setShoppingSyncError(null);
-      closeEditor();
+      return true;
     } catch (err) {
       await handleApiError(err);
       setShoppingSyncError(formatApiError(err));
+      return false;
     }
+  }
+
+  async function saveMeal() {
+    const saved = await persistMeal(null);
+    if (!saved) {
+      return;
+    }
+
+    setRecipeTitle('');
+    setSelectedMealRecipeId(null);
+    setIngredientRows([]);
+    setSelectedMealType('DINNER');
+    closeEditor();
+  }
+
+  async function addIngredientsToShopping() {
+    const targetShoppingListId = effectiveListId;
+    if (!targetShoppingListId || !hasIngredients) {
+      return;
+    }
+
+    const saved = await persistMeal(targetShoppingListId);
+    if (!saved) {
+      return;
+    }
+
+    setRecipeTitle('');
+    setSelectedMealRecipeId(null);
+    setIngredientRows([]);
+    setSelectedMealType('DINNER');
+    closeEditor();
   }
 
   async function removeMeal() {
@@ -173,7 +326,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setSelectedMealType('DINNER');
       setSelectedMealRecipeId(null);
       setRecipeTitle('');
-      setIngredientsText('');
+      setIngredientRows([]);
       setShoppingSyncError(null);
     } catch (err) {
       await handleApiError(err);
@@ -191,15 +344,25 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       selectedMealType,
       selectedMealRecipeId,
       recipeTitle,
-      ingredientsText,
-      pushToShopping,
+      ingredientRows,
+      isIngredientEditorOpen,
+      isShoppingReviewOpen,
+      isRecipeLoading,
+      hasIngredients,
       selectedListId,
       effectiveListId,
       shoppingSyncError,
       selectedMeal,
       setRecipeTitle,
-      setIngredientsText,
-      setPushToShopping,
+      openIngredientEditor,
+      closeIngredientEditor,
+      openShoppingReview,
+      closeShoppingReview,
+      addIngredientRow,
+      removeIngredientRow,
+      setIngredientName,
+      setIngredientQuantity,
+      setIngredientUnit,
       setSelectedListId,
       setSelectedDay: selectEditorDay,
       setSelectedMealType: selectEditorMealType,
@@ -210,6 +373,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       openEditor,
       closeEditor,
       saveMeal,
+      addIngredientsToShopping,
       removeMeal,
     },
   };

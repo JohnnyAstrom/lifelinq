@@ -1,14 +1,10 @@
-import { Keyboard, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppChip, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
+import { type MealIngredientRow } from '../utils/ingredientRows';
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
-
-type ShoppingListOption = {
-  id: string;
-  name: string;
-};
 
 type DayOption = {
   dayNumber: number;
@@ -20,10 +16,14 @@ type MealEditorSheetStrings = {
   planMealTitle: string;
   dayLabel: string;
   mealTitlePlaceholder: string;
-  ingredientsPlaceholder: string;
-  addIngredientsToShopping: string;
-  noShoppingLists: string;
-  shoppingSyncFailed: string;
+  ingredientsLabel: string;
+  addIngredients: string;
+  editIngredients: string;
+  ingredientsEmptyState: string;
+  ingredientsSummarySuffix: string;
+  loadingIngredients: string;
+  shoppingLabel: string;
+  addIngredientsToShoppingAction: string;
   saveMeal: string;
   removeMeal: string;
   close: string;
@@ -41,14 +41,11 @@ type Props = {
   mealTypeLabels: Record<MealType, string>;
   recipeTitle: string;
   onChangeRecipeTitle: (value: string) => void;
-  ingredientsText: string;
-  onChangeIngredientsText: (value: string) => void;
-  pushToShopping: boolean;
-  onChangePushToShopping: (value: boolean) => void;
-  lists: ShoppingListOption[];
-  effectiveListId: string | null;
-  onSelectListId: (id: string) => void;
-  shoppingSyncError: string | null;
+  ingredientRows: MealIngredientRow[];
+  isRecipeLoading: boolean;
+  onOpenIngredients: () => void;
+  hasIngredients: boolean;
+  onOpenShoppingReview: () => void;
   hasExistingMeal: boolean;
   strings: MealEditorSheetStrings;
 };
@@ -73,20 +70,37 @@ export function MealEditorSheet({
   mealTypeLabels,
   recipeTitle,
   onChangeRecipeTitle,
-  ingredientsText,
-  onChangeIngredientsText,
-  pushToShopping,
-  onChangePushToShopping,
-  lists,
-  effectiveListId,
-  onSelectListId,
-  shoppingSyncError,
+  ingredientRows,
+  isRecipeLoading,
+  onOpenIngredients,
+  hasIngredients,
+  onOpenShoppingReview,
   hasExistingMeal,
   strings,
 }: Props) {
   if (!selectedMealType) {
     return null;
   }
+
+  const ingredientPreview = ingredientRows
+    .map((row) => row.name.trim())
+    .filter((name) => name.length > 0)
+    .slice(0, 2)
+    .join(', ');
+  const ingredientCount = ingredientRows
+    .map((row) => row.name.trim())
+    .filter((name) => name.length > 0)
+    .length;
+  const ingredientSummary = ingredientCount === 1
+      ? `1 ${strings.ingredientsSummarySuffix}`
+      : `${ingredientCount} ${strings.ingredientsSummarySuffix}`;
+  const ingredientActionLabel = hasIngredients
+    ? strings.editIngredients
+    : strings.addIngredients;
+
+  const ingredientEntryHint = !hasIngredients && !isRecipeLoading
+    ? strings.addIngredients
+    : null;
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
@@ -135,53 +149,57 @@ export function MealEditorSheet({
               value={recipeTitle}
               onChangeText={onChangeRecipeTitle}
             />
-            <AppInput
-              placeholder={strings.ingredientsPlaceholder}
-              value={ingredientsText}
-              onChangeText={onChangeIngredientsText}
-              multiline
-              style={styles.ingredientsInput}
-            />
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>{strings.addIngredientsToShopping}</Text>
-              <Switch value={pushToShopping} onValueChange={onChangePushToShopping} />
+            <View style={styles.ingredientsSection}>
+              <View style={styles.ingredientsSectionHeader}>
+                <Text style={styles.sectionLabel}>{strings.ingredientsLabel}</Text>
+                <AppButton
+                  title={ingredientActionLabel}
+                  onPress={onOpenIngredients}
+                  variant="ghost"
+                />
+              </View>
+              {isRecipeLoading ? (
+                <Subtle>{strings.loadingIngredients}</Subtle>
+              ) : null}
+              {ingredientEntryHint ? <Text style={styles.ingredientsHint}>{strings.ingredientsEmptyState}</Text> : null}
+              {!isRecipeLoading && hasIngredients ? (
+                <Pressable onPress={onOpenIngredients} style={styles.ingredientsSummaryCard}>
+                  <Text style={styles.ingredientsSummaryTitle}>{ingredientSummary}</Text>
+                  {ingredientPreview ? (
+                    <Text style={styles.ingredientsPreview} numberOfLines={1}>
+                      {ingredientPreview}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              ) : null}
             </View>
-            <View style={styles.lists}>
-              {lists.length === 0 ? (
-                <Subtle>{strings.noShoppingLists}</Subtle>
-              ) : (
-                <View style={styles.chipRow}>
-                  {lists.map((list) => (
-                    <AppChip
-                      key={list.id}
-                      label={list.name}
-                      active={list.id === effectiveListId}
-                      accentKey="meals"
-                      onPress={() => onSelectListId(list.id)}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-            {shoppingSyncError ? (
-              <Text style={styles.error}>{strings.shoppingSyncFailed} {shoppingSyncError}</Text>
+            {hasIngredients ? (
+              <View style={styles.shoppingActionSection}>
+                <Text style={styles.sectionLabel}>{strings.shoppingLabel}</Text>
+                <AppButton
+                  title={strings.addIngredientsToShoppingAction}
+                  onPress={onOpenShoppingReview}
+                  variant="ghost"
+                />
+              </View>
             ) : null}
             <View style={styles.sheetFooterActions}>
               <AppButton title={strings.saveMeal} onPress={onSave} fullWidth accentKey="meals" />
-              {hasExistingMeal ? (
-                <AppButton
-                  title={strings.removeMeal}
-                  onPress={onRemove}
-                  variant="ghost"
-                  fullWidth
-                />
-              ) : null}
-              <AppButton
-                title={strings.close}
-                onPress={onClose}
-                variant="secondary"
-                fullWidth
-              />
+              <View style={styles.sheetFooterSecondaryActions}>
+                {hasExistingMeal ? (
+                  <AppButton
+                    title={strings.removeMeal}
+                    onPress={onRemove}
+                    variant="ghost"
+                  />
+                ) : null}
+                <Pressable onPress={onClose} style={({ pressed }) => [
+                  styles.footerCloseLink,
+                  pressed ? styles.footerCloseLinkPressed : null,
+                ]}>
+                  <Text style={styles.footerCloseText}>{strings.close}</Text>
+                </Pressable>
+              </View>
             </View>
           </ScrollView>
         </View>
@@ -200,7 +218,6 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.layout.sheetPadding,
     borderWidth: 1,
     borderColor: theme.colors.border,
     overflow: 'hidden',
@@ -252,23 +269,36 @@ const styles = StyleSheet.create({
     minHeight: 64,
     textAlignVertical: 'top',
   },
-  toggleRow: {
+  ingredientsSection: {
+    gap: theme.spacing.sm,
+  },
+  ingredientsSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  toggleLabel: {
-    fontWeight: '600',
-    color: theme.colors.text,
-    fontFamily: theme.typography.body,
-  },
-  lists: {
-    gap: theme.spacing.xs,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: theme.spacing.sm,
+  },
+  ingredientsSummaryCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
+  ingredientsSummaryTitle: {
+    ...textStyles.body,
+    fontWeight: '600',
+  },
+  ingredientsHint: {
+    ...textStyles.subtle,
+  },
+  ingredientsPreview: {
+    ...textStyles.subtle,
+    marginTop: 2,
+  },
+  shoppingActionSection: {
+    gap: theme.spacing.xs,
   },
   sheetFooterActions: {
     gap: theme.spacing.sm,
@@ -276,8 +306,27 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
-  error: {
-    color: theme.colors.danger,
-    fontFamily: theme.typography.body,
+  sheetFooterSecondaryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  footerCloseLink: {
+    minHeight: 36,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  footerCloseLinkPressed: {
+    opacity: 0.7,
+  },
+  footerCloseText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
 });

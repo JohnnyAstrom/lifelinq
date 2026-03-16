@@ -67,4 +67,13 @@ public class RecipeEntity {
     List<RecipeIngredientEntity> getIngredients() {
         return ingredients;
     }
+
+    void rename(String name) {
+        this.name = name;
+    }
+
+    void replaceIngredients(List<RecipeIngredientEntity> ingredients) {
+        this.ingredients.clear();
+        this.ingredients.addAll(ingredients);
+    }
 }

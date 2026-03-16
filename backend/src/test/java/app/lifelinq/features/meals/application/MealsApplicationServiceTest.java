@@ -94,7 +94,9 @@ class MealsApplicationServiceTest {
                 eq(listId),
                 eq("olive oil"),
                 eq(new BigDecimal("2")),
-                eq("DL")
+                eq("DL"),
+                eq("meal-plan"),
+                eq("Dinner")
         );
         order.verify(shopping).addShoppingItem(
                 eq(groupId),
@@ -102,7 +104,9 @@ class MealsApplicationServiceTest {
                 eq(listId),
                 eq("tomato"),
                 eq(null),
-                eq(null)
+                eq(null),
+                eq("meal-plan"),
+                eq("Dinner")
         );
     }
 
@@ -137,7 +141,7 @@ class MealsApplicationServiceTest {
 
         service.addOrReplaceMeal(groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId);
 
-        verify(shopping, times(2)).addShoppingItem(groupId, userId, listId, "tomato", null, null);
+        verify(shopping, times(2)).addShoppingItem(groupId, userId, listId, "tomato", null, null, "meal-plan", "Soup");
     }
 
     @Test
@@ -168,7 +172,7 @@ class MealsApplicationServiceTest {
                 UUID.randomUUID()
         )).isInstanceOf(RecipeNotFoundException.class);
 
-        verify(shopping, never()).addShoppingItem(any(), any(), any(), any(), any(), any());
+        verify(shopping, never()).addShoppingItem(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -284,8 +288,8 @@ class MealsApplicationServiceTest {
         );
 
         InOrder order = inOrder(shopping);
-        order.verify(shopping).addShoppingItem(groupId, userId, listId, "tomato", null, null);
-        order.verify(shopping).addShoppingItem(groupId, userId, listId, "onion", null, null);
+        order.verify(shopping).addShoppingItem(groupId, userId, listId, "tomato", null, null, "meal-plan", "Recipe");
+        order.verify(shopping).addShoppingItem(groupId, userId, listId, "onion", null, null, "meal-plan", "Recipe");
     }
 
     private static final class InMemoryWeekPlanRepository implements WeekPlanRepository {

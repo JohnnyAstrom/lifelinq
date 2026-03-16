@@ -1,8 +1,17 @@
-import { type ShoppingItemResponse, type ShoppingUnit } from '../api/shoppingApi';
+import { type ShoppingUnit } from '../api/shoppingApi';
+
+type ShoppingQuantityShape = {
+  quantity: number | null;
+  unit: ShoppingUnit | null;
+};
+
+type ShoppingTitleShape = ShoppingQuantityShape & {
+  title: string;
+};
 
 const UNIT_LABELS: Record<ShoppingUnit, string> = {
-  ST: 'pcs',
-  FORP: 'pack',
+  PCS: 'pcs',
+  PACK: 'pack',
   KG: 'kg',
   HG: 'hg',
   G: 'g',
@@ -11,7 +20,7 @@ const UNIT_LABELS: Record<ShoppingUnit, string> = {
   ML: 'ml',
 };
 
-export function formatItemMeta(item: ShoppingItemResponse) {
+export function formatItemMeta(item: ShoppingQuantityShape) {
   if (item.quantity == null || !item.unit) {
     return null;
   }
@@ -19,10 +28,10 @@ export function formatItemMeta(item: ShoppingItemResponse) {
   return `${item.quantity} ${label}`;
 }
 
-export function formatItemTitle(item: ShoppingItemResponse) {
+export function formatItemTitle(item: ShoppingTitleShape) {
   const meta = formatItemMeta(item);
   if (meta) {
-    return `${meta} - ${item.name}`;
+    return `${meta} - ${item.title}`;
   }
-  return item.name;
+  return item.title;
 }

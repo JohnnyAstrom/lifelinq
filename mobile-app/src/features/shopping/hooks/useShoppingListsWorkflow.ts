@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useShoppingLists } from './useShoppingLists';
+import type { ShoppingListType } from '../api/shoppingApi';
 
 type ShoppingListsHook = ReturnType<typeof useShoppingLists>;
 
@@ -15,10 +16,12 @@ type FinishDragListArgs = {
 
 export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowArgs) {
   const [newListName, setNewListName] = useState('');
+  const [newListType, setNewListType] = useState<ShoppingListType>('grocery');
   const [showCreate, setShowCreate] = useState(false);
   const [activeListId, setActiveListId] = useState<string | null>(null);
-  const [renameListId, setRenameListId] = useState<string | null>(null);
-  const [renameListName, setRenameListName] = useState('');
+  const [editListId, setEditListId] = useState<string | null>(null);
+  const [editListName, setEditListName] = useState('');
+  const [editListType, setEditListType] = useState<ShoppingListType>('grocery');
   const [orderedListIds, setOrderedListIds] = useState<string[]>([]);
   const [draggingListId, setDraggingListId] = useState<string | null>(null);
 
@@ -54,18 +57,20 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     setActiveListId(listId);
   }
 
-  function closeRename() {
-    setRenameListId(null);
-    setRenameListName('');
+  function closeEdit() {
+    setEditListId(null);
+    setEditListName('');
+    setEditListType('grocery');
   }
 
-  function openRename() {
+  function openEdit() {
     const list = selectedActionList();
     if (!list) {
       return;
     }
-    setRenameListId(list.id);
-    setRenameListName(list.name);
+    setEditListId(list.id);
+    setEditListName(list.name);
+    setEditListType(list.type);
     closeActions();
   }
 
@@ -73,17 +78,18 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     if (!newListName.trim()) {
       return;
     }
-    await shopping.createList(newListName.trim());
+    await shopping.createList(newListName.trim(), newListType);
     setNewListName('');
+    setNewListType('grocery');
     closeCreate();
   }
 
-  async function handleRenameList() {
-    if (!renameListId || !renameListName.trim()) {
+  async function handleEditList() {
+    if (!editListId || !editListName.trim()) {
       return;
     }
-    await shopping.renameList(renameListId, renameListName.trim());
-    closeRename();
+    await shopping.updateList(editListId, editListName.trim(), editListType);
+    closeEdit();
   }
 
   async function handleRemoveList(options?: { listId?: string | null }) {
@@ -95,10 +101,12 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     if (activeListId === targetId) {
       closeActions();
     }
-    if (renameListId === targetId) {
-      closeRename();
+    if (editListId === targetId) {
+      closeEdit();
     }
   }
+
+  const canEditList = editListName.trim().length > 0;
 
   async function finishDragList(args: FinishDragListArgs) {
     const { draggingId, startIndex, finalIds } = args;
@@ -117,30 +125,35 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
   return {
     state: {
       newListName,
+      newListType,
       showCreate,
       activeListId,
-      renameListId,
-      renameListName,
+      editListId,
+      editListName,
+      editListType,
       orderedListIds,
       draggingListId,
       orderedLists,
       canCreateList,
+      canEditList,
     },
     actions: {
       setNewListName,
+      setNewListType,
       setShowCreate,
       setActiveListId,
-      setRenameListId,
-      setRenameListName,
+      setEditListId,
+      setEditListName,
+      setEditListType,
       setOrderedListIds,
       setDraggingListId,
       handleCreateList,
-      handleRenameList,
+      handleEditList,
       handleRemoveList,
       openActionsForList,
       closeActions,
-      openRename,
-      closeRename,
+      openEdit,
+      closeEdit,
       closeCreate,
       finishDragList,
       selectedActionList,

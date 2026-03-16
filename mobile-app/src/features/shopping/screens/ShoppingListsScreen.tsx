@@ -13,10 +13,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreateListSheetContent } from '../components/CreateListSheetContent';
 import { ListActionsSheetContent } from '../components/ListActionsSheetContent';
-import { RenameListSheetContent } from '../components/RenameListSheetContent';
 import { ShoppingListRow } from '../components/ShoppingListRow';
 import { useShoppingListsWorkflow } from '../hooks/useShoppingListsWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
+import { getShoppingListTypeDefinitions } from '../utils/shoppingListTypes';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppCard, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
@@ -48,15 +48,16 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     subtitle: 'Choose a list to see items and start shopping.',
     loading: 'Loading lists...',
     yourLists: 'Your lists',
-    reorderHint: 'Hold and drag a list to reorder',
     noLists: 'No lists yet.',
     createListTitle: 'Create list',
     createListSubtitle: 'Give your list a name so everyone can add items.',
+    createListTypeLabel: 'List type',
     listNamePlaceholder: 'List name',
     createListAction: 'Create list',
     back: 'Back',
-    open: 'open',
-    total: 'total',
+    toBuy: 'to buy',
+    allBought: 'Everything bought',
+    emptyList: 'No items yet',
     newList: 'New list',
     close: 'Close',
     removeListTitle: 'Remove list?',
@@ -64,11 +65,13 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     removeConfirm: 'Remove',
     actionsTitle: 'List actions',
     actionShare: 'Share',
-    actionEditName: 'Edit name',
+    actionEditList: 'Edit list',
     actionDelete: 'Delete',
-    renameTitle: 'Edit list name',
-    renameSave: 'Save',
+    editListTitle: 'Edit list',
+    editListSubtitle: 'Update the list name and type.',
+    editListSave: 'Save changes',
   };
+  const listTypeOptions = getShoppingListTypeDefinitions();
 
   useEffect(() => {
     if (workflowState.draggingListId || pendingListReorderSyncRef.current) {
@@ -114,18 +117,18 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     Keyboard.dismiss();
   }
 
-  function closeRename() {
-    workflowActions.closeRename();
+  function closeEdit() {
+    workflowActions.closeEdit();
     Keyboard.dismiss();
   }
 
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: workflowState.showCreate || !!workflowState.activeListId || !!workflowState.renameListId,
+    isOverlayOpen: workflowState.showCreate || !!workflowState.activeListId || !!workflowState.editListId,
     onCloseOverlay: () => {
-      if (workflowState.renameListId) {
-        closeRename();
+      if (workflowState.editListId) {
+        closeEdit();
         return;
       }
       if (workflowState.activeListId) {
@@ -150,14 +153,14 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     });
   }
 
-  function openRename() {
-    workflowActions.openRename();
+  function openEdit() {
+    workflowActions.openEdit();
     closeActions();
   }
 
-  async function handleRenameList() {
-    await workflowActions.handleRenameList();
-    closeRename();
+  async function handleEditList() {
+    await workflowActions.handleEditList();
+    closeEdit();
   }
 
   function moveId(ids: string[], from: number, to: number) {
@@ -279,7 +282,6 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             <Subtle>{strings.noLists}</Subtle>
           ) : (
             <View style={styles.listSection}>
-              <Subtle>{strings.reorderHint}</Subtle>
               <View
                 onTouchStart={(event: GestureResponderEvent) => {
                   const pageY = event.nativeEvent.pageY;
@@ -306,7 +308,11 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                     list={list}
                     openCount={openCount}
                     totalCount={totalCount}
-                    strings={{ open: strings.open, total: strings.total }}
+                    strings={{
+                      toBuy: strings.toBuy,
+                      allBought: strings.allBought,
+                      empty: strings.emptyList,
+                    }}
                     styles={styles}
                     isDragging={isDragging}
                     onPress={() => {
@@ -346,12 +352,16 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             styles={styles}
             title={strings.createListTitle}
             subtitle={strings.createListSubtitle}
+            typeLabel={strings.createListTypeLabel}
+            selectedType={workflowState.newListType}
+            typeOptions={listTypeOptions}
             placeholder={strings.listNamePlaceholder}
             createActionLabel={strings.createListAction}
             closeLabel={strings.close}
             value={workflowState.newListName}
             canCreate={canCreateList}
             onChangeText={workflowActions.setNewListName}
+            onSelectType={workflowActions.setNewListType}
             onSubmitEditing={async () => {
               if (canCreateList) {
                 await handleCreateList();
@@ -369,11 +379,11 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             styles={styles}
             title={strings.actionsTitle}
             shareLabel={strings.actionShare}
-            editNameLabel={strings.actionEditName}
+            editNameLabel={strings.actionEditList}
             deleteLabel={strings.actionDelete}
             closeLabel={strings.close}
             onShare={handleShareList}
-            onEditName={openRename}
+            onEditName={openEdit}
             onDelete={() => {
               const list = workflowActions.selectedActionList();
               closeActions();
@@ -386,18 +396,29 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
         </OverlaySheet>
       ) : null}
 
-      {workflowState.renameListId ? (
-        <OverlaySheet onClose={closeRename} sheetStyle={styles.sheet}>
-          <RenameListSheetContent
+      {workflowState.editListId ? (
+        <OverlaySheet onClose={closeEdit} sheetStyle={styles.sheet}>
+          <CreateListSheetContent
             styles={styles}
-            title={strings.renameTitle}
+            title={strings.editListTitle}
+            subtitle={strings.editListSubtitle}
+            typeLabel={strings.createListTypeLabel}
+            selectedType={workflowState.editListType}
+            typeOptions={listTypeOptions}
             placeholder={strings.listNamePlaceholder}
-            saveLabel={strings.renameSave}
+            createActionLabel={strings.editListSave}
             closeLabel={strings.close}
-            value={workflowState.renameListName}
-            onChangeText={workflowActions.setRenameListName}
-            onSave={() => void handleRenameList()}
-            onClose={closeRename}
+            value={workflowState.editListName}
+            canCreate={workflowState.canEditList}
+            onChangeText={workflowActions.setEditListName}
+            onSelectType={workflowActions.setEditListType}
+            onSubmitEditing={async () => {
+              if (workflowState.canEditList) {
+                await handleEditList();
+              }
+            }}
+            onCreate={handleEditList}
+            onClose={closeEdit}
           />
         </OverlaySheet>
       ) : null}
@@ -423,16 +444,16 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   listCard: {
-    minHeight: 84,
+    minHeight: 92,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.xs,
-    backgroundColor: theme.colors.surfaceAlt,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
   },
   listCardDragging: {
     opacity: 0.85,
@@ -440,15 +461,15 @@ const styles = StyleSheet.create({
   },
   listMainPressable: {
     flex: 1,
-    minHeight: 56,
+    minHeight: 60,
     paddingVertical: 0,
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: 0,
     borderRadius: theme.radius.md,
     justifyContent: 'center',
   },
   listMain: {
     flex: 1,
-    gap: theme.spacing.xs,
+    gap: 2,
   },
   listCardPressed: {
     opacity: 0.9,
@@ -456,7 +477,8 @@ const styles = StyleSheet.create({
   },
   listTitle: {
     ...textStyles.body,
-    lineHeight: 26,
+    fontWeight: '600',
+    lineHeight: 24,
   },
   listMenuButton: {
     width: 36,
@@ -506,6 +528,19 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   sheetActions: {
+    gap: theme.spacing.xs,
+  },
+  sheetTypeSection: {
+    gap: theme.spacing.xs,
+  },
+  sheetTypeLabel: {
+    ...textStyles.subtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  sheetTypeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.xs,
   },
   error: {

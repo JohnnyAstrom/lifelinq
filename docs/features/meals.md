@@ -17,6 +17,8 @@ Consequences: Meals never accesses Shopping repositories; it calls a Shopping us
 Integration is one-way (Meals → Shopping).
 Current implementation: Meals calls `ShoppingApplicationService.addShoppingItem(...)`
 when `targetShoppingListId` is provided, once per ingredient occurrence.
+Current product reality: meals-pushed shopping items now carry narrow shopping provenance so Shopping can show that they came from meal planning. Shopping may also conservatively absorb compatible meal-plan intake into an existing open shopping item instead of always creating a new row.
+Current frontend capture direction: ingredient entry is a lightweight structured row editor with `name`, optional `quantity`, optional `unit`, and implicit `position` from row order. The main `Plan a meal` sheet keeps ingredients as a light summary and opens a secondary ingredient sheet for full editing. Shopping intake is now triggered from a separate explicit review/confirm sheet rather than as a passive save-time toggle.
 
 ## Meals Model (Phase 1)
 
@@ -45,7 +47,7 @@ when `targetShoppingListId` is provided, once per ingredient occurrence.
 - `Recipe`
   - `id`, `groupId`, `name`, `createdAt`, `ingredients`
 - `Ingredient`
-  - `id`, `name`, `quantity` (BigDecimal, nullable), `unit` (ShoppingUnit, nullable), `position`
+  - `id`, `name`, `quantity` (BigDecimal, nullable), `unit` (shared quantity unit, nullable), `position`
 
 ### Invariants
 
@@ -72,14 +74,14 @@ when `targetShoppingListId` is provided, once per ingredient occurrence.
   - trim
   - collapse internal whitespace runs to a single space
   - lowercase using `Locale.ROOT`
-- Duplicate ingredient names are not merged in Meals; one shopping item call is made per occurrence.
+- Duplicate ingredient names are not merged in Meals; one shopping item call is made per occurrence. Shopping may still conservatively absorb compatible meal-plan intake on receipt.
 
 ### Non-goals (V0)
 
 - No recurring meals.
 - No nutrition tracking.
 - No full culinary recipe modeling (instructions, nutrition, comprehensive ingredient sets).
-- No advanced shopping merge logic in V0.5c (one item per ingredient occurrence).
+- No lifecycle synchronization between Meals and Shopping. Intake behavior may merge compatible meal-plan items conservatively, but remains one-way and shopping-owned.
 - No calendar sync.
 
 ## Core views

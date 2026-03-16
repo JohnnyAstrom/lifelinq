@@ -4,9 +4,12 @@ import app.lifelinq.config.RequestContext;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.contract.AddShoppingItemOutput;
 import app.lifelinq.features.shopping.contract.CreateShoppingListOutput;
+import app.lifelinq.features.shopping.contract.ShoppingCategoryPreferenceView;
 import app.lifelinq.features.shopping.contract.ShoppingItemView;
 import app.lifelinq.features.shopping.contract.ShoppingListView;
 import app.lifelinq.features.shopping.contract.ToggleShoppingItemOutput;
+import app.lifelinq.features.shopping.domain.ShoppingCategory;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +21,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -41,10 +46,11 @@ public class ShoppingController {
         CreateShoppingListOutput output = shoppingApplicationService.createShoppingList(
                 context.getGroupId(),
                 context.getUserId(),
-                request.getName()
+                request.getName(),
+                parseListType(request.getType())
         );
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateShoppingListResponse(output.listId(), output.name()));
+                .body(new CreateShoppingListResponse(output.listId(), output.name(), output.type()));
     }
 
     @GetMapping("/shopping-lists")
@@ -67,6 +73,74 @@ public class ShoppingController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/shopping/category-preferences")
+    public ResponseEntity<?> listCategoryPreferences() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<ShoppingCategoryPreferenceView> preferences = shoppingApplicationService.listShoppingCategoryPreferences(
+                context.getGroupId(),
+                context.getUserId()
+        );
+        List<ShoppingCategoryPreferenceResponse> responses = new ArrayList<>();
+        for (ShoppingCategoryPreferenceView preference : preferences) {
+            responses.add(new ShoppingCategoryPreferenceResponse(
+                    preference.listType(),
+                    preference.normalizedTitle(),
+                    preference.preferredCategory()
+            ));
+        }
+        return ResponseEntity.ok(responses);
+    }
+
+    @PutMapping("/shopping/category-preferences")
+    public ResponseEntity<?> saveCategoryPreference(@RequestBody SaveShoppingCategoryPreferenceRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        ShoppingCategoryPreferenceView preference = shoppingApplicationService.saveShoppingCategoryPreference(
+                context.getGroupId(),
+                context.getUserId(),
+                parseListType(request.getListType()),
+                request.getNormalizedTitle(),
+                ShoppingCategory.fromKey(request.getPreferredCategory())
+        );
+        return ResponseEntity.ok(new ShoppingCategoryPreferenceResponse(
+                preference.listType(),
+                preference.normalizedTitle(),
+                preference.preferredCategory()
+        ));
+    }
+
+    @DeleteMapping("/shopping/category-preferences")
+    public ResponseEntity<?> clearCategoryPreference(
+            @RequestParam String listType,
+            @RequestParam String normalizedTitle
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null) {
+            return ApiScoping.missingContext();
+        }
+        if (context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        shoppingApplicationService.clearShoppingCategoryPreference(
+                context.getGroupId(),
+                context.getUserId(),
+                parseListType(listType),
+                normalizedTitle
+        );
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/shopping-lists/{listId}")
     public ResponseEntity<?> updateList(
             @PathVariable UUID listId,
@@ -79,11 +153,12 @@ public class ShoppingController {
         if (context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
-        ShoppingListView list = shoppingApplicationService.updateShoppingListName(
+        ShoppingListView list = shoppingApplicationService.updateShoppingListIdentity(
                 context.getGroupId(),
                 context.getUserId(),
                 listId,
-                request.getName()
+                request.getName(),
+                parseListType(request.getType())
         );
         return ResponseEntity.ok(toResponse(list));
     }
@@ -127,15 +202,19 @@ public class ShoppingController {
                 listId,
                 request.getName(),
                 request.getQuantity(),
-                parseUnit(request.getUnit())
+                parseUnit(request.getUnit()),
+                Boolean.TRUE.equals(request.getAddAsNew())
         );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new AddShoppingItemResponse(
                         output.itemId(),
                         output.name(),
+                        output.outcome(),
                         output.status().name(),
                         output.quantity(),
                         output.unit() != null ? output.unit().name() : null,
+                        output.sourceKind(),
+                        output.sourceLabel(),
                         output.createdAt(),
                         output.boughtAt()
                 ));
@@ -169,6 +248,8 @@ public class ShoppingController {
                 item.status().name(),
                 item.quantity(),
                 item.unit() != null ? item.unit().name() : null,
+                item.sourceKind(),
+                item.sourceLabel(),
                 item.createdAt(),
                 item.boughtAt()
         ));
@@ -269,11 +350,17 @@ public class ShoppingController {
                     item.status().name(),
                     item.quantity(),
                     item.unit() != null ? item.unit().name() : null,
+                    item.sourceKind(),
+                    item.sourceLabel(),
                     item.createdAt(),
                     item.boughtAt()
             ));
         }
-        return new ShoppingListResponse(list.id(), list.name(), items);
+        return new ShoppingListResponse(list.id(), list.name(), list.type(), items);
+    }
+
+    private ShoppingListType parseListType(String rawListType) {
+        return ShoppingListType.fromKey(rawListType);
     }
 
     private ShoppingUnit parseUnit(String unit) {
@@ -281,8 +368,11 @@ public class ShoppingController {
             return null;
         }
         String normalized = unit.trim().toUpperCase().replace("Ö", "O").replace("Ä", "A").replace("Å", "A");
+        if ("ST".equals(normalized)) {
+            return ShoppingUnit.PCS;
+        }
         if ("FÖRP".equals(normalized) || "FORP".equals(normalized)) {
-            return ShoppingUnit.FORP;
+            return ShoppingUnit.PACK;
         }
         return ShoppingUnit.valueOf(normalized);
     }

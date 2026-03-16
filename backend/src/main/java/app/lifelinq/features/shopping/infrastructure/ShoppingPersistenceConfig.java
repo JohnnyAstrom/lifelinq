@@ -1,5 +1,6 @@
 package app.lifelinq.features.shopping.infrastructure;
 
+import app.lifelinq.features.shopping.domain.ShoppingCategoryPreferenceRepository;
 import app.lifelinq.features.shopping.domain.ShoppingListRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,5 +21,12 @@ public class ShoppingPersistenceConfig {
             ShoppingListMapper mapper
     ) {
         return new JpaShoppingListRepositoryAdapter(repository, mapper);
+    }
+
+    @Bean
+    public ShoppingCategoryPreferenceRepository shoppingCategoryPreferenceRepository(
+            ShoppingCategoryPreferenceJpaRepository repository
+    ) {
+        return new JpaShoppingCategoryPreferenceRepositoryAdapter(repository);
     }
 }

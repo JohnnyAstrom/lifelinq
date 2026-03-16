@@ -4,6 +4,7 @@ public final class AddShoppingItemRequest {
     private String name;
     private java.math.BigDecimal quantity;
     private String unit;
+    private Boolean addAsNew;
 
     public String getName() {
         return name;
@@ -15,5 +16,9 @@ public final class AddShoppingItemRequest {
 
     public String getUnit() {
         return unit;
+    }
+
+    public Boolean getAddAsNew() {
+        return addAsNew;
     }
 }

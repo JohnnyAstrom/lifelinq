@@ -29,6 +29,9 @@ public class ShoppingListEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "list_type", nullable = false)
+    private String listType;
+
     @Column(name = "order_index", nullable = false)
     private int orderIndex;
 
@@ -45,10 +48,11 @@ public class ShoppingListEntity {
     protected ShoppingListEntity() {
     }
 
-    ShoppingListEntity(UUID id, UUID groupId, String name, int orderIndex, Instant createdAt) {
+    ShoppingListEntity(UUID id, UUID groupId, String name, String listType, int orderIndex, Instant createdAt) {
         this.id = id;
         this.groupId = groupId;
         this.name = name;
+        this.listType = listType;
         this.orderIndex = orderIndex;
         this.createdAt = createdAt;
     }
@@ -63,6 +67,10 @@ public class ShoppingListEntity {
 
     String getName() {
         return name;
+    }
+
+    String getListType() {
+        return listType;
     }
 
     int getOrderIndex() {

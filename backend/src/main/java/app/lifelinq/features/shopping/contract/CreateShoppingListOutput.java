@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public record CreateShoppingListOutput(
         UUID listId,
-        String name
+        String name,
+        String type
 ) {}

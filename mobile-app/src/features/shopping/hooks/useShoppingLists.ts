@@ -13,6 +13,7 @@ import {
   updateShoppingList,
   updateShoppingItem,
   type ShoppingUnit,
+  type ShoppingListType,
   type AddShoppingItemResponse,
   type ShoppingListResponse,
 } from '../api/shoppingApi';
@@ -57,13 +58,13 @@ export function useShoppingLists(token: string | null) {
     load();
   }, [token]);
 
-  const createList = async (name: string) => {
+  const createList = async (name: string, type: ShoppingListType = 'mixed') => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      await createShoppingList({ name }, { token });
+      await createShoppingList({ name, type }, { token });
       await load();
     } catch (err) {
       await handleApiError(err);
@@ -79,14 +80,15 @@ export function useShoppingLists(token: string | null) {
     listId: string,
     name: string,
     quantity?: number | null,
-    unit?: ShoppingUnit | null
+    unit?: ShoppingUnit | null,
+    addAsNew?: boolean
   ): Promise<AddShoppingItemResponse | void> => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await addShoppingItem(listId, { name, quantity, unit }, { token });
+      const response = await addShoppingItem(listId, { name, quantity, unit, addAsNew }, { token });
       await load();
       return response;
     } catch (err) {
@@ -117,13 +119,13 @@ export function useShoppingLists(token: string | null) {
     }
   };
 
-  const renameList = async (listId: string, name: string) => {
+  const updateList = async (listId: string, name: string, type: ShoppingListType) => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      await updateShoppingList(listId, { name }, { token });
+      await updateShoppingList(listId, { name, type }, { token });
       await load();
     } catch (err) {
       await handleApiError(err);
@@ -249,7 +251,7 @@ export function useShoppingLists(token: string | null) {
     reload: load,
     createList,
     removeList,
-    renameList,
+    updateList,
     reorderList,
     addItem,
     toggleItem,

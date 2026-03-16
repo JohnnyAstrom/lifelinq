@@ -13,13 +13,27 @@ public final class ShoppingItem {
     private Instant boughtAt;
     private BigDecimal quantity;
     private ShoppingUnit unit;
+    private ShoppingItemSourceKind sourceKind;
+    private String sourceLabel;
 
     public ShoppingItem(UUID id, String name, Instant createdAt) {
-        this(id, name, 0, createdAt, null, null);
+        this(id, name, 0, createdAt, null, null, null, null);
     }
 
     public ShoppingItem(UUID id, String name, Instant createdAt, BigDecimal quantity, ShoppingUnit unit) {
-        this(id, name, 0, createdAt, quantity, unit);
+        this(id, name, 0, createdAt, quantity, unit, null, null);
+    }
+
+    public ShoppingItem(
+            UUID id,
+            String name,
+            Instant createdAt,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel
+    ) {
+        this(id, name, 0, createdAt, quantity, unit, sourceKind, sourceLabel);
     }
 
     public ShoppingItem(
@@ -28,7 +42,9 @@ public final class ShoppingItem {
             int orderIndex,
             Instant createdAt,
             BigDecimal quantity,
-            ShoppingUnit unit
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel
     ) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
@@ -43,6 +59,7 @@ public final class ShoppingItem {
             throw new IllegalArgumentException("createdAt must not be null");
         }
         validateQuantityAndUnit(quantity, unit);
+        validateSource(sourceKind, sourceLabel);
         this.id = id;
         this.name = name;
         this.orderIndex = orderIndex;
@@ -51,6 +68,8 @@ public final class ShoppingItem {
         this.boughtAt = null;
         this.quantity = quantity;
         this.unit = unit;
+        this.sourceKind = sourceKind;
+        this.sourceLabel = normalizeSourceLabel(sourceLabel);
     }
 
     public static ShoppingItem rehydrate(
@@ -61,7 +80,9 @@ public final class ShoppingItem {
             ShoppingItemStatus status,
             Instant boughtAt,
             BigDecimal quantity,
-            ShoppingUnit unit
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel
     ) {
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
@@ -72,7 +93,7 @@ public final class ShoppingItem {
         if (status == ShoppingItemStatus.BOUGHT && boughtAt == null) {
             throw new IllegalArgumentException("boughtAt must not be null when status is BOUGHT");
         }
-        ShoppingItem item = new ShoppingItem(id, name, orderIndex, createdAt, quantity, unit);
+        ShoppingItem item = new ShoppingItem(id, name, orderIndex, createdAt, quantity, unit, sourceKind, sourceLabel);
         item.status = status;
         item.boughtAt = boughtAt;
         return item;
@@ -99,6 +120,71 @@ public final class ShoppingItem {
         this.name = name;
         this.quantity = quantity;
         this.unit = unit;
+    }
+
+    public boolean canAbsorbMealPlanIntake(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        if (status != ShoppingItemStatus.TO_BUY) {
+            return false;
+        }
+        if (quantity == null && unit == null && incomingQuantity == null && incomingUnit == null) {
+            return true;
+        }
+        if (quantity == null && unit == null) {
+            return incomingQuantity != null && incomingUnit != null;
+        }
+        if (quantity == null || unit == null) {
+            return false;
+        }
+        if (incomingQuantity == null && incomingUnit == null) {
+            return true;
+        }
+        if (incomingQuantity == null || incomingUnit == null) {
+            return false;
+        }
+        return unit == incomingUnit;
+    }
+
+    public void absorbMealPlanIntake(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        if (!canAbsorbMealPlanIntake(incomingQuantity, incomingUnit)) {
+            throw new IllegalArgumentException("incoming meal-plan item is not compatible with existing item");
+        }
+        if (quantity == null && unit == null) {
+            quantity = incomingQuantity;
+            unit = incomingUnit;
+            clearSource();
+            return;
+        }
+        if (incomingQuantity == null && incomingUnit == null) {
+            clearSource();
+            return;
+        }
+        if (quantity != null && incomingQuantity != null) {
+            quantity = quantity.add(incomingQuantity);
+        }
+        clearSource();
+    }
+
+    public boolean hasNoQuantityDetails() {
+        return quantity == null && unit == null;
+    }
+
+    public boolean hasCompatibleQuantityUnit(ShoppingUnit incomingUnit) {
+        return quantity != null && unit != null && incomingUnit != null && unit == incomingUnit;
+    }
+
+    public void applyManualAddQuantity(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        validateQuantityAndUnit(incomingQuantity, incomingUnit);
+        this.quantity = incomingQuantity;
+        this.unit = incomingUnit;
+        clearSource();
+    }
+
+    public void increaseManualAddQuantity(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        if (!hasCompatibleQuantityUnit(incomingUnit) || incomingQuantity == null) {
+            throw new IllegalArgumentException("incoming manual item is not compatible with existing item");
+        }
+        quantity = quantity.add(incomingQuantity);
+        clearSource();
     }
 
     public UUID getId() {
@@ -140,6 +226,19 @@ public final class ShoppingItem {
         return unit;
     }
 
+    public ShoppingItemSourceKind getSourceKind() {
+        return sourceKind;
+    }
+
+    public String getSourceLabel() {
+        return sourceLabel;
+    }
+
+    private void clearSource() {
+        sourceKind = null;
+        sourceLabel = null;
+    }
+
     private static void validateQuantityAndUnit(BigDecimal quantity, ShoppingUnit unit) {
         if (quantity == null && unit == null) {
             return;
@@ -150,5 +249,20 @@ public final class ShoppingItem {
         if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("quantity must be greater than 0");
         }
+    }
+
+    private static void validateSource(ShoppingItemSourceKind sourceKind, String sourceLabel) {
+        String normalizedLabel = normalizeSourceLabel(sourceLabel);
+        if (sourceKind == null && normalizedLabel != null) {
+            throw new IllegalArgumentException("sourceLabel requires sourceKind");
+        }
+    }
+
+    private static String normalizeSourceLabel(String sourceLabel) {
+        if (sourceLabel == null) {
+            return null;
+        }
+        String normalized = sourceLabel.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

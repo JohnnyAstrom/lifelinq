@@ -1,8 +1,8 @@
 package app.lifelinq.features.meals.domain;
 
 public enum IngredientUnit {
-    ST,
-    FORP,
+    PCS,
+    PACK,
     KG,
     HG,
     G,

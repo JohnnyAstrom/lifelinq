@@ -87,4 +87,44 @@ class JpaRecipeRepositoryAdapterTest {
 
         assertThat(result).extracting(Recipe::getId).containsExactly(recipeA);
     }
+
+    @Test
+    void repeatedSaveReplacesIngredientsForSameRecipeId() {
+        UUID groupId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-02-01T10:00:00Z");
+
+        repository.save(new Recipe(
+                recipeId,
+                groupId,
+                "Soup",
+                createdAt,
+                List.of(
+                        new Ingredient(UUID.randomUUID(), "Tomato", null, null, 1),
+                        new Ingredient(UUID.randomUUID(), "Milk", new BigDecimal("2.0"), IngredientUnit.DL, 2)
+                )
+        ));
+
+        repository.save(new Recipe(
+                recipeId,
+                groupId,
+                "Soup Updated",
+                createdAt,
+                List.of(
+                        new Ingredient(UUID.randomUUID(), "Onion", null, null, 1),
+                        new Ingredient(UUID.randomUUID(), "Water", new BigDecimal("1.0"), IngredientUnit.L, 2)
+                )
+        ));
+
+        Optional<Recipe> loaded = repository.findByIdAndGroupId(recipeId, groupId);
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().getName()).isEqualTo("Soup Updated");
+        assertThat(loaded.get().getIngredients())
+                .extracting(Ingredient::getName)
+                .containsExactly("Onion", "Water");
+        assertThat(loaded.get().getIngredients())
+                .extracting(Ingredient::getPosition)
+                .containsExactly(1, 2);
+    }
 }

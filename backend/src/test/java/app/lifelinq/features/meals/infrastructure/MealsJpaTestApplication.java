@@ -57,8 +57,9 @@ public class MealsJpaTestApplication {
     @Bean
     public JpaRecipeRepositoryAdapter recipeRepository(
             RecipeJpaRepository repository,
+            RecipeIngredientJpaRepository ingredientRepository,
             RecipeMapper mapper
     ) {
-        return new JpaRecipeRepositoryAdapter(repository, mapper);
+        return new JpaRecipeRepositoryAdapter(repository, ingredientRepository, mapper);
     }
 }

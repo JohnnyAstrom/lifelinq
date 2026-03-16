@@ -207,7 +207,7 @@ If a module is domain-specific (e.g. shopping or meals API), it should be access
 
 - **Todo**: strongest separation so far (feature screens, data hooks, grouping/progress hooks, presentational components, utils).
 - **Meals**: feature-based with extracted views/components/utils and a workflow hook; still refining screen thinning and feature-owned API usage patterns.
-- **Shopping**: boundary cleanup and Phase A/B refactor underway; screens are becoming thinner via presentational extraction and workflow hooks.
+- **Shopping**: feature-owned projection/domain scaffolding is now in place for list detail; screens are moving toward thinner orchestration over workflow hooks and internal section projection.
 - **Documents / Group / Auth**: functional but less refactored; more screen-centric in places.
 
 ---

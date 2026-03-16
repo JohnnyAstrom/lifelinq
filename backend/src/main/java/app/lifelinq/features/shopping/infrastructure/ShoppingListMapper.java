@@ -2,7 +2,9 @@ package app.lifelinq.features.shopping.infrastructure;
 
 import app.lifelinq.features.shopping.domain.ShoppingItem;
 import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
+import app.lifelinq.features.shopping.domain.ShoppingItemSourceKind;
 import app.lifelinq.features.shopping.domain.ShoppingList;
+import app.lifelinq.features.shopping.domain.ShoppingListType;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +16,7 @@ final class ShoppingListMapper {
                 list.getId(),
                 list.getGroupId(),
                 list.getName(),
+                list.getType().key(),
                 list.getOrderIndex(),
                 list.getCreatedAt()
         );
@@ -32,6 +35,7 @@ final class ShoppingListMapper {
                 entity.getId(),
                 entity.getGroupId(),
                 entity.getName(),
+                ShoppingListType.fromKey(entity.getListType()),
                 entity.getOrderIndex(),
                 entity.getCreatedAt(),
                 items
@@ -47,6 +51,8 @@ final class ShoppingListMapper {
                 toEntityStatus(item.getStatus()),
                 item.getQuantity(),
                 toEntityUnit(item.getUnit()),
+                item.getSourceKind() != null ? item.getSourceKind().key() : null,
+                item.getSourceLabel(),
                 item.getCreatedAt(),
                 item.getBoughtAt()
         );
@@ -61,7 +67,9 @@ final class ShoppingListMapper {
                 toDomainStatus(entity.getStatus()),
                 entity.getBoughtAt(),
                 entity.getQuantity(),
-                toDomainUnit(entity.getUnit())
+                toDomainUnit(entity.getUnit()),
+                toDomainSourceKind(entity.getSourceKind()),
+                entity.getSourceLabel()
         );
     }
 
@@ -91,5 +99,12 @@ final class ShoppingListMapper {
             return null;
         }
         return ShoppingUnit.valueOf(unit.name());
+    }
+
+    private ShoppingItemSourceKind toDomainSourceKind(String sourceKind) {
+        if (sourceKind == null || sourceKind.isBlank()) {
+            return null;
+        }
+        return ShoppingItemSourceKind.fromKey(sourceKind);
     }
 }

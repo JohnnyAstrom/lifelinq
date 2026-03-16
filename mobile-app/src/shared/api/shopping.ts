@@ -6,6 +6,8 @@ export type ShoppingItemResponse = {
   status: string;
   quantity: number | null;
   unit: ShoppingUnit | null;
+  sourceKind: ShoppingItemSourceKind | null;
+  sourceLabel: string | null;
   createdAt: string;
   boughtAt: string | null;
 };
@@ -13,11 +15,13 @@ export type ShoppingItemResponse = {
 export type ShoppingListResponse = {
   id: string;
   name: string;
+  type: ShoppingListType;
   items: ShoppingItemResponse[];
 };
 
 export type UpdateShoppingListRequest = {
   name: string;
+  type: ShoppingListType;
 };
 
 export type ReorderShoppingListRequest = {
@@ -26,25 +30,33 @@ export type ReorderShoppingListRequest = {
 
 export type CreateShoppingListRequest = {
   name: string;
+  type?: ShoppingListType;
 };
 
 export type CreateShoppingListResponse = {
   listId: string;
   name: string;
+  type: ShoppingListType;
 };
 
 export type AddShoppingItemRequest = {
   name: string;
   quantity?: number | null;
   unit?: ShoppingUnit | null;
+  addAsNew?: boolean;
 };
+
+export type ShoppingAddItemOutcome = 'CREATED' | 'REUSED_EXISTING' | 'UPDATED_EXISTING' | 'INCREASED_EXISTING';
 
 export type AddShoppingItemResponse = {
   itemId: string;
   name: string;
+  outcome: ShoppingAddItemOutcome;
   status: string;
   quantity: number | null;
   unit: ShoppingUnit | null;
+  sourceKind: ShoppingItemSourceKind | null;
+  sourceLabel: string | null;
   createdAt: string;
   boughtAt: string | null;
 };
@@ -67,7 +79,9 @@ export type UpdateShoppingItemRequest = {
 
 export type UpdateShoppingItemResponse = ShoppingItemResponse;
 
-export type ShoppingUnit = 'ST' | 'FORP' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
+export type ShoppingUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
+export type ShoppingListType = 'grocery' | 'consumables' | 'supplies' | 'mixed';
+export type ShoppingItemSourceKind = 'meal-plan';
 
 export async function createShoppingList(
   payload: CreateShoppingListRequest,

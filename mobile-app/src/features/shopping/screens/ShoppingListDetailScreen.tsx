@@ -15,12 +15,17 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
 import { EditItemSheetContent } from '../components/EditItemSheetContent';
 import { ShoppingItemRow } from '../components/ShoppingItemRow';
+import { ShoppingItemSectionCard } from '../components/ShoppingItemSectionCard';
+import { useShoppingCategoryPreferences } from '../hooks/useShoppingCategoryPreferences';
+import { useShoppingListDetailProjection } from '../hooks/useShoppingListDetailProjection';
 import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
-import { formatItemMeta, formatItemTitle } from '../utils/shoppingFormatting';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../api/shoppingApi';
-import { AppButton, AppCard, AppChip, AppInput, AppScreen, BackIconButton, SectionTitle, Subtle, TopBar } from '../../../shared/ui/components';
+import { getShoppingCategoryDefinitions, type ShoppingCategoryKey } from '../utils/shoppingCategories';
+import type { ShoppingCategoryOrigin } from '../utils/shoppingDomain';
+import { formatQuantityForFeedback, formatUnitForFeedback } from '../utils/shoppingQuantity';
+import { AppScreen, BackIconButton, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,11 +39,17 @@ type Props = {
 export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const insets = useSafeAreaInsets();
   const shopping = useShoppingLists(token);
-  const workflow = useShoppingListDetailWorkflow({ shopping, listId });
+  const categoryPreferences = useShoppingCategoryPreferences();
+  const selectedTransportListType = useMemo(
+    () => shopping.lists.find((list) => list.id === listId)?.type ?? 'mixed',
+    [listId, shopping.lists]
+  );
+  const workflow = useShoppingListDetailWorkflow({ shopping, listId, listType: selectedTransportListType });
   const { state: workflowState, actions: workflowActions } = workflow;
   const [showMoreEditUnits, setShowMoreEditUnits] = useState(false);
   const [showMoreAddUnits, setShowMoreAddUnits] = useState(false);
   const [showAddFormDetails, setShowAddFormDetails] = useState(false);
+  const [isBoughtExpanded, setIsBoughtExpanded] = useState(false);
   const orderedOpenItemIdsRef = useRef<string[]>([]);
   const draggingOpenItemIdRef = useRef<string | null>(null);
   const dragStartIndexRef = useRef<number | null>(null);
@@ -50,33 +61,31 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const pendingOpenReorderSyncRef = useRef(false);
   const addDetailsInputRef = useRef<TextInput | null>(null);
   const quantityRef = useRef<TextInput | null>(null);
-
-  const selected = useMemo(() => {
-    return shopping.lists.find((list) => list.id === listId) ?? null;
-  }, [shopping.lists, listId]);
-
-  const items = useMemo(() => selected?.items ?? [], [selected]);
-  const openItemsBase = useMemo(() => items.filter((item) => item.status !== 'BOUGHT'), [items]);
-  const openItems = useMemo(() => {
-    if (workflowState.orderedOpenItemIds.length === 0) {
-      return openItemsBase;
-    }
-    const byId = new Map(openItemsBase.map((item) => [item.id, item]));
-    const ordered = workflowState.orderedOpenItemIds
-      .map((id) => byId.get(id))
-      .filter((item): item is NonNullable<typeof item> => !!item);
-    return ordered.length === openItemsBase.length ? ordered : openItemsBase;
-  }, [openItemsBase, workflowState.orderedOpenItemIds]);
-  const boughtItems = items.filter((item) => item.status === 'BOUGHT');
+  const projection = useShoppingListDetailProjection({
+    lists: shopping.lists,
+    listId,
+    orderedOpenItemIds: workflowState.orderedOpenItemIds,
+    categoryContext: categoryPreferences,
+    categoryPreferencesVersion: categoryPreferences.version,
+  });
+  const selectedList = projection.list;
+  const openItems = projection.openItems;
+  const openSections = projection.openSections;
+  const boughtSection = projection.boughtSection;
+  const boughtItems = boughtSection?.items ?? [];
+  const isBoughtCollapsed = boughtItems.length > 0 && !isBoughtExpanded;
+  const canReorderOpenItems = openSections.length <= 1;
+  const isShoppingFocused = openItems.length > 0;
+  const showOpenReorderHint = false;
 
   const strings = {
     titleFallback: 'Shopping list',
     back: 'Back',
     openLabel: 'Open',
     boughtLabel: 'Bought',
-    openCountSuffix: 'open',
-    boughtCountSuffix: 'bought',
-    details: 'Edit',
+    showBought: 'Show bought',
+    hideBought: 'Hide bought',
+    details: 'Open item details',
     swipeBought: 'Bought',
     swipeOpen: 'Open',
     noOpenItems: 'No open items.',
@@ -94,11 +103,28 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addErrorQuantity: 'Quantity must be a positive number.',
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
     addDetailsTitle: 'Add details',
-    addDetailsAddedSuffix: 'added to shopping list.',
+    addDetailsAddedPrefix: 'Added',
+    addAlreadyOnListPrefix: 'Already on list:',
+    addIncreasedExistingPrefix: 'Updated to',
+    addUpdatedExistingPrefix: 'Updated to',
     addItemTitle: 'Add item',
+    addDuplicateTitle: 'Already on your list',
+    addDuplicateKeepExisting: 'Keep existing',
+    addDuplicateUpdateExisting: 'Update existing',
+    addDuplicateIncreaseExisting: 'Increase existing',
+    addDuplicateAddAsNew: 'Add as new',
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
     editQuantityPlaceholder: 'Quantity (optional)',
+    sourceMealPlanPrefix: 'From meal plan',
+    editCategoryLabel: 'Category',
+    changeCategoryLabel: 'Change category',
+    categorySourceOverride: 'Set for item',
+    categorySourceMemory: 'Learned from group',
+    categorySourceSuggested: 'Auto',
+    categorySourceFallback: 'Other by default',
+    autoCategoryLabel: 'Auto',
+    resetLearnedCategoryLabel: 'Reset learned category',
     saveChanges: 'Save changes',
     removeItem: 'Remove item',
     close: 'Close',
@@ -111,11 +137,66 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     reorderHint: 'Hold and drag to reorder open items',
   };
 
+  function getCategorySourceLabel(origin: ShoppingCategoryOrigin | null): string | null {
+    switch (origin) {
+      case 'override':
+        return strings.categorySourceOverride;
+      case 'memory':
+        return strings.categorySourceMemory;
+      case 'suggested':
+        return strings.categorySourceSuggested;
+      case 'fallback':
+        return strings.categorySourceFallback;
+      default:
+        return null;
+    }
+  }
+
+  function getCategoryLabel(key: ShoppingCategoryKey | null): string {
+    if (!key) {
+      return strings.autoCategoryLabel;
+    }
+    return CATEGORY_OPTIONS.find((option) => option.value === key)?.label ?? strings.autoCategoryLabel;
+  }
+
+  function getItemSourceLabel(sourceKind: 'unknown' | 'meal-plan', sourceLabel: string | null): string | null {
+    switch (sourceKind) {
+      case 'meal-plan':
+        return sourceLabel ? `${strings.sourceMealPlanPrefix}: ${sourceLabel}` : strings.sourceMealPlanPrefix;
+      default:
+        return null;
+    }
+  }
+
+  function getAddDuplicateSubtitle(): string | null {
+    const duplicate = workflowState.addLikelyDuplicate;
+    if (!duplicate) {
+      return null;
+    }
+    if (duplicate.action === 'keep-existing' || duplicate.action === 'update-existing') {
+      return `${duplicate.title} is already on this list.`;
+    }
+    return `${duplicate.title} already exists as ${formatQuantityForFeedback(duplicate.quantity ?? 0)} ${formatUnitForFeedback(duplicate.unit!)}.`;
+  }
+
+  function getAddDuplicatePrimaryActionLabel(): string | null {
+    switch (workflowState.addLikelyDuplicate?.action) {
+      case 'keep-existing':
+        return strings.addDuplicateKeepExisting;
+      case 'update-existing':
+        return strings.addDuplicateUpdateExisting;
+      case 'increase-existing':
+        return strings.addDuplicateIncreaseExisting;
+      default:
+        return null;
+    }
+  }
+
   useEffect(() => {
     if (workflowState.draggingOpenItemId || pendingOpenReorderSyncRef.current) {
       return;
     }
-    const next = openItemsBase.map((item) => item.id);
+    const next = openItems.map((item) => item.id);
     const current = orderedOpenItemIdsRef.current;
     const same = current.length === next.length && current.every((value, index) => value === next[index]);
     if (same) {
@@ -123,7 +204,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     }
     orderedOpenItemIdsRef.current = next;
     workflowActions.setOrderedOpenItemIds(next);
-  }, [workflowActions, workflowState.draggingOpenItemId, openItemsBase]);
+  }, [openItems, workflowActions, workflowState.draggingOpenItemId]);
 
   useEffect(() => {
     if (!workflowState.showAddDetails || !showAddFormDetails) {
@@ -142,7 +223,15 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     Keyboard.dismiss();
   }
 
-  function openEdit(item: typeof items[number]) {
+  function openEdit(item: {
+    id: string;
+    title: string;
+    quantity: number | null;
+    unit: ShoppingUnit | null;
+    categoryOverrideKey: ShoppingCategoryKey | null;
+    sourceKind: 'unknown' | 'meal-plan';
+    sourceLabel: string | null;
+  }) {
     workflowActions.openEdit(item);
     setShowMoreEditUnits(false);
   }
@@ -173,23 +262,40 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       {
         addErrorQuantity: strings.addErrorQuantity,
         addErrorQuantityUnit: strings.addErrorQuantityUnit,
-        addDetailsAddedSuffix: strings.addDetailsAddedSuffix,
+        addDetailsAddedPrefix: strings.addDetailsAddedPrefix,
+        addAlreadyOnListPrefix: strings.addAlreadyOnListPrefix,
+        addIncreasedExistingPrefix: strings.addIncreasedExistingPrefix,
+        addUpdatedExistingPrefix: strings.addUpdatedExistingPrefix,
+      },
+      { onRefocus: () => addDetailsInputRef.current?.focus() }
+    );
+  }
+
+  async function handleAddDuplicatePrimaryAction() {
+    await workflowActions.handleAddDuplicatePrimaryAction(
+      {
+        addErrorQuantity: strings.addErrorQuantity,
+        addErrorQuantityUnit: strings.addErrorQuantityUnit,
+        addDetailsAddedPrefix: strings.addDetailsAddedPrefix,
+        addAlreadyOnListPrefix: strings.addAlreadyOnListPrefix,
+        addIncreasedExistingPrefix: strings.addIncreasedExistingPrefix,
+        addUpdatedExistingPrefix: strings.addUpdatedExistingPrefix,
       },
       { onRefocus: () => addDetailsInputRef.current?.focus() }
     );
   }
 
   async function handleClearBought() {
-    if (!selected || boughtItems.length === 0) {
+    if (!selectedList || boughtItems.length === 0) {
       return;
     }
     for (const item of boughtItems) {
-      await shopping.removeItem(selected.id, item.id);
+      await shopping.removeItem(selectedList.id, item.id);
     }
   }
 
   function requestClearBought() {
-    if (!selected || boughtItems.length === 0) {
+    if (!selectedList || boughtItems.length === 0) {
       return;
     }
     Alert.alert(strings.clearBoughtTitle, strings.clearBoughtBody, [
@@ -215,9 +321,12 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   }
 
   function startOpenDrag(itemId: string, pageY: number) {
+    if (!canReorderOpenItems) {
+      return;
+    }
     const currentIds = orderedOpenItemIdsRef.current.length > 0
       ? orderedOpenItemIdsRef.current
-      : openItemsBase.map((item) => item.id);
+      : openItems.map((item) => item.id);
     const index = currentIds.indexOf(itemId);
     if (index < 0) {
       return;
@@ -324,7 +433,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       contentStyle={styles.screenContent}
       header={(
         <TopBar
-          title={selected ? selected.name : strings.titleFallback}
+          title={selectedList ? selectedList.name : strings.titleFallback}
           icon={<Ionicons name="cart-outline" />}
           accentKey="shopping"
           right={<BackIconButton onPress={onBack} />}
@@ -343,81 +452,101 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-          <AppCard style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <SectionTitle>{strings.openLabel}</SectionTitle>
-              <Subtle>{openItems.length} {strings.openCountSuffix}</Subtle>
-            </View>
-            {openItems.length === 0 ? (
-              <Subtle>{strings.noOpenItems}</Subtle>
-            ) : (
-              <View style={styles.items}>
-                <Subtle>{strings.reorderHint}</Subtle>
-                {openItems.map((item) => (
+          {openSections.length === 0 ? (
+            <ShoppingItemSectionCard
+              title={strings.openLabel}
+              emptyState={strings.noOpenItems}
+            />
+          ) : openSections.map((section) => (
+            <ShoppingItemSectionCard
+              key={section.id}
+              title={section.title}
+              hint={showOpenReorderHint ? strings.reorderHint : null}
+            >
+              <View style={styles.sectionItems}>
+                {section.items.map((item) => (
                   <Swipeable
                     key={item.id}
-                    enabled={!workflowState.draggingOpenItemId}
+                    enabled={!workflowState.draggingOpenItemId && canReorderOpenItems}
                     renderRightActions={() => (
                       <View style={[styles.swipeAction, styles.swipeActionBought]}>
                         <Text style={styles.swipeActionText}>{strings.swipeBought}</Text>
                       </View>
                     )}
-                    onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
+                    onSwipeableOpen={() => selectedList && shopping.toggleItem(selectedList.id, item.id)}
                   >
                     <ShoppingItemRow
-                      item={item}
-                      title={formatItemTitle(item)}
+                      title={item.title}
+                      meta={item.displayMeta}
                       checked={false}
-                      detailLabel={strings.details}
+                      shoppingFocused={isShoppingFocused}
                       dragging={workflowState.draggingOpenItemId === item.id}
-                      styles={styles}
+                      secondaryActionLabel={strings.details}
                       onToggle={() => {
                         if (ignoreNextOpenPressRef.current) {
                           ignoreNextOpenPressRef.current = false;
                           return;
                         }
-                        if (selected && !draggingOpenItemIdRef.current) {
-                          shopping.toggleItem(selected.id, item.id);
+                        if (selectedList && !draggingOpenItemIdRef.current) {
+                          shopping.toggleItem(selectedList.id, item.id);
                         }
                       }}
-                      onEdit={() => {
+                      onOpenDetails={() => {
                         if (!draggingOpenItemIdRef.current) {
-                          openEdit(item);
+                          openEdit({
+                            id: item.id,
+                            title: item.title,
+                            quantity: item.quantity,
+                            unit: item.unit,
+                            categoryOverrideKey: item.categoryOverride?.key ?? null,
+                            sourceKind: item.source.kind,
+                            sourceLabel: item.source.label,
+                          });
                         }
                       }}
-                      onToggleLongPress={(event) => startOpenDrag(item.id, event.nativeEvent.pageY)}
-                      onToggleTouchMove={handleOpenTouchMove}
-                      onToggleTouchEnd={() => {
-                        void finishOpenDrag();
+                      onMeasuredHeight={(height) => {
+                        rowHeightRef.current = height + theme.spacing.xs;
                       }}
-                      onToggleTouchCancel={() => {
-                        void finishOpenDrag();
-                      }}
+                      onToggleLongPress={canReorderOpenItems
+                        ? (event) => startOpenDrag(item.id, event.nativeEvent.pageY)
+                        : undefined}
+                      onToggleTouchMove={canReorderOpenItems ? handleOpenTouchMove : undefined}
+                      onToggleTouchEnd={canReorderOpenItems
+                        ? () => {
+                          void finishOpenDrag();
+                        }
+                        : undefined}
+                      onToggleTouchCancel={canReorderOpenItems
+                        ? () => {
+                          void finishOpenDrag();
+                        }
+                        : undefined}
                     />
                   </Swipeable>
                 ))}
               </View>
-            )}
-          </AppCard>
+            </ShoppingItemSectionCard>
+          ))}
 
-          <AppCard style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <SectionTitle>{strings.boughtLabel}</SectionTitle>
-              <View style={styles.sectionHeaderRight}>
-                <Subtle>{boughtItems.length} {strings.boughtCountSuffix}</Subtle>
-                {boughtItems.length > 0 ? (
-                  <AppButton
-                    title={strings.clearBought}
-                    onPress={requestClearBought}
-                    variant="ghost"
-                  />
-                ) : null}
-              </View>
-            </View>
-            {boughtItems.length === 0 ? (
-              <Subtle>{strings.noBoughtItems}</Subtle>
-            ) : (
-              <View style={styles.items}>
+          <ShoppingItemSectionCard
+            title={strings.boughtLabel}
+            variant="bought"
+            emptyState={boughtItems.length === 0 ? strings.noBoughtItems : null}
+            actionLabel={(boughtSection?.itemCount ?? 0) > 0
+              ? (isBoughtCollapsed ? `${strings.showBought} (${boughtItems.length})` : strings.hideBought)
+              : undefined}
+            onActionPress={(boughtSection?.itemCount ?? 0) > 0
+              ? () => setIsBoughtExpanded((prev) => !prev)
+              : undefined}
+          >
+            {boughtItems.length > 0 && !isBoughtCollapsed ? (
+              <View style={styles.boughtContent}>
+                <View style={styles.boughtActions}>
+                  <Pressable onPress={requestClearBought} style={({ pressed }) => [styles.boughtActionButton, pressed ? styles.boughtActionButtonPressed : null]}>
+                    <Text style={styles.boughtActionLabel}>{strings.clearBought}</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.sectionItems}>
                 {boughtItems.map((item) => (
                   <Swipeable
                     key={item.id}
@@ -426,39 +555,52 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                         <Text style={styles.swipeActionText}>{strings.swipeOpen}</Text>
                       </View>
                     )}
-                    onSwipeableOpen={() => selected && shopping.toggleItem(selected.id, item.id)}
+                    onSwipeableOpen={() => selectedList && shopping.toggleItem(selectedList.id, item.id)}
                   >
                     <ShoppingItemRow
-                      item={item}
-                      title={formatItemTitle(item)}
+                      title={item.title}
+                      meta={item.displayMeta}
                       checked
-                      detailLabel={strings.details}
-                      styles={styles}
+                      shoppingFocused={isShoppingFocused}
+                      secondaryActionLabel={strings.details}
                       onToggle={() => {
-                        if (selected) {
-                          shopping.toggleItem(selected.id, item.id);
+                        if (selectedList) {
+                          shopping.toggleItem(selectedList.id, item.id);
                         }
                       }}
-                      onEdit={() => openEdit(item)}
+                      onOpenDetails={() => openEdit({
+                        id: item.id,
+                        title: item.title,
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        categoryOverrideKey: item.categoryOverride?.key ?? null,
+                        sourceKind: item.source.kind,
+                        sourceLabel: item.source.label,
+                      })}
                     />
                   </Swipeable>
                 ))}
+                </View>
               </View>
-            )}
-          </AppCard>
+            ) : null}
+          </ShoppingItemSectionCard>
           </ScrollView>
         </View>
       </View>
 
       <Pressable
-        style={[styles.fab, { bottom: Math.max(insets.bottom + 8, 12) }]}
+        style={[
+          styles.fab,
+          isShoppingFocused ? styles.fabShoppingFocused : null,
+          { bottom: Math.max(insets.bottom + 8, 12) },
+        ]}
         onPress={() => {
           setShowAddFormDetails(false);
           setShowMoreAddUnits(false);
           workflowActions.setShowAddDetails(true);
         }}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={[styles.fabText, isShoppingFocused ? styles.fabTextShoppingFocused : null]}>+</Text>
       </Pressable>
 
       {workflowState.editItemId ? (
@@ -468,6 +610,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             title={strings.editTitle}
             editNamePlaceholder={strings.editNamePlaceholder}
             editQuantityPlaceholder={strings.editQuantityPlaceholder}
+            editCategoryLabel={strings.editCategoryLabel}
+            changeCategoryLabel={strings.changeCategoryLabel}
+            editCurrentCategoryLabel={getCategoryLabel(workflowState.editEffectiveCategoryKey)}
+            editCategorySourceLabel={getCategorySourceLabel(workflowState.editCategoryOrigin)}
+            editProvenanceLabel={getItemSourceLabel(workflowState.editSourceKind, workflowState.editSourceLabel)}
+            autoCategoryLabel={strings.autoCategoryLabel}
+            resetLearnedCategoryLabel={strings.resetLearnedCategoryLabel}
             saveChangesLabel={strings.saveChanges}
             removeItemLabel={strings.removeItem}
             closeLabel={strings.close}
@@ -477,10 +626,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             nameValue={workflowState.editName}
             quantityValue={workflowState.editQuantity}
             editUnit={workflowState.editUnit}
+            editCategoryOverride={workflowState.editCategoryOverride}
+            showResetLearnedCategory={workflowState.editHasLearnedCategory}
             editError={workflowState.editError}
             showMoreEditUnits={showMoreEditUnits}
             primaryUnitOptions={PRIMARY_UNIT_OPTIONS}
             moreUnitOptions={MORE_UNIT_OPTIONS}
+            categoryOptions={CATEGORY_OPTIONS}
             onChangeName={workflowActions.setEditName}
             onChangeQuantity={workflowActions.setEditQuantity}
             onSelectUnit={(value) => {
@@ -489,6 +641,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 workflowActions.setEditQuantity('');
               }
             }}
+            onSelectCategoryOverride={(value) => workflowActions.setEditCategoryOverride(value)}
+            onResetLearnedCategory={() => void workflowActions.handleResetLearnedCategory()}
             onToggleMoreUnits={() => setShowMoreEditUnits((prev) => !prev)}
             onSave={handleSaveEdit}
             onRemove={handleRemoveEdit}
@@ -501,13 +655,6 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         <OverlaySheet
           onClose={closeAddDetails}
           sheetStyle={styles.quickAddSheet}
-          aboveSheet={
-            workflowState.addDetailsFeedback ? (
-              <View style={styles.quickAddFeedback}>
-                <Text style={styles.quickAddFeedbackText}>{workflowState.addDetailsFeedback}</Text>
-              </View>
-            ) : null
-          }
         >
           <AddDetailsSheetContent
             styles={styles}
@@ -517,6 +664,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             detailsHideLabel={strings.addDetailsHide}
             addQuantityPlaceholder={strings.addQuantityPlaceholder}
             addItemTitle={strings.addItemTitle}
+            successFeedback={workflowState.addDetailsFeedback}
+            duplicateTitle={workflowState.addLikelyDuplicate ? strings.addDuplicateTitle : null}
+            duplicateSubtitle={getAddDuplicateSubtitle()}
+            duplicatePrimaryActionLabel={getAddDuplicatePrimaryActionLabel()}
+            duplicateSecondaryActionLabel={workflowState.addLikelyDuplicate ? strings.addDuplicateAddAsNew : null}
             unitNoneLabel={strings.unitNone}
             unitToggleMoreLabel={strings.unitMore}
             unitToggleLessLabel={strings.unitLess}
@@ -533,6 +685,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onChangeName={workflowActions.setNewItemName}
             onSubmitName={async () => {
               if (workflowState.newItemName.trim()) {
+                if (workflowState.addLikelyDuplicate) {
+                  await handleAddDuplicatePrimaryAction();
+                  return;
+                }
                 await handleAddItem();
                 return;
               }
@@ -542,7 +698,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onChangeQuantity={(value) => {
               workflowActions.setAddQuantity(value);
               if (value.trim().length > 0 && workflowState.addUnit == null) {
-                workflowActions.setAddUnit('ST');
+                workflowActions.setAddUnit('PCS');
               }
               if (value.trim().length === 0) {
                 workflowActions.setAddUnit(null);
@@ -560,6 +716,22 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onAddItem={async () => {
               await handleAddItem();
             }}
+            onDuplicatePrimaryAction={async () => {
+              await handleAddDuplicatePrimaryAction();
+            }}
+            onAddAsNew={async () => {
+              await workflowActions.handleAddItem(
+                {
+                  addErrorQuantity: strings.addErrorQuantity,
+                  addErrorQuantityUnit: strings.addErrorQuantityUnit,
+                  addDetailsAddedPrefix: strings.addDetailsAddedPrefix,
+                  addAlreadyOnListPrefix: strings.addAlreadyOnListPrefix,
+                  addIncreasedExistingPrefix: strings.addIncreasedExistingPrefix,
+                  addUpdatedExistingPrefix: strings.addUpdatedExistingPrefix,
+                },
+                { onRefocus: () => addDetailsInputRef.current?.focus(), addAsNew: true }
+              );
+            }}
           />
         </OverlaySheet>
       ) : null}
@@ -568,8 +740,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 }
 
 const PRIMARY_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
-  { label: 'pcs', value: 'ST' },
-  { label: 'pack', value: 'FORP' },
+  { label: 'pcs', value: 'PCS' },
+  { label: 'pack', value: 'PACK' },
   { label: 'kg', value: 'KG' },
 ];
 
@@ -580,6 +752,11 @@ const MORE_UNIT_OPTIONS: { label: string; value: ShoppingUnit }[] = [
   { label: 'dl', value: 'DL' },
   { label: 'ml', value: 'ML' },
 ];
+
+const CATEGORY_OPTIONS = getShoppingCategoryDefinitions().map((definition) => ({
+  label: definition.label,
+  value: definition.key,
+}));
 
 const styles = StyleSheet.create({
   screenContent: {
@@ -597,19 +774,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 96,
-    gap: theme.spacing.md,
-  },
-  sectionCard: {
-    gap: theme.spacing.xs,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: theme.spacing.sm,
   },
   swipeAction: {
@@ -630,75 +794,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: theme.typography.heading,
   },
-  items: {
+  sectionItems: {
     gap: theme.spacing.xs,
   },
-  itemRow: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
+  boughtContent: {
+    gap: theme.spacing.xs,
+  },
+  boughtActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
+    justifyContent: 'flex-start',
   },
-  checkboxPressable: {
-    padding: theme.spacing.xs,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    backgroundColor: theme.colors.surfaceAlt,
-    alignItems: 'center',
+  boughtActionButton: {
+    minHeight: 28,
     justifyContent: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: theme.colors.success,
-    borderColor: theme.colors.success,
+  boughtActionButtonPressed: {
+    opacity: 0.65,
   },
-  checkboxMark: {
-    fontSize: 14,
-    color: 'transparent',
-    fontWeight: '700',
-  },
-  checkboxMarkChecked: {
-    color: '#ffffff',
-  },
-  itemText: {
-    ...textStyles.body,
-  },
-  itemHintText: {
+  boughtActionLabel: {
     ...textStyles.subtle,
-  },
-  itemHintChevron: {
-    ...textStyles.subtle,
-    fontSize: 18,
-    lineHeight: 18,
-  },
-  itemMeta: {
-    ...textStyles.subtle,
-  },
-  itemContent: {
-    flex: 1,
-    gap: theme.spacing.xs,
-  },
-  toggleZone: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  detailZone: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    paddingLeft: theme.spacing.sm,
-    borderLeftWidth: 1,
-    borderLeftColor: theme.colors.border,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
   },
   quickEditRow: {
     marginTop: theme.spacing.xs,
@@ -718,6 +834,62 @@ const styles = StyleSheet.create({
   quickEditInputs: {
     gap: theme.spacing.xs,
   },
+  editPrimarySection: {
+    gap: theme.spacing.xs,
+  },
+  editSecondarySection: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  secondaryMetaText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  categorySummaryCard: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  categorySummaryCardPressed: {
+    opacity: 0.82,
+  },
+  categorySummaryMain: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  categorySummaryValue: {
+    ...textStyles.body,
+    fontWeight: '600',
+  },
+  categorySummaryAction: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.shopping,
+    fontWeight: '600',
+  },
+  secondarySectionHeader: {
+    gap: 2,
+  },
+  secondarySectionLabel: {
+    ...textStyles.subtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  categorySourceHint: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
   quickUnitRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -729,10 +901,6 @@ const styles = StyleSheet.create({
   },
   quickInput: {
     maxWidth: 140,
-  },
-  itemTextDone: {
-    color: theme.colors.subtle,
-    textDecorationLine: 'line-through',
   },
   addDetailsBar: {
     paddingHorizontal: theme.spacing.md,
@@ -765,25 +933,8 @@ const styles = StyleSheet.create({
     padding: theme.layout.sheetPadding,
     gap: theme.spacing.xs,
   },
-  itemRowDragging: {
-    borderColor: theme.colors.feature.shopping,
-    opacity: 0.85,
-  },
   quickAddHeader: {
     justifyContent: 'center',
-  },
-  quickAddFeedback: {
-    alignSelf: 'center',
-    maxWidth: '100%',
-    backgroundColor: theme.colors.success,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-  },
-  quickAddFeedbackText: {
-    color: '#ffffff',
-    fontFamily: theme.typography.body,
-    fontSize: 13,
   },
   error: {
     color: theme.colors.danger,
@@ -806,8 +957,33 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.xs,
   },
+  editCategoryActions: {
+    paddingTop: theme.spacing.xs,
+  },
   editorActions: {
     gap: theme.spacing.xs,
+  },
+  editorSecondaryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  editorCloseLink: {
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  editorCloseLinkPressed: {
+    opacity: 0.72,
+  },
+  editorCloseText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
   editorScroll: {
     maxHeight: '100%',
@@ -827,11 +1003,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...theme.elevation.floating,
   },
+  fabShoppingFocused: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
   fabText: {
     color: '#ffffff',
     fontSize: 28,
     lineHeight: 28,
     fontFamily: theme.typography.heading,
+  },
+  fabTextShoppingFocused: {
+    color: theme.colors.feature.shopping,
   },
 });
 

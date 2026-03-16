@@ -12,6 +12,11 @@ type Props = {
   detailsHideLabel: string;
   addQuantityPlaceholder: string;
   addItemTitle: string;
+  successFeedback?: string | null;
+  duplicateTitle?: string | null;
+  duplicateSubtitle?: string | null;
+  duplicatePrimaryActionLabel?: string | null;
+  duplicateSecondaryActionLabel?: string | null;
   unitNoneLabel: string;
   unitToggleMoreLabel: string;
   unitToggleLessLabel: string;
@@ -32,6 +37,8 @@ type Props = {
   onSelectUnit: (value: string | null) => void;
   onToggleMoreUnits: () => void;
   onAddItem: () => void | Promise<void>;
+  onDuplicatePrimaryAction?: () => void | Promise<void>;
+  onAddAsNew?: () => void | Promise<void>;
 };
 
 export function AddDetailsSheetContent({
@@ -42,6 +49,11 @@ export function AddDetailsSheetContent({
   detailsHideLabel,
   addQuantityPlaceholder,
   addItemTitle,
+  successFeedback,
+  duplicateTitle,
+  duplicateSubtitle,
+  duplicatePrimaryActionLabel,
+  duplicateSecondaryActionLabel,
   unitNoneLabel,
   unitToggleMoreLabel,
   unitToggleLessLabel,
@@ -62,7 +74,11 @@ export function AddDetailsSheetContent({
   onSelectUnit,
   onToggleMoreUnits,
   onAddItem,
+  onDuplicatePrimaryAction,
+  onAddAsNew,
 }: Props) {
+  const showDuplicatePrompt = !!duplicateTitle && !!duplicatePrimaryActionLabel && !!duplicateSecondaryActionLabel;
+
   return (
     <>
       <View style={styles.quickAddHeader}>
@@ -77,6 +93,11 @@ export function AddDetailsSheetContent({
         returnKeyType={nameValue.trim().length > 0 ? 'done' : 'next'}
         autoFocus
       />
+      {successFeedback ? (
+        <View style={localStyles.successFeedbackRow}>
+          <Text style={localStyles.successFeedbackText}>{successFeedback}</Text>
+        </View>
+      ) : null}
       <Pressable style={({ pressed }) => [localStyles.detailsToggle, pressed ? localStyles.detailsTogglePressed : null]} onPress={onToggleDetails}>
         <Text style={localStyles.detailsToggleLabel}>{detailsExpanded ? detailsHideLabel : detailsToggleLabel}</Text>
       </Pressable>
@@ -162,14 +183,41 @@ export function AddDetailsSheetContent({
         </>
       ) : null}
       {addError ? <Text style={styles.error}>{addError}</Text> : null}
+      {showDuplicatePrompt ? (
+        <View style={localStyles.duplicatePrompt}>
+          <Text style={localStyles.duplicatePromptTitle}>{duplicateTitle}</Text>
+          {duplicateSubtitle ? (
+            <Text style={localStyles.duplicatePromptSubtitle}>{duplicateSubtitle}</Text>
+          ) : null}
+        </View>
+      ) : null}
       <View style={styles.sheetActions}>
-        <AppButton
-          title={addItemTitle}
-          onPress={onAddItem}
-          disabled={nameValue.trim().length === 0}
-          fullWidth
-          accentKey="shopping"
-        />
+        {showDuplicatePrompt ? (
+          <>
+            <AppButton
+              title={duplicatePrimaryActionLabel}
+              onPress={onDuplicatePrimaryAction ?? onAddItem}
+              disabled={nameValue.trim().length === 0}
+              fullWidth
+              accentKey="shopping"
+            />
+            <AppButton
+              title={duplicateSecondaryActionLabel}
+              onPress={onAddAsNew ?? onAddItem}
+              disabled={nameValue.trim().length === 0}
+              fullWidth
+              variant="ghost"
+            />
+          </>
+        ) : (
+          <AppButton
+            title={addItemTitle}
+            onPress={onAddItem}
+            disabled={nameValue.trim().length === 0}
+            fullWidth
+            accentKey="shopping"
+          />
+        )}
       </View>
     </>
   );
@@ -232,5 +280,37 @@ const localStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#6b7280',
+  },
+  successFeedbackRow: {
+    minHeight: 34,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(47,122,79,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(47,122,79,0.22)',
+  },
+  successFeedbackText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.success,
+    fontFamily: theme.typography.body,
+  },
+  duplicatePrompt: {
+    gap: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  duplicatePromptTitle: {
+    ...textStyles.body,
+    fontWeight: '600',
+  },
+  duplicatePromptSubtitle: {
+    ...textStyles.subtle,
   },
 });

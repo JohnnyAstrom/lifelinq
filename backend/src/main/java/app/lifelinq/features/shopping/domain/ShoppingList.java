@@ -11,26 +11,40 @@ public final class ShoppingList {
     private final UUID id;
     private final UUID groupId;
     private String name;
+    private ShoppingListType type;
     private int orderIndex;
     private final Instant createdAt;
     private final List<ShoppingItem> items;
 
     public ShoppingList(UUID id, UUID groupId, String name, Instant createdAt) {
-        this(id, groupId, name, 0, createdAt, List.of());
+        this(id, groupId, name, ShoppingListType.MIXED, 0, createdAt, List.of());
+    }
+
+    public ShoppingList(UUID id, UUID groupId, String name, ShoppingListType type, Instant createdAt) {
+        this(id, groupId, name, type, 0, createdAt, List.of());
     }
 
     public ShoppingList(UUID id, UUID groupId, String name, int orderIndex, Instant createdAt) {
-        this(id, groupId, name, orderIndex, createdAt, List.of());
+        this(id, groupId, name, ShoppingListType.MIXED, orderIndex, createdAt, List.of());
+    }
+
+    public ShoppingList(UUID id, UUID groupId, String name, ShoppingListType type, int orderIndex, Instant createdAt) {
+        this(id, groupId, name, type, orderIndex, createdAt, List.of());
     }
 
     public ShoppingList(UUID id, UUID groupId, String name, Instant createdAt, List<ShoppingItem> items) {
-        this(id, groupId, name, 0, createdAt, items);
+        this(id, groupId, name, ShoppingListType.MIXED, 0, createdAt, items);
+    }
+
+    public ShoppingList(UUID id, UUID groupId, String name, ShoppingListType type, Instant createdAt, List<ShoppingItem> items) {
+        this(id, groupId, name, type, 0, createdAt, items);
     }
 
     public ShoppingList(
             UUID id,
             UUID groupId,
             String name,
+            ShoppingListType type,
             int orderIndex,
             Instant createdAt,
             List<ShoppingItem> items
@@ -44,6 +58,9 @@ public final class ShoppingList {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
         }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
         if (orderIndex < 0) {
             throw new IllegalArgumentException("orderIndex must be >= 0");
         }
@@ -56,20 +73,46 @@ public final class ShoppingList {
         this.id = id;
         this.groupId = groupId;
         this.name = name;
+        this.type = type;
         this.orderIndex = orderIndex;
         this.createdAt = createdAt;
         this.items = new ArrayList<>(items);
     }
 
-    public UUID addItem(UUID itemId, String normalizedName, Instant now) {
+    public ShoppingAddItemResult addItem(UUID itemId, String normalizedName, Instant now) {
         return addItem(itemId, normalizedName, null, null, now);
     }
 
-    public UUID addItem(
+    public ShoppingAddItemResult addItem(
             UUID itemId,
             String normalizedName,
             BigDecimal quantity,
             ShoppingUnit unit,
+            Instant now
+    ) {
+        return addItem(itemId, normalizedName, quantity, unit, null, null, false, now);
+    }
+
+    public ShoppingAddItemResult addItem(
+            UUID itemId,
+            String normalizedName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel,
+            Instant now
+    ) {
+        return addItem(itemId, normalizedName, quantity, unit, sourceKind, sourceLabel, false, now);
+    }
+
+    public ShoppingAddItemResult addItem(
+            UUID itemId,
+            String normalizedName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel,
+            boolean addAsNew,
             Instant now
     ) {
         if (itemId == null) {
@@ -81,10 +124,31 @@ public final class ShoppingList {
         if (now == null) {
             throw new IllegalArgumentException("now must not be null");
         }
+        if (sourceKind == ShoppingItemSourceKind.MEAL_PLAN) {
+            ShoppingItem mergeCandidate = findMealPlanMergeCandidate(normalizedName, quantity, unit);
+            if (mergeCandidate != null) {
+                boolean candidateHadNoQuantityDetails = mergeCandidate.hasNoQuantityDetails();
+                mergeCandidate.absorbMealPlanIntake(quantity, unit);
+                return new ShoppingAddItemResult(
+                        mergeCandidate.getId(),
+                        quantity == null
+                                ? ShoppingAddItemOutcome.REUSED_EXISTING
+                                : candidateHadNoQuantityDetails
+                                ? ShoppingAddItemOutcome.UPDATED_EXISTING
+                                : ShoppingAddItemOutcome.INCREASED_EXISTING
+                );
+            }
+        }
+        if (sourceKind == null && !addAsNew) {
+            ShoppingAddItemResult manualDuplicateResult = resolveManualDuplicateAdd(normalizedName, quantity, unit);
+            if (manualDuplicateResult != null) {
+                return manualDuplicateResult;
+            }
+        }
         shiftItemOrderIndexesForInsertAtTop();
-        ShoppingItem item = new ShoppingItem(itemId, normalizedName, 0, now, quantity, unit);
+        ShoppingItem item = new ShoppingItem(itemId, normalizedName, 0, now, quantity, unit, sourceKind, sourceLabel);
         items.add(item);
-        return itemId;
+        return new ShoppingAddItemResult(itemId, ShoppingAddItemOutcome.CREATED);
     }
 
     public void toggleItem(UUID itemId, Instant now) {
@@ -157,6 +221,17 @@ public final class ShoppingList {
         this.name = normalizedName;
     }
 
+    public void updateIdentity(String normalizedName, ShoppingListType type) {
+        if (normalizedName == null || normalizedName.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        this.name = normalizedName;
+        this.type = type;
+    }
+
     public void setOrderIndex(int orderIndex) {
         if (orderIndex < 0) {
             throw new IllegalArgumentException("orderIndex must be >= 0");
@@ -174,6 +249,10 @@ public final class ShoppingList {
 
     public String getName() {
         return name;
+    }
+
+    public ShoppingListType getType() {
+        return type;
     }
 
     public int getOrderIndex() {
@@ -211,6 +290,42 @@ public final class ShoppingList {
         for (ShoppingItem item : items) {
             item.setOrderIndex(item.getOrderIndex() + 1);
         }
+    }
+
+    private ShoppingItem findMealPlanMergeCandidate(String normalizedName, BigDecimal quantity, ShoppingUnit unit) {
+        List<ShoppingItem> matchingOpenItems = items.stream()
+                .filter(item -> item.getStatus() == ShoppingItemStatus.TO_BUY)
+                .filter(item -> item.getName().equals(normalizedName))
+                .toList();
+        if (matchingOpenItems.size() != 1) {
+            return null;
+        }
+        ShoppingItem candidate = matchingOpenItems.get(0);
+        return candidate.canAbsorbMealPlanIntake(quantity, unit) ? candidate : null;
+    }
+
+    private ShoppingAddItemResult resolveManualDuplicateAdd(String normalizedName, BigDecimal quantity, ShoppingUnit unit) {
+        List<ShoppingItem> matchingOpenItems = items.stream()
+                .filter(item -> item.getStatus() == ShoppingItemStatus.TO_BUY)
+                .filter(item -> item.getName().equals(normalizedName))
+                .toList();
+        if (matchingOpenItems.size() != 1) {
+            return null;
+        }
+
+        ShoppingItem candidate = matchingOpenItems.get(0);
+        if (quantity == null && unit == null) {
+            return new ShoppingAddItemResult(candidate.getId(), ShoppingAddItemOutcome.REUSED_EXISTING);
+        }
+        if (candidate.hasNoQuantityDetails()) {
+            candidate.applyManualAddQuantity(quantity, unit);
+            return new ShoppingAddItemResult(candidate.getId(), ShoppingAddItemOutcome.UPDATED_EXISTING);
+        }
+        if (candidate.hasCompatibleQuantityUnit(unit)) {
+            candidate.increaseManualAddQuantity(quantity, unit);
+            return new ShoppingAddItemResult(candidate.getId(), ShoppingAddItemOutcome.INCREASED_EXISTING);
+        }
+        return null;
     }
 
     private void normalizeItemOrderIndexes() {

@@ -110,6 +110,7 @@ export function OverlaySheet({
             }}
           >
             {children}
+            <View style={styles.bottomSpacer} pointerEvents="none" />
           </Animated.View>
         </Animated.View>
       </RNAnimated.View>
@@ -168,6 +169,9 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     flexShrink: 1,
     minHeight: 0,
+  },
+  bottomSpacer: {
+    height: theme.spacing.xs,
   },
 });
 

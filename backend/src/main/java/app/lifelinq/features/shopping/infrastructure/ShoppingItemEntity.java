@@ -45,6 +45,12 @@ public class ShoppingItemEntity {
     @Column(name = "unit")
     private ShoppingUnitEntity unit;
 
+    @Column(name = "source_kind")
+    private String sourceKind;
+
+    @Column(name = "source_label")
+    private String sourceLabel;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -62,6 +68,8 @@ public class ShoppingItemEntity {
             ShoppingItemStatusEntity status,
             BigDecimal quantity,
             ShoppingUnitEntity unit,
+            String sourceKind,
+            String sourceLabel,
             Instant createdAt,
             Instant boughtAt
     ) {
@@ -72,6 +80,8 @@ public class ShoppingItemEntity {
         this.status = status;
         this.quantity = quantity;
         this.unit = unit;
+        this.sourceKind = sourceKind;
+        this.sourceLabel = sourceLabel;
         this.createdAt = createdAt;
         this.boughtAt = boughtAt;
     }
@@ -102,6 +112,14 @@ public class ShoppingItemEntity {
 
     ShoppingUnitEntity getUnit() {
         return unit;
+    }
+
+    String getSourceKind() {
+        return sourceKind;
+    }
+
+    String getSourceLabel() {
+        return sourceLabel;
     }
 
     Instant getCreatedAt() {

@@ -1,15 +1,30 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ShoppingListResponse, ShoppingUnit } from '../api/shoppingApi';
+import { useEffect, useRef, useState } from 'react';
+import type { ShoppingListType, ShoppingUnit } from '../api/shoppingApi';
+import type { ShoppingCategoryKey } from '../utils/shoppingCategories';
+import { normalizeShoppingItemTitle } from '../utils/shoppingCategoryInference';
+import { resolveShoppingCategory, type ShoppingCategoryOrigin } from '../utils/shoppingDomain';
 import { formatQuantityForFeedback, formatUnitForFeedback, parseQuantity } from '../utils/shoppingQuantity';
 import { useShoppingLists } from './useShoppingLists';
+import { useShoppingCategoryPreferences } from './useShoppingCategoryPreferences';
 
 type ShoppingListsHook = ReturnType<typeof useShoppingLists>;
-type ShoppingItem = ShoppingListResponse['items'][number];
+type EditableShoppingItem = {
+  id: string;
+  title: string;
+  quantity: number | null;
+  unit: ShoppingUnit | null;
+  categoryOverrideKey: ShoppingCategoryKey | null;
+  sourceKind: 'unknown' | 'meal-plan';
+  sourceLabel: string | null;
+};
 
 type AddLikeStrings = {
   addErrorQuantity: string;
   addErrorQuantityUnit: string;
-  addDetailsAddedSuffix: string;
+  addDetailsAddedPrefix: string;
+  addAlreadyOnListPrefix: string;
+  addIncreasedExistingPrefix: string;
+  addUpdatedExistingPrefix: string;
 };
 
 type EditStrings = {
@@ -21,6 +36,7 @@ type EditStrings = {
 type UseShoppingListDetailWorkflowArgs = {
   shopping: ShoppingListsHook;
   listId: string;
+  listType: ShoppingListType;
 };
 
 type FinishOpenDragArgs = {
@@ -29,12 +45,25 @@ type FinishOpenDragArgs = {
   finalIds: string[];
 };
 
-export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingListDetailWorkflowArgs) {
+type LikelyAddDuplicate = {
+  itemId: string;
+  title: string;
+  quantity: number | null;
+  unit: ShoppingUnit | null;
+  action: 'keep-existing' | 'update-existing' | 'increase-existing';
+};
+
+export function useShoppingListDetailWorkflow({ shopping, listId, listType }: UseShoppingListDetailWorkflowArgs) {
+  const categoryPreferences = useShoppingCategoryPreferences();
   const [newItemName, setNewItemName] = useState('');
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editQuantity, setEditQuantity] = useState('');
-  const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('ST');
+  const [editUnit, setEditUnit] = useState<ShoppingUnit | null>('PCS');
+  const [editCategoryOverride, setEditCategoryOverride] = useState<ShoppingCategoryKey | null>(null);
+  const [editSourceKind, setEditSourceKind] = useState<'unknown' | 'meal-plan'>('unknown');
+  const [editSourceLabel, setEditSourceLabel] = useState<string | null>(null);
+  const [editShouldRememberCategory, setEditShouldRememberCategory] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [showAddDetails, setShowAddDetails] = useState(false);
   const [addQuantity, setAddQuantity] = useState('');
@@ -43,19 +72,31 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
   const [addDetailsFeedback, setAddDetailsFeedback] = useState<string | null>(null);
   const [orderedOpenItemIds, setOrderedOpenItemIds] = useState<string[]>([]);
   const [draggingOpenItemId, setDraggingOpenItemId] = useState<string | null>(null);
+  const currentList = shopping.lists.find((list) => list.id === listId) ?? null;
+  const normalizedNewTitle = normalizeShoppingItemTitle(newItemName.trim());
+  const parsedAddQuantity = parseQuantity(addQuantity);
+  const normalizedEditTitle = normalizeShoppingItemTitle(editName.trim());
+  const editCategoryResolution = normalizedEditTitle.length > 0
+    ? resolveShoppingCategory({
+      itemId: editItemId,
+      explicitOverrideKey: editCategoryOverride,
+      listType,
+      normalizedTitle: normalizedEditTitle,
+      categoryContext: categoryPreferences,
+    })
+    : null;
+  const editCategoryOrigin: ShoppingCategoryOrigin | null = editCategoryResolution?.effectiveCategory.origin ?? null;
+  const editHasLearnedCategory = normalizedEditTitle.length > 0
+    && categoryPreferences.getMemoryForTitle(listType, normalizedEditTitle) !== null;
+  const addLikelyDuplicate = resolveLikelyAddDuplicate({
+    list: currentList,
+    normalizedTitle: normalizedNewTitle,
+    parsedQuantity: Number.isNaN(parsedAddQuantity) ? null : parsedAddQuantity,
+    unit: addUnit,
+    quantityIsValid: !Number.isNaN(parsedAddQuantity),
+  });
 
   const addDetailsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const selected = useMemo(() => {
-    return shopping.lists.find((list) => list.id === listId) ?? null;
-  }, [shopping.lists, listId]);
-
-  const selectedMeal = useMemo(() => {
-    if (!selected || !editItemId) {
-      return null;
-    }
-    return selected.items.find((item) => item.id === editItemId) ?? null;
-  }, [selected, editItemId]);
 
   useEffect(() => {
     return () => {
@@ -66,11 +107,15 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     };
   }, []);
 
-  function openEdit(item: ShoppingItem) {
+  function openEdit(item: EditableShoppingItem) {
     setEditItemId(item.id);
-    setEditName(item.name);
+    setEditName(item.title);
     setEditQuantity(item.quantity ? String(item.quantity) : '');
-    setEditUnit(item.unit ?? 'ST');
+    setEditUnit(item.unit ?? 'PCS');
+    setEditCategoryOverride(item.categoryOverrideKey);
+    setEditSourceKind(item.sourceKind);
+    setEditSourceLabel(item.sourceLabel);
+    setEditShouldRememberCategory(false);
     setEditError(null);
   }
 
@@ -78,8 +123,26 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     setEditItemId(null);
     setEditName('');
     setEditQuantity('');
-    setEditUnit('ST');
+    setEditUnit('PCS');
+    setEditCategoryOverride(null);
+    setEditSourceKind('unknown');
+    setEditSourceLabel(null);
+    setEditShouldRememberCategory(false);
     setEditError(null);
+  }
+
+  function selectEditCategoryOverride(value: ShoppingCategoryKey | null) {
+    setEditCategoryOverride(value);
+    setEditShouldRememberCategory(value !== null);
+  }
+
+  async function handleResetLearnedCategory() {
+    const normalizedTitle = normalizeShoppingItemTitle(editName.trim());
+    if (!normalizedTitle) {
+      return;
+    }
+    await categoryPreferences.forgetCategory(listType, normalizedTitle);
+    setEditShouldRememberCategory(false);
   }
 
   function closeAddDetails() {
@@ -95,15 +158,33 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     }
   }
 
+  function setTimedAddFeedback(value: string) {
+    setAddDetailsFeedback(value);
+    if (addDetailsFeedbackTimerRef.current) {
+      clearTimeout(addDetailsFeedbackTimerRef.current);
+    }
+    addDetailsFeedbackTimerRef.current = setTimeout(() => {
+      setAddDetailsFeedback(null);
+      addDetailsFeedbackTimerRef.current = null;
+    }, 3200);
+  }
+
+  function resetAddDraft() {
+    setNewItemName('');
+    setAddQuantity('');
+    setAddUnit(null);
+    setAddError(null);
+  }
+
   async function handleAddItem(
     strings: AddLikeStrings,
-    options?: { onRefocus?: () => void }
+    options?: { onRefocus?: () => void; addAsNew?: boolean }
   ) {
-    if (!selected || !newItemName.trim()) {
+    if (!newItemName.trim()) {
       return;
     }
     const addedName = newItemName.trim();
-    const parsedQuantity = parseQuantity(addQuantity);
+    const parsedQuantity = parsedAddQuantity;
     if (Number.isNaN(parsedQuantity)) {
       setAddError(strings.addErrorQuantity);
       return;
@@ -113,23 +194,39 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       return;
     }
     const effectiveUnit = parsedQuantity === null ? null : addUnit;
-    await shopping.addItem(selected.id, addedName, parsedQuantity, effectiveUnit);
-    setNewItemName('');
-    setAddQuantity('');
-    setAddUnit(null);
-    setAddError(null);
-    const quantityPrefix =
-      parsedQuantity !== null && effectiveUnit
-        ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} - `
-        : '';
-    setAddDetailsFeedback(`${quantityPrefix}${addedName} ${strings.addDetailsAddedSuffix}`);
-    if (addDetailsFeedbackTimerRef.current) {
-      clearTimeout(addDetailsFeedbackTimerRef.current);
+    const response = await shopping.addItem(listId, addedName, parsedQuantity, effectiveUnit, options?.addAsNew);
+    resetAddDraft();
+    const feedbackName = response?.name ?? addedName;
+    switch (response?.outcome) {
+      case 'REUSED_EXISTING':
+        setTimedAddFeedback(`${strings.addAlreadyOnListPrefix} ${feedbackName}`);
+        break;
+      case 'UPDATED_EXISTING':
+        if (response.quantity != null && response.unit) {
+          setTimedAddFeedback(
+            `${strings.addUpdatedExistingPrefix} ${formatQuantityForFeedback(response.quantity)} ${formatUnitForFeedback(response.unit)} ${feedbackName}`
+          );
+        } else {
+          setTimedAddFeedback(`${strings.addUpdatedExistingPrefix} ${feedbackName}`);
+        }
+        break;
+      case 'INCREASED_EXISTING':
+        if (response.quantity != null && response.unit) {
+          setTimedAddFeedback(
+            `${strings.addIncreasedExistingPrefix} ${formatQuantityForFeedback(response.quantity)} ${formatUnitForFeedback(response.unit)} ${feedbackName}`
+          );
+        } else {
+          setTimedAddFeedback(`${strings.addIncreasedExistingPrefix} ${feedbackName}`);
+        }
+        break;
+      default: {
+        const quantityText =
+          parsedQuantity !== null && effectiveUnit
+            ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} `
+            : '';
+        setTimedAddFeedback(`${strings.addDetailsAddedPrefix} ${quantityText}${addedName}`);
+      }
     }
-    addDetailsFeedbackTimerRef.current = setTimeout(() => {
-      setAddDetailsFeedback(null);
-      addDetailsFeedbackTimerRef.current = null;
-    }, 3200);
     if (options?.onRefocus) {
       requestAnimationFrame(() => {
         options.onRefocus?.();
@@ -137,8 +234,15 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     }
   }
 
+  async function handleAddDuplicatePrimaryAction(
+    strings: AddLikeStrings,
+    options?: { onRefocus?: () => void }
+  ) {
+    await handleAddItem(strings, options);
+  }
+
   async function handleSaveEdit(strings: EditStrings, options?: { onClose?: () => void }) {
-    if (!selected || !editItemId) {
+    if (!editItemId) {
       return;
     }
     if (!editName.trim()) {
@@ -155,7 +259,16 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       return;
     }
     const effectiveUnit = parsedQuantity === null ? null : editUnit;
-    await shopping.updateItem(selected.id, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
+    await shopping.updateItem(listId, editItemId, editName.trim(), parsedQuantity, effectiveUnit);
+    const normalizedTitle = normalizeShoppingItemTitle(editName.trim());
+    if (editCategoryOverride) {
+      if (editShouldRememberCategory) {
+        await categoryPreferences.rememberCategory(listType, normalizedTitle, editCategoryOverride);
+      }
+      categoryPreferences.setCategoryOverride(editItemId, listType, normalizedTitle, editCategoryOverride);
+    } else {
+      categoryPreferences.clearCategoryOverride(editItemId);
+    }
     if (options?.onClose) {
       options.onClose();
       return;
@@ -164,10 +277,10 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
   }
 
   async function handleRemoveEdit(options?: { onClose?: () => void }) {
-    if (!selected || !editItemId) {
+    if (!editItemId) {
       return;
     }
-    await shopping.removeItem(selected.id, editItemId);
+    await shopping.removeItem(listId, editItemId);
     if (options?.onClose) {
       options.onClose();
       return;
@@ -176,9 +289,6 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
   }
 
   async function finishOpenDrag(args: FinishOpenDragArgs) {
-    if (!selected) {
-      return;
-    }
     const { draggedId, startIndex, finalIds } = args;
     if (!draggedId || startIndex === null) {
       return;
@@ -189,7 +299,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
     }
     const direction = finalIndex > startIndex ? 'DOWN' : 'UP';
     const steps = Math.abs(finalIndex - startIndex);
-    await shopping.reorderItem(selected.id, draggedId, direction, steps);
+    await shopping.reorderItem(listId, draggedId, direction, steps);
   }
 
   return {
@@ -199,21 +309,29 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       editName,
       editQuantity,
       editUnit,
+      editCategoryOverride,
+      editSourceKind,
+      editSourceLabel,
+      editShouldRememberCategory,
+      editEffectiveCategoryKey: editCategoryResolution?.effectiveCategory.key ?? null,
+      editCategoryOrigin,
+      editHasLearnedCategory,
       editError,
       showAddDetails,
       addQuantity,
       addUnit,
       addError,
       addDetailsFeedback,
+      addLikelyDuplicate,
       orderedOpenItemIds,
       draggingOpenItemId,
-      selectedMeal,
     },
     actions: {
       setNewItemName,
       setEditName,
       setEditQuantity,
       setEditUnit,
+      setEditCategoryOverride: selectEditCategoryOverride,
       setEditError,
       setShowAddDetails,
       setAddQuantity,
@@ -225,10 +343,71 @@ export function useShoppingListDetailWorkflow({ shopping, listId }: UseShoppingL
       openEdit,
       closeEdit,
       closeAddDetails,
+      handleResetLearnedCategory,
       handleAddItem,
+      handleAddDuplicatePrimaryAction,
       handleSaveEdit,
       handleRemoveEdit,
       finishOpenDrag,
     },
   };
+}
+
+function resolveLikelyAddDuplicate(args: {
+  list: ShoppingListsHook['lists'][number] | null;
+  normalizedTitle: string;
+  parsedQuantity: number | null;
+  unit: ShoppingUnit | null;
+  quantityIsValid: boolean;
+}): LikelyAddDuplicate | null {
+  const { list, normalizedTitle, parsedQuantity, unit, quantityIsValid } = args;
+  if (!list || !normalizedTitle || !quantityIsValid) {
+    return null;
+  }
+  const matchingOpenItems = list.items.filter((item) => (
+    item.status !== 'BOUGHT'
+    && normalizeShoppingItemTitle(item.name) === normalizedTitle
+  ));
+  if (matchingOpenItems.length !== 1) {
+    return null;
+  }
+
+  const candidate = matchingOpenItems[0];
+  if (parsedQuantity === null && unit === null) {
+    return {
+      itemId: candidate.id,
+      title: candidate.name,
+      quantity: candidate.quantity,
+      unit: candidate.unit,
+      action: 'keep-existing',
+    };
+  }
+
+  if (candidate.quantity == null && candidate.unit == null) {
+    return {
+      itemId: candidate.id,
+      title: candidate.name,
+      quantity: candidate.quantity,
+      unit: candidate.unit,
+      action: 'update-existing',
+    };
+  }
+
+  if (
+    parsedQuantity !== null
+    && unit
+    && candidate.quantity != null
+    && candidate.unit != null
+    && candidate.unit === unit
+  ) {
+    return {
+      itemId: candidate.id,
+      title: candidate.name,
+      quantity: candidate.quantity,
+      unit: candidate.unit,
+      action: 'increase-existing',
+    };
+  }
+
+  return null;
 }

@@ -74,7 +74,9 @@ class ShoppingItemTest {
                 ShoppingItemStatus.BOUGHT,
                 boughtAt,
                 new BigDecimal("2.5"),
-                ShoppingUnit.DL
+                ShoppingUnit.DL,
+                null,
+                null
         );
         assertEquals(ShoppingItemStatus.BOUGHT, bought.getStatus());
         assertEquals(boughtAt, bought.getBoughtAt());
@@ -90,6 +92,8 @@ class ShoppingItemTest {
                         ShoppingItemStatus.BOUGHT,
                         null,
                         null,
+                        null,
+                        null,
                         null
                 )
         );
@@ -101,6 +105,8 @@ class ShoppingItemTest {
                         createdAt,
                         ShoppingItemStatus.TO_BUY,
                         Instant.now(),
+                        null,
+                        null,
                         null,
                         null
                 )
@@ -117,14 +123,96 @@ class ShoppingItemTest {
     @Test
     void rejectsUnitWithoutQuantity() {
         assertThrows(IllegalArgumentException.class, () ->
-                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, ShoppingUnit.ST)
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, ShoppingUnit.PCS)
         );
     }
 
     @Test
     void rejectsNonPositiveQuantity() {
         assertThrows(IllegalArgumentException.class, () ->
-                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), BigDecimal.ZERO, ShoppingUnit.ST)
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), BigDecimal.ZERO, ShoppingUnit.PCS)
+        );
+    }
+
+    @Test
+    void rejectsSourceLabelWithoutSourceKind() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ShoppingItem(UUID.randomUUID(), "Milk", Instant.now(), null, null, null, "Pasta")
+        );
+    }
+
+    @Test
+    void absorbsCompatibleMealPlanQuantityAndClearsSource() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "milk",
+                Instant.now(),
+                new BigDecimal("2"),
+                ShoppingUnit.PCS,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pasta"
+        );
+
+        item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.PCS);
+
+        assertEquals(new BigDecimal("5"), item.getQuantity());
+        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getSourceKind());
+        assertEquals(null, item.getSourceLabel());
+    }
+
+    @Test
+    void absorbsMealPlanQuantityIntoExistingItemWithoutQuantityDetails() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "milk",
+                Instant.now(),
+                null,
+                null,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pasta"
+        );
+
+        item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.PCS);
+
+        assertEquals(new BigDecimal("3"), item.getQuantity());
+        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getSourceKind());
+        assertEquals(null, item.getSourceLabel());
+    }
+
+    @Test
+    void reusesMealPlanItemWithoutChangingExistingQuantityWhenIncomingHasNoQuantity() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "banana",
+                Instant.now(),
+                new BigDecimal("3"),
+                ShoppingUnit.PCS,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pasta"
+        );
+
+        item.absorbMealPlanIntake(null, null);
+
+        assertEquals(new BigDecimal("3"), item.getQuantity());
+        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getSourceKind());
+        assertEquals(null, item.getSourceLabel());
+    }
+
+    @Test
+    void rejectsIncompatibleMealPlanAbsorb() {
+        ShoppingItem item = new ShoppingItem(
+                UUID.randomUUID(),
+                "milk",
+                Instant.now(),
+                new BigDecimal("2"),
+                ShoppingUnit.PCS
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.KG)
         );
     }
 }

@@ -8,6 +8,7 @@ import app.lifelinq.features.shopping.application.AccessDeniedException;
 import app.lifelinq.features.shopping.application.ShoppingApplicationService;
 import app.lifelinq.features.shopping.domain.DuplicateShoppingItemNameException;
 import app.lifelinq.features.shopping.domain.ShoppingListNotFoundException;
+import app.lifelinq.features.shopping.domain.ShoppingItemSourceKind;
 import app.lifelinq.features.shopping.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -26,7 +27,9 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
             UUID listId,
             String itemName,
             BigDecimal quantity,
-            String unitName
+            String unitName,
+            String sourceKind,
+            String sourceLabel
     ) {
         try {
             shoppingApplicationService.addShoppingItem(
@@ -35,7 +38,9 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
                     listId,
                     itemName,
                     quantity,
-                    toShoppingUnit(unitName)
+                    toShoppingUnit(unitName),
+                    toShoppingSourceKind(sourceKind),
+                    sourceLabel
             );
         } catch (AccessDeniedException ex) {
             throw new MealsShoppingAccessDeniedException(ex.getMessage());
@@ -51,5 +56,12 @@ public final class MealsShoppingPortAdapter implements MealsShoppingPort {
             return null;
         }
         return ShoppingUnit.valueOf(unitName);
+    }
+
+    private ShoppingItemSourceKind toShoppingSourceKind(String sourceKind) {
+        if (sourceKind == null || sourceKind.isBlank()) {
+            return null;
+        }
+        return ShoppingItemSourceKind.fromKey(sourceKind);
     }
 }

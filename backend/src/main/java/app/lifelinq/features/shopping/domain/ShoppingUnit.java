@@ -1,8 +1,8 @@
 package app.lifelinq.features.shopping.domain;
 
 public enum ShoppingUnit {
-    ST,
-    FORP,
+    PCS,
+    PACK,
     KG,
     HG,
     G,
