@@ -130,7 +130,7 @@ class MealsShoppingIntegrationTest {
     }
 
     @Test
-    void mealIntakeDoesNotMergeIntoManualOpenItemWhenQuantityCompatibilityIsUnclear() {
+    void mealIntakeUpdatesManualOpenItemWithoutQuantityWhenMealProvidesQuantity() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         groupRepository.save(new Group(groupId, "Home"));
@@ -163,6 +163,8 @@ class MealsShoppingIntegrationTest {
         );
 
         ShoppingList list = shoppingListRepository.findById(listOutput.listId()).orElseThrow();
-        assertEquals(2, list.getItems().size());
+        assertEquals(1, list.getItems().size());
+        assertEquals(0, new BigDecimal("2").compareTo(list.getItems().get(0).getQuantity()));
+        assertEquals(ShoppingUnit.PCS, list.getItems().get(0).getUnit());
     }
 }
