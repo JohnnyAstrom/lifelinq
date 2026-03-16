@@ -80,14 +80,15 @@ export function useShoppingLists(token: string | null) {
     listId: string,
     name: string,
     quantity?: number | null,
-    unit?: ShoppingUnit | null
+    unit?: ShoppingUnit | null,
+    addAsNew?: boolean
   ): Promise<AddShoppingItemResponse | void> => {
     if (!token) {
       throw new Error('Missing token');
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await addShoppingItem(listId, { name, quantity, unit }, { token });
+      const response = await addShoppingItem(listId, { name, quantity, unit, addAsNew }, { token });
       await load();
       return response;
     } catch (err) {

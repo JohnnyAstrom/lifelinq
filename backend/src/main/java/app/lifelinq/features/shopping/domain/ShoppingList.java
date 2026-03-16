@@ -79,27 +79,40 @@ public final class ShoppingList {
         this.items = new ArrayList<>(items);
     }
 
-    public UUID addItem(UUID itemId, String normalizedName, Instant now) {
+    public ShoppingAddItemResult addItem(UUID itemId, String normalizedName, Instant now) {
         return addItem(itemId, normalizedName, null, null, now);
     }
 
-    public UUID addItem(
+    public ShoppingAddItemResult addItem(
             UUID itemId,
             String normalizedName,
             BigDecimal quantity,
             ShoppingUnit unit,
             Instant now
     ) {
-        return addItem(itemId, normalizedName, quantity, unit, null, null, now);
+        return addItem(itemId, normalizedName, quantity, unit, null, null, false, now);
     }
 
-    public UUID addItem(
+    public ShoppingAddItemResult addItem(
             UUID itemId,
             String normalizedName,
             BigDecimal quantity,
             ShoppingUnit unit,
             ShoppingItemSourceKind sourceKind,
             String sourceLabel,
+            Instant now
+    ) {
+        return addItem(itemId, normalizedName, quantity, unit, sourceKind, sourceLabel, false, now);
+    }
+
+    public ShoppingAddItemResult addItem(
+            UUID itemId,
+            String normalizedName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel,
+            boolean addAsNew,
             Instant now
     ) {
         if (itemId == null) {
@@ -115,13 +128,22 @@ public final class ShoppingList {
             ShoppingItem mergeCandidate = findMealPlanMergeCandidate(normalizedName, quantity, unit);
             if (mergeCandidate != null) {
                 mergeCandidate.absorbMealPlanIntake(quantity, unit);
-                return mergeCandidate.getId();
+                return new ShoppingAddItemResult(
+                        mergeCandidate.getId(),
+                        quantity != null ? ShoppingAddItemOutcome.INCREASED_EXISTING : ShoppingAddItemOutcome.REUSED_EXISTING
+                );
+            }
+        }
+        if (sourceKind == null && !addAsNew) {
+            ShoppingAddItemResult manualDuplicateResult = resolveManualDuplicateAdd(normalizedName, quantity, unit);
+            if (manualDuplicateResult != null) {
+                return manualDuplicateResult;
             }
         }
         shiftItemOrderIndexesForInsertAtTop();
         ShoppingItem item = new ShoppingItem(itemId, normalizedName, 0, now, quantity, unit, sourceKind, sourceLabel);
         items.add(item);
-        return itemId;
+        return new ShoppingAddItemResult(itemId, ShoppingAddItemOutcome.CREATED);
     }
 
     public void toggleItem(UUID itemId, Instant now) {
@@ -264,6 +286,30 @@ public final class ShoppingList {
         }
         ShoppingItem candidate = matchingOpenItems.get(0);
         return candidate.canAbsorbMealPlanIntake(quantity, unit) ? candidate : null;
+    }
+
+    private ShoppingAddItemResult resolveManualDuplicateAdd(String normalizedName, BigDecimal quantity, ShoppingUnit unit) {
+        List<ShoppingItem> matchingOpenItems = items.stream()
+                .filter(item -> item.getStatus() == ShoppingItemStatus.TO_BUY)
+                .filter(item -> item.getName().equals(normalizedName))
+                .toList();
+        if (matchingOpenItems.size() != 1) {
+            return null;
+        }
+
+        ShoppingItem candidate = matchingOpenItems.get(0);
+        if (quantity == null && unit == null) {
+            return new ShoppingAddItemResult(candidate.getId(), ShoppingAddItemOutcome.REUSED_EXISTING);
+        }
+        if (candidate.hasNoQuantityDetails()) {
+            candidate.applyManualAddQuantity(quantity, unit);
+            return new ShoppingAddItemResult(candidate.getId(), ShoppingAddItemOutcome.UPDATED_EXISTING);
+        }
+        if (candidate.hasCompatibleQuantityUnit(unit)) {
+            candidate.increaseManualAddQuantity(quantity, unit);
+            return new ShoppingAddItemResult(candidate.getId(), ShoppingAddItemOutcome.INCREASED_EXISTING);
+        }
+        return null;
     }
 
     private void normalizeItemOrderIndexes() {

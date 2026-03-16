@@ -24,6 +24,7 @@ import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import { type ShoppingUnit } from '../api/shoppingApi';
 import { getShoppingCategoryDefinitions, type ShoppingCategoryKey } from '../utils/shoppingCategories';
 import type { ShoppingCategoryOrigin } from '../utils/shoppingDomain';
+import { formatQuantityForFeedback, formatUnitForFeedback } from '../utils/shoppingQuantity';
 import { AppScreen, BackIconButton, Subtle, TopBar } from '../../../shared/ui/components';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -103,7 +104,15 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
     addDetailsTitle: 'Add details',
     addDetailsAddedPrefix: 'Added',
+    addAlreadyOnListPrefix: 'Already on list:',
+    addIncreasedExistingPrefix: 'Updated to',
+    addUpdatedExistingPrefix: 'Updated to',
     addItemTitle: 'Add item',
+    addDuplicateTitle: 'Already on your list',
+    addDuplicateKeepExisting: 'Keep existing',
+    addDuplicateUpdateExisting: 'Update existing',
+    addDuplicateIncreaseExisting: 'Increase existing',
+    addDuplicateAddAsNew: 'Add as new',
     editTitle: 'Edit item',
     editNamePlaceholder: 'Item name',
     editQuantityPlaceholder: 'Quantity (optional)',
@@ -154,6 +163,30 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     switch (sourceKind) {
       case 'meal-plan':
         return sourceLabel ? `${strings.sourceMealPlanPrefix}: ${sourceLabel}` : strings.sourceMealPlanPrefix;
+      default:
+        return null;
+    }
+  }
+
+  function getAddDuplicateSubtitle(): string | null {
+    const duplicate = workflowState.addLikelyDuplicate;
+    if (!duplicate) {
+      return null;
+    }
+    if (duplicate.action === 'keep-existing' || duplicate.action === 'update-existing') {
+      return `${duplicate.title} is already on this list.`;
+    }
+    return `${duplicate.title} already exists as ${formatQuantityForFeedback(duplicate.quantity ?? 0)} ${formatUnitForFeedback(duplicate.unit!)}.`;
+  }
+
+  function getAddDuplicatePrimaryActionLabel(): string | null {
+    switch (workflowState.addLikelyDuplicate?.action) {
+      case 'keep-existing':
+        return strings.addDuplicateKeepExisting;
+      case 'update-existing':
+        return strings.addDuplicateUpdateExisting;
+      case 'increase-existing':
+        return strings.addDuplicateIncreaseExisting;
       default:
         return null;
     }
@@ -230,6 +263,23 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
         addErrorQuantity: strings.addErrorQuantity,
         addErrorQuantityUnit: strings.addErrorQuantityUnit,
         addDetailsAddedPrefix: strings.addDetailsAddedPrefix,
+        addAlreadyOnListPrefix: strings.addAlreadyOnListPrefix,
+        addIncreasedExistingPrefix: strings.addIncreasedExistingPrefix,
+        addUpdatedExistingPrefix: strings.addUpdatedExistingPrefix,
+      },
+      { onRefocus: () => addDetailsInputRef.current?.focus() }
+    );
+  }
+
+  async function handleAddDuplicatePrimaryAction() {
+    await workflowActions.handleAddDuplicatePrimaryAction(
+      {
+        addErrorQuantity: strings.addErrorQuantity,
+        addErrorQuantityUnit: strings.addErrorQuantityUnit,
+        addDetailsAddedPrefix: strings.addDetailsAddedPrefix,
+        addAlreadyOnListPrefix: strings.addAlreadyOnListPrefix,
+        addIncreasedExistingPrefix: strings.addIncreasedExistingPrefix,
+        addUpdatedExistingPrefix: strings.addUpdatedExistingPrefix,
       },
       { onRefocus: () => addDetailsInputRef.current?.focus() }
     );
@@ -615,6 +665,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             addQuantityPlaceholder={strings.addQuantityPlaceholder}
             addItemTitle={strings.addItemTitle}
             successFeedback={workflowState.addDetailsFeedback}
+            duplicateTitle={workflowState.addLikelyDuplicate ? strings.addDuplicateTitle : null}
+            duplicateSubtitle={getAddDuplicateSubtitle()}
+            duplicatePrimaryActionLabel={getAddDuplicatePrimaryActionLabel()}
+            duplicateSecondaryActionLabel={workflowState.addLikelyDuplicate ? strings.addDuplicateAddAsNew : null}
             unitNoneLabel={strings.unitNone}
             unitToggleMoreLabel={strings.unitMore}
             unitToggleLessLabel={strings.unitLess}
@@ -631,6 +685,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onChangeName={workflowActions.setNewItemName}
             onSubmitName={async () => {
               if (workflowState.newItemName.trim()) {
+                if (workflowState.addLikelyDuplicate) {
+                  await handleAddDuplicatePrimaryAction();
+                  return;
+                }
                 await handleAddItem();
                 return;
               }
@@ -657,6 +715,22 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onToggleMoreUnits={() => setShowMoreAddUnits((prev) => !prev)}
             onAddItem={async () => {
               await handleAddItem();
+            }}
+            onDuplicatePrimaryAction={async () => {
+              await handleAddDuplicatePrimaryAction();
+            }}
+            onAddAsNew={async () => {
+              await workflowActions.handleAddItem(
+                {
+                  addErrorQuantity: strings.addErrorQuantity,
+                  addErrorQuantityUnit: strings.addErrorQuantityUnit,
+                  addDetailsAddedPrefix: strings.addDetailsAddedPrefix,
+                  addAlreadyOnListPrefix: strings.addAlreadyOnListPrefix,
+                  addIncreasedExistingPrefix: strings.addIncreasedExistingPrefix,
+                  addUpdatedExistingPrefix: strings.addUpdatedExistingPrefix,
+                },
+                { onRefocus: () => addDetailsInputRef.current?.focus(), addAsNew: true }
+              );
             }}
           />
         </OverlaySheet>

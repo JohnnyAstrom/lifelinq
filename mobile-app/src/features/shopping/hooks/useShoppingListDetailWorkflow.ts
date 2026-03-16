@@ -22,6 +22,9 @@ type AddLikeStrings = {
   addErrorQuantity: string;
   addErrorQuantityUnit: string;
   addDetailsAddedPrefix: string;
+  addAlreadyOnListPrefix: string;
+  addIncreasedExistingPrefix: string;
+  addUpdatedExistingPrefix: string;
 };
 
 type EditStrings = {
@@ -40,6 +43,14 @@ type FinishOpenDragArgs = {
   draggedId: string | null;
   startIndex: number | null;
   finalIds: string[];
+};
+
+type LikelyAddDuplicate = {
+  itemId: string;
+  title: string;
+  quantity: number | null;
+  unit: ShoppingUnit | null;
+  action: 'keep-existing' | 'update-existing' | 'increase-existing';
 };
 
 export function useShoppingListDetailWorkflow({ shopping, listId, listType }: UseShoppingListDetailWorkflowArgs) {
@@ -61,6 +72,9 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
   const [addDetailsFeedback, setAddDetailsFeedback] = useState<string | null>(null);
   const [orderedOpenItemIds, setOrderedOpenItemIds] = useState<string[]>([]);
   const [draggingOpenItemId, setDraggingOpenItemId] = useState<string | null>(null);
+  const currentList = shopping.lists.find((list) => list.id === listId) ?? null;
+  const normalizedNewTitle = normalizeShoppingItemTitle(newItemName.trim());
+  const parsedAddQuantity = parseQuantity(addQuantity);
   const normalizedEditTitle = normalizeShoppingItemTitle(editName.trim());
   const editCategoryResolution = normalizedEditTitle.length > 0
     ? resolveShoppingCategory({
@@ -74,6 +88,13 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
   const editCategoryOrigin: ShoppingCategoryOrigin | null = editCategoryResolution?.effectiveCategory.origin ?? null;
   const editHasLearnedCategory = normalizedEditTitle.length > 0
     && categoryPreferences.getMemoryForTitle(listType, normalizedEditTitle) !== null;
+  const addLikelyDuplicate = resolveLikelyAddDuplicate({
+    list: currentList,
+    normalizedTitle: normalizedNewTitle,
+    parsedQuantity: Number.isNaN(parsedAddQuantity) ? null : parsedAddQuantity,
+    unit: addUnit,
+    quantityIsValid: !Number.isNaN(parsedAddQuantity),
+  });
 
   const addDetailsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -137,15 +158,33 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
     }
   }
 
+  function setTimedAddFeedback(value: string) {
+    setAddDetailsFeedback(value);
+    if (addDetailsFeedbackTimerRef.current) {
+      clearTimeout(addDetailsFeedbackTimerRef.current);
+    }
+    addDetailsFeedbackTimerRef.current = setTimeout(() => {
+      setAddDetailsFeedback(null);
+      addDetailsFeedbackTimerRef.current = null;
+    }, 3200);
+  }
+
+  function resetAddDraft() {
+    setNewItemName('');
+    setAddQuantity('');
+    setAddUnit(null);
+    setAddError(null);
+  }
+
   async function handleAddItem(
     strings: AddLikeStrings,
-    options?: { onRefocus?: () => void }
+    options?: { onRefocus?: () => void; addAsNew?: boolean }
   ) {
     if (!newItemName.trim()) {
       return;
     }
     const addedName = newItemName.trim();
-    const parsedQuantity = parseQuantity(addQuantity);
+    const parsedQuantity = parsedAddQuantity;
     if (Number.isNaN(parsedQuantity)) {
       setAddError(strings.addErrorQuantity);
       return;
@@ -155,28 +194,51 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       return;
     }
     const effectiveUnit = parsedQuantity === null ? null : addUnit;
-    await shopping.addItem(listId, addedName, parsedQuantity, effectiveUnit);
-    setNewItemName('');
-    setAddQuantity('');
-    setAddUnit(null);
-    setAddError(null);
-    const quantityText =
-      parsedQuantity !== null && effectiveUnit
-        ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} `
-        : '';
-    setAddDetailsFeedback(`${strings.addDetailsAddedPrefix} ${quantityText}${addedName}`);
-    if (addDetailsFeedbackTimerRef.current) {
-      clearTimeout(addDetailsFeedbackTimerRef.current);
+    const response = await shopping.addItem(listId, addedName, parsedQuantity, effectiveUnit, options?.addAsNew);
+    resetAddDraft();
+    const feedbackName = response?.name ?? addedName;
+    switch (response?.outcome) {
+      case 'REUSED_EXISTING':
+        setTimedAddFeedback(`${strings.addAlreadyOnListPrefix} ${feedbackName}`);
+        break;
+      case 'UPDATED_EXISTING':
+        if (response.quantity != null && response.unit) {
+          setTimedAddFeedback(
+            `${strings.addUpdatedExistingPrefix} ${formatQuantityForFeedback(response.quantity)} ${formatUnitForFeedback(response.unit)} ${feedbackName}`
+          );
+        } else {
+          setTimedAddFeedback(`${strings.addUpdatedExistingPrefix} ${feedbackName}`);
+        }
+        break;
+      case 'INCREASED_EXISTING':
+        if (response.quantity != null && response.unit) {
+          setTimedAddFeedback(
+            `${strings.addIncreasedExistingPrefix} ${formatQuantityForFeedback(response.quantity)} ${formatUnitForFeedback(response.unit)} ${feedbackName}`
+          );
+        } else {
+          setTimedAddFeedback(`${strings.addIncreasedExistingPrefix} ${feedbackName}`);
+        }
+        break;
+      default: {
+        const quantityText =
+          parsedQuantity !== null && effectiveUnit
+            ? `${formatQuantityForFeedback(parsedQuantity)} ${formatUnitForFeedback(effectiveUnit)} `
+            : '';
+        setTimedAddFeedback(`${strings.addDetailsAddedPrefix} ${quantityText}${addedName}`);
+      }
     }
-    addDetailsFeedbackTimerRef.current = setTimeout(() => {
-      setAddDetailsFeedback(null);
-      addDetailsFeedbackTimerRef.current = null;
-    }, 3200);
     if (options?.onRefocus) {
       requestAnimationFrame(() => {
         options.onRefocus?.();
       });
     }
+  }
+
+  async function handleAddDuplicatePrimaryAction(
+    strings: AddLikeStrings,
+    options?: { onRefocus?: () => void }
+  ) {
+    await handleAddItem(strings, options);
   }
 
   async function handleSaveEdit(strings: EditStrings, options?: { onClose?: () => void }) {
@@ -260,6 +322,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       addUnit,
       addError,
       addDetailsFeedback,
+      addLikelyDuplicate,
       orderedOpenItemIds,
       draggingOpenItemId,
     },
@@ -282,9 +345,69 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       closeAddDetails,
       handleResetLearnedCategory,
       handleAddItem,
+      handleAddDuplicatePrimaryAction,
       handleSaveEdit,
       handleRemoveEdit,
       finishOpenDrag,
     },
   };
+}
+
+function resolveLikelyAddDuplicate(args: {
+  list: ShoppingListsHook['lists'][number] | null;
+  normalizedTitle: string;
+  parsedQuantity: number | null;
+  unit: ShoppingUnit | null;
+  quantityIsValid: boolean;
+}): LikelyAddDuplicate | null {
+  const { list, normalizedTitle, parsedQuantity, unit, quantityIsValid } = args;
+  if (!list || !normalizedTitle || !quantityIsValid) {
+    return null;
+  }
+  const matchingOpenItems = list.items.filter((item) => (
+    item.status !== 'BOUGHT'
+    && normalizeShoppingItemTitle(item.name) === normalizedTitle
+  ));
+  if (matchingOpenItems.length !== 1) {
+    return null;
+  }
+
+  const candidate = matchingOpenItems[0];
+  if (parsedQuantity === null && unit === null) {
+    return {
+      itemId: candidate.id,
+      title: candidate.name,
+      quantity: candidate.quantity,
+      unit: candidate.unit,
+      action: 'keep-existing',
+    };
+  }
+
+  if (candidate.quantity == null && candidate.unit == null) {
+    return {
+      itemId: candidate.id,
+      title: candidate.name,
+      quantity: candidate.quantity,
+      unit: candidate.unit,
+      action: 'update-existing',
+    };
+  }
+
+  if (
+    parsedQuantity !== null
+    && unit
+    && candidate.quantity != null
+    && candidate.unit != null
+    && candidate.unit === unit
+  ) {
+    return {
+      itemId: candidate.id,
+      title: candidate.name,
+      quantity: candidate.quantity,
+      unit: candidate.unit,
+      action: 'increase-existing',
+    };
+  }
+
+  return null;
 }

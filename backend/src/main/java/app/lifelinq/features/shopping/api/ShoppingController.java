@@ -201,12 +201,14 @@ public class ShoppingController {
                 listId,
                 request.getName(),
                 request.getQuantity(),
-                parseUnit(request.getUnit())
+                parseUnit(request.getUnit()),
+                Boolean.TRUE.equals(request.getAddAsNew())
         );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new AddShoppingItemResponse(
                         output.itemId(),
                         output.name(),
+                        output.outcome(),
                         output.status().name(),
                         output.quantity(),
                         output.unit() != null ? output.unit().name() : null,

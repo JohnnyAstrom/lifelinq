@@ -7,6 +7,7 @@ import java.util.UUID;
 public record AddShoppingItemResponse(
         UUID itemId,
         String name,
+        String outcome,
         String status,
         BigDecimal quantity,
         String unit,

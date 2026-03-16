@@ -13,6 +13,10 @@ type Props = {
   addQuantityPlaceholder: string;
   addItemTitle: string;
   successFeedback?: string | null;
+  duplicateTitle?: string | null;
+  duplicateSubtitle?: string | null;
+  duplicatePrimaryActionLabel?: string | null;
+  duplicateSecondaryActionLabel?: string | null;
   unitNoneLabel: string;
   unitToggleMoreLabel: string;
   unitToggleLessLabel: string;
@@ -33,6 +37,8 @@ type Props = {
   onSelectUnit: (value: string | null) => void;
   onToggleMoreUnits: () => void;
   onAddItem: () => void | Promise<void>;
+  onDuplicatePrimaryAction?: () => void | Promise<void>;
+  onAddAsNew?: () => void | Promise<void>;
 };
 
 export function AddDetailsSheetContent({
@@ -44,6 +50,10 @@ export function AddDetailsSheetContent({
   addQuantityPlaceholder,
   addItemTitle,
   successFeedback,
+  duplicateTitle,
+  duplicateSubtitle,
+  duplicatePrimaryActionLabel,
+  duplicateSecondaryActionLabel,
   unitNoneLabel,
   unitToggleMoreLabel,
   unitToggleLessLabel,
@@ -64,7 +74,11 @@ export function AddDetailsSheetContent({
   onSelectUnit,
   onToggleMoreUnits,
   onAddItem,
+  onDuplicatePrimaryAction,
+  onAddAsNew,
 }: Props) {
+  const showDuplicatePrompt = !!duplicateTitle && !!duplicatePrimaryActionLabel && !!duplicateSecondaryActionLabel;
+
   return (
     <>
       <View style={styles.quickAddHeader}>
@@ -169,14 +183,41 @@ export function AddDetailsSheetContent({
         </>
       ) : null}
       {addError ? <Text style={styles.error}>{addError}</Text> : null}
+      {showDuplicatePrompt ? (
+        <View style={localStyles.duplicatePrompt}>
+          <Text style={localStyles.duplicatePromptTitle}>{duplicateTitle}</Text>
+          {duplicateSubtitle ? (
+            <Text style={localStyles.duplicatePromptSubtitle}>{duplicateSubtitle}</Text>
+          ) : null}
+        </View>
+      ) : null}
       <View style={styles.sheetActions}>
-        <AppButton
-          title={addItemTitle}
-          onPress={onAddItem}
-          disabled={nameValue.trim().length === 0}
-          fullWidth
-          accentKey="shopping"
-        />
+        {showDuplicatePrompt ? (
+          <>
+            <AppButton
+              title={duplicatePrimaryActionLabel}
+              onPress={onDuplicatePrimaryAction ?? onAddItem}
+              disabled={nameValue.trim().length === 0}
+              fullWidth
+              accentKey="shopping"
+            />
+            <AppButton
+              title={duplicateSecondaryActionLabel}
+              onPress={onAddAsNew ?? onAddItem}
+              disabled={nameValue.trim().length === 0}
+              fullWidth
+              variant="ghost"
+            />
+          </>
+        ) : (
+          <AppButton
+            title={addItemTitle}
+            onPress={onAddItem}
+            disabled={nameValue.trim().length === 0}
+            fullWidth
+            accentKey="shopping"
+          />
+        )}
       </View>
     </>
   );
@@ -255,5 +296,21 @@ const localStyles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.success,
     fontFamily: theme.typography.body,
+  },
+  duplicatePrompt: {
+    gap: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  duplicatePromptTitle: {
+    ...textStyles.body,
+    fontWeight: '600',
+  },
+  duplicatePromptSubtitle: {
+    ...textStyles.subtle,
   },
 });

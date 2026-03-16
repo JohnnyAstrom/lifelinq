@@ -13,6 +13,7 @@ import app.lifelinq.features.shopping.domain.ShoppingCategory;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreference;
 import app.lifelinq.features.shopping.domain.ShoppingCategoryPreferenceRepository;
 import app.lifelinq.features.shopping.domain.ShoppingItem;
+import app.lifelinq.features.shopping.domain.ShoppingAddItemResult;
 import app.lifelinq.features.shopping.domain.ShoppingItemStatus;
 import app.lifelinq.features.shopping.domain.ShoppingItemSourceKind;
 import app.lifelinq.features.shopping.domain.ShoppingList;
@@ -107,7 +108,20 @@ public class ShoppingApplicationService {
             BigDecimal quantity,
             ShoppingUnit unit
     ) {
-        return addShoppingItem(groupId, actorUserId, listId, itemName, quantity, unit, null, null);
+        return addShoppingItem(groupId, actorUserId, listId, itemName, quantity, unit, null, null, false);
+    }
+
+    @Transactional
+    public AddShoppingItemOutput addShoppingItem(
+            UUID groupId,
+            UUID actorUserId,
+            UUID listId,
+            String itemName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            boolean addAsNew
+    ) {
+        return addShoppingItem(groupId, actorUserId, listId, itemName, quantity, unit, null, null, addAsNew);
     }
 
     @Transactional
@@ -121,18 +135,34 @@ public class ShoppingApplicationService {
             ShoppingItemSourceKind sourceKind,
             String sourceLabel
     ) {
+        return addShoppingItem(groupId, actorUserId, listId, itemName, quantity, unit, sourceKind, sourceLabel, false);
+    }
+
+    @Transactional
+    public AddShoppingItemOutput addShoppingItem(
+            UUID groupId,
+            UUID actorUserId,
+            UUID listId,
+            String itemName,
+            BigDecimal quantity,
+            ShoppingUnit unit,
+            ShoppingItemSourceKind sourceKind,
+            String sourceLabel,
+            boolean addAsNew
+    ) {
         ensureGroupMemberUseCase.execute(groupId, actorUserId);
         ShoppingList list = getListForGroup(groupId, listId);
         String normalizedName = normalizeItemName(itemName);
         UUID itemId = UUID.randomUUID();
         Instant now = clock.instant();
-        UUID resolvedItemId = list.addItem(itemId, normalizedName, quantity, unit, sourceKind, sourceLabel, now);
+        ShoppingAddItemResult addResult = list.addItem(itemId, normalizedName, quantity, unit, sourceKind, sourceLabel, addAsNew, now);
         shoppingListRepository.save(list);
-        ShoppingItem item = list.getItemOrThrow(resolvedItemId);
+        ShoppingItem item = list.getItemOrThrow(addResult.itemId());
         return new AddShoppingItemOutput(
                 list.getId(),
                 item.getId(),
                 item.getName(),
+                addResult.outcome().name(),
                 toViewStatus(item.getStatus()),
                 item.getQuantity(),
                 toViewUnit(item.getUnit()),

@@ -42,11 +42,15 @@ export type AddShoppingItemRequest = {
   name: string;
   quantity?: number | null;
   unit?: ShoppingUnit | null;
+  addAsNew?: boolean;
 };
+
+export type ShoppingAddItemOutcome = 'CREATED' | 'REUSED_EXISTING' | 'UPDATED_EXISTING' | 'INCREASED_EXISTING';
 
 export type AddShoppingItemResponse = {
   itemId: string;
   name: string;
+  outcome: ShoppingAddItemOutcome;
   status: string;
   quantity: number | null;
   unit: ShoppingUnit | null;

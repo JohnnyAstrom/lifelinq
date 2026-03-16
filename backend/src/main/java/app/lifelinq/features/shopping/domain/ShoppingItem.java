@@ -148,6 +148,29 @@ public final class ShoppingItem {
         clearSource();
     }
 
+    public boolean hasNoQuantityDetails() {
+        return quantity == null && unit == null;
+    }
+
+    public boolean hasCompatibleQuantityUnit(ShoppingUnit incomingUnit) {
+        return quantity != null && unit != null && incomingUnit != null && unit == incomingUnit;
+    }
+
+    public void applyManualAddQuantity(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        validateQuantityAndUnit(incomingQuantity, incomingUnit);
+        this.quantity = incomingQuantity;
+        this.unit = incomingUnit;
+        clearSource();
+    }
+
+    public void increaseManualAddQuantity(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
+        if (!hasCompatibleQuantityUnit(incomingUnit) || incomingQuantity == null) {
+            throw new IllegalArgumentException("incoming manual item is not compatible with existing item");
+        }
+        quantity = quantity.add(incomingQuantity);
+        clearSource();
+    }
+
     public UUID getId() {
         return id;
     }

@@ -8,6 +8,7 @@ public record AddShoppingItemOutput(
         UUID listId,
         UUID itemId,
         String name,
+        String outcome,
         ShoppingItemStatusView status,
         BigDecimal quantity,
         ShoppingUnitView unit,

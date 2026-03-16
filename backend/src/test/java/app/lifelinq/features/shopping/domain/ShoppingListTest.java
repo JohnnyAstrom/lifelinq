@@ -89,7 +89,7 @@ class ShoppingListTest {
                 Instant.now()
         );
 
-        UUID returnedId = list.addItem(
+        ShoppingAddItemResult result = list.addItem(
                 UUID.randomUUID(),
                 "tomato",
                 new BigDecimal("3"),
@@ -99,7 +99,8 @@ class ShoppingListTest {
                 Instant.now()
         );
 
-        assertEquals(existingId, returnedId);
+        assertEquals(existingId, result.itemId());
+        assertEquals(ShoppingAddItemOutcome.INCREASED_EXISTING, result.outcome());
         assertEquals(1, list.getItems().size());
         assertEquals(new BigDecimal("5"), list.getItems().get(0).getQuantity());
         assertNull(list.getItems().get(0).getSourceKind());
@@ -109,10 +110,10 @@ class ShoppingListTest {
     @Test
     void mealPlanIntakeDoesNotMergeWhenMatchingOpenItemsAreAmbiguous() {
         ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
-        list.addItem(UUID.randomUUID(), "tomato", Instant.now());
-        list.addItem(UUID.randomUUID(), "tomato", Instant.now());
+        list.addItem(UUID.randomUUID(), "tomato", null, null, null, null, true, Instant.now());
+        list.addItem(UUID.randomUUID(), "tomato", null, null, null, null, true, Instant.now());
 
-        UUID returnedId = list.addItem(
+        ShoppingAddItemResult result = list.addItem(
                 UUID.randomUUID(),
                 "tomato",
                 null,
@@ -123,7 +124,8 @@ class ShoppingListTest {
         );
 
         assertEquals(3, list.getItems().size());
-        assertEquals(returnedId, list.getItems().get(0).getId());
+        assertEquals(result.itemId(), list.getItems().get(0).getId());
+        assertEquals(ShoppingAddItemOutcome.CREATED, result.outcome());
     }
 
     @Test
@@ -132,7 +134,7 @@ class ShoppingListTest {
         UUID existingId = UUID.randomUUID();
         list.addItem(existingId, "tomato", Instant.now());
 
-        UUID returnedId = list.addItem(
+        ShoppingAddItemResult result = list.addItem(
                 UUID.randomUUID(),
                 "tomato",
                 new BigDecimal("2"),
@@ -143,7 +145,110 @@ class ShoppingListTest {
         );
 
         assertEquals(2, list.getItems().size());
-        assertNotEquals(existingId, returnedId);
-        assertEquals(returnedId, list.getItems().get(0).getId());
+        assertNotEquals(existingId, result.itemId());
+        assertEquals(result.itemId(), list.getItems().get(0).getId());
+        assertEquals(ShoppingAddItemOutcome.CREATED, result.outcome());
+    }
+
+    @Test
+    void manualAddReusesSingleMatchingOpenItemWithoutQuantity() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID existingId = UUID.randomUUID();
+        list.addItem(existingId, "banana", Instant.now());
+
+        ShoppingAddItemResult result = list.addItem(UUID.randomUUID(), "banana", Instant.now());
+
+        assertEquals(existingId, result.itemId());
+        assertEquals(ShoppingAddItemOutcome.REUSED_EXISTING, result.outcome());
+        assertEquals(1, list.getItems().size());
+    }
+
+    @Test
+    void manualAddUpdatesSingleMatchingOpenItemWithIncomingQuantityWhenExistingHasNone() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID existingId = UUID.randomUUID();
+        list.addItem(existingId, "tomato", Instant.now());
+
+        ShoppingAddItemResult result = list.addItem(
+                UUID.randomUUID(),
+                "tomato",
+                new BigDecimal("3"),
+                ShoppingUnit.PCS,
+                null,
+                null,
+                false,
+                Instant.now()
+        );
+
+        assertEquals(existingId, result.itemId());
+        assertEquals(ShoppingAddItemOutcome.UPDATED_EXISTING, result.outcome());
+        assertEquals(1, list.getItems().size());
+        assertEquals(new BigDecimal("3"), list.getItems().get(0).getQuantity());
+        assertEquals(ShoppingUnit.PCS, list.getItems().get(0).getUnit());
+    }
+
+    @Test
+    void manualAddIncreasesSingleMatchingOpenItemWhenQuantityAndUnitAreCompatible() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID existingId = UUID.randomUUID();
+        list.addItem(existingId, "tomato", new BigDecimal("2"), ShoppingUnit.PCS, Instant.now());
+
+        ShoppingAddItemResult result = list.addItem(
+                UUID.randomUUID(),
+                "tomato",
+                new BigDecimal("3"),
+                ShoppingUnit.PCS,
+                null,
+                null,
+                false,
+                Instant.now()
+        );
+
+        assertEquals(existingId, result.itemId());
+        assertEquals(ShoppingAddItemOutcome.INCREASED_EXISTING, result.outcome());
+        assertEquals(1, list.getItems().size());
+        assertEquals(new BigDecimal("5"), list.getItems().get(0).getQuantity());
+    }
+
+    @Test
+    void manualAddCreatesNewRowWhenExplicitAddAsNewIsRequested() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        list.addItem(UUID.randomUUID(), "banana", Instant.now());
+
+        ShoppingAddItemResult result = list.addItem(
+                UUID.randomUUID(),
+                "banana",
+                null,
+                null,
+                null,
+                null,
+                true,
+                Instant.now()
+        );
+
+        assertEquals(2, list.getItems().size());
+        assertEquals(ShoppingAddItemOutcome.CREATED, result.outcome());
+    }
+
+    @Test
+    void manualAddCreatesNewRowWhenQuantityUnitAreIncompatible() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID existingId = UUID.randomUUID();
+        list.addItem(existingId, "tomato", new BigDecimal("2"), ShoppingUnit.KG, Instant.now());
+
+        ShoppingAddItemResult result = list.addItem(
+                UUID.randomUUID(),
+                "tomato",
+                new BigDecimal("3"),
+                ShoppingUnit.PCS,
+                null,
+                null,
+                false,
+                Instant.now()
+        );
+
+        assertNotEquals(existingId, result.itemId());
+        assertEquals(2, list.getItems().size());
+        assertEquals(ShoppingAddItemOutcome.CREATED, result.outcome());
     }
 }
