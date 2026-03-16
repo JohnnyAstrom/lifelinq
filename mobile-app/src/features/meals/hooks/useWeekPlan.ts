@@ -12,7 +12,7 @@ import {
 type State = {
   loading: boolean;
   isInitialLoading: boolean;
-  isReloading: boolean;
+  isRefreshing: boolean;
   isMutating: boolean;
   error: string | null;
   hasLoaded: boolean;
@@ -33,7 +33,7 @@ export function useWeekPlan(
   const [state, setState] = useState<State>({
     loading: true,
     isInitialLoading: true,
-    isReloading: false,
+    isRefreshing: false,
     isMutating: false,
     error: null,
     hasLoaded: false,
@@ -58,7 +58,7 @@ export function useWeekPlan(
       setState({
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         isMutating: false,
         error: 'Missing token',
         hasLoaded: false,
@@ -73,7 +73,7 @@ export function useWeekPlan(
         ...prev,
         loading: true,
         isInitialLoading: true,
-        isReloading: false,
+        isRefreshing: false,
         error: null,
       }));
     } else if (mode === 'reload') {
@@ -81,7 +81,7 @@ export function useWeekPlan(
         ...prev,
         loading: true,
         isInitialLoading: false,
-        isReloading: true,
+        isRefreshing: true,
         error: null,
       }));
     }
@@ -92,7 +92,7 @@ export function useWeekPlan(
         ...prev,
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         error: null,
         hasLoaded: true,
         data,
@@ -103,7 +103,7 @@ export function useWeekPlan(
         ...prev,
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         error: formatApiError(err),
         data: prev.hasLoaded ? prev.data : null,
       }));
@@ -141,7 +141,7 @@ export function useWeekPlan(
         ...prev,
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         error: formatApiError(err),
       }));
       throw err;

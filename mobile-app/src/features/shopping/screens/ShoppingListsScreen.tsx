@@ -5,7 +5,9 @@ import {
   GestureResponderEvent,
   Keyboard,
   Pressable,
+  RefreshControl,
   Share,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -283,70 +285,85 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
         />
       )}
     >
-
       <View style={styles.contentOffset}>
-        {showInitialLoad ? <Subtle>{strings.loading}</Subtle> : null}
-        {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
+        <View style={styles.mainLayout}>
+          <ScrollView
+            style={styles.mainScroll}
+            contentContainerStyle={styles.mainScrollContent}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={(
+              <RefreshControl
+                refreshing={shopping.isRefreshing}
+                onRefresh={() => {
+                  void shopping.reload();
+                }}
+              />
+            )}
+          >
+            {showInitialLoad ? <Subtle>{strings.loading}</Subtle> : null}
+            {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-        <AppCard style={styles.listsCard}>
-          <SectionTitle>{strings.yourLists}</SectionTitle>
-          {showInitialLoad ? null : shopping.lists.length === 0 ? (
-            <Subtle>{strings.noLists}</Subtle>
-          ) : (
-            <View style={styles.listSection}>
-              <View
-                onTouchStart={(event: GestureResponderEvent) => {
-                  const pageY = event.nativeEvent.pageY;
-                  const locationY = event.nativeEvent.locationY;
-                  lastTouchPageYRef.current = pageY;
-                  listContainerTopRef.current = pageY - locationY;
-                }}
-                onTouchMove={handleListTouchMove}
-                onTouchEnd={() => {
-                  void finishDrag();
-                }}
-                onTouchCancel={() => {
-                  void finishDrag();
-                }}
-                style={styles.listGrid}
-              >
-              {workflowState.orderedLists.map((list) => {
-                const openCount = list.items.filter((item) => item.status !== 'BOUGHT').length;
-                const totalCount = list.items.length;
-                const isDragging = workflowState.draggingListId === list.id;
-                return (
-                  <ShoppingListRow
-                    key={list.id}
-                    list={list}
-                    openCount={openCount}
-                    totalCount={totalCount}
-                    strings={{
-                      toBuy: strings.toBuy,
-                      allBought: strings.allBought,
-                      empty: strings.emptyList,
+            <AppCard style={styles.listsCard}>
+              <SectionTitle>{strings.yourLists}</SectionTitle>
+              {showInitialLoad ? null : shopping.lists.length === 0 ? (
+                <Subtle>{strings.noLists}</Subtle>
+              ) : (
+                <View style={styles.listSection}>
+                  <View
+                    onTouchStart={(event: GestureResponderEvent) => {
+                      const pageY = event.nativeEvent.pageY;
+                      const locationY = event.nativeEvent.locationY;
+                      lastTouchPageYRef.current = pageY;
+                      listContainerTopRef.current = pageY - locationY;
                     }}
-                    styles={styles}
-                    isDragging={isDragging}
-                    onPress={() => {
-                      if (!draggingListIdRef.current) {
-                        onSelectList(list.id);
-                      }
+                    onTouchMove={handleListTouchMove}
+                    onTouchEnd={() => {
+                      void finishDrag();
                     }}
-                    onLongPress={(event) => {
-                      startDrag(list.id, event.nativeEvent.pageY);
+                    onTouchCancel={() => {
+                      void finishDrag();
                     }}
-                    onOpenActions={() => {
-                      if (!workflowState.draggingListId) {
-                        workflowActions.openActionsForList(list.id);
-                      }
-                    }}
-                  />
-                );
-              })}
-              </View>
-            </View>
-          )}
-        </AppCard>
+                    style={styles.listGrid}
+                  >
+                    {workflowState.orderedLists.map((list) => {
+                      const openCount = list.items.filter((item) => item.status !== 'BOUGHT').length;
+                      const totalCount = list.items.length;
+                      const isDragging = workflowState.draggingListId === list.id;
+                      return (
+                        <ShoppingListRow
+                          key={list.id}
+                          list={list}
+                          openCount={openCount}
+                          totalCount={totalCount}
+                          strings={{
+                            toBuy: strings.toBuy,
+                            allBought: strings.allBought,
+                            empty: strings.emptyList,
+                          }}
+                          styles={styles}
+                          isDragging={isDragging}
+                          onPress={() => {
+                            if (!draggingListIdRef.current) {
+                              onSelectList(list.id);
+                            }
+                          }}
+                          onLongPress={(event) => {
+                            startDrag(list.id, event.nativeEvent.pageY);
+                          }}
+                          onOpenActions={() => {
+                            if (!workflowState.draggingListId) {
+                              workflowActions.openActionsForList(list.id);
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+            </AppCard>
+          </ScrollView>
+        </View>
       </View>
 
       <Pressable
@@ -447,7 +464,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentOffset: {
+    flex: 1,
     paddingTop: theme.layout.topBarOffset + theme.spacing.md,
+  },
+  mainLayout: {
+    flex: 1,
+  },
+  mainScroll: {
+    flex: 1,
+  },
+  mainScrollContent: {
+    paddingBottom: theme.spacing.md,
     gap: theme.spacing.md,
   },
   listsCard: {

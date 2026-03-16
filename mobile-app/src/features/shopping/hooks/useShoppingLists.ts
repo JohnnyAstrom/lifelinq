@@ -21,7 +21,7 @@ import {
 type State = {
   loading: boolean;
   isInitialLoading: boolean;
-  isReloading: boolean;
+  isRefreshing: boolean;
   isMutating: boolean;
   error: string | null;
   hasLoaded: boolean;
@@ -45,7 +45,7 @@ export function useShoppingLists(token: string | null) {
   const [state, setState] = useState<State>({
     loading: true,
     isInitialLoading: true,
-    isReloading: false,
+    isRefreshing: false,
     isMutating: false,
     error: null,
     hasLoaded: false,
@@ -70,7 +70,7 @@ export function useShoppingLists(token: string | null) {
       setState({
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         isMutating: false,
         error: 'Missing token',
         hasLoaded: false,
@@ -85,7 +85,7 @@ export function useShoppingLists(token: string | null) {
         ...prev,
         loading: true,
         isInitialLoading: true,
-        isReloading: false,
+        isRefreshing: false,
         error: null,
       }));
     } else if (mode === 'reload') {
@@ -93,7 +93,7 @@ export function useShoppingLists(token: string | null) {
         ...prev,
         loading: true,
         isInitialLoading: false,
-        isReloading: true,
+        isRefreshing: true,
         error: null,
       }));
     }
@@ -104,7 +104,7 @@ export function useShoppingLists(token: string | null) {
         ...prev,
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         error: null,
         hasLoaded: true,
         lists,
@@ -115,7 +115,7 @@ export function useShoppingLists(token: string | null) {
         ...prev,
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         error: formatApiError(err),
         lists: prev.hasLoaded ? prev.lists : [],
       }));
@@ -153,7 +153,7 @@ export function useShoppingLists(token: string | null) {
         ...prev,
         loading: false,
         isInitialLoading: false,
-        isReloading: false,
+        isRefreshing: false,
         error: formatApiError(err),
       }));
       return null;

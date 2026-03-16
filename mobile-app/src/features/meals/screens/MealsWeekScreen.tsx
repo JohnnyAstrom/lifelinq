@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -250,145 +251,160 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         />
       )}
     >
-      <ScrollView contentContainerStyle={styles.contentOffset}>
-        <View style={styles.contentInner}>
-          <AppCard style={styles.headerCard}>
-            <View style={styles.viewSwitchRow}>
-              <AppChip
-                label={strings.daily}
-                active={viewMode === 'daily'}
-                onPress={() => setViewMode('daily')}
-                accentKey="meals"
+      <View style={styles.contentOffset}>
+        <View style={styles.mainLayout}>
+          <ScrollView
+            style={styles.mainScroll}
+            contentContainerStyle={styles.mainScrollContent}
+            refreshControl={(
+              <RefreshControl
+                refreshing={plan.isRefreshing}
+                onRefresh={() => {
+                  void plan.reload();
+                }}
               />
-              <AppChip
-                label={strings.weekly}
-                active={viewMode === 'weekly'}
-                onPress={() => setViewMode('weekly')}
-                accentKey="meals"
-              />
-              <AppChip
-                label={strings.monthly}
-                active={viewMode === 'monthly'}
-                onPress={() => setViewMode('monthly')}
-                accentKey="meals"
-              />
-            </View>
-          </AppCard>
+            )}
+          >
+            <View style={styles.contentInner}>
+              <AppCard style={styles.headerCard}>
+                <View style={styles.viewSwitchRow}>
+                  <AppChip
+                    label={strings.daily}
+                    active={viewMode === 'daily'}
+                    onPress={() => setViewMode('daily')}
+                    accentKey="meals"
+                  />
+                  <AppChip
+                    label={strings.weekly}
+                    active={viewMode === 'weekly'}
+                    onPress={() => setViewMode('weekly')}
+                    accentKey="meals"
+                  />
+                  <AppChip
+                    label={strings.monthly}
+                    active={viewMode === 'monthly'}
+                    onPress={() => setViewMode('monthly')}
+                    accentKey="meals"
+                  />
+                </View>
+              </AppCard>
 
-          {viewMode === 'weekly' ? (
-            <AppCard style={styles.compactNavCard}>
-              <View style={[styles.headerRow, styles.compactHeaderRow]}>
-                <AppButton
-                  title={strings.prev}
-                  onPress={() => setAnchorDate(addDays(anchorDate, -7))}
-                  variant="ghost"
-                />
-                <Text style={styles.dailyHeaderText}>
-                  {strings.weekLabel} {isoWeek} · {year}
-                </Text>
-                <AppButton
-                  title={strings.next}
-                  onPress={() => setAnchorDate(addDays(anchorDate, 7))}
-                  variant="ghost"
-                />
-              </View>
-              <Subtle>
-                {formatDayLabel(weekStart, 0)} — {formatDayLabel(weekEnd, 6)}
-              </Subtle>
-            </AppCard>
-          ) : null}
-
-          {viewMode === 'daily' ? (
-            <AppCard style={styles.compactNavCard}>
-              <View style={[styles.headerRow, styles.compactHeaderRow]}>
-                <AppButton
-                  title={strings.prev}
-                  onPress={() => setAnchorDate(addDays(anchorDate, -1))}
-                  variant="ghost"
-                />
-                <Text style={styles.dailyHeaderText}>
-                  {formatRelativeDailyNavLabel(anchorDate)}
-                </Text>
-                <AppButton
-                  title={strings.next}
-                  onPress={() => setAnchorDate(addDays(anchorDate, 1))}
-                  variant="ghost"
-                />
-              </View>
-              <Subtle style={styles.navSubLabel}>
-                {strings.weekLabel} {isoWeek} · {year}
-              </Subtle>
-            </AppCard>
-          ) : null}
-
-          {viewMode === 'monthly' ? (
-            <AppCard style={styles.compactNavCard}>
-              <View style={[styles.headerRow, styles.compactHeaderRow]}>
-                <AppButton
-                  title={strings.prev}
-                  onPress={() => setAnchorDate(addDays(anchorDate, -30))}
-                  variant="ghost"
-                />
-                <Text style={styles.dailyHeaderText}>{formatMonthLabel(anchorDate)}</Text>
-                <AppButton
-                  title={strings.next}
-                  onPress={() => setAnchorDate(addDays(anchorDate, 30))}
-                  variant="ghost"
-                />
-              </View>
-            </AppCard>
-          ) : null}
-
-          {showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
-          {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
-
-          {shouldRenderPlanViews ? (
-            <>
               {viewMode === 'weekly' ? (
-                <MealsWeeklyView
-                  weekStart={weekStart}
-                  mealsByDay={mealsByDay}
-                  onOpenEditor={actions.openEditor}
-                  formatDayLabel={formatDayLabel}
-                  DAY_LABELS={DAY_LABELS}
-                  MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-                  styles={styles}
-                  emptyText={strings.noMeals}
-                />
+                <AppCard style={styles.compactNavCard}>
+                  <View style={[styles.headerRow, styles.compactHeaderRow]}>
+                    <AppButton
+                      title={strings.prev}
+                      onPress={() => setAnchorDate(addDays(anchorDate, -7))}
+                      variant="ghost"
+                    />
+                    <Text style={styles.dailyHeaderText}>
+                      {strings.weekLabel} {isoWeek} · {year}
+                    </Text>
+                    <AppButton
+                      title={strings.next}
+                      onPress={() => setAnchorDate(addDays(anchorDate, 7))}
+                      variant="ghost"
+                    />
+                  </View>
+                  <Subtle>
+                    {formatDayLabel(weekStart, 0)} — {formatDayLabel(weekEnd, 6)}
+                  </Subtle>
+                </AppCard>
               ) : null}
 
               {viewMode === 'daily' ? (
-                <MealsDailyView
-                  dailyDayNumber={dailyDayNumber}
-                  dailyMeals={dailyMeals}
-                  onOpenEditor={actions.openEditor}
-                  MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-                  styles={styles}
-                  emptyText={strings.noMeals}
-                  title={strings.title}
-                />
+                <AppCard style={styles.compactNavCard}>
+                  <View style={[styles.headerRow, styles.compactHeaderRow]}>
+                    <AppButton
+                      title={strings.prev}
+                      onPress={() => setAnchorDate(addDays(anchorDate, -1))}
+                      variant="ghost"
+                    />
+                    <Text style={styles.dailyHeaderText}>
+                      {formatRelativeDailyNavLabel(anchorDate)}
+                    </Text>
+                    <AppButton
+                      title={strings.next}
+                      onPress={() => setAnchorDate(addDays(anchorDate, 1))}
+                      variant="ghost"
+                    />
+                  </View>
+                  <Subtle style={styles.navSubLabel}>
+                    {strings.weekLabel} {isoWeek} · {year}
+                  </Subtle>
+                </AppCard>
               ) : null}
 
               {viewMode === 'monthly' ? (
-                <AppCard>
-                  <MealsMonthlyView
-                    monthGridCells={monthGridCells}
-                    monthMealCountByDateKey={monthMealCountByDateKey}
-                    toDateKey={toDateKey}
-                    isTodayDate={isTodayDate}
-                    styles={styles}
-                    onPressDay={(date) => {
-                      setAnchorDate(new Date(date.getTime()));
-                      setViewMode('weekly');
-                    }}
-                    weekdayLabels={DAY_LABELS}
-                  />
+                <AppCard style={styles.compactNavCard}>
+                  <View style={[styles.headerRow, styles.compactHeaderRow]}>
+                    <AppButton
+                      title={strings.prev}
+                      onPress={() => setAnchorDate(addDays(anchorDate, -30))}
+                      variant="ghost"
+                    />
+                    <Text style={styles.dailyHeaderText}>{formatMonthLabel(anchorDate)}</Text>
+                    <AppButton
+                      title={strings.next}
+                      onPress={() => setAnchorDate(addDays(anchorDate, 30))}
+                      variant="ghost"
+                    />
+                  </View>
                 </AppCard>
               ) : null}
-            </>
-          ) : null}
+
+              {showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
+              {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
+
+              {shouldRenderPlanViews ? (
+                <>
+                  {viewMode === 'weekly' ? (
+                    <MealsWeeklyView
+                      weekStart={weekStart}
+                      mealsByDay={mealsByDay}
+                      onOpenEditor={actions.openEditor}
+                      formatDayLabel={formatDayLabel}
+                      DAY_LABELS={DAY_LABELS}
+                      MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+                      styles={styles}
+                      emptyText={strings.noMeals}
+                    />
+                  ) : null}
+
+                  {viewMode === 'daily' ? (
+                    <MealsDailyView
+                      dailyDayNumber={dailyDayNumber}
+                      dailyMeals={dailyMeals}
+                      onOpenEditor={actions.openEditor}
+                      MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+                      styles={styles}
+                      emptyText={strings.noMeals}
+                      title={strings.title}
+                    />
+                  ) : null}
+
+                  {viewMode === 'monthly' ? (
+                    <AppCard>
+                      <MealsMonthlyView
+                        monthGridCells={monthGridCells}
+                        monthMealCountByDateKey={monthMealCountByDateKey}
+                        toDateKey={toDateKey}
+                        isTodayDate={isTodayDate}
+                        styles={styles}
+                        onPressDay={(date) => {
+                          setAnchorDate(new Date(date.getTime()));
+                          setViewMode('weekly');
+                        }}
+                        weekdayLabels={DAY_LABELS}
+                      />
+                    </AppCard>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
+          </ScrollView>
         </View>
-      </ScrollView>
+      </View>
 
       {viewMode === 'daily' ? (
         <Pressable
@@ -509,9 +525,17 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
   },
   contentOffset: {
+    flex: 1,
     paddingTop: theme.layout.topBarOffset + theme.spacing.md,
+  },
+  mainLayout: {
+    flex: 1,
+  },
+  mainScroll: {
+    flex: 1,
+  },
+  mainScrollContent: {
     paddingBottom: theme.spacing.md,
-    gap: theme.spacing.md,
   },
   viewSwitchRow: {
     flexDirection: 'row',

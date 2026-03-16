@@ -5,6 +5,7 @@ import {
   GestureResponderEvent,
   Keyboard,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -464,6 +465,14 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             contentContainerStyle={styles.scrollContent}
             scrollEnabled={!workflowState.draggingOpenItemId}
             keyboardShouldPersistTaps="handled"
+            refreshControl={(
+              <RefreshControl
+                refreshing={shopping.isRefreshing}
+                onRefresh={() => {
+                  void shopping.reload();
+                }}
+              />
+            )}
           >
           {showInitialLoad ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
