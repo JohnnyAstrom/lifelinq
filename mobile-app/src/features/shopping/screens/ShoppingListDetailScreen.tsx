@@ -16,9 +16,7 @@ import { AddDetailsSheetContent } from '../components/AddDetailsSheetContent';
 import { EditItemSheetContent } from '../components/EditItemSheetContent';
 import { ShoppingItemRow } from '../components/ShoppingItemRow';
 import { ShoppingItemSectionCard } from '../components/ShoppingItemSectionCard';
-import { ShoppingFocusSummary } from '../components/ShoppingFocusSummary';
 import { useShoppingCategoryPreferences } from '../hooks/useShoppingCategoryPreferences';
-import { useShoppingListDetailFocus } from '../hooks/useShoppingListDetailFocus';
 import { useShoppingListDetailProjection } from '../hooks/useShoppingListDetailProjection';
 import { useShoppingListDetailWorkflow } from '../hooks/useShoppingListDetailWorkflow';
 import { useShoppingLists } from '../hooks/useShoppingLists';
@@ -76,19 +74,14 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   const boughtItems = boughtSection?.items ?? [];
   const isBoughtCollapsed = boughtItems.length > 0 && !isBoughtExpanded;
   const canReorderOpenItems = openSections.length <= 1;
-  const focus = useShoppingListDetailFocus({
-    openItemCount: openItems.length,
-    canReorderOpenItems,
-  });
-  const showOpenReorderHint = focus.showReorderHint;
+  const isShoppingFocused = openItems.length > 0;
+  const showOpenReorderHint = false;
 
   const strings = {
     titleFallback: 'Shopping list',
     back: 'Back',
     openLabel: 'Open',
     boughtLabel: 'Bought',
-    openCountSuffix: 'open',
-    boughtCountSuffix: 'bought',
     showBought: 'Show bought',
     hideBought: 'Hide bought',
     details: 'Open item details',
@@ -409,24 +402,15 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-          {focus.isShoppingFocused ? (
-            <ShoppingFocusSummary
-              title={focus.summaryTitle}
-              subtitle={focus.summarySubtitle}
-            />
-          ) : null}
-
           {openSections.length === 0 ? (
             <ShoppingItemSectionCard
               title={strings.openLabel}
-              countLabel={`0 ${strings.openCountSuffix}`}
               emptyState={strings.noOpenItems}
             />
           ) : openSections.map((section) => (
             <ShoppingItemSectionCard
               key={section.id}
               title={section.title}
-              countLabel={`${section.itemCount} ${strings.openCountSuffix}`}
               hint={showOpenReorderHint ? strings.reorderHint : null}
             >
               <View style={styles.sectionItems}>
@@ -445,7 +429,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                       title={item.title}
                       meta={item.displayMeta}
                       checked={false}
-                      shoppingFocused={focus.isShoppingFocused}
+                      shoppingFocused={isShoppingFocused}
                       dragging={workflowState.draggingOpenItemId === item.id}
                       secondaryActionLabel={strings.details}
                       onToggle={() => {
@@ -496,12 +480,10 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
 
           <ShoppingItemSectionCard
             title={strings.boughtLabel}
-            countLabel={`${boughtSection?.itemCount ?? 0} ${strings.boughtCountSuffix}`}
             variant="bought"
-            collapsedSummary={isBoughtCollapsed ? `${boughtItems.length} bought item${boughtItems.length === 1 ? '' : 's'} hidden` : null}
             emptyState={boughtItems.length === 0 ? strings.noBoughtItems : null}
             actionLabel={(boughtSection?.itemCount ?? 0) > 0
-              ? (isBoughtCollapsed ? strings.showBought : strings.hideBought)
+              ? (isBoughtCollapsed ? `${strings.showBought} (${boughtItems.length})` : strings.hideBought)
               : undefined}
             onActionPress={(boughtSection?.itemCount ?? 0) > 0
               ? () => setIsBoughtExpanded((prev) => !prev)
@@ -529,7 +511,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                       title={item.title}
                       meta={item.displayMeta}
                       checked
-                      shoppingFocused={focus.isShoppingFocused}
+                      shoppingFocused={isShoppingFocused}
                       secondaryActionLabel={strings.details}
                       onToggle={() => {
                         if (selectedList) {
@@ -559,7 +541,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       <Pressable
         style={[
           styles.fab,
-          focus.isShoppingFocused ? styles.fabShoppingFocused : null,
+          isShoppingFocused ? styles.fabShoppingFocused : null,
           { bottom: Math.max(insets.bottom + 8, 12) },
         ]}
         onPress={() => {
@@ -568,7 +550,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
           workflowActions.setShowAddDetails(true);
         }}
       >
-        <Text style={[styles.fabText, focus.isShoppingFocused ? styles.fabTextShoppingFocused : null]}>+</Text>
+        <Text style={[styles.fabText, isShoppingFocused ? styles.fabTextShoppingFocused : null]}>+</Text>
       </Pressable>
 
       {workflowState.editItemId ? (

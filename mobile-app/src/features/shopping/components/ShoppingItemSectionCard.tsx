@@ -4,10 +4,9 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   title: string;
-  countLabel: string;
+  countLabel?: string | null;
   variant?: 'open' | 'bought';
   hint?: string | null;
-  collapsedSummary?: string | null;
   emptyState?: string | null;
   actionLabel?: string;
   onActionPress?: () => void;
@@ -19,7 +18,6 @@ export function ShoppingItemSectionCard({
   countLabel,
   variant = 'open',
   hint,
-  collapsedSummary,
   emptyState,
   actionLabel,
   onActionPress,
@@ -37,31 +35,33 @@ export function ShoppingItemSectionCard({
             <Text style={[styles.hint, isBought ? styles.hintBought : null]}>{hint}</Text>
           ) : null}
         </View>
-        <View style={styles.headerAside}>
-          <Text style={[styles.countLabel, isBought ? styles.countLabelBought : null]}>
-            {countLabel}
-          </Text>
-          {actionLabel && onActionPress ? (
-            <Pressable
-              onPress={onActionPress}
-              style={({ pressed }) => [
-                styles.actionButton,
-                isBought ? styles.actionButtonBought : null,
-                pressed ? styles.actionButtonPressed : null,
-              ]}
-            >
-              <Text style={[styles.actionLabel, isBought ? styles.actionLabelBought : null]}>
-                {actionLabel}
+        {countLabel || (actionLabel && onActionPress) ? (
+          <View style={styles.headerAside}>
+            {countLabel ? (
+              <Text style={[styles.countLabel, isBought ? styles.countLabelBought : null]}>
+                {countLabel}
               </Text>
-            </Pressable>
-          ) : null}
-        </View>
+            ) : null}
+            {actionLabel && onActionPress ? (
+              <Pressable
+                onPress={onActionPress}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  isBought ? styles.actionButtonBought : null,
+                  pressed ? styles.actionButtonPressed : null,
+                ]}
+              >
+                <Text style={[styles.actionLabel, isBought ? styles.actionLabelBought : null]}>
+                  {actionLabel}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
       {emptyState ? (
         <Text style={[styles.emptyState, isBought ? styles.emptyStateBought : null]}>{emptyState}</Text>
-      ) : collapsedSummary ? (
-        <Text style={[styles.summary, isBought ? styles.summaryBought : null]}>{collapsedSummary}</Text>
       ) : hasContent ? (
         <View style={styles.content}>{children}</View>
       ) : null}
@@ -140,13 +140,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   emptyStateBought: {
-    color: theme.colors.textSecondary,
-  },
-  summary: {
-    ...textStyles.subtle,
-    paddingTop: 4,
-  },
-  summaryBought: {
     color: theme.colors.textSecondary,
   },
   content: {
