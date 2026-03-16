@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import type { ShoppingCategoryKey } from '../utils/shoppingCategories';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { AppButton, AppChip, AppInput } from '../../../shared/ui/components';
 import { textStyles } from '../../../shared/ui/theme';
 
@@ -12,6 +13,8 @@ type Props = {
   editNamePlaceholder: string;
   editQuantityPlaceholder: string;
   editCategoryLabel: string;
+  changeCategoryLabel: string;
+  editCurrentCategoryLabel: string;
   editCategorySourceLabel: string | null;
   editProvenanceLabel: string | null;
   autoCategoryLabel: string;
@@ -49,6 +52,8 @@ export function EditItemSheetContent({
   editNamePlaceholder,
   editQuantityPlaceholder,
   editCategoryLabel,
+  changeCategoryLabel,
+  editCurrentCategoryLabel,
   editCategorySourceLabel,
   editProvenanceLabel,
   autoCategoryLabel,
@@ -79,6 +84,14 @@ export function EditItemSheetContent({
   onRemove,
   onClose,
 }: Props) {
+  const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
+
+  useEffect(() => {
+    if (editCategoryOverride) {
+      setIsCategoryExpanded(true);
+    }
+  }, [editCategoryOverride]);
+
   return (
     <>
       <ScrollView
@@ -90,37 +103,16 @@ export function EditItemSheetContent({
         <View style={styles.quickAddHeader}>
           <Text style={textStyles.h2}>{title}</Text>
         </View>
-        <AppInput placeholder={editNamePlaceholder} value={nameValue} onChangeText={onChangeName} />
-        <AppInput
-          placeholder={editQuantityPlaceholder}
-          value={quantityValue}
-          onChangeText={onChangeQuantity}
-          keyboardType="decimal-pad"
-        />
-        {editProvenanceLabel ? (
-          <Text style={styles.categorySourceHint}>{editProvenanceLabel}</Text>
-        ) : null}
-        <View style={styles.unitRow}>
-          {primaryUnitOptions.map((unit) => (
-            <AppChip
-              key={unit.value}
-              label={unit.label}
-              active={editUnit === unit.value}
-              accentKey="shopping"
-              onPress={() => onSelectUnit(unit.value)}
-            />
-          ))}
-          <AppChip label={unitNoneLabel} active={!editUnit} accentKey="shopping" onPress={() => onSelectUnit(null)} />
-          <AppChip
-            label={showMoreEditUnits ? unitToggleLessLabel : unitToggleMoreLabel}
-            active={showMoreEditUnits}
-            accentKey="shopping"
-            onPress={onToggleMoreUnits}
+        <View style={styles.editPrimarySection}>
+          <AppInput placeholder={editNamePlaceholder} value={nameValue} onChangeText={onChangeName} />
+          <AppInput
+            placeholder={editQuantityPlaceholder}
+            value={quantityValue}
+            onChangeText={onChangeQuantity}
+            keyboardType="decimal-pad"
           />
-        </View>
-        {showMoreEditUnits ? (
-          <View style={styles.addUnitRow}>
-            {moreUnitOptions.map((unit) => (
+          <View style={styles.unitRow}>
+            {primaryUnitOptions.map((unit) => (
               <AppChip
                 key={unit.value}
                 label={unit.label}
@@ -129,41 +121,94 @@ export function EditItemSheetContent({
                 onPress={() => onSelectUnit(unit.value)}
               />
             ))}
-          </View>
-        ) : null}
-        <View style={styles.quickEditInputs}>
-          <Text style={textStyles.subtle}>{editCategoryLabel}</Text>
-          {editCategorySourceLabel ? (
-            <Text style={styles.categorySourceHint}>{editCategorySourceLabel}</Text>
-          ) : null}
-          <View style={styles.unitRow}>
+            <AppChip label={unitNoneLabel} active={!editUnit} accentKey="shopping" onPress={() => onSelectUnit(null)} />
             <AppChip
-              label={autoCategoryLabel}
-              active={!editCategoryOverride}
+              label={showMoreEditUnits ? unitToggleLessLabel : unitToggleMoreLabel}
+              active={showMoreEditUnits}
               accentKey="shopping"
-              onPress={() => onSelectCategoryOverride(null)}
+              onPress={onToggleMoreUnits}
             />
-            {categoryOptions.map((category) => (
-              <AppChip
-                key={category.value}
-                label={category.label}
-                active={editCategoryOverride === category.value}
-                accentKey="shopping"
-                onPress={() => onSelectCategoryOverride(category.value)}
-              />
-            ))}
           </View>
-          {showResetLearnedCategory ? (
-            <View style={styles.editCategoryActions}>
-              <AppButton title={resetLearnedCategoryLabel} onPress={onResetLearnedCategory} variant="ghost" fullWidth />
+          {showMoreEditUnits ? (
+            <View style={styles.addUnitRow}>
+              {moreUnitOptions.map((unit) => (
+                <AppChip
+                  key={unit.value}
+                  label={unit.label}
+                  active={editUnit === unit.value}
+                  accentKey="shopping"
+                  onPress={() => onSelectUnit(unit.value)}
+                />
+              ))}
             </View>
           ) : null}
         </View>
+
+        {(editProvenanceLabel || editCategorySourceLabel || showResetLearnedCategory || categoryOptions.length > 0) ? (
+          <View style={styles.editSecondarySection}>
+            {editProvenanceLabel ? (
+              <Text style={styles.secondaryMetaText}>{editProvenanceLabel}</Text>
+            ) : null}
+            <View style={styles.quickEditInputs}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.categorySummaryCard,
+                  pressed ? styles.categorySummaryCardPressed : null,
+                ]}
+                onPress={() => setIsCategoryExpanded((prev) => !prev)}
+              >
+                <View style={styles.categorySummaryMain}>
+                  <Text style={styles.secondarySectionLabel}>{editCategoryLabel}</Text>
+                  <Text style={styles.categorySummaryValue}>{editCurrentCategoryLabel}</Text>
+                  {editCategorySourceLabel ? (
+                    <Text style={styles.categorySourceHint}>{editCategorySourceLabel}</Text>
+                  ) : null}
+                </View>
+                <Text style={styles.categorySummaryAction}>
+                  {isCategoryExpanded ? closeLabel : changeCategoryLabel}
+                </Text>
+              </Pressable>
+              {isCategoryExpanded ? (
+                <>
+                  <View style={styles.unitRow}>
+                    <AppChip
+                      label={autoCategoryLabel}
+                      active={!editCategoryOverride}
+                      accentKey="shopping"
+                      onPress={() => onSelectCategoryOverride(null)}
+                    />
+                    {categoryOptions.map((category) => (
+                      <AppChip
+                        key={category.value}
+                        label={category.label}
+                        active={editCategoryOverride === category.value}
+                        accentKey="shopping"
+                        onPress={() => onSelectCategoryOverride(category.value)}
+                      />
+                    ))}
+                  </View>
+                  {showResetLearnedCategory ? (
+                    <View style={styles.editCategoryActions}>
+                      <AppButton title={resetLearnedCategoryLabel} onPress={onResetLearnedCategory} variant="ghost" fullWidth />
+                    </View>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
         {editError ? <Text style={styles.error}>{editError}</Text> : null}
         <View style={styles.editorActions}>
           <AppButton title={saveChangesLabel} onPress={onSave} fullWidth accentKey="shopping" />
-          <AppButton title={removeItemLabel} onPress={onRemove} variant="ghost" fullWidth />
-          <AppButton title={closeLabel} onPress={onClose} variant="secondary" fullWidth />
+          <View style={styles.editorSecondaryActions}>
+            <AppButton title={removeItemLabel} onPress={onRemove} variant="ghost" />
+            <Pressable onPress={onClose} style={({ pressed }) => [
+              styles.editorCloseLink,
+              pressed ? styles.editorCloseLinkPressed : null,
+            ]}>
+              <Text style={styles.editorCloseText}>{closeLabel}</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </>

@@ -1,19 +1,21 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
-import { AppButton, AppChip, AppInput, Subtle } from '../../../shared/ui/components';
+import { AppButton, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import {
-  MEAL_INGREDIENT_UNIT_OPTIONS,
+  type MealIngredientUnit,
   type MealIngredientRow,
 } from '../utils/ingredientRows';
+import {
+  isMealIngredientRowEffectivelyEmpty,
+  MealIngredientEditorRow,
+  type MealIngredientEditorRowStrings,
+} from './MealIngredientEditorRow';
 
-type Strings = {
+type Strings = MealIngredientEditorRowStrings & {
   title: string;
-  ingredientNamePlaceholder: string;
-  quantityPlaceholder: string;
   addIngredient: string;
-  removeIngredient: string;
   loadingIngredients: string;
   close: string;
 };
@@ -25,7 +27,7 @@ type Props = {
   onRemoveIngredientRow: (rowId: string) => void;
   onChangeIngredientName: (rowId: string, value: string) => void;
   onChangeIngredientQuantity: (rowId: string, value: string) => void;
-  onToggleIngredientUnit: (rowId: string, value: typeof MEAL_INGREDIENT_UNIT_OPTIONS[number]['value']) => void;
+  onToggleIngredientUnit: (rowId: string, value: MealIngredientUnit) => void;
   onClose: () => void;
   strings: Strings;
 };
@@ -41,6 +43,34 @@ export function MealIngredientsSheet({
   onClose,
   strings,
 }: Props) {
+  const [activeRowId, setActiveRowId] = useState<string | null>(ingredientRows[0]?.id ?? null);
+  const previousRowCountRef = useRef(ingredientRows.length);
+
+  useEffect(() => {
+    const previousCount = previousRowCountRef.current;
+    previousRowCountRef.current = ingredientRows.length;
+
+    if (ingredientRows.length === 0) {
+      if (activeRowId !== null) {
+        setActiveRowId(null);
+      }
+      return;
+    }
+
+    if (ingredientRows.length > previousCount) {
+      setActiveRowId(ingredientRows[ingredientRows.length - 1]?.id ?? null);
+      return;
+    }
+
+    const hasActiveRow = activeRowId != null && ingredientRows.some((row) => row.id === activeRowId);
+    if (hasActiveRow) {
+      return;
+    }
+
+    const firstEmptyRow = ingredientRows.find((row) => isMealIngredientRowEffectivelyEmpty(row));
+    setActiveRowId(firstEmptyRow?.id ?? ingredientRows[0]?.id ?? null);
+  }, [ingredientRows, activeRowId]);
+
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
@@ -56,53 +86,18 @@ export function MealIngredientsSheet({
             showsVerticalScrollIndicator={false}
           >
             {isRecipeLoading ? <Subtle>{strings.loadingIngredients}</Subtle> : null}
-            {ingredientRows.map((row, index) => (
-              <View key={row.id} style={styles.ingredientRowCard}>
-                <View style={styles.ingredientRowHeader}>
-                  <Text style={styles.ingredientRowIndex}>{index + 1}</Text>
-                  <Pressable
-                    onPress={() => onRemoveIngredientRow(row.id)}
-                    style={styles.ingredientRowRemove}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${strings.removeIngredient} ${index + 1}`}
-                  >
-                    <Ionicons
-                      name="close-outline"
-                      size={16}
-                      color={theme.colors.textSecondary}
-                    />
-                    <Text style={styles.ingredientRowRemoveText}>{strings.removeIngredient}</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.ingredientMainRow}>
-                  <AppInput
-                    placeholder={strings.ingredientNamePlaceholder}
-                    value={row.name}
-                    onChangeText={(value) => onChangeIngredientName(row.id, value)}
-                    style={styles.ingredientNameInput}
-                  />
-                  <AppInput
-                    placeholder={strings.quantityPlaceholder}
-                    value={row.quantityText}
-                    onChangeText={(value) => onChangeIngredientQuantity(row.id, value)}
-                    keyboardType="decimal-pad"
-                    style={styles.quantityInput}
-                  />
-                </View>
-                {row.quantityText.length > 0 ? (
-                  <View style={styles.unitChipRow}>
-                    {MEAL_INGREDIENT_UNIT_OPTIONS.map((option) => (
-                      <AppChip
-                        key={option.value}
-                        label={option.label}
-                        active={row.unit === option.value}
-                        accentKey="meals"
-                        onPress={() => onToggleIngredientUnit(row.id, option.value)}
-                      />
-                    ))}
-                  </View>
-                ) : null}
-              </View>
+            {ingredientRows.map((row) => (
+              <MealIngredientEditorRow
+                key={row.id}
+                row={row}
+                isActive={row.id === activeRowId}
+                onActivate={() => setActiveRowId(row.id)}
+                onRemove={() => onRemoveIngredientRow(row.id)}
+                onChangeName={(value) => onChangeIngredientName(row.id, value)}
+                onChangeQuantity={(value) => onChangeIngredientQuantity(row.id, value)}
+                onToggleUnit={(value) => onToggleIngredientUnit(row.id, value)}
+                strings={strings}
+              />
             ))}
             <View style={styles.footer}>
               <AppButton title={strings.close} onPress={onClose} variant="secondary" fullWidth />
@@ -157,52 +152,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
-  },
-  ingredientRowCard: {
-    gap: theme.spacing.xs,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.surface,
-  },
-  ingredientRowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  ingredientRowIndex: {
-    ...textStyles.subtle,
-    fontWeight: '700',
-    color: theme.colors.textSecondary,
-  },
-  ingredientRowRemove: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 2,
-  },
-  ingredientRowRemoveText: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-  },
-  ingredientMainRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
-  },
-  ingredientNameInput: {
-    flex: 1,
-  },
-  quantityInput: {
-    width: 104,
-  },
-  unitChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-    paddingTop: 2,
   },
   footer: {
     paddingTop: theme.spacing.sm,

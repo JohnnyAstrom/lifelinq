@@ -192,10 +192,11 @@ export function MealEditorSheet({
                     onPress={onRemove}
                     variant="ghost"
                   />
-                ) : (
-                  <View />
-                )}
-                <Pressable onPress={onClose} style={styles.footerCloseLink}>
+                ) : null}
+                <Pressable onPress={onClose} style={({ pressed }) => [
+                  styles.footerCloseLink,
+                  pressed ? styles.footerCloseLinkPressed : null,
+                ]}>
                   <Text style={styles.footerCloseText}>{strings.close}</Text>
                 </Pressable>
               </View>
@@ -217,7 +218,6 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.layout.sheetPadding,
     borderWidth: 1,
     borderColor: theme.colors.border,
     overflow: 'hidden',
@@ -309,12 +309,20 @@ const styles = StyleSheet.create({
   sheetFooterSecondaryActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     gap: theme.spacing.sm,
   },
   footerCloseLink: {
+    minHeight: 36,
     paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  footerCloseLinkPressed: {
+    opacity: 0.7,
   },
   footerCloseText: {
     ...textStyles.subtle,

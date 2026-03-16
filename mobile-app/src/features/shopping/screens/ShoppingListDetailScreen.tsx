@@ -116,10 +116,11 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     editQuantityPlaceholder: 'Quantity (optional)',
     sourceMealPlanPrefix: 'From meal plan',
     editCategoryLabel: 'Category',
-    categorySourceOverride: 'Set for this item',
+    changeCategoryLabel: 'Change category',
+    categorySourceOverride: 'Set for item',
     categorySourceMemory: 'Learned from group',
-    categorySourceSuggested: 'Suggested automatically',
-    categorySourceFallback: 'Using Other for now',
+    categorySourceSuggested: 'Auto',
+    categorySourceFallback: 'Other by default',
     autoCategoryLabel: 'Auto',
     resetLearnedCategoryLabel: 'Reset learned category',
     saveChanges: 'Save changes',
@@ -147,6 +148,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
       default:
         return null;
     }
+  }
+
+  function getCategoryLabel(key: ShoppingCategoryKey | null): string {
+    if (!key) {
+      return strings.autoCategoryLabel;
+    }
+    return CATEGORY_OPTIONS.find((option) => option.value === key)?.label ?? strings.autoCategoryLabel;
   }
 
   function getItemSourceLabel(sourceKind: 'unknown' | 'meal-plan', sourceLabel: string | null): string | null {
@@ -571,6 +579,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             editNamePlaceholder={strings.editNamePlaceholder}
             editQuantityPlaceholder={strings.editQuantityPlaceholder}
             editCategoryLabel={strings.editCategoryLabel}
+            changeCategoryLabel={strings.changeCategoryLabel}
+            editCurrentCategoryLabel={getCategoryLabel(workflowState.editEffectiveCategoryKey)}
             editCategorySourceLabel={getCategorySourceLabel(workflowState.editCategoryOrigin)}
             editProvenanceLabel={getItemSourceLabel(workflowState.editSourceKind, workflowState.editSourceLabel)}
             autoCategoryLabel={strings.autoCategoryLabel}
@@ -768,6 +778,58 @@ const styles = StyleSheet.create({
   quickEditInputs: {
     gap: theme.spacing.xs,
   },
+  editPrimarySection: {
+    gap: theme.spacing.xs,
+  },
+  editSecondarySection: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  secondaryMetaText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  categorySummaryCard: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  categorySummaryCardPressed: {
+    opacity: 0.82,
+  },
+  categorySummaryMain: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  categorySummaryValue: {
+    ...textStyles.body,
+    fontWeight: '600',
+  },
+  categorySummaryAction: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.shopping,
+    fontWeight: '600',
+  },
+  secondarySectionHeader: {
+    gap: 2,
+  },
+  secondarySectionLabel: {
+    ...textStyles.subtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
   categorySourceHint: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
@@ -844,6 +906,28 @@ const styles = StyleSheet.create({
   },
   editorActions: {
     gap: theme.spacing.xs,
+  },
+  editorSecondaryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  editorCloseLink: {
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  editorCloseLinkPressed: {
+    opacity: 0.72,
+  },
+  editorCloseText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
   editorScroll: {
     maxHeight: '100%',

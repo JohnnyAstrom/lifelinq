@@ -251,6 +251,7 @@ export function useShoppingListDetailWorkflow({ shopping, listId, listType }: Us
       editSourceKind,
       editSourceLabel,
       editShouldRememberCategory,
+      editEffectiveCategoryKey: editCategoryResolution?.effectiveCategory.key ?? null,
       editCategoryOrigin,
       editHasLearnedCategory,
       editError,
