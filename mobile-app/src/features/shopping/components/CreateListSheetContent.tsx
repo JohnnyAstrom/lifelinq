@@ -12,9 +12,11 @@ type Props = {
   typeOptions: { key: ShoppingListType; label: string }[];
   placeholder: string;
   createActionLabel: string;
+  createActionPendingLabel: string;
   closeLabel: string;
   value: string;
   canCreate: boolean;
+  isSubmitting: boolean;
   onChangeText: (value: string) => void;
   onSelectType: (type: ShoppingListType) => void;
   onSubmitEditing: () => void | Promise<void>;
@@ -31,9 +33,11 @@ export function CreateListSheetContent({
   typeOptions,
   placeholder,
   createActionLabel,
+  createActionPendingLabel,
   closeLabel,
   value,
   canCreate,
+  isSubmitting,
   onChangeText,
   onSelectType,
   onSubmitEditing,
@@ -67,8 +71,14 @@ export function CreateListSheetContent({
         autoFocus
       />
       <View style={styles.sheetActions}>
-        <AppButton title={createActionLabel} onPress={onCreate} disabled={!canCreate} fullWidth accentKey="shopping" />
-        <AppButton title={closeLabel} onPress={onClose} variant="ghost" fullWidth />
+        <AppButton
+          title={isSubmitting ? createActionPendingLabel : createActionLabel}
+          onPress={onCreate}
+          disabled={!canCreate || isSubmitting}
+          fullWidth
+          accentKey="shopping"
+        />
+        <AppButton title={closeLabel} onPress={onClose} variant="ghost" fullWidth disabled={isSubmitting} />
       </View>
     </>
   );

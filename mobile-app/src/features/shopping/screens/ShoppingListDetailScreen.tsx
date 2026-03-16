@@ -104,6 +104,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     addErrorQuantityUnit: 'Quantity and unit must be set together.',
     addDetailsTitle: 'Add details',
     addDetailsAddedPrefix: 'Added',
+    addItemPendingTitle: 'Adding...',
     addAlreadyOnListPrefix: 'Already on list:',
     addIncreasedExistingPrefix: 'Updated to',
     addUpdatedExistingPrefix: 'Updated to',
@@ -126,7 +127,9 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     autoCategoryLabel: 'Auto',
     resetLearnedCategoryLabel: 'Reset learned category',
     saveChanges: 'Save changes',
+    savingChanges: 'Saving...',
     removeItem: 'Remove item',
+    removingItem: 'Removing...',
     close: 'Close',
     nameRequired: 'Name is required.',
     quantityInvalid: 'Quantity must be a positive number.',
@@ -136,6 +139,13 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
     unitLess: 'Show less',
     reorderHint: 'Hold and drag to reorder open items',
   };
+  const showInitialLoad = shopping.isInitialLoading && !selectedList;
+  const isAddPending = shopping.pendingMutation?.kind === 'add-item'
+    && shopping.pendingMutation.listId === listId;
+  const isEditSavePending = shopping.pendingMutation?.kind === 'update-item'
+    && shopping.pendingMutation.itemId === workflowState.editItemId;
+  const isEditRemovePending = shopping.pendingMutation?.kind === 'remove-item'
+    && shopping.pendingMutation.itemId === workflowState.editItemId;
 
   function getCategorySourceLabel(origin: ShoppingCategoryOrigin | null): string | null {
     switch (origin) {
@@ -217,6 +227,9 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   }, [showAddFormDetails, workflowState.showAddDetails]);
 
   function closeAddDetails() {
+    if (isAddPending) {
+      return;
+    }
     workflowActions.closeAddDetails();
     setShowMoreAddUnits(false);
     setShowAddFormDetails(false);
@@ -237,6 +250,9 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
   }
 
   function closeEdit() {
+    if (isEditSavePending || isEditRemovePending) {
+      return;
+    }
     workflowActions.closeEdit();
     setShowMoreEditUnits(false);
     Keyboard.dismiss();
@@ -449,15 +465,15 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             scrollEnabled={!workflowState.draggingOpenItemId}
             keyboardShouldPersistTaps="handled"
           >
-          {shopping.loading ? <Subtle>{strings.loadingItems}</Subtle> : null}
+          {showInitialLoad ? <Subtle>{strings.loadingItems}</Subtle> : null}
           {shopping.error ? <Text style={styles.error}>{shopping.error}</Text> : null}
 
-          {openSections.length === 0 ? (
+          {!showInitialLoad && openSections.length === 0 ? (
             <ShoppingItemSectionCard
               title={strings.openLabel}
               emptyState={strings.noOpenItems}
             />
-          ) : openSections.map((section) => (
+          ) : !showInitialLoad ? openSections.map((section) => (
             <ShoppingItemSectionCard
               key={section.id}
               title={section.title}
@@ -526,8 +542,9 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 ))}
               </View>
             </ShoppingItemSectionCard>
-          ))}
+          )) : null}
 
+          {!showInitialLoad ? (
           <ShoppingItemSectionCard
             title={strings.boughtLabel}
             variant="bought"
@@ -584,6 +601,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
               </View>
             ) : null}
           </ShoppingItemSectionCard>
+          ) : null}
           </ScrollView>
         </View>
       </View>
@@ -618,7 +636,9 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             autoCategoryLabel={strings.autoCategoryLabel}
             resetLearnedCategoryLabel={strings.resetLearnedCategoryLabel}
             saveChangesLabel={strings.saveChanges}
+            saveChangesPendingLabel={strings.savingChanges}
             removeItemLabel={strings.removeItem}
+            removeItemPendingLabel={strings.removingItem}
             closeLabel={strings.close}
             unitNoneLabel={strings.unitNone}
             unitToggleMoreLabel={strings.unitMore}
@@ -647,6 +667,8 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             onSave={handleSaveEdit}
             onRemove={handleRemoveEdit}
             onClose={closeEdit}
+            isSaving={isEditSavePending}
+            isRemoving={isEditRemovePending}
           />
         </OverlaySheet>
       ) : null}
@@ -664,6 +686,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
             detailsHideLabel={strings.addDetailsHide}
             addQuantityPlaceholder={strings.addQuantityPlaceholder}
             addItemTitle={strings.addItemTitle}
+            addItemPendingTitle={strings.addItemPendingTitle}
             successFeedback={workflowState.addDetailsFeedback}
             duplicateTitle={workflowState.addLikelyDuplicate ? strings.addDuplicateTitle : null}
             duplicateSubtitle={getAddDuplicateSubtitle()}
@@ -732,6 +755,7 @@ export function ShoppingListDetailScreen({ token, listId, onBack }: Props) {
                 { onRefocus: () => addDetailsInputRef.current?.focus(), addAsNew: true }
               );
             }}
+            isSubmitting={isAddPending}
           />
         </OverlaySheet>
       ) : null}
@@ -979,6 +1003,9 @@ const styles = StyleSheet.create({
   },
   editorCloseLinkPressed: {
     opacity: 0.72,
+  },
+  editorCloseLinkDisabled: {
+    opacity: 0.45,
   },
   editorCloseText: {
     ...textStyles.subtle,

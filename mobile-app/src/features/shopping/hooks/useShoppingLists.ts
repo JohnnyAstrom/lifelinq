@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { formatApiError } from '../../../shared/api/client';
 import {
@@ -20,60 +20,157 @@ import {
 
 type State = {
   loading: boolean;
+  isInitialLoading: boolean;
+  isReloading: boolean;
+  isMutating: boolean;
   error: string | null;
+  hasLoaded: boolean;
+  pendingMutation: PendingMutation | null;
   lists: ShoppingListResponse[];
 };
+
+type PendingMutation =
+  | { kind: 'create-list' }
+  | { kind: 'remove-list'; listId: string }
+  | { kind: 'update-list'; listId: string }
+  | { kind: 'reorder-list'; listId: string }
+  | { kind: 'add-item'; listId: string }
+  | { kind: 'toggle-item'; listId: string; itemId: string }
+  | { kind: 'remove-item'; listId: string; itemId: string }
+  | { kind: 'update-item'; listId: string; itemId: string }
+  | { kind: 'reorder-item'; listId: string; itemId: string };
 
 export function useShoppingLists(token: string | null) {
   const { handleApiError } = useAuth();
   const [state, setState] = useState<State>({
     loading: true,
+    isInitialLoading: true,
+    isReloading: false,
+    isMutating: false,
     error: null,
+    hasLoaded: false,
+    pendingMutation: null,
     lists: [],
   });
+  const pendingMutationRef = useRef<PendingMutation | null>(null);
 
-  const load = async (options?: { silent?: boolean }) => {
-    const silent = options?.silent ?? false;
+  function setPendingMutation(pendingMutation: PendingMutation | null) {
+    pendingMutationRef.current = pendingMutation;
+    setState((prev) => ({
+      ...prev,
+      pendingMutation,
+      isMutating: pendingMutation !== null,
+    }));
+  }
+
+  const load = async (options?: { mode?: 'initial' | 'reload' | 'mutation-followup' | 'silent' }) => {
+    const mode = options?.mode ?? 'reload';
     if (!token) {
-      setState({ loading: false, error: 'Missing token', lists: [] });
+      pendingMutationRef.current = null;
+      setState({
+        loading: false,
+        isInitialLoading: false,
+        isReloading: false,
+        isMutating: false,
+        error: 'Missing token',
+        hasLoaded: false,
+        pendingMutation: null,
+        lists: [],
+      });
       return;
     }
-    if (!silent) {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    if (mode === 'initial') {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        isInitialLoading: true,
+        isReloading: false,
+        error: null,
+      }));
+    } else if (mode === 'reload') {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        isInitialLoading: false,
+        isReloading: true,
+        error: null,
+      }));
     }
+
     try {
       const lists = await listShoppingLists({ token });
-      if (silent) {
-        setState((prev) => ({ ...prev, error: null, lists }));
-      } else {
-        setState({ loading: false, error: null, lists });
-      }
-    } catch (err) {
-      await handleApiError(err);
-      setState({ loading: false, error: formatApiError(err), lists: [] });
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, [token]);
-
-  const createList = async (name: string, type: ShoppingListType = 'mixed') => {
-    if (!token) {
-      throw new Error('Missing token');
-    }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await createShoppingList({ name, type }, { token });
-      await load();
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        isInitialLoading: false,
+        isReloading: false,
+        error: null,
+        hasLoaded: true,
+        lists,
+      }));
     } catch (err) {
       await handleApiError(err);
       setState((prev) => ({
         ...prev,
         loading: false,
+        isInitialLoading: false,
+        isReloading: false,
         error: formatApiError(err),
+        lists: prev.hasLoaded ? prev.lists : [],
       }));
     }
+  };
+
+  useEffect(() => {
+    void load({ mode: 'initial' });
+  }, [token]);
+
+  async function runMutation<T>(
+    pendingMutation: PendingMutation,
+    mutation: () => Promise<T>,
+    options?: { reloadMode?: 'mutation-followup' | 'silent'; reloadAfter?: boolean }
+  ): Promise<T | null> {
+    if (pendingMutationRef.current) {
+      return null;
+    }
+
+    setPendingMutation(pendingMutation);
+    setState((prev) => ({
+      ...prev,
+      error: null,
+    }));
+
+    try {
+      const result = await mutation();
+      if (options?.reloadAfter !== false) {
+        await load({ mode: options?.reloadMode ?? 'mutation-followup' });
+      }
+      return result;
+    } catch (err) {
+      await handleApiError(err);
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        isInitialLoading: false,
+        isReloading: false,
+        error: formatApiError(err),
+      }));
+      return null;
+    } finally {
+      setPendingMutation(null);
+    }
+  }
+
+  const createList = async (name: string, type: ShoppingListType = 'mixed'): Promise<boolean> => {
+    if (!token) {
+      throw new Error('Missing token');
+    }
+    const result = await runMutation(
+      { kind: 'create-list' },
+      () => createShoppingList({ name, type }, { token })
+    );
+    return result !== null;
   };
 
   const addItem = async (
@@ -82,119 +179,79 @@ export function useShoppingLists(token: string | null) {
     quantity?: number | null,
     unit?: ShoppingUnit | null,
     addAsNew?: boolean
-  ): Promise<AddShoppingItemResponse | void> => {
+  ): Promise<AddShoppingItemResponse | null> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await addShoppingItem(listId, { name, quantity, unit, addAsNew }, { token });
-      await load();
-      return response;
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    return runMutation(
+      { kind: 'add-item', listId },
+      () => addShoppingItem(listId, { name, quantity, unit, addAsNew }, { token })
+    );
   };
 
-  const removeList = async (listId: string) => {
+  const removeList = async (listId: string): Promise<boolean> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await deleteShoppingList(listId, { token });
-      await load();
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    const result = await runMutation(
+      { kind: 'remove-list', listId },
+      () => deleteShoppingList(listId, { token })
+    );
+    return result !== null;
   };
 
-  const updateList = async (listId: string, name: string, type: ShoppingListType) => {
+  const updateList = async (listId: string, name: string, type: ShoppingListType): Promise<boolean> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await updateShoppingList(listId, { name, type }, { token });
-      await load();
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    const result = await runMutation(
+      { kind: 'update-list', listId },
+      () => updateShoppingList(listId, { name, type }, { token })
+    );
+    return result !== null;
   };
 
   const reorderList = async (
     listId: string,
     direction: 'UP' | 'DOWN',
     steps = 1
-  ) => {
+  ): Promise<boolean> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    try {
-      const moveCount = Math.max(1, Math.floor(steps));
-      for (let index = 0; index < moveCount; index += 1) {
-        await reorderShoppingList(listId, { direction }, { token });
-      }
-      await load({ silent: true });
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    const result = await runMutation(
+      { kind: 'reorder-list', listId },
+      async () => {
+        const moveCount = Math.max(1, Math.floor(steps));
+        for (let index = 0; index < moveCount; index += 1) {
+          await reorderShoppingList(listId, { direction }, { token });
+        }
+      },
+      { reloadMode: 'silent' }
+    );
+    return result !== null;
   };
 
-  const toggleItem = async (listId: string, itemId: string) => {
+  const toggleItem = async (listId: string, itemId: string): Promise<boolean> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await toggleShoppingItem(listId, itemId, { token });
-      await load();
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    const result = await runMutation(
+      { kind: 'toggle-item', listId, itemId },
+      () => toggleShoppingItem(listId, itemId, { token })
+    );
+    return result !== null;
   };
 
-  const removeItem = async (listId: string, itemId: string) => {
+  const removeItem = async (listId: string, itemId: string): Promise<boolean> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await deleteShoppingItem(listId, itemId, { token });
-      await load();
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    const result = await runMutation(
+      { kind: 'remove-item', listId, itemId },
+      () => deleteShoppingItem(listId, itemId, { token })
+    );
+    return result !== null;
   };
 
   const updateItem = async (
@@ -203,22 +260,15 @@ export function useShoppingLists(token: string | null) {
     name: string,
     quantity?: number | null,
     unit?: ShoppingUnit | null
-  ) => {
+  ): Promise<boolean> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      await updateShoppingItem(listId, itemId, { name, quantity, unit }, { token });
-      await load();
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    const result = await runMutation(
+      { kind: 'update-item', listId, itemId },
+      () => updateShoppingItem(listId, itemId, { name, quantity, unit }, { token })
+    );
+    return result !== null;
   };
 
   const reorderItem = async (
@@ -226,29 +276,26 @@ export function useShoppingLists(token: string | null) {
     itemId: string,
     direction: 'UP' | 'DOWN',
     steps = 1
-  ) => {
+  ): Promise<boolean> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    try {
-      const moveCount = Math.max(1, Math.floor(steps));
-      for (let index = 0; index < moveCount; index += 1) {
-        await reorderShoppingItem(listId, itemId, { direction }, { token });
-      }
-      await load({ silent: true });
-    } catch (err) {
-      await handleApiError(err);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: formatApiError(err),
-      }));
-    }
+    const result = await runMutation(
+      { kind: 'reorder-item', listId, itemId },
+      async () => {
+        const moveCount = Math.max(1, Math.floor(steps));
+        for (let index = 0; index < moveCount; index += 1) {
+          await reorderShoppingItem(listId, itemId, { direction }, { token });
+        }
+      },
+      { reloadMode: 'silent' }
+    );
+    return result !== null;
   };
 
   return {
     ...state,
-    reload: load,
+    reload: () => load({ mode: state.hasLoaded ? 'reload' : 'initial' }),
     createList,
     removeList,
     updateList,

@@ -12,6 +12,7 @@ type Props = {
   detailsHideLabel: string;
   addQuantityPlaceholder: string;
   addItemTitle: string;
+  addItemPendingTitle: string;
   successFeedback?: string | null;
   duplicateTitle?: string | null;
   duplicateSubtitle?: string | null;
@@ -39,6 +40,7 @@ type Props = {
   onAddItem: () => void | Promise<void>;
   onDuplicatePrimaryAction?: () => void | Promise<void>;
   onAddAsNew?: () => void | Promise<void>;
+  isSubmitting?: boolean;
 };
 
 export function AddDetailsSheetContent({
@@ -49,6 +51,7 @@ export function AddDetailsSheetContent({
   detailsHideLabel,
   addQuantityPlaceholder,
   addItemTitle,
+  addItemPendingTitle,
   successFeedback,
   duplicateTitle,
   duplicateSubtitle,
@@ -76,6 +79,7 @@ export function AddDetailsSheetContent({
   onAddItem,
   onDuplicatePrimaryAction,
   onAddAsNew,
+  isSubmitting = false,
 }: Props) {
   const showDuplicatePrompt = !!duplicateTitle && !!duplicatePrimaryActionLabel && !!duplicateSecondaryActionLabel;
 
@@ -195,25 +199,25 @@ export function AddDetailsSheetContent({
         {showDuplicatePrompt ? (
           <>
             <AppButton
-              title={duplicatePrimaryActionLabel}
+              title={isSubmitting ? addItemPendingTitle : duplicatePrimaryActionLabel}
               onPress={onDuplicatePrimaryAction ?? onAddItem}
-              disabled={nameValue.trim().length === 0}
+              disabled={nameValue.trim().length === 0 || isSubmitting}
               fullWidth
               accentKey="shopping"
             />
             <AppButton
               title={duplicateSecondaryActionLabel}
               onPress={onAddAsNew ?? onAddItem}
-              disabled={nameValue.trim().length === 0}
+              disabled={nameValue.trim().length === 0 || isSubmitting}
               fullWidth
               variant="ghost"
             />
           </>
         ) : (
           <AppButton
-            title={addItemTitle}
+            title={isSubmitting ? addItemPendingTitle : addItemTitle}
             onPress={onAddItem}
-            disabled={nameValue.trim().length === 0}
+            disabled={nameValue.trim().length === 0 || isSubmitting}
             fullWidth
             accentKey="shopping"
           />

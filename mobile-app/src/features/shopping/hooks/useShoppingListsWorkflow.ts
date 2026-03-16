@@ -78,7 +78,10 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     if (!newListName.trim()) {
       return;
     }
-    await shopping.createList(newListName.trim(), newListType);
+    const created = await shopping.createList(newListName.trim(), newListType);
+    if (!created) {
+      return;
+    }
     setNewListName('');
     setNewListType('grocery');
     closeCreate();
@@ -88,7 +91,10 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     if (!editListId || !editListName.trim()) {
       return;
     }
-    await shopping.updateList(editListId, editListName.trim(), editListType);
+    const updated = await shopping.updateList(editListId, editListName.trim(), editListType);
+    if (!updated) {
+      return;
+    }
     closeEdit();
   }
 
@@ -97,7 +103,10 @@ export function useShoppingListsWorkflow({ shopping }: UseShoppingListsWorkflowA
     if (!targetId) {
       return;
     }
-    await shopping.removeList(targetId);
+    const removed = await shopping.removeList(targetId);
+    if (!removed) {
+      return;
+    }
     if (activeListId === targetId) {
       closeActions();
     }
