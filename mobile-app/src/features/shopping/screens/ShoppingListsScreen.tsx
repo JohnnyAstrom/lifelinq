@@ -49,7 +49,6 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     subtitle: 'Choose a list to see items and start shopping.',
     loading: 'Loading lists...',
     yourLists: 'Your lists',
-    reorderHint: 'Hold and drag a list to reorder',
     noLists: 'No lists yet.',
     createListTitle: 'Create list',
     createListSubtitle: 'Give your list a name so everyone can add items.',
@@ -57,8 +56,9 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
     listNamePlaceholder: 'List name',
     createListAction: 'Create list',
     back: 'Back',
-    open: 'open',
-    total: 'total',
+    toBuy: 'to buy',
+    allBought: 'Everything bought',
+    emptyList: 'No items yet',
     newList: 'New list',
     close: 'Close',
     removeListTitle: 'Remove list?',
@@ -282,7 +282,6 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
             <Subtle>{strings.noLists}</Subtle>
           ) : (
             <View style={styles.listSection}>
-              <Subtle>{strings.reorderHint}</Subtle>
               <View
                 onTouchStart={(event: GestureResponderEvent) => {
                   const pageY = event.nativeEvent.pageY;
@@ -309,7 +308,11 @@ export function ShoppingListsScreen({ token, onSelectList, onDone }: Props) {
                     list={list}
                     openCount={openCount}
                     totalCount={totalCount}
-                    strings={{ open: strings.open, total: strings.total }}
+                    strings={{
+                      toBuy: strings.toBuy,
+                      allBought: strings.allBought,
+                      empty: strings.emptyList,
+                    }}
                     styles={styles}
                     isDragging={isDragging}
                     onPress={() => {
@@ -430,16 +433,16 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   listCard: {
-    minHeight: 84,
+    minHeight: 92,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.xs,
-    backgroundColor: theme.colors.surfaceAlt,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
   },
   listCardDragging: {
     opacity: 0.85,
@@ -447,15 +450,15 @@ const styles = StyleSheet.create({
   },
   listMainPressable: {
     flex: 1,
-    minHeight: 56,
+    minHeight: 60,
     paddingVertical: 0,
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: 0,
     borderRadius: theme.radius.md,
     justifyContent: 'center',
   },
   listMain: {
     flex: 1,
-    gap: theme.spacing.xs,
+    gap: 2,
   },
   listCardPressed: {
     opacity: 0.9,
@@ -463,7 +466,8 @@ const styles = StyleSheet.create({
   },
   listTitle: {
     ...textStyles.body,
-    lineHeight: 26,
+    fontWeight: '600',
+    lineHeight: 24,
   },
   listMenuButton: {
     width: 36,
