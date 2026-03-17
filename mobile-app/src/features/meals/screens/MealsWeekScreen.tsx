@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Pressable,
@@ -14,6 +14,7 @@ import { MealIngredientsSheet } from '../components/MealIngredientsSheet';
 import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
+import { getWeekPlan, type WeekPlanResponse } from '../api/mealsApi';
 import {
   addDays,
   buildMonthGridCells,
@@ -23,6 +24,9 @@ import {
   toDateKey,
 } from '../utils/mealDates';
 import { useMealsWorkflow } from '../hooks/useMealsWorkflow';
+import { useMonthMealOverview } from '../hooks/useMonthMealOverview';
+import { formatApiError } from '../../../shared/api/client';
+import { useAuth } from '../../../shared/auth/AuthContext';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import {
   AppButton,
@@ -102,6 +106,7 @@ function formatWeekRangeLabel(start: Date, end: Date) {
 }
 
 export function MealsWeekScreen({ token, onDone }: Props) {
+  const { handleApiError } = useAuth();
   const strings = {
     title: 'Meals',
     subtitle: 'Plan your week and add ingredients to shopping when needed.',
@@ -110,8 +115,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     openCalendar: 'Calendar',
     backToWeek: 'Back to week',
     weekLabel: 'Week',
-    monthlyOverview: 'Tap a day to open it.',
+    monthlyOverview: 'See your month at a glance and open any day.',
     loadingPlan: 'Loading week plan...',
+    loadingMonthOverview: 'Loading calendar...',
     noMeals: 'No meals planned yet.',
     noMealsThisDay: 'No meals planned for this day.',
     loadingDay: 'Loading day...',
@@ -152,6 +158,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [selectedDayDetailDate, setSelectedDayDetailDate] = useState<Date | null>(null);
+  const [pendingDayEditorOpen, setPendingDayEditorOpen] = useState<{
+    date: Date;
+    dayOfWeek: number;
+    mealType: MealType;
+  } | null>(null);
+  const [selectedDayPlan, setSelectedDayPlan] = useState<WeekPlanResponse | null>(null);
+  const [isSelectedDayPlanLoading, setIsSelectedDayPlanLoading] = useState(false);
+  const [selectedDayPlanError, setSelectedDayPlanError] = useState<string | null>(null);
   const { year, isoWeek } = useMemo(
     () => getIsoWeekParts(anchorDate),
     [anchorDate]
@@ -163,6 +177,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const workflow = useMealsWorkflow({ token, year, isoWeek });
   const { editor, actions } = workflow;
   const plan = workflow.plan;
+  const monthOverview = useMonthMealOverview({
+    token,
+    anchorDate,
+    enabled: surfaceMode === 'calendar',
+    currentWeekPlan: plan.data,
+  });
   const shopping = workflow.shopping;
   const mealsByDay = workflow.mealsByDay;
   const lists = shopping.lists;
@@ -187,8 +207,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   }, [weekStart]);
 
   const isAnchorWeekLoaded = plan.data?.year === year && plan.data?.isoWeek === isoWeek;
-  const showInitialPlanLoading = plan.isInitialLoading && !isAnchorWeekLoaded;
-  const shouldRenderPlanViews = !showInitialPlanLoading && (isAnchorWeekLoaded || !plan.error);
+  const showInitialPlanLoading = surfaceMode === 'week' && plan.isInitialLoading && !isAnchorWeekLoaded;
+  const showInitialMonthOverviewLoading = surfaceMode === 'calendar'
+    && monthOverview.isInitialLoading
+    && !monthOverview.hasLoaded;
+  const currentSurfaceError = surfaceMode === 'week' ? plan.error : monthOverview.error;
+  const shouldRenderPlanViews = surfaceMode === 'week'
+    ? !showInitialPlanLoading && (isAnchorWeekLoaded || !plan.error)
+    : !showInitialMonthOverviewLoading && monthOverview.hasLoaded;
 
   const selectedEditorDate = useMemo(() => {
     if (!editor.selectedDay) {
@@ -234,27 +260,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     weekStart,
   ]);
 
-  const monthMealCountByDateKey = useMemo(() => {
-    const counts: Record<string, number> = {};
-    if (!isAnchorWeekLoaded) {
-      return counts;
-    }
-    for (let index = 0; index < 7; index += 1) {
-      const date = new Date(weekStart.getTime());
-      date.setUTCDate(weekStart.getUTCDate() + index);
-      const localDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-      if (
-        localDate.getFullYear() !== anchorDate.getFullYear()
-        || localDate.getMonth() !== anchorDate.getMonth()
-      ) {
-        continue;
-      }
-      const meals = mealsByDay.get(index + 1) ?? [];
-      counts[toDateKey(localDate)] = meals.length;
-    }
-    return counts;
-  }, [anchorDate, isAnchorWeekLoaded, mealsByDay, weekStart]);
-
   const selectedDayDetail = useMemo(() => {
     if (!selectedDayDetailDate) {
       return null;
@@ -272,25 +277,104 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     };
   }, [selectedDayDetailDate, strings.weekLabel]);
 
-  const isSelectedDayWeekLoaded = selectedDayDetail
+  const isSelectedDayInAnchorWeek = selectedDayDetail
     ? plan.data?.year === selectedDayDetail.year && plan.data?.isoWeek === selectedDayDetail.isoWeek
     : false;
+  const effectiveSelectedDayPlan = isSelectedDayInAnchorWeek ? plan.data : selectedDayPlan;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!selectedDayDetail || isSelectedDayInAnchorWeek) {
+      setSelectedDayPlan(null);
+      setSelectedDayPlanError(null);
+      setIsSelectedDayPlanLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!token) {
+      setSelectedDayPlan(null);
+      setSelectedDayPlanError('Missing token');
+      setIsSelectedDayPlanLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setSelectedDayPlan(null);
+    setSelectedDayPlanError(null);
+    setIsSelectedDayPlanLoading(true);
+
+    void getWeekPlan(selectedDayDetail.year, selectedDayDetail.isoWeek, { token })
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+        setSelectedDayPlan(data);
+      })
+      .catch(async (err) => {
+        if (cancelled) {
+          return;
+        }
+        await handleApiError(err);
+        if (cancelled) {
+          return;
+        }
+        setSelectedDayPlanError(formatApiError(err));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsSelectedDayPlanLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handleApiError, isSelectedDayInAnchorWeek, selectedDayDetail, token]);
+
   const selectedDayMeals = useMemo(() => {
-    if (!selectedDayDetail || !isSelectedDayWeekLoaded) {
+    if (!selectedDayDetail || !effectiveSelectedDayPlan) {
       return [];
     }
-    return mealsByDay.get(selectedDayDetail.dayOfWeek) ?? [];
-  }, [isSelectedDayWeekLoaded, mealsByDay, selectedDayDetail]);
-  const dayDetailError = selectedDayDetail && !isSelectedDayWeekLoaded ? plan.error : null;
-  const isDayDetailLoading = !!selectedDayDetail && !isSelectedDayWeekLoaded && !dayDetailError;
+    return effectiveSelectedDayPlan.meals
+      .filter((meal) => meal.dayOfWeek === selectedDayDetail.dayOfWeek)
+      .map((meal) => ({
+        dayOfWeek: meal.dayOfWeek,
+        mealType: meal.mealType as MealType,
+        recipeId: meal.recipeId,
+        recipeTitle: meal.recipeTitle,
+      }))
+      .sort((a, b) => {
+        const order = { BREAKFAST: 0, LUNCH: 1, DINNER: 2 } as const;
+        return order[a.mealType] - order[b.mealType];
+      });
+  }, [effectiveSelectedDayPlan, selectedDayDetail]);
+  const dayDetailError = selectedDayDetail
+    ? (isSelectedDayInAnchorWeek ? plan.error : selectedDayPlanError)
+    : null;
+  const isDayDetailLoading = !!selectedDayDetail
+    && !effectiveSelectedDayPlan
+    && !dayDetailError
+    && (isSelectedDayInAnchorWeek ? plan.isInitialLoading : isSelectedDayPlanLoading);
 
-  function openDayDetail(date: Date, options?: { fromCalendar?: boolean }) {
-    const nextDate = new Date(date.getTime());
-    setAnchorDate(nextDate);
-    setSelectedDayDetailDate(nextDate);
-    if (options?.fromCalendar) {
-      setSurfaceMode('week');
+  useEffect(() => {
+    if (!pendingDayEditorOpen) {
+      return;
     }
+    const { year: pendingYear, isoWeek: pendingIsoWeek } = getIsoWeekParts(pendingDayEditorOpen.date);
+    if (plan.data?.year !== pendingYear || plan.data?.isoWeek !== pendingIsoWeek) {
+      return;
+    }
+    actions.openEditor(pendingDayEditorOpen.dayOfWeek, pendingDayEditorOpen.mealType);
+    setPendingDayEditorOpen(null);
+  }, [actions, pendingDayEditorOpen, plan.data]);
+
+  function openDayDetail(date: Date) {
+    const nextDate = new Date(date.getTime());
+    setSelectedDayDetailDate(nextDate);
   }
 
   function closeDayDetail() {
@@ -304,8 +388,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     if (!selectedDayDetail) {
       return;
     }
+    setPendingDayEditorOpen({
+      date: selectedDayDetail.date,
+      dayOfWeek: selectedDayDetail.dayOfWeek,
+      mealType,
+    });
+    setAnchorDate(selectedDayDetail.date);
     setSelectedDayDetailDate(null);
-    actions.openEditor(selectedDayDetail.dayOfWeek, mealType);
   }
 
   function shiftCurrentPeriod(direction: -1 | 1) {
@@ -358,9 +447,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             contentContainerStyle={styles.mainScrollContent}
             refreshControl={(
               <RefreshControl
-                refreshing={plan.isRefreshing}
+                refreshing={surfaceMode === 'week' ? plan.isRefreshing : monthOverview.isRefreshing}
                 onRefresh={() => {
-                  void plan.reload();
+                  void (surfaceMode === 'week' ? plan.reload() : monthOverview.reload());
                 }}
               />
             )}
@@ -412,7 +501,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               </AppCard>
 
               {showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
-              {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
+              {showInitialMonthOverviewLoading ? <Subtle>{strings.loadingMonthOverview}</Subtle> : null}
+              {currentSurfaceError ? <Text style={styles.error}>{currentSurfaceError}</Text> : null}
 
               {shouldRenderPlanViews ? (
                 surfaceMode === 'week' ? (
@@ -433,12 +523,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     <Subtle>{strings.monthlyOverview}</Subtle>
                     <MealsMonthlyView
                       monthGridCells={monthGridCells}
-                      monthMealCountByDateKey={monthMealCountByDateKey}
+                      monthMealCountByDateKey={monthOverview.mealCountByDateKey}
                       toDateKey={toDateKey}
                       isTodayDate={isTodayDate}
                       styles={styles}
                       onPressDay={(date) => {
-                        openDayDetail(new Date(date.getTime()), { fromCalendar: true });
+                        openDayDetail(new Date(date.getTime()));
                       }}
                       weekdayLabels={DAY_LABELS}
                     />

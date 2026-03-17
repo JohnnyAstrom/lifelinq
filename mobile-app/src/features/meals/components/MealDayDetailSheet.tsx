@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.layout.sheetPadding,
     borderWidth: 1,
     borderColor: theme.colors.border,
     overflow: 'hidden',
