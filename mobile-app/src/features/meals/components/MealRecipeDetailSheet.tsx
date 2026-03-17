@@ -106,7 +106,7 @@ export function MealRecipeDetailSheet({
   error = null,
   strings,
 }: Props) {
-  const [activeRowId, setActiveRowId] = useState<string | null>(ingredientRows[0]?.id ?? null);
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const previousRowCountRef = useRef(ingredientRows.length);
   const resolvedTitle = recipeTitle.trim().length > 0
     ? recipeTitle.trim()
@@ -138,13 +138,17 @@ export function MealRecipeDetailSheet({
       return;
     }
 
+    if (activeRowId === null) {
+      return;
+    }
+
     const hasActiveRow = activeRowId != null && ingredientRows.some((row) => row.id === activeRowId);
     if (hasActiveRow) {
       return;
     }
 
     const firstEmptyRow = ingredientRows.find((row) => isMealIngredientRowEffectivelyEmpty(row));
-    setActiveRowId(firstEmptyRow?.id ?? ingredientRows[0]?.id ?? null);
+    setActiveRowId(firstEmptyRow?.id ?? null);
   }, [ingredientRows, activeRowId]);
 
   return (
