@@ -46,12 +46,29 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   );
 
   const recipeListItems = useMemo(() => {
+    const nameCounts = new Map<string, number>();
+    for (const recipe of recipes ?? []) {
+      const normalizedName = recipe.name.trim().toLocaleLowerCase();
+      nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1);
+    }
+
     return [...(recipes ?? [])]
-      .sort((left, right) => left.name.localeCompare(right.name))
+      .sort((left, right) => {
+        const nameComparison = left.name.localeCompare(right.name);
+        if (nameComparison !== 0) {
+          return nameComparison;
+        }
+        return right.createdAt.localeCompare(left.createdAt);
+      })
       .map((recipe) => ({
         recipeId: recipe.recipeId,
         name: recipe.name,
         ingredientCount: recipe.ingredients.length,
+        duplicateNameCount: nameCounts.get(recipe.name.trim().toLocaleLowerCase()) ?? 1,
+        createdLabel: new Date(recipe.createdAt).toLocaleDateString(undefined, {
+          day: 'numeric',
+          month: 'short',
+        }),
       }));
   }, [recipes]);
 

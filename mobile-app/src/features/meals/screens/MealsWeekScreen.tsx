@@ -128,7 +128,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     calendarOverview: 'Calendar',
     weekLabel: 'Week',
     monthlyOverview: 'See your month at a glance and open any day.',
-    recipesOverviewTitle: 'Saved recipes',
+    recipesOverviewTitle: 'Recipes',
     loadingPlan: 'Loading week plan...',
     loadingMonthOverview: 'Loading calendar...',
     noMeals: 'No meals planned yet.',
@@ -178,12 +178,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipePickerHint: 'Choose a saved recipe for this meal.',
     loadingRecipes: 'Loading recipes...',
     noRecipes: 'No saved recipes yet.',
-    createRecipeFromRecipes: 'New recipe',
-    recipeDestinationSubtitle: 'Review and edit reusable recipe details in Meals.',
-    savedRecipeContextHint: 'This saved recipe can be reused when planning meals.',
-    newSavedRecipeContextHint: 'Create a reusable recipe you can plan meals with later.',
+    noRecipesHint: 'Create a reusable recipe here so it is ready when you plan meals later.',
+    createRecipeFromRecipes: 'Create recipe',
+    recipeDestinationSubtitle: 'Manage reusable recipe details in Meals.',
+    savedRecipeContextHint: 'This saved recipe is ready to reuse across future meal plans.',
+    newSavedRecipeContextHint: 'Create a reusable recipe for later meal planning.',
     saveRecipe: 'Save recipe',
     savingRecipe: 'Saving recipe...',
+    createRecipe: 'Create recipe',
+    creatingRecipe: 'Creating recipe...',
+    savedRecipeLabel: 'Saved recipe',
+    createdLabel: 'Created',
     ingredientsEmptyState: 'Optional. Add ingredients when you need them.',
     ingredientsSummarySuffix: 'ingredients',
     ingredientNamePlaceholder: 'Ingredient name',
@@ -686,9 +691,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   onCreateRecipe={recipesWorkspace.recipes.openCreateRecipe}
                   strings={{
                     title: strings.recipesOverviewTitle,
+                    subtitle: recipesWorkspace.recipes.items.length > 0
+                      ? 'Open and manage reusable recipes for future planning.'
+                      : 'Create and keep reusable recipes ready for later planning.',
                     newRecipe: strings.createRecipeFromRecipes,
                     loadingRecipes: strings.loadingRecipes,
                     noRecipes: strings.noRecipes,
+                    noRecipesHint: strings.noRecipesHint,
+                    savedRecipeLabel: strings.savedRecipeLabel,
+                    createdLabel: strings.createdLabel,
+                    duplicateNameHint: (count) => `${count} recipes share this name`,
+                    recipeCountLabel: (count) => count === 1 ? '1 saved recipe' : `${count} saved recipes`,
                   }}
                 />
               )}
@@ -853,7 +866,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           strings={{
             eyebrow: strings.recipesWorkspace,
             title: strings.recipeSheetTitle,
-            subtitle: strings.recipeDestinationSubtitle,
+            subtitle: recipesWorkspace.recipeDetail.hasExistingRecipe
+              ? strings.recipeDestinationSubtitle
+              : strings.newSavedRecipeContextHint,
             newRecipeLabel: strings.newRecipeLabel,
             usingRecipeLabel: strings.usingRecipeLabel,
             mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
@@ -872,8 +887,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             quantityPlaceholder: strings.quantityPlaceholder,
             addIngredient: strings.addIngredient,
             removeIngredient: strings.removeIngredient,
-            saveRecipe: strings.saveRecipe,
-            savingRecipe: strings.savingRecipe,
+            saveRecipe: recipesWorkspace.recipeDetail.hasExistingRecipe
+              ? strings.saveRecipe
+              : strings.createRecipe,
+            savingRecipe: recipesWorkspace.recipeDetail.hasExistingRecipe
+              ? strings.savingRecipe
+              : strings.creatingRecipe,
             close: strings.close,
           }}
         />
