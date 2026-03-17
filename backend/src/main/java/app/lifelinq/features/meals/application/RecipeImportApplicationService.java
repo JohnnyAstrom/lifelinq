@@ -19,7 +19,10 @@ import java.util.regex.Pattern;
 
 public class RecipeImportApplicationService {
     private static final Pattern LEADING_QUANTITY_PATTERN = Pattern.compile(
-            "^(?<quantity>\\d+(?:[\\.,]\\d+)?)\\s*(?<rest>.+)$"
+            "^(?<quantity>(?:\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d+(?:[\\.,]\\d+)?))\\s*(?<rest>.+)$"
+    );
+    private static final Pattern ATTACHED_UNIT_PATTERN = Pattern.compile(
+            "^(?<quantity>\\d+(?:[\\.,]\\d+)?)(?<unit>[A-Za-z]+)\\s+(?<rest>.+)$"
     );
 
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
@@ -87,9 +90,27 @@ public class RecipeImportApplicationService {
     }
 
     private RecipeImportDraftIngredientView toIngredientView(String line, int position) {
-        Matcher matcher = LEADING_QUANTITY_PATTERN.matcher(line);
+        String normalizedLine = normalizeIngredientLine(line);
+        Matcher matcher = LEADING_QUANTITY_PATTERN.matcher(normalizedLine);
         if (!matcher.matches()) {
-            return new RecipeImportDraftIngredientView(line, null, null, position);
+            Matcher attachedUnitMatcher = ATTACHED_UNIT_PATTERN.matcher(normalizedLine);
+            if (!attachedUnitMatcher.matches()) {
+                return new RecipeImportDraftIngredientView(normalizedLine, null, null, position);
+            }
+            BigDecimal quantity = parseQuantity(attachedUnitMatcher.group("quantity"));
+            UnitParseResult unitResult = parseUnit(
+                    attachedUnitMatcher.group("unit"),
+                    attachedUnitMatcher.group("rest")
+            );
+            if (quantity == null || unitResult == null) {
+                return new RecipeImportDraftIngredientView(normalizedLine, null, null, position);
+            }
+            return new RecipeImportDraftIngredientView(
+                    unitResult.ingredientName(),
+                    quantity,
+                    unitResult.unit(),
+                    position
+            );
         }
 
         BigDecimal quantity = parseQuantity(matcher.group("quantity"));
@@ -97,7 +118,7 @@ public class RecipeImportApplicationService {
         UnitParseResult unitResult = parseUnit(rest);
 
         if (quantity == null || unitResult == null) {
-            return new RecipeImportDraftIngredientView(line, null, null, position);
+            return new RecipeImportDraftIngredientView(normalizedLine, null, null, position);
         }
 
         return new RecipeImportDraftIngredientView(
@@ -110,7 +131,15 @@ public class RecipeImportApplicationService {
 
     private BigDecimal parseQuantity(String quantityText) {
         try {
-            return new BigDecimal(quantityText.replace(',', '.'));
+            String normalized = normalizeFractionQuantity(quantityText);
+            if (normalized.contains("/")) {
+                String[] parts = normalized.split("\\s+");
+                if (parts.length == 2) {
+                    return new BigDecimal(parts[0]).add(parseFraction(parts[1]));
+                }
+                return parseFraction(normalized);
+            }
+            return new BigDecimal(normalized.replace(',', '.'));
         } catch (NumberFormatException ex) {
             return null;
         }
@@ -122,29 +151,40 @@ public class RecipeImportApplicationService {
             return null;
         }
 
-        String unitToken = value.substring(0, split).toLowerCase(Locale.ROOT);
-        IngredientUnitView unit = switch (unitToken) {
-            case "pcs", "pc", "st" -> IngredientUnitView.PCS;
-            case "pack", "pkt" -> IngredientUnitView.PACK;
-            case "kg" -> IngredientUnitView.KG;
-            case "hg" -> IngredientUnitView.HG;
-            case "g", "gram" -> IngredientUnitView.G;
-            case "l" -> IngredientUnitView.L;
-            case "dl" -> IngredientUnitView.DL;
-            case "ml" -> IngredientUnitView.ML;
-            default -> null;
-        };
+        return parseUnit(value.substring(0, split), value.substring(split + 1));
+    }
+
+    private UnitParseResult parseUnit(String unitToken, String ingredientValue) {
+        IngredientUnitView unit = parseSupportedUnit(unitToken);
 
         if (unit == null) {
             return null;
         }
 
-        String ingredientName = normalizeOptionalText(value.substring(split + 1));
+        String ingredientName = normalizeOptionalText(ingredientValue);
         if (ingredientName == null) {
             return null;
         }
 
         return new UnitParseResult(unit, ingredientName);
+    }
+
+    private IngredientUnitView parseSupportedUnit(String unitToken) {
+        String normalizedUnitToken = unitToken
+                .toLowerCase(Locale.ROOT)
+                .replace(".", "")
+                .trim();
+        return switch (normalizedUnitToken) {
+            case "pcs", "pc", "piece", "pieces", "st" -> IngredientUnitView.PCS;
+            case "pack", "packs", "pkt", "package", "packages" -> IngredientUnitView.PACK;
+            case "kg", "kilo", "kilos", "kilogram", "kilograms" -> IngredientUnitView.KG;
+            case "hg", "hectogram", "hectograms" -> IngredientUnitView.HG;
+            case "g", "gram", "grams" -> IngredientUnitView.G;
+            case "l", "liter", "liters", "litre", "litres" -> IngredientUnitView.L;
+            case "dl", "deciliter", "deciliters", "decilitre", "decilitres" -> IngredientUnitView.DL;
+            case "ml", "milliliter", "milliliters", "millilitre", "millilitres" -> IngredientUnitView.ML;
+            default -> null;
+        };
     }
 
     private String normalizeRequiredName(String value) {
@@ -161,6 +201,47 @@ public class RecipeImportApplicationService {
         }
         String normalized = value.trim().replaceAll("\\s+", " ");
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeIngredientLine(String value) {
+        String normalized = normalizeOptionalText(value);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized
+                .replace('\u00A0', ' ')
+                .replaceFirst("^[\\-•*]+\\s*", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeFractionQuantity(String value) {
+        return value
+                .replace("½", " 1/2")
+                .replace("¼", " 1/4")
+                .replace("¾", " 3/4")
+                .replace("⅓", " 1/3")
+                .replace("⅔", " 2/3")
+                .replace("⅛", " 1/8")
+                .replace("⅜", " 3/8")
+                .replace("⅝", " 5/8")
+                .replace("⅞", " 7/8")
+                .trim()
+                .replaceAll("\\s+", " ");
+    }
+
+    private BigDecimal parseFraction(String value) {
+        String[] parts = value.split("/");
+        if (parts.length != 2) {
+            return null;
+        }
+        BigDecimal numerator = new BigDecimal(parts[0]);
+        BigDecimal denominator = new BigDecimal(parts[1]);
+        if (BigDecimal.ZERO.compareTo(denominator) == 0) {
+            return null;
+        }
+        return numerator.divide(denominator, 4, java.math.RoundingMode.HALF_UP).stripTrailingZeros();
     }
 
     private String normalizeOptionalInstructions(String value) {

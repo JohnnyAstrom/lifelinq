@@ -53,7 +53,7 @@ class RecipeImportHtmlParserTest {
                 <html>
                   <head>
                     <meta property="og:site_name" content="Example Kitchen" />
-                    <meta property="og:description" content="A calm imported note" />
+                    <meta property="twitter:description" content="A calm imported note" />
                     <script type="application/ld+json">
                       {
                         "@context": "https://schema.org",
@@ -71,6 +71,42 @@ class RecipeImportHtmlParserTest {
 
         assertThat(parsed.sourceName()).isEqualTo("Example Kitchen");
         assertThat(parsed.shortNote()).isEqualTo("A calm imported note");
+    }
+
+    @Test
+    void parsesNestedRecipeNodesAndSplitsStructuredIngredientTextLines() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "mainEntity": {
+                          "@type": "Recipe",
+                          "name": "Nested soup",
+                          "recipeIngredient": [
+                            "• 400g mushrooms",
+                            "1.5 dl cream\\n2 eggs"
+                          ],
+                          "recipeInstructions": {
+                            "@type": "HowToSection",
+                            "itemListElement": [
+                              {"@type":"HowToStep", "text":"Cook mushrooms"},
+                              {"@type":"HowToStep", "text":"Add cream"}
+                            ]
+                          }
+                        }
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/soup", html));
+
+        assertThat(parsed.name()).isEqualTo("Nested soup");
+        assertThat(parsed.ingredientLines()).containsExactly("400g mushrooms", "1.5 dl cream", "2 eggs");
+        assertThat(parsed.instructions()).isEqualTo("Cook mushrooms\nAdd cream");
     }
 
     @Test

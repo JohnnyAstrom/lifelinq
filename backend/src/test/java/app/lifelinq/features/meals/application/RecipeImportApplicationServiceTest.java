@@ -43,6 +43,32 @@ class RecipeImportApplicationServiceTest {
     }
 
     @Test
+    void importRecipeDraftNormalizesFractionsAttachedUnitsAndBulletIngredients() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of("• 400g mushrooms", "1 1/2 dl milk", "- salt to taste")
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(3);
+        assertThat(draft.ingredients().get(0).quantity()).isEqualByComparingTo("400");
+        assertThat(draft.ingredients().get(0).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.G);
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("mushrooms");
+        assertThat(draft.ingredients().get(1).quantity()).isEqualByComparingTo("1.5");
+        assertThat(draft.ingredients().get(1).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.DL);
+        assertThat(draft.ingredients().get(1).name()).isEqualTo("milk");
+        assertThat(draft.ingredients().get(2).quantity()).isNull();
+        assertThat(draft.ingredients().get(2).name()).isEqualTo("salt to taste");
+    }
+
+    @Test
     void importRecipeDraftRejectsUnsupportedUrlScheme() {
         EnsureGroupMemberUseCase membership = (g, u) -> {};
         RecipeImportPort port = url -> new ParsedRecipeImportData("Recipe", null, url, null, null, List.of("milk"));

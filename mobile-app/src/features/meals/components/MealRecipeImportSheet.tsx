@@ -8,6 +8,7 @@ type Strings = {
   subtitle: string;
   urlLabel: string;
   urlPlaceholder: string;
+  helpText: string;
   importAction: string;
   importingAction: string;
   close: string;
@@ -48,6 +49,7 @@ export function MealRecipeImportSheet({
             placeholder={strings.urlPlaceholder}
             keyboardType="url"
           />
+          <Subtle>{strings.helpText}</Subtle>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 

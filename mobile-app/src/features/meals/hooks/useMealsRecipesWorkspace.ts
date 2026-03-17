@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { formatApiError } from '../../../shared/api/client';
+import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import {
   createRecipe,
@@ -120,6 +120,35 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     void loadRecipes();
   }, [enabled, hasLoaded, isListLoading, token]);
+
+  function formatImportDraftError(err: unknown): string {
+    if (err instanceof ApiError) {
+      if (err.status === 400) {
+        return 'Use a full public recipe URL that starts with http:// or https://.';
+      }
+      if (err.status === 422) {
+        try {
+          const payload = JSON.parse(err.body) as { code?: string; message?: string };
+          if (payload.code === 'RECIPE_IMPORT_FAILED') {
+            const message = payload.message?.toLowerCase() ?? '';
+            if (message.includes('fetch recipe url')) {
+              return 'We could not reach that recipe page. Check the URL or try another recipe site.';
+            }
+            if (message.includes('structured recipe data')) {
+              return 'We could not find a usable recipe on that page. Try another recipe URL or create it manually.';
+            }
+            if (message.includes('missing ingredients')) {
+              return 'We found the page, but the recipe draft was too incomplete. Try another URL or finish the recipe manually.';
+            }
+            return 'We could not import that recipe page yet. Try another URL or create the recipe manually.';
+          }
+        } catch {
+          return 'We could not import that recipe page yet. Try another URL or create the recipe manually.';
+        }
+      }
+    }
+    return formatApiError(err);
+  }
 
   function applyRecipe(recipe: RecipeResponse) {
     setRecipeId(recipe.recipeId);
@@ -273,7 +302,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setImportUrl('');
     } catch (err) {
       await handleApiError(err);
-      setImportError(formatApiError(err));
+      setImportError(formatImportDraftError(err));
     } finally {
       setIsImportingDraft(false);
     }

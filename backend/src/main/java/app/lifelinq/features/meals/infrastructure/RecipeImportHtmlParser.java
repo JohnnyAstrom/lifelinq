@@ -7,9 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +26,7 @@ final class RecipeImportHtmlParser {
             "<title>(?<value>.*?)</title>",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL
     );
+    private static final Pattern SPLIT_LINE_PATTERN = Pattern.compile("\\s*[\\r\\n]+\\s*");
 
     private final ObjectMapper objectMapper;
 
@@ -121,6 +122,12 @@ final class RecipeImportHtmlParser {
                     return recipe;
                 }
             }
+            for (Map.Entry<String, JsonNode> entry : iterable(node.fields())) {
+                JsonNode recipe = findRecipeNode(entry.getValue());
+                if (recipe != null) {
+                    return recipe;
+                }
+            }
         }
         return null;
     }
@@ -147,14 +154,22 @@ final class RecipeImportHtmlParser {
         if (ingredientsNode == null || ingredientsNode.isNull()) {
             return ingredients;
         }
+        if (ingredientsNode.isTextual()) {
+            appendNormalizedIngredientText(ingredientsNode.asText(), ingredients);
+            return ingredients;
+        }
         if (ingredientsNode.isArray()) {
             for (JsonNode ingredientNode : ingredientsNode) {
-                String ingredient = ingredientNode.isTextual()
-                        ? ingredientNode.asText()
-                        : firstNonBlank(textValue(ingredientNode.get("text")), textValue(ingredientNode.get("name")));
-                String normalized = normalizeInlineText(ingredient);
-                if (normalized != null) {
-                    ingredients.add(normalized);
+                if (ingredientNode.isTextual()) {
+                    appendNormalizedIngredientText(ingredientNode.asText(), ingredients);
+                    continue;
+                }
+                if (ingredientNode.isObject()) {
+                    String ingredient = firstNonBlank(
+                            textValue(ingredientNode.get("text")),
+                            textValue(ingredientNode.get("name"))
+                    );
+                    appendNormalizedIngredientText(ingredient, ingredients);
                 }
             }
         }
@@ -256,7 +271,11 @@ final class RecipeImportHtmlParser {
             if (siteName == null && normalizedKey.equals("og:site_name")) {
                 siteName = value;
             }
-            if (description == null && (normalizedKey.equals("description") || normalizedKey.equals("og:description"))) {
+            if (description == null && (
+                    normalizedKey.equals("description")
+                    || normalizedKey.equals("og:description")
+                    || normalizedKey.equals("twitter:description")
+            )) {
                 description = value;
             }
         }
@@ -293,12 +312,45 @@ final class RecipeImportHtmlParser {
         }
         String normalized = value
                 .replaceAll("<[^>]+>", " ")
+                .replace('\u00A0', ' ')
                 .replace("&nbsp;", " ")
                 .replace("&amp;", "&")
                 .replace("&quot;", "\"")
+                .replace("&apos;", "'")
+                .replace("&#39;", "'")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
                 .trim()
                 .replaceAll("\\s+", " ");
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private void appendNormalizedIngredientText(String value, List<String> ingredients) {
+        if (value == null) {
+            return;
+        }
+        String normalizedValue = value.replace('\u2022', '\n');
+        for (String part : SPLIT_LINE_PATTERN.split(normalizedValue)) {
+            String normalized = normalizeIngredientLine(part);
+            if (normalized != null) {
+                ingredients.add(normalized);
+            }
+        }
+    }
+
+    private String normalizeIngredientLine(String value) {
+        String normalized = normalizeInlineText(value);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.replaceFirst("^[\\-•*]+\\s*", "");
+        normalized = normalized.replaceFirst("^\\d{1,2}[\\.)]\\s+", "");
+        normalized = normalized.replaceAll("\\s+", " ").trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private <T> Iterable<T> iterable(java.util.Iterator<T> iterator) {
+        return () -> iterator;
     }
 
     private String firstNonBlank(String... values) {
