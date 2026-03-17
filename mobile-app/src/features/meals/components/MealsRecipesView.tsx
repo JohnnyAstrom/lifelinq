@@ -15,6 +15,7 @@ type Strings = {
   title: string;
   subtitle: string;
   newRecipe: string;
+  importRecipe: string;
   loadingRecipes: string;
   noRecipes: string;
   noRecipesHint: string;
@@ -30,6 +31,7 @@ type Props = {
   error: string | null;
   onOpenRecipe: (recipeId: string) => void;
   onCreateRecipe: () => void;
+  onImportRecipe: () => void;
   strings: Strings;
 };
 
@@ -39,6 +41,7 @@ export function MealsRecipesView({
   error,
   onOpenRecipe,
   onCreateRecipe,
+  onImportRecipe,
   strings,
 }: Props) {
   const recipeCount = recipes.length;
@@ -50,7 +53,14 @@ export function MealsRecipesView({
           <Text style={textStyles.h2}>{strings.title}</Text>
           <Subtle>{strings.subtitle}</Subtle>
         </View>
-        <AppButton title={strings.newRecipe} onPress={onCreateRecipe} accentKey="meals" />
+        <View style={styles.headerActions}>
+          <AppButton
+            title={strings.importRecipe}
+            onPress={onImportRecipe}
+            variant="ghost"
+          />
+          <AppButton title={strings.newRecipe} onPress={onCreateRecipe} accentKey="meals" />
+        </View>
       </View>
 
       {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
@@ -126,6 +136,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: 2,
+  },
+  headerActions: {
+    alignItems: 'flex-end',
+    gap: theme.spacing.xs,
   },
   listCard: {
     paddingVertical: theme.spacing.xs,

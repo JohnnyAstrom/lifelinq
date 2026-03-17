@@ -21,6 +21,7 @@ type Strings = MealIngredientEditorRowStrings & {
   usingRecipeLabel: string;
   mealSpecificRecipeLabel: string;
   editingSavedRecipeLabel: string;
+  importDraftLabel: string;
   newRecipeTitle: string;
   recipeContextHint?: string;
   mealAttachmentLabel?: string;
@@ -32,6 +33,8 @@ type Strings = MealIngredientEditorRowStrings & {
   recipeContentLabel: string;
   recipeSourceLabel: string;
   recipeSourcePlaceholder: string;
+  recipeSourceUrlLabel?: string;
+  recipeSourceUrlPlaceholder?: string;
   recipeShortNoteLabel: string;
   recipeShortNotePlaceholder: string;
   recipeInstructionsLabel: string;
@@ -52,6 +55,8 @@ type Props = {
   onChangeRecipeTitle: (value: string) => void;
   recipeSource: string;
   onChangeRecipeSource: (value: string) => void;
+  recipeSourceUrl?: string;
+  onChangeRecipeSourceUrl?: (value: string) => void;
   recipeShortNote: string;
   onChangeRecipeShortNote: (value: string) => void;
   recipeInstructions: string;
@@ -59,6 +64,7 @@ type Props = {
   ingredientRows: MealIngredientRow[];
   isRecipeLoading: boolean;
   hasExistingRecipe: boolean;
+  isImportDraft?: boolean;
   hasIngredients: boolean;
   showSaveAsNewRecipeHint: boolean;
   canEnterSavedRecipeEditMode: boolean;
@@ -82,6 +88,8 @@ export function MealRecipeDetailSheet({
   onChangeRecipeTitle,
   recipeSource,
   onChangeRecipeSource,
+  recipeSourceUrl,
+  onChangeRecipeSourceUrl,
   recipeShortNote,
   onChangeRecipeShortNote,
   recipeInstructions,
@@ -89,6 +97,7 @@ export function MealRecipeDetailSheet({
   ingredientRows,
   isRecipeLoading,
   hasExistingRecipe,
+  isImportDraft = false,
   hasIngredients,
   showSaveAsNewRecipeHint,
   canEnterSavedRecipeEditMode,
@@ -116,6 +125,8 @@ export function MealRecipeDetailSheet({
     && !isEditingSavedRecipeDirectly;
   const identityLabel = isMealSpecificDraft
     ? strings.mealSpecificRecipeLabel
+    : isImportDraft
+      ? strings.importDraftLabel
     : isEditingSavedRecipeDirectly
       ? strings.editingSavedRecipeLabel
     : hasExistingRecipe
@@ -214,6 +225,17 @@ export function MealRecipeDetailSheet({
                   onChangeText={onChangeRecipeSource}
                 />
               </View>
+              {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
+                <View style={styles.subSection}>
+                  <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
+                  <AppInput
+                    placeholder={strings.recipeSourceUrlPlaceholder}
+                    value={recipeSourceUrl ?? ''}
+                    onChangeText={onChangeRecipeSourceUrl}
+                    keyboardType="url"
+                  />
+                </View>
+              ) : null}
               <View style={styles.subSection}>
                 <Text style={styles.fieldLabel}>{strings.recipeShortNoteLabel}</Text>
                 <AppInput

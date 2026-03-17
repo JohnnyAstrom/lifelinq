@@ -3,13 +3,16 @@ import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import {
   createRecipe,
+  createRecipeImportDraft,
   getRecipe,
   listRecipes,
   updateRecipe,
+  type RecipeImportDraftResponse,
   type RecipeResponse,
 } from '../api/mealsApi';
 import {
   createEmptyIngredientRow,
+  ingredientRowsFromImportDraft,
   ingredientRowsFromResponse,
   sanitizeIngredientQuantityInput,
   toIngredientRequests,
@@ -18,6 +21,7 @@ import {
 } from '../utils/ingredientRows';
 
 type DetailPendingAction = 'save' | null;
+type RecipeDetailMode = 'create' | 'saved' | 'import';
 
 type Params = {
   token: string;
@@ -36,7 +40,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
   const [recipeSource, setRecipeSource] = useState('');
-  const [recipeSourceUrl, setRecipeSourceUrl] = useState<string | null>(null);
+  const [recipeSourceUrl, setRecipeSourceUrl] = useState('');
   const [recipeOriginKind, setRecipeOriginKind] = useState('MANUAL');
   const [recipeShortNote, setRecipeShortNote] = useState('');
   const [recipeInstructions, setRecipeInstructions] = useState('');
@@ -44,6 +48,12 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [recipeDetailError, setRecipeDetailError] = useState<string | null>(null);
   const [pendingDetailAction, setPendingDetailAction] = useState<DetailPendingAction>(null);
+  const [detailMode, setDetailMode] = useState<RecipeDetailMode>('create');
+
+  const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [isImportingDraft, setIsImportingDraft] = useState(false);
 
   const hasIngredients = useMemo(
     () => toIngredientRequests(ingredientRows).length > 0,
@@ -115,13 +125,29 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeId(recipe.recipeId);
     setRecipeTitle(recipe.name);
     setRecipeSource(recipe.sourceName ?? '');
-    setRecipeSourceUrl(recipe.sourceUrl ?? null);
+    setRecipeSourceUrl(recipe.sourceUrl ?? '');
     setRecipeOriginKind(recipe.originKind);
     setRecipeShortNote(recipe.shortNote ?? '');
     setRecipeInstructions(recipe.instructions ?? '');
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
+    setDetailMode('saved');
+    setIsRecipeDetailOpen(true);
+  }
+
+  function applyImportedDraft(draft: RecipeImportDraftResponse) {
+    setRecipeId(null);
+    setRecipeTitle(draft.name);
+    setRecipeSource(draft.sourceName ?? '');
+    setRecipeSourceUrl(draft.sourceUrl);
+    setRecipeOriginKind(draft.originKind);
+    setRecipeShortNote(draft.shortNote ?? '');
+    setRecipeInstructions(draft.instructions ?? '');
+    setIngredientRows(ingredientRowsFromImportDraft(draft.ingredients));
+    setRecipeDetailError(null);
+    setIsRecipeLoading(false);
+    setDetailMode('import');
     setIsRecipeDetailOpen(true);
   }
 
@@ -154,14 +180,32 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeId(null);
     setRecipeTitle('');
     setRecipeSource('');
-    setRecipeSourceUrl(null);
+    setRecipeSourceUrl('');
     setRecipeOriginKind('MANUAL');
     setRecipeShortNote('');
     setRecipeInstructions('');
     setIngredientRows([]);
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
+    setDetailMode('create');
     setIsRecipeDetailOpen(true);
+  }
+
+  function openImportRecipe() {
+    if (isImportingDraft || pendingDetailAction) {
+      return;
+    }
+    setImportUrl('');
+    setImportError(null);
+    setIsImportSheetOpen(true);
+  }
+
+  function closeImportRecipe() {
+    if (isImportingDraft) {
+      return;
+    }
+    setIsImportSheetOpen(false);
+    setImportError(null);
   }
 
   function closeRecipeDetail() {
@@ -212,6 +256,29 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }));
   }
 
+  async function importRecipeDraft() {
+    if (isImportingDraft || !importUrl.trim()) {
+      return;
+    }
+
+    setIsImportingDraft(true);
+    setImportError(null);
+    try {
+      const draft = await createRecipeImportDraft(
+        { url: importUrl.trim() },
+        { token }
+      );
+      applyImportedDraft(draft);
+      setIsImportSheetOpen(false);
+      setImportUrl('');
+    } catch (err) {
+      await handleApiError(err);
+      setImportError(formatApiError(err));
+    } finally {
+      setIsImportingDraft(false);
+    }
+  }
+
   async function saveRecipe() {
     if (pendingDetailAction || isRecipeLoading || !recipeTitle.trim()) {
       return;
@@ -223,7 +290,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       const request = {
         name: recipeTitle.trim(),
         sourceName: recipeSource.trim() || null,
-        sourceUrl: recipeSourceUrl,
+        sourceUrl: recipeSourceUrl.trim() || null,
         originKind: recipeOriginKind,
         shortNote: recipeShortNote.trim() || null,
         instructions: recipeInstructions.trim() || null,
@@ -257,23 +324,37 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       reload: () => loadRecipes({ refreshing: true }),
       openRecipe,
       openCreateRecipe,
+      openImportRecipe,
+    },
+    importDraft: {
+      isOpen: isImportSheetOpen,
+      importUrl,
+      error: importError,
+      isImportingDraft,
+      setImportUrl,
+      openImportRecipe,
+      closeImportRecipe,
+      importRecipeDraft,
     },
     recipeDetail: {
       isOpen: isRecipeDetailOpen,
       recipeId,
       recipeTitle,
       recipeSource,
+      recipeSourceUrl,
       recipeShortNote,
       recipeInstructions,
       ingredientRows,
       isRecipeLoading,
       hasExistingRecipe: !!recipeId,
+      isImportDraft: detailMode === 'import',
       hasIngredients,
       error: recipeDetailError,
       isSavingRecipe: pendingDetailAction === 'save',
       isActionPending: pendingDetailAction !== null,
       setRecipeTitle,
       setRecipeSource,
+      setRecipeSourceUrl,
       setRecipeShortNote,
       setRecipeInstructions,
       addIngredientRow,

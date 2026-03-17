@@ -1,5 +1,6 @@
 export {
   addOrReplaceMeal,
+  createRecipeImportDraft,
   createRecipe,
   getRecipe,
   getWeekPlan,
@@ -12,6 +13,8 @@ export {
   type IngredientRequest,
   type IngredientResponse,
   type PlannedMealResponse,
+  type RecipeImportDraftIngredientResponse,
+  type RecipeImportDraftResponse,
   type RecipeResponse,
   type WeekPlanResponse,
 } from '../../../shared/api/meals';

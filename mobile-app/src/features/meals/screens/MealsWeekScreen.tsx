@@ -11,6 +11,7 @@ import {
 import { MealDayDetailSheet } from '../components/MealDayDetailSheet';
 import { MealEditorSheet } from '../components/MealEditorSheet';
 import { MealRecipeDetailSheet } from '../components/MealRecipeDetailSheet';
+import { MealRecipeImportSheet } from '../components/MealRecipeImportSheet';
 import { MealRecipePickerSheet } from '../components/MealRecipePickerSheet';
 import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
 import { MealsRecipesView } from '../components/MealsRecipesView';
@@ -161,6 +162,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSheetTitle: 'Recipe',
     recipeSheetSubtitle: 'Review and edit the recipe used for this meal.',
     recipeSheetNewRecipeTitle: 'New recipe',
+    importDraftLabel: 'Imported draft',
     recipeSheetSavedRecipeContextHint: 'This meal is using a saved recipe.',
     recipeSheetMealSpecificContextHint: 'Your changes are now creating a recipe for this meal.',
     recipeSheetEditingSavedRecipeContextHint: 'You are editing the saved recipe used by this meal.',
@@ -172,6 +174,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeContentLabel: 'Recipe details',
     recipeSourceLabel: 'Source',
     recipeSourcePlaceholder: 'Where this recipe comes from',
+    recipeSourceUrlLabel: 'Source URL',
+    recipeSourceUrlPlaceholder: 'https://example.com/recipe',
     recipeShortNoteLabel: 'Short note',
     recipeShortNotePlaceholder: 'Add a short note for this recipe',
     recipeInstructionsLabel: 'Instructions',
@@ -187,9 +191,18 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     noRecipes: 'No saved recipes yet.',
     noRecipesHint: 'Create a reusable recipe with ingredients, notes, and steps for later planning.',
     createRecipeFromRecipes: 'Create recipe',
+    importRecipeFromRecipes: 'Import recipe',
+    importRecipeTitle: 'Import a recipe',
+    importRecipeSubtitle: 'Paste a recipe URL to fetch a draft you can review before saving.',
+    importRecipeUrlLabel: 'Recipe URL',
+    importRecipeUrlPlaceholder: 'https://example.com/recipe',
+    importRecipeAction: 'Fetch recipe',
+    importingRecipeAction: 'Fetching recipe...',
     recipeDestinationSubtitle: 'Manage recipe details, notes, and instructions in Meals.',
     savedRecipeContextHint: 'Manage this reusable recipe directly in Meals.',
     newSavedRecipeContextHint: 'Create a reusable recipe with ingredients, notes, and instructions.',
+    importDraftSubtitle: 'Review this imported recipe before saving it to Recipes.',
+    importDraftContextHint: 'This draft was fetched from a recipe URL. Review and adjust it before saving.',
     saveRecipe: 'Save recipe',
     savingRecipe: 'Saving recipe...',
     createRecipe: 'Create recipe',
@@ -518,6 +531,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       || editor.isRecipeDetailOpen
       || editor.isRecipePickerOpen
       || editor.isShoppingReviewOpen
+      || recipesWorkspace.importDraft.isOpen
       || recipesWorkspace.recipeDetail.isOpen,
     onCloseOverlay: editor.isRecipeDetailOpen
         ? editor.closeRecipeDetail
@@ -525,6 +539,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         ? editor.closeRecipePicker
       : editor.isShoppingReviewOpen
         ? editor.closeShoppingReview
+        : recipesWorkspace.importDraft.isOpen
+          ? recipesWorkspace.importDraft.closeImportRecipe
         : recipesWorkspace.recipeDetail.isOpen
           ? recipesWorkspace.recipeDetail.closeRecipeDetail
         : editor.isOpen
@@ -696,12 +712,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   error={recipesWorkspace.recipes.error}
                   onOpenRecipe={recipesWorkspace.recipes.openRecipe}
                   onCreateRecipe={recipesWorkspace.recipes.openCreateRecipe}
+                  onImportRecipe={recipesWorkspace.recipes.openImportRecipe}
                   strings={{
                     title: strings.recipesOverviewTitle,
                     subtitle: recipesWorkspace.recipes.items.length > 0
                       ? 'Open and manage reusable recipes for future planning.'
                       : 'Create and keep reusable recipes ready for later planning.',
                     newRecipe: strings.createRecipeFromRecipes,
+                    importRecipe: strings.importRecipeFromRecipes,
                     loadingRecipes: strings.loadingRecipes,
                     noRecipes: strings.noRecipes,
                     noRecipesHint: strings.noRecipesHint,
@@ -826,6 +844,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             usingRecipeLabel: strings.usingRecipeLabel,
             mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
             editingSavedRecipeLabel: strings.editingSavedRecipeLabel,
+            importDraftLabel: strings.importDraftLabel,
             newRecipeTitle: strings.recipeSheetNewRecipeTitle,
             recipeContextHint: editor.isEditingSavedRecipeDirectly
               ? strings.recipeSheetEditingSavedRecipeContextHint
@@ -861,12 +880,34 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         />
       ) : null}
 
+      {recipesWorkspace.importDraft.isOpen ? (
+        <MealRecipeImportSheet
+          importUrl={recipesWorkspace.importDraft.importUrl}
+          onChangeImportUrl={recipesWorkspace.importDraft.setImportUrl}
+          onImport={recipesWorkspace.importDraft.importRecipeDraft}
+          onClose={recipesWorkspace.importDraft.closeImportRecipe}
+          isImporting={recipesWorkspace.importDraft.isImportingDraft}
+          error={recipesWorkspace.importDraft.error}
+          strings={{
+            title: strings.importRecipeTitle,
+            subtitle: strings.importRecipeSubtitle,
+            urlLabel: strings.importRecipeUrlLabel,
+            urlPlaceholder: strings.importRecipeUrlPlaceholder,
+            importAction: strings.importRecipeAction,
+            importingAction: strings.importingRecipeAction,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
       {recipesWorkspace.recipeDetail.isOpen ? (
         <MealRecipeDetailSheet
           recipeTitle={recipesWorkspace.recipeDetail.recipeTitle}
           onChangeRecipeTitle={recipesWorkspace.recipeDetail.setRecipeTitle}
           recipeSource={recipesWorkspace.recipeDetail.recipeSource}
           onChangeRecipeSource={recipesWorkspace.recipeDetail.setRecipeSource}
+          recipeSourceUrl={recipesWorkspace.recipeDetail.recipeSourceUrl}
+          onChangeRecipeSourceUrl={recipesWorkspace.recipeDetail.setRecipeSourceUrl}
           recipeShortNote={recipesWorkspace.recipeDetail.recipeShortNote}
           onChangeRecipeShortNote={recipesWorkspace.recipeDetail.setRecipeShortNote}
           recipeInstructions={recipesWorkspace.recipeDetail.recipeInstructions}
@@ -874,6 +915,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           ingredientRows={recipesWorkspace.recipeDetail.ingredientRows}
           isRecipeLoading={recipesWorkspace.recipeDetail.isRecipeLoading}
           hasExistingRecipe={recipesWorkspace.recipeDetail.hasExistingRecipe}
+          isImportDraft={recipesWorkspace.recipeDetail.isImportDraft}
           hasIngredients={recipesWorkspace.recipeDetail.hasIngredients}
           showSaveAsNewRecipeHint={false}
           canEnterSavedRecipeEditMode={false}
@@ -892,15 +934,20 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           strings={{
             eyebrow: strings.recipesWorkspace,
             title: strings.recipeSheetTitle,
-            subtitle: recipesWorkspace.recipeDetail.hasExistingRecipe
+            subtitle: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importDraftSubtitle
+              : recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.recipeDestinationSubtitle
               : strings.newSavedRecipeContextHint,
             newRecipeLabel: strings.newRecipeLabel,
             usingRecipeLabel: strings.usingRecipeLabel,
             mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
             editingSavedRecipeLabel: strings.editingSavedRecipeLabel,
+            importDraftLabel: strings.importDraftLabel,
             newRecipeTitle: strings.recipeSheetNewRecipeTitle,
-            recipeContextHint: recipesWorkspace.recipeDetail.hasExistingRecipe
+            recipeContextHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importDraftContextHint
+              : recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.savedRecipeContextHint
               : strings.newSavedRecipeContextHint,
             recipeNameLabel: strings.recipeNameLabel,
@@ -908,6 +955,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeContentLabel: strings.recipeContentLabel,
             recipeSourceLabel: strings.recipeSourceLabel,
             recipeSourcePlaceholder: strings.recipeSourcePlaceholder,
+            recipeSourceUrlLabel: strings.recipeSourceUrlLabel,
+            recipeSourceUrlPlaceholder: strings.recipeSourceUrlPlaceholder,
             recipeShortNoteLabel: strings.recipeShortNoteLabel,
             recipeShortNotePlaceholder: strings.recipeShortNotePlaceholder,
             recipeInstructionsLabel: strings.recipeInstructionsLabel,

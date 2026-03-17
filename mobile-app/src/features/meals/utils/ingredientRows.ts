@@ -1,4 +1,8 @@
-import type { IngredientRequest, IngredientResponse } from '../api/mealsApi';
+import type {
+  IngredientRequest,
+  IngredientResponse,
+  RecipeImportDraftIngredientResponse,
+} from '../api/mealsApi';
 
 export type MealIngredientUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
 
@@ -45,6 +49,21 @@ export function ingredientRowsFromResponse(ingredients: IngredientResponse[]): M
 
   return ingredients.map((ingredient) => ({
     id: ingredient.id,
+    name: ingredient.name,
+    quantityText: ingredient.quantity == null ? '' : String(ingredient.quantity),
+    unit: ingredient.unit as MealIngredientUnit | null,
+  }));
+}
+
+export function ingredientRowsFromImportDraft(
+  ingredients: RecipeImportDraftIngredientResponse[]
+): MealIngredientRow[] {
+  if (ingredients.length === 0) {
+    return [];
+  }
+
+  return ingredients.map((ingredient) => ({
+    id: createRowId(),
     name: ingredient.name,
     quantityText: ingredient.quantity == null ? '' : String(ingredient.quantity),
     unit: ingredient.unit as MealIngredientUnit | null,

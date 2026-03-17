@@ -114,6 +114,23 @@ export type RecipeResponse = {
   ingredients: IngredientResponse[];
 };
 
+export type RecipeImportDraftIngredientResponse = {
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  position: number;
+};
+
+export type RecipeImportDraftResponse = {
+  name: string;
+  sourceName: string | null;
+  sourceUrl: string;
+  originKind: string;
+  shortNote: string | null;
+  instructions: string | null;
+  ingredients: RecipeImportDraftIngredientResponse[];
+};
+
 export async function createRecipe(
   payload: CreateOrUpdateRecipeRequest,
   clientOptions: ApiClientOptions = {}
@@ -158,6 +175,20 @@ export async function updateRecipe(
     `/meals/recipes/${recipeId}`,
     {
       method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function createRecipeImportDraft(
+  payload: { url: string },
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeImportDraftResponse> {
+  return fetchJson<RecipeImportDraftResponse>(
+    '/meals/recipes/import-drafts',
+    {
+      method: 'POST',
       body: JSON.stringify(payload),
     },
     clientOptions
