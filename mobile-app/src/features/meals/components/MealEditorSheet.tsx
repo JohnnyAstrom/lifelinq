@@ -24,6 +24,7 @@ type MealEditorSheetStrings = {
   changeRecipe: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
+  saveAsNewRecipeHint?: string;
   ingredientsLabel: string;
   ingredientsRecipeHint?: string;
   addIngredients: string;
@@ -60,6 +61,7 @@ type Props = {
   onOpenShoppingReview: () => void;
   hasExistingMeal: boolean;
   hasExistingRecipe: boolean;
+  showSaveAsNewRecipeHint: boolean;
   isSavingMeal: boolean;
   isRemovingMeal: boolean;
   isActionPending: boolean;
@@ -94,6 +96,7 @@ export function MealEditorSheet({
   onOpenShoppingReview,
   hasExistingMeal,
   hasExistingRecipe,
+  showSaveAsNewRecipeHint,
   isSavingMeal,
   isRemovingMeal,
   isActionPending,
@@ -193,6 +196,9 @@ export function MealEditorSheet({
                   disabled={isActionPending || isRecipeLoading}
                 />
               </View>
+              {showSaveAsNewRecipeHint && strings.saveAsNewRecipeHint ? (
+                <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
+              ) : null}
               <View style={styles.contextField}>
                 <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
                 <AppInput

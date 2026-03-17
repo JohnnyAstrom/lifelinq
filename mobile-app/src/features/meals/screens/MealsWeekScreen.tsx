@@ -138,6 +138,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     changeRecipe: 'Change recipe',
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
+    saveAsNewRecipeHint: 'Changes will be saved as a new recipe for this meal.',
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'These ingredients belong to the recipe you are planning.',
     recipePickerTitle: 'Choose a recipe',
@@ -602,6 +603,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onOpenShoppingReview={editor.openShoppingReview}
           hasExistingMeal={!!editor.selectedMeal?.recipeTitle}
           hasExistingRecipe={!!editor.selectedMealRecipeId}
+          showSaveAsNewRecipeHint={editor.hasModifiedPickedRecipe}
           isSavingMeal={editor.isSavingMeal}
           isRemovingMeal={editor.isRemovingMeal}
           isActionPending={editor.isActionPending}
@@ -617,6 +619,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             changeRecipe: strings.changeRecipe,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
+            saveAsNewRecipeHint: strings.saveAsNewRecipeHint,
             ingredientsLabel: strings.ingredientsLabel,
             ingredientsRecipeHint: strings.ingredientsRecipeHint,
             addIngredients: strings.addIngredients,

@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { useShoppingLists } from '../../shopping/hooks/useShoppingLists';
-import { createRecipe, getRecipe, listRecipes, updateRecipe, type RecipeResponse } from '../api/mealsApi';
+import {
+  createRecipe,
+  getRecipe,
+  listRecipes,
+  updateRecipe,
+  type IngredientRequest,
+  type RecipeResponse,
+} from '../api/mealsApi';
 import {
   MEAL_INGREDIENT_UNIT_OPTIONS,
   createEmptyIngredientRow,
@@ -34,6 +41,11 @@ type RecipePickerOption = {
   recipeId: string;
   name: string;
   ingredientCount: number;
+};
+type RecipeSnapshot = {
+  recipeId: string;
+  name: string;
+  ingredients: IngredientRequest[];
 };
 
 const MEAL_ORDER = new Map<MealType, number>([
@@ -90,6 +102,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [recipeListError, setRecipeListError] = useState<string | null>(null);
   const [availableRecipes, setAvailableRecipes] = useState<RecipeResponse[] | null>(null);
   const [loadedRecipeId, setLoadedRecipeId] = useState<string | null>(null);
+  const [pickedRecipeSnapshot, setPickedRecipeSnapshot] = useState<RecipeSnapshot | null>(null);
   const [pendingEditorAction, setPendingEditorAction] = useState<EditorPendingAction>(null);
 
   const effectiveListId =
@@ -134,6 +147,28 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         ingredientCount: recipe.ingredients.length,
       }));
   }, [availableRecipes]);
+  const currentRecipeDraft = useMemo(() => ({
+    name: recipeTitle.trim(),
+    ingredients: toIngredientRequests(ingredientRows),
+  }), [ingredientRows, recipeTitle]);
+  const hasModifiedPickedRecipe = useMemo(() => {
+    if (!pickedRecipeSnapshot) {
+      return false;
+    }
+    if (pickedRecipeSnapshot.name !== currentRecipeDraft.name) {
+      return true;
+    }
+    if (pickedRecipeSnapshot.ingredients.length !== currentRecipeDraft.ingredients.length) {
+      return true;
+    }
+    return pickedRecipeSnapshot.ingredients.some((ingredient, index) => {
+      const current = currentRecipeDraft.ingredients[index];
+      return ingredient.name !== current.name
+        || ingredient.quantity !== current.quantity
+        || ingredient.unit !== current.unit
+        || ingredient.position !== current.position;
+    });
+  }, [currentRecipeDraft, pickedRecipeSnapshot]);
 
   function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
@@ -148,16 +183,33 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
+    setPickedRecipeSnapshot(null);
     setSelectedShoppingIngredientRowIds([]);
     setShoppingSyncError(null);
     setRecipeListError(null);
   }
 
-  function applyRecipeSnapshot(recipe: RecipeResponse) {
+  function toRecipeSnapshot(recipe: RecipeResponse): RecipeSnapshot {
+    return {
+      recipeId: recipe.recipeId,
+      name: recipe.name.trim(),
+      ingredients: recipe.ingredients
+        .map((ingredient) => ({
+          name: ingredient.name.trim(),
+          quantity: ingredient.quantity,
+          unit: ingredient.unit,
+          position: ingredient.position,
+        }))
+        .sort((left, right) => left.position - right.position),
+    };
+  }
+
+  function applyRecipeSnapshot(recipe: RecipeResponse, options?: { pickedFromRecipeList?: boolean }) {
     setSelectedMealRecipeId(recipe.recipeId);
     setRecipeTitle(recipe.name);
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
     setLoadedRecipeId(recipe.recipeId);
+    setPickedRecipeSnapshot(options?.pickedFromRecipeList ? toRecipeSnapshot(recipe) : null);
     setShoppingSyncError(null);
   }
 
@@ -234,6 +286,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
+    setPickedRecipeSnapshot(null);
     setSelectedShoppingIngredientRowIds([]);
   }
 
@@ -303,7 +356,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     if (!selectedRecipe) {
       return;
     }
-    applyRecipeSnapshot(selectedRecipe);
+    applyRecipeSnapshot(selectedRecipe, { pickedFromRecipeList: true });
     setIsRecipePickerOpen(false);
   }
 
@@ -389,18 +442,20 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return false;
     }
 
-    const ingredients = toIngredientRequests(ingredientRows);
+    const ingredients = currentRecipeDraft.ingredients;
     const selectedIngredientPositions = options?.selectedIngredientPositions ?? null;
     const shouldPushToShopping = !!targetShoppingListId
       && (selectedIngredientPositions?.length ?? 0) > 0;
 
     try {
       let recipeId = selectedMealRecipeId;
-      if (recipeId) {
+      if (recipeId && pickedRecipeSnapshot && !hasModifiedPickedRecipe) {
+        // Reusing an existing picked recipe unchanged keeps the original recipe as-is.
+      } else if (recipeId && !hasModifiedPickedRecipe) {
         const updated = await updateRecipe(
           recipeId,
           {
-            name: recipeTitle.trim(),
+            name: currentRecipeDraft.name,
             ingredients,
           },
           { token }
@@ -412,7 +467,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       } else {
         const created = await createRecipe(
           {
-            name: recipeTitle.trim(),
+            name: currentRecipeDraft.name,
             ingredients,
           },
           { token }
@@ -536,6 +591,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       isRecipeListLoading,
       recipeListError,
       recipePickerOptions,
+      hasModifiedPickedRecipe,
       hasIngredients,
       shoppingReviewIngredients,
       selectedShoppingIngredientRowIds,
