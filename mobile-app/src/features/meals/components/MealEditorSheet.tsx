@@ -1,6 +1,6 @@
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
-import { AppButton, AppChip, AppInput, Subtle } from '../../../shared/ui/components';
+import { AppButton, AppChip } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import { type MealIngredientRow } from '../utils/ingredientRows';
 
@@ -22,16 +22,11 @@ type MealEditorSheetStrings = {
   usingRecipeLabel: string;
   useExistingRecipe: string;
   changeRecipe: string;
-  recipeNameLabel: string;
-  recipeNamePlaceholder: string;
-  saveAsNewRecipeHint?: string;
-  ingredientsLabel: string;
-  ingredientsRecipeHint?: string;
-  addIngredients: string;
-  editIngredients: string;
-  ingredientsEmptyState: string;
+  openRecipe: string;
+  addRecipeDetails: string;
+  recipeSummaryHint: string;
+  loadingRecipe: string;
   ingredientsSummarySuffix: string;
-  loadingIngredients: string;
   shoppingLabel: string;
   addIngredientsToShoppingAction: string;
   saveMeal: string;
@@ -52,16 +47,14 @@ type Props = {
   onSelectMealType: (mealType: MealType) => void;
   mealTypeLabels: Record<MealType, string>;
   recipeTitle: string;
-  onChangeRecipeTitle: (value: string) => void;
   ingredientRows: MealIngredientRow[];
   isRecipeLoading: boolean;
+  onOpenRecipeDetail: () => void;
   onOpenRecipePicker: () => void;
-  onOpenIngredients: () => void;
   hasIngredients: boolean;
   onOpenShoppingReview: () => void;
   hasExistingMeal: boolean;
   hasExistingRecipe: boolean;
-  showSaveAsNewRecipeHint: boolean;
   isSavingMeal: boolean;
   isRemovingMeal: boolean;
   isActionPending: boolean;
@@ -87,16 +80,14 @@ export function MealEditorSheet({
   onSelectMealType,
   mealTypeLabels,
   recipeTitle,
-  onChangeRecipeTitle,
   ingredientRows,
   isRecipeLoading,
+  onOpenRecipeDetail,
   onOpenRecipePicker,
-  onOpenIngredients,
   hasIngredients,
   onOpenShoppingReview,
   hasExistingMeal,
   hasExistingRecipe,
-  showSaveAsNewRecipeHint,
   isSavingMeal,
   isRemovingMeal,
   isActionPending,
@@ -118,9 +109,6 @@ export function MealEditorSheet({
   const ingredientSummary = ingredientCount === 1
       ? `1 ${strings.ingredientsSummarySuffix}`
       : `${ingredientCount} ${strings.ingredientsSummarySuffix}`;
-  const ingredientActionLabel = hasIngredients
-    ? strings.editIngredients
-    : strings.addIngredients;
   const saveActionLabel = isSavingMeal ? strings.savingMeal : strings.saveMeal;
   const removeActionLabel = isRemovingMeal ? strings.removingMeal : strings.removeMeal;
   const recipeIdentityLabel = hasExistingRecipe
@@ -129,10 +117,17 @@ export function MealEditorSheet({
   const recipeSelectionActionLabel = hasExistingRecipe
     ? strings.changeRecipe
     : strings.useExistingRecipe;
-
-  const ingredientEntryHint = !hasIngredients && !isRecipeLoading
-    ? strings.addIngredients
-    : null;
+  const recipeActionLabel = hasIngredients || recipeTitle.trim().length > 0
+    ? strings.openRecipe
+    : strings.addRecipeDetails;
+  const recipeSummary = recipeTitle.trim().length > 0
+    ? recipeTitle.trim()
+    : strings.addRecipeDetails;
+  const recipeMeta = isRecipeLoading
+    ? strings.loadingRecipe
+    : hasIngredients
+      ? ingredientSummary
+      : strings.recipeSummaryHint;
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
@@ -196,47 +191,36 @@ export function MealEditorSheet({
                   disabled={isActionPending || isRecipeLoading}
                 />
               </View>
-              {showSaveAsNewRecipeHint && strings.saveAsNewRecipeHint ? (
-                <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
-              ) : null}
-              <View style={styles.contextField}>
-                <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
-                <AppInput
-                  placeholder={strings.recipeNamePlaceholder}
-                  value={recipeTitle}
-                  onChangeText={onChangeRecipeTitle}
-                />
-              </View>
-              <View style={styles.ingredientsSection}>
-                <View style={styles.ingredientsSectionHeader}>
-                  <View style={styles.ingredientsSectionCopy}>
-                    <Text style={styles.fieldLabel}>{strings.ingredientsLabel}</Text>
-                    {strings.ingredientsRecipeHint ? (
-                      <Text style={styles.ingredientsHint}>{strings.ingredientsRecipeHint}</Text>
-                    ) : null}
-                  </View>
-                  <AppButton
-                    title={ingredientActionLabel}
-                    onPress={onOpenIngredients}
-                    variant="ghost"
-                    disabled={isActionPending}
-                  />
+              <Pressable
+                onPress={onOpenRecipeDetail}
+                disabled={isActionPending || isRecipeLoading}
+                style={({ pressed }) => [
+                  styles.recipeSummaryCard,
+                  pressed ? styles.recipeSummaryCardPressed : null,
+                  isActionPending || isRecipeLoading ? styles.recipeSummaryCardDisabled : null,
+                ]}
+              >
+                <View style={styles.recipeSummaryCardCopy}>
+                  <Text
+                    style={[
+                      styles.recipeSummaryTitle,
+                      recipeTitle.trim().length === 0 ? styles.recipeSummaryTitlePlaceholder : null,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {recipeSummary}
+                  </Text>
+                  <Text style={styles.recipeSummaryMeta} numberOfLines={1}>
+                    {ingredientPreview ? `${recipeMeta} · ${ingredientPreview}` : recipeMeta}
+                  </Text>
                 </View>
-                {isRecipeLoading ? (
-                  <Subtle>{strings.loadingIngredients}</Subtle>
-                ) : null}
-                {ingredientEntryHint ? <Text style={styles.ingredientsHint}>{strings.ingredientsEmptyState}</Text> : null}
-                {!isRecipeLoading && hasIngredients ? (
-                  <Pressable onPress={onOpenIngredients} style={styles.ingredientsSummaryCard}>
-                    <Text style={styles.ingredientsSummaryTitle}>{ingredientSummary}</Text>
-                    {ingredientPreview ? (
-                      <Text style={styles.ingredientsPreview} numberOfLines={1}>
-                        {ingredientPreview}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                ) : null}
-              </View>
+                <AppButton
+                  title={recipeActionLabel}
+                  onPress={onOpenRecipeDetail}
+                  variant="ghost"
+                  disabled={isActionPending || isRecipeLoading}
+                />
+              </Pressable>
             </View>
             {hasIngredients ? (
               <View style={styles.shoppingActionSection}>
@@ -364,6 +348,39 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontWeight: '600',
   },
+  recipeSummaryCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  recipeSummaryCardPressed: {
+    opacity: 0.8,
+  },
+  recipeSummaryCardDisabled: {
+    opacity: 0.6,
+  },
+  recipeSummaryCardCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  recipeSummaryTitle: {
+    ...textStyles.body,
+    fontWeight: '600',
+  },
+  recipeSummaryTitlePlaceholder: {
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
+  recipeSummaryMeta: {
+    ...textStyles.subtle,
+  },
   sheetScroll: {
     minHeight: 0,
     maxHeight: '100%',
@@ -374,43 +391,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
-  },
-  ingredientsInput: {
-    minHeight: 64,
-    textAlignVertical: 'top',
-  },
-  ingredientsSection: {
-    gap: theme.spacing.sm,
-  },
-  ingredientsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  ingredientsSectionCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  ingredientsSummaryCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
-  },
-  ingredientsSummaryTitle: {
-    ...textStyles.body,
-    fontWeight: '600',
-  },
-  ingredientsHint: {
-    ...textStyles.subtle,
-  },
-  ingredientsPreview: {
-    ...textStyles.subtle,
-    marginTop: 2,
   },
   shoppingActionSection: {
     gap: theme.spacing.xs,

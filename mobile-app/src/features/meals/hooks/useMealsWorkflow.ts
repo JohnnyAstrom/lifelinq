@@ -91,8 +91,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [selectedMealRecipeId, setSelectedMealRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
-  const [isIngredientEditorOpen, setIsIngredientEditorOpen] = useState(false);
   const [isShoppingReviewOpen, setIsShoppingReviewOpen] = useState(false);
+  const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
   const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [isRecipeListLoading, setIsRecipeListLoading] = useState(false);
@@ -178,7 +178,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setRecipeTitle(existing?.recipeTitle ?? '');
     setSelectedMealRecipeId(existing?.recipeId ?? null);
     setIngredientRows([]);
-    setIsIngredientEditorOpen(false);
+    setIsRecipeDetailOpen(false);
     setIsRecipePickerOpen(false);
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
@@ -281,7 +281,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setSelectedDay(null);
     setSelectedMealRecipeId(null);
     setIngredientRows([]);
-    setIsIngredientEditorOpen(false);
+    setIsRecipeDetailOpen(false);
     setIsRecipePickerOpen(false);
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
@@ -297,17 +297,18 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     resetEditorState();
   }
 
-  function openIngredientEditor() {
-    if (!isRecipeLoading && !pendingEditorAction) {
-      setIsIngredientEditorOpen(true);
+  function openRecipeDetail() {
+    if (isRecipeLoading || pendingEditorAction) {
+      return;
     }
+    setIsRecipeDetailOpen(true);
   }
 
-  function closeIngredientEditor() {
+  function closeRecipeDetail() {
     if (pendingEditorAction) {
       return;
     }
-    setIsIngredientEditorOpen(false);
+    setIsRecipeDetailOpen(false);
   }
 
   async function loadRecipeOptions(force = false) {
@@ -389,7 +390,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       const next = [...current, createEmptyIngredientRow()];
       return next;
     });
-    setIsIngredientEditorOpen(true);
+    setIsRecipeDetailOpen(true);
   }
 
   function updateIngredientRow(
@@ -584,7 +585,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       selectedMealRecipeId,
       recipeTitle,
       ingredientRows,
-      isIngredientEditorOpen,
+      isRecipeDetailOpen,
       isRecipePickerOpen,
       isShoppingReviewOpen,
       isRecipeLoading,
@@ -606,8 +607,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       isAddingIngredientsToShopping: pendingEditorAction === 'add-ingredients-to-shopping',
       selectedMeal,
       setRecipeTitle,
-      openIngredientEditor,
-      closeIngredientEditor,
+      openRecipeDetail,
+      closeRecipeDetail,
       openRecipePicker,
       closeRecipePicker,
       loadRecipeOptions,
