@@ -23,9 +23,9 @@ type Strings = MealIngredientEditorRowStrings & {
   editingSavedRecipeLabel: string;
   newRecipeTitle: string;
   recipeContextHint?: string;
-  mealAttachmentLabel: string;
-  mealAttachmentValue: string;
-  editSavedRecipeAction: string;
+  mealAttachmentLabel?: string;
+  mealAttachmentValue?: string;
+  editSavedRecipeAction?: string;
   editingSavedRecipeHint?: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
@@ -34,6 +34,8 @@ type Strings = MealIngredientEditorRowStrings & {
   ingredientsEmptyState: string;
   loadingIngredients: string;
   saveAsNewRecipeHint?: string;
+  saveRecipe?: string;
+  savingRecipe?: string;
   addIngredient: string;
   close: string;
 };
@@ -55,7 +57,10 @@ type Props = {
   onChangeIngredientQuantity: (rowId: string, value: string) => void;
   onToggleIngredientUnit: (rowId: string, value: MealIngredientUnit) => void;
   onStartEditingSavedRecipeDirectly: () => void;
+  onSave?: () => void;
   onClose: () => void;
+  isSaving?: boolean;
+  error?: string | null;
   strings: Strings;
 };
 
@@ -76,7 +81,10 @@ export function MealRecipeDetailSheet({
   onChangeIngredientQuantity,
   onToggleIngredientUnit,
   onStartEditingSavedRecipeDirectly,
+  onSave,
   onClose,
+  isSaving = false,
+  error = null,
   strings,
 }: Props) {
   const [activeRowId, setActiveRowId] = useState<string | null>(ingredientRows[0]?.id ?? null);
@@ -131,10 +139,12 @@ export function MealRecipeDetailSheet({
             <View style={styles.identityBadge}>
               <Text style={styles.identityBadgeText}>{identityLabel}</Text>
             </View>
-            <View style={styles.attachmentRow}>
-              <Text style={styles.attachmentLabel}>{strings.mealAttachmentLabel}</Text>
-              <Text style={styles.attachmentValue}>{strings.mealAttachmentValue}</Text>
-            </View>
+            {strings.mealAttachmentLabel && strings.mealAttachmentValue ? (
+              <View style={styles.attachmentRow}>
+                <Text style={styles.attachmentLabel}>{strings.mealAttachmentLabel}</Text>
+                <Text style={styles.attachmentValue}>{strings.mealAttachmentValue}</Text>
+              </View>
+            ) : null}
             {strings.recipeContextHint ? (
               <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
             ) : null}
@@ -144,7 +154,7 @@ export function MealRecipeDetailSheet({
             {isEditingSavedRecipeDirectly && strings.editingSavedRecipeHint ? (
               <Subtle>{strings.editingSavedRecipeHint}</Subtle>
             ) : null}
-            {canEnterSavedRecipeEditMode ? (
+            {canEnterSavedRecipeEditMode && strings.editSavedRecipeAction ? (
               <AppButton
                 title={strings.editSavedRecipeAction}
                 onPress={onStartEditingSavedRecipeDirectly}
@@ -193,7 +203,7 @@ export function MealRecipeDetailSheet({
                 <Text style={styles.ingredientsHint}>{strings.ingredientsEmptyState}</Text>
               ) : null}
 
-              {!isRecipeLoading && hasIngredients ? (
+            {!isRecipeLoading && hasIngredients ? (
                 <View style={styles.ingredientList}>
                   {ingredientRows.map((row) => (
                     <MealIngredientEditorRow
@@ -211,6 +221,18 @@ export function MealRecipeDetailSheet({
                 </View>
               ) : null}
             </View>
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            {onSave && strings.saveRecipe ? (
+              <AppButton
+                title={isSaving && strings.savingRecipe ? strings.savingRecipe : strings.saveRecipe}
+                onPress={onSave}
+                fullWidth
+                disabled={isActionPending || isRecipeLoading}
+                accentKey="meals"
+              />
+            ) : null}
 
             <AppButton
               title={strings.close}
@@ -335,5 +357,9 @@ const styles = StyleSheet.create({
   },
   ingredientList: {
     gap: theme.spacing.xs,
+  },
+  error: {
+    ...textStyles.body,
+    color: theme.colors.danger,
   },
 });
