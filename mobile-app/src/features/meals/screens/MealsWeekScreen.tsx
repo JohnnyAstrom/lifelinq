@@ -106,6 +106,13 @@ function formatWeekRangeLabel(start: Date, end: Date) {
   return `${MONTH_LABELS[start.getUTCMonth()]} ${start.getUTCDate()} - ${MONTH_LABELS[end.getUTCMonth()]} ${end.getUTCDate()}`;
 }
 
+function formatRecipeMealAttachment(date: Date, mealType: MealType) {
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' });
+  const day = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const mealLabel = MEAL_TYPE_LABELS[mealType].toLowerCase();
+  return `${weekday} ${day} · ${mealLabel}`;
+}
+
 export function MealsWeekScreen({ token, onDone }: Props) {
   const { handleApiError } = useAuth();
   const strings = {
@@ -136,7 +143,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     mealTypeLabel: 'Meal',
     recipeLabel: 'Recipe',
     newRecipeLabel: 'New recipe',
-    usingRecipeLabel: 'Using recipe',
+    usingRecipeLabel: 'Saved recipe',
+    mealSpecificRecipeLabel: 'Recipe for this meal',
     useExistingRecipe: 'Use existing',
     changeRecipe: 'Change recipe',
     openRecipe: 'Open recipe',
@@ -147,10 +155,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSheetTitle: 'Recipe',
     recipeSheetSubtitle: 'Review and edit the recipe used for this meal.',
     recipeSheetNewRecipeTitle: 'New recipe',
-    recipeSheetContextHint: 'This is the recipe behind the planned meal.',
+    recipeSheetSavedRecipeContextHint: 'This meal is using a saved recipe.',
+    recipeSheetMealSpecificContextHint: 'Your changes are now creating a recipe for this meal.',
+    recipeSheetNewRecipeContextHint: 'You are adding recipe details for this meal.',
+    recipeMealAttachmentLabel: 'Used for',
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
-    saveAsNewRecipeHint: 'Changes will be saved as a new recipe for this meal.',
+    saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'These ingredients belong to the recipe you are planning.',
     recipePickerTitle: 'Choose a recipe',
@@ -265,6 +276,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   }, [weekStart]);
 
   const monthGridCells = useMemo(() => buildMonthGridCells(anchorDate), [anchorDate]);
+  const recipeMealAttachmentValue = useMemo(() => {
+    if (!editor.selectedMealType) {
+      return '';
+    }
+    return formatRecipeMealAttachment(selectedEditorDate, editor.selectedMealType);
+  }, [editor.selectedMealType, selectedEditorDate]);
 
   const periodSummary = useMemo(() => {
     if (surfaceMode === 'week') {
@@ -685,8 +702,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             subtitle: strings.recipeSheetSubtitle,
             newRecipeLabel: strings.newRecipeLabel,
             usingRecipeLabel: strings.usingRecipeLabel,
+            mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
             newRecipeTitle: strings.recipeSheetNewRecipeTitle,
-            recipeContextHint: strings.recipeSheetContextHint,
+            recipeContextHint: editor.selectedMealRecipeId
+              ? editor.hasModifiedPickedRecipe
+                ? strings.recipeSheetMealSpecificContextHint
+                : strings.recipeSheetSavedRecipeContextHint
+              : strings.recipeSheetNewRecipeContextHint,
+            mealAttachmentLabel: strings.recipeMealAttachmentLabel,
+            mealAttachmentValue: recipeMealAttachmentValue,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
             ingredientsLabel: strings.ingredientsLabel,

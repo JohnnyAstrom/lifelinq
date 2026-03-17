@@ -204,12 +204,12 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     };
   }
 
-  function applyRecipeSnapshot(recipe: RecipeResponse, options?: { pickedFromRecipeList?: boolean }) {
+  function applyRecipeSnapshot(recipe: RecipeResponse) {
     setSelectedMealRecipeId(recipe.recipeId);
     setRecipeTitle(recipe.name);
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
     setLoadedRecipeId(recipe.recipeId);
-    setPickedRecipeSnapshot(options?.pickedFromRecipeList ? toRecipeSnapshot(recipe) : null);
+    setPickedRecipeSnapshot(toRecipeSnapshot(recipe));
     setShoppingSyncError(null);
   }
 
@@ -357,7 +357,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     if (!selectedRecipe) {
       return;
     }
-    applyRecipeSnapshot(selectedRecipe, { pickedFromRecipeList: true });
+    applyRecipeSnapshot(selectedRecipe);
     setIsRecipePickerOpen(false);
   }
 
@@ -451,7 +451,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     try {
       let recipeId = selectedMealRecipeId;
       if (recipeId && pickedRecipeSnapshot && !hasModifiedPickedRecipe) {
-        // Reusing an existing picked recipe unchanged keeps the original recipe as-is.
+        // Reusing an existing saved recipe unchanged keeps the original recipe as-is.
       } else if (recipeId && !hasModifiedPickedRecipe) {
         const updated = await updateRecipe(
           recipeId,

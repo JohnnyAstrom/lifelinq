@@ -19,8 +19,11 @@ type Strings = MealIngredientEditorRowStrings & {
   subtitle?: string;
   newRecipeLabel: string;
   usingRecipeLabel: string;
+  mealSpecificRecipeLabel: string;
   newRecipeTitle: string;
   recipeContextHint?: string;
+  mealAttachmentLabel: string;
+  mealAttachmentValue: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
   ingredientsLabel: string;
@@ -72,6 +75,12 @@ export function MealRecipeDetailSheet({
   const resolvedTitle = recipeTitle.trim().length > 0
     ? recipeTitle.trim()
     : strings.newRecipeTitle;
+  const isMealSpecificDraft = hasExistingRecipe && showSaveAsNewRecipeHint;
+  const identityLabel = isMealSpecificDraft
+    ? strings.mealSpecificRecipeLabel
+    : hasExistingRecipe
+      ? strings.usingRecipeLabel
+      : strings.newRecipeLabel;
 
   useEffect(() => {
     const previousCount = previousRowCountRef.current;
@@ -107,9 +116,11 @@ export function MealRecipeDetailSheet({
           {strings.subtitle ? <Subtle>{strings.subtitle}</Subtle> : null}
           <View style={styles.headerMeta}>
             <View style={styles.identityBadge}>
-              <Text style={styles.identityBadgeText}>
-                {hasExistingRecipe ? strings.usingRecipeLabel : strings.newRecipeLabel}
-              </Text>
+              <Text style={styles.identityBadgeText}>{identityLabel}</Text>
+            </View>
+            <View style={styles.attachmentRow}>
+              <Text style={styles.attachmentLabel}>{strings.mealAttachmentLabel}</Text>
+              <Text style={styles.attachmentValue}>{strings.mealAttachmentValue}</Text>
             </View>
             {strings.recipeContextHint ? (
               <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
@@ -279,6 +290,21 @@ const styles = StyleSheet.create({
   contextHint: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
+  },
+  attachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  attachmentLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  attachmentValue: {
+    ...textStyles.subtle,
+    color: theme.colors.text,
+    fontWeight: '600',
   },
   ingredientsHint: {
     ...textStyles.subtle,
