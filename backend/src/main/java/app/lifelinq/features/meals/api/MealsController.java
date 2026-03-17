@@ -38,6 +38,9 @@ public class MealsController {
                 context.getGroupId(),
                 context.getUserId(),
                 request.getName(),
+                request.getSource(),
+                request.getShortNote(),
+                request.getInstructions(),
                 toIngredientInputs(request.getIngredients())
         );
         return ResponseEntity.ok(toRecipeResponse(recipe));
@@ -80,6 +83,9 @@ public class MealsController {
                 context.getUserId(),
                 recipeId,
                 request.getName(),
+                request.getSource(),
+                request.getShortNote(),
+                request.getInstructions(),
                 toIngredientInputs(request.getIngredients())
         );
         return ResponseEntity.ok(toRecipeResponse(recipe));
@@ -211,6 +217,9 @@ public class MealsController {
                 view.recipeId(),
                 view.groupId(),
                 view.name(),
+                view.source(),
+                view.shortNote(),
+                view.instructions(),
                 view.createdAt(),
                 ingredients
         );

@@ -10,6 +10,9 @@ final class RecipeMapper {
                 recipe.getId(),
                 recipe.getGroupId(),
                 recipe.getName(),
+                recipe.getSource(),
+                recipe.getShortNote(),
+                recipe.getInstructions(),
                 recipe.getCreatedAt()
         );
         entity.replaceIngredients(toIngredientEntities(recipe, entity));
@@ -46,6 +49,9 @@ final class RecipeMapper {
                 entity.getId(),
                 entity.getGroupId(),
                 entity.getName(),
+                entity.getSource(),
+                entity.getShortNote(),
+                entity.getInstructions(),
                 entity.getCreatedAt(),
                 ingredients
         );

@@ -194,12 +194,43 @@ class MealsApplicationServiceTest {
                 groupId,
                 userId,
                 "Recipe",
+                null,
+                null,
+                null,
                 List.of(
                         new IngredientInput("Milk", null, null, 1),
                         new IngredientInput("Water", null, null, 1)
                 )
         )).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("positions must be unique");
+    }
+
+    @Test
+    void createRecipeCarriesRecipeContentFields() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                new InMemoryRecipeRepository(),
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-02-01T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        var created = service.createRecipe(
+                groupId,
+                userId,
+                "Recipe",
+                "Grandma's notebook",
+                "Best for weekends",
+                "Mix ingredients\nBake for 20 minutes",
+                List.of()
+        );
+
+        assertThat(created.source()).isEqualTo("Grandma's notebook");
+        assertThat(created.shortNote()).isEqualTo("Best for weekends");
+        assertThat(created.instructions()).isEqualTo("Mix ingredients\nBake for 20 minutes");
     }
 
     @Test

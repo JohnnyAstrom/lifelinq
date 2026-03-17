@@ -84,6 +84,9 @@ export type IngredientRequest = {
 
 export type CreateOrUpdateRecipeRequest = {
   name: string;
+  source?: string | null;
+  shortNote?: string | null;
+  instructions?: string | null;
   ingredients: IngredientRequest[];
 };
 
@@ -99,6 +102,9 @@ export type RecipeResponse = {
   recipeId: string;
   groupId: string;
   name: string;
+  source: string | null;
+  shortNote: string | null;
+  instructions: string | null;
   createdAt: string;
   ingredients: IngredientResponse[];
 };

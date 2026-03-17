@@ -12,10 +12,26 @@ public final class Recipe {
     private final UUID id;
     private final UUID groupId;
     private final String name;
+    private final String source;
+    private final String shortNote;
+    private final String instructions;
     private final Instant createdAt;
     private final List<Ingredient> ingredients;
 
     public Recipe(UUID id, UUID groupId, String name, Instant createdAt, List<Ingredient> ingredients) {
+        this(id, groupId, name, null, null, null, createdAt, ingredients);
+    }
+
+    public Recipe(
+            UUID id,
+            UUID groupId,
+            String name,
+            String source,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            List<Ingredient> ingredients
+    ) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
@@ -50,9 +66,20 @@ public final class Recipe {
 
         this.id = id;
         this.groupId = groupId;
-        this.name = name;
+        this.name = name.trim();
+        this.source = normalizeOptionalText(source);
+        this.shortNote = normalizeOptionalText(shortNote);
+        this.instructions = normalizeOptionalText(instructions);
         this.createdAt = createdAt;
         this.ingredients = List.copyOf(normalizedIngredients);
+    }
+
+    private static String normalizeOptionalText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     public UUID getId() {
@@ -65,6 +92,18 @@ public final class Recipe {
 
     public String getName() {
         return name;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public String getShortNote() {
+        return shortNote;
+    }
+
+    public String getInstructions() {
+        return instructions;
     }
 
     public Instant getCreatedAt() {

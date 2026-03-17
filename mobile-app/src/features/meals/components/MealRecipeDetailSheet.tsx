@@ -29,6 +29,13 @@ type Strings = MealIngredientEditorRowStrings & {
   editingSavedRecipeHint?: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
+  recipeContentLabel: string;
+  recipeSourceLabel: string;
+  recipeSourcePlaceholder: string;
+  recipeShortNoteLabel: string;
+  recipeShortNotePlaceholder: string;
+  recipeInstructionsLabel: string;
+  recipeInstructionsPlaceholder: string;
   ingredientsLabel: string;
   ingredientsRecipeHint?: string;
   ingredientsEmptyState: string;
@@ -43,6 +50,12 @@ type Strings = MealIngredientEditorRowStrings & {
 type Props = {
   recipeTitle: string;
   onChangeRecipeTitle: (value: string) => void;
+  recipeSource: string;
+  onChangeRecipeSource: (value: string) => void;
+  recipeShortNote: string;
+  onChangeRecipeShortNote: (value: string) => void;
+  recipeInstructions: string;
+  onChangeRecipeInstructions: (value: string) => void;
   ingredientRows: MealIngredientRow[];
   isRecipeLoading: boolean;
   hasExistingRecipe: boolean;
@@ -67,6 +80,12 @@ type Props = {
 export function MealRecipeDetailSheet({
   recipeTitle,
   onChangeRecipeTitle,
+  recipeSource,
+  onChangeRecipeSource,
+  recipeShortNote,
+  onChangeRecipeShortNote,
+  recipeInstructions,
+  onChangeRecipeInstructions,
   ingredientRows,
   isRecipeLoading,
   hasExistingRecipe,
@@ -182,6 +201,38 @@ export function MealRecipeDetailSheet({
             </View>
 
             <View style={styles.section}>
+              <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
+              <View style={styles.subSection}>
+                <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
+                <AppInput
+                  placeholder={strings.recipeSourcePlaceholder}
+                  value={recipeSource}
+                  onChangeText={onChangeRecipeSource}
+                />
+              </View>
+              <View style={styles.subSection}>
+                <Text style={styles.fieldLabel}>{strings.recipeShortNoteLabel}</Text>
+                <AppInput
+                  placeholder={strings.recipeShortNotePlaceholder}
+                  value={recipeShortNote}
+                  onChangeText={onChangeRecipeShortNote}
+                  multiline
+                  style={styles.noteInput}
+                />
+              </View>
+              <View style={styles.subSection}>
+                <Text style={styles.fieldLabel}>{strings.recipeInstructionsLabel}</Text>
+                <AppInput
+                  placeholder={strings.recipeInstructionsPlaceholder}
+                  value={recipeInstructions}
+                  onChangeText={onChangeRecipeInstructions}
+                  multiline
+                  style={styles.instructionsInput}
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionCopy}>
                   <Text style={styles.fieldLabel}>{strings.ingredientsLabel}</Text>
@@ -203,7 +254,7 @@ export function MealRecipeDetailSheet({
                 <Text style={styles.ingredientsHint}>{strings.ingredientsEmptyState}</Text>
               ) : null}
 
-            {!isRecipeLoading && hasIngredients ? (
+              {!isRecipeLoading && hasIngredients ? (
                 <View style={styles.ingredientList}>
                   {ingredientRows.map((row) => (
                     <MealIngredientEditorRow
@@ -303,10 +354,21 @@ const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.sm,
   },
+  subSection: {
+    gap: theme.spacing.xs,
+  },
   fieldLabel: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
     fontWeight: '600',
+  },
+  noteInput: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  instructionsInput: {
+    minHeight: 140,
+    textAlignVertical: 'top',
   },
   sectionHeader: {
     flexDirection: 'row',

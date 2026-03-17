@@ -169,6 +169,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     editSavedRecipeAction: 'Edit saved recipe',
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
+    recipeContentLabel: 'Recipe details',
+    recipeSourceLabel: 'Source',
+    recipeSourcePlaceholder: 'Where this recipe comes from',
+    recipeShortNoteLabel: 'Short note',
+    recipeShortNotePlaceholder: 'Add a short note for this recipe',
+    recipeInstructionsLabel: 'Instructions',
+    recipeInstructionsPlaceholder: 'Add simple cooking steps or preparation notes',
     saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
     editingSavedRecipeHint: 'Changes now update the saved recipe itself.',
     ingredientsLabel: 'Ingredients',
@@ -178,11 +185,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipePickerHint: 'Choose a saved recipe for this meal.',
     loadingRecipes: 'Loading recipes...',
     noRecipes: 'No saved recipes yet.',
-    noRecipesHint: 'Create a reusable recipe here so it is ready when you plan meals later.',
+    noRecipesHint: 'Create a reusable recipe with ingredients, notes, and steps for later planning.',
     createRecipeFromRecipes: 'Create recipe',
-    recipeDestinationSubtitle: 'Manage reusable recipe details in Meals.',
-    savedRecipeContextHint: 'This saved recipe is ready to reuse across future meal plans.',
-    newSavedRecipeContextHint: 'Create a reusable recipe for later meal planning.',
+    recipeDestinationSubtitle: 'Manage recipe details, notes, and instructions in Meals.',
+    savedRecipeContextHint: 'Manage this reusable recipe directly in Meals.',
+    newSavedRecipeContextHint: 'Create a reusable recipe with ingredients, notes, and instructions.',
     saveRecipe: 'Save recipe',
     savingRecipe: 'Saving recipe...',
     createRecipe: 'Create recipe',
@@ -790,6 +797,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         <MealRecipeDetailSheet
           recipeTitle={editor.recipeTitle}
           onChangeRecipeTitle={editor.setRecipeTitle}
+          recipeSource={editor.recipeSource}
+          onChangeRecipeSource={editor.setRecipeSource}
+          recipeShortNote={editor.recipeShortNote}
+          onChangeRecipeShortNote={editor.setRecipeShortNote}
+          recipeInstructions={editor.recipeInstructions}
+          onChangeRecipeInstructions={editor.setRecipeInstructions}
           ingredientRows={editor.ingredientRows}
           isRecipeLoading={editor.isRecipeLoading}
           hasExistingRecipe={!!editor.selectedMealRecipeId}
@@ -827,6 +840,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             editingSavedRecipeHint: strings.editingSavedRecipeHint,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
+            recipeContentLabel: strings.recipeContentLabel,
+            recipeSourceLabel: strings.recipeSourceLabel,
+            recipeSourcePlaceholder: strings.recipeSourcePlaceholder,
+            recipeShortNoteLabel: strings.recipeShortNoteLabel,
+            recipeShortNotePlaceholder: strings.recipeShortNotePlaceholder,
+            recipeInstructionsLabel: strings.recipeInstructionsLabel,
+            recipeInstructionsPlaceholder: strings.recipeInstructionsPlaceholder,
             ingredientsLabel: strings.ingredientsLabel,
             ingredientsRecipeHint: strings.savedRecipeIngredientsHint,
             ingredientsEmptyState: strings.ingredientsEmptyState,
@@ -845,6 +865,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         <MealRecipeDetailSheet
           recipeTitle={recipesWorkspace.recipeDetail.recipeTitle}
           onChangeRecipeTitle={recipesWorkspace.recipeDetail.setRecipeTitle}
+          recipeSource={recipesWorkspace.recipeDetail.recipeSource}
+          onChangeRecipeSource={recipesWorkspace.recipeDetail.setRecipeSource}
+          recipeShortNote={recipesWorkspace.recipeDetail.recipeShortNote}
+          onChangeRecipeShortNote={recipesWorkspace.recipeDetail.setRecipeShortNote}
+          recipeInstructions={recipesWorkspace.recipeDetail.recipeInstructions}
+          onChangeRecipeInstructions={recipesWorkspace.recipeDetail.setRecipeInstructions}
           ingredientRows={recipesWorkspace.recipeDetail.ingredientRows}
           isRecipeLoading={recipesWorkspace.recipeDetail.isRecipeLoading}
           hasExistingRecipe={recipesWorkspace.recipeDetail.hasExistingRecipe}
@@ -879,6 +905,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : strings.newSavedRecipeContextHint,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
+            recipeContentLabel: strings.recipeContentLabel,
+            recipeSourceLabel: strings.recipeSourceLabel,
+            recipeSourcePlaceholder: strings.recipeSourcePlaceholder,
+            recipeShortNoteLabel: strings.recipeShortNoteLabel,
+            recipeShortNotePlaceholder: strings.recipeShortNotePlaceholder,
+            recipeInstructionsLabel: strings.recipeInstructionsLabel,
+            recipeInstructionsPlaceholder: strings.recipeInstructionsPlaceholder,
             ingredientsLabel: strings.ingredientsLabel,
             ingredientsRecipeHint: strings.ingredientsRecipeHint,
             ingredientsEmptyState: strings.ingredientsEmptyState,

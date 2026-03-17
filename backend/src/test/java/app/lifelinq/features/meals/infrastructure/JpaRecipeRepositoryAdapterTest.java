@@ -31,6 +31,9 @@ class JpaRecipeRepositoryAdapterTest {
                 recipeId,
                 groupId,
                 "Soup",
+                "Cookbook",
+                "Comfort food",
+                "Stir and simmer",
                 Instant.parse("2026-02-01T10:00:00Z"),
                 List.of(
                         new Ingredient(
@@ -57,6 +60,9 @@ class JpaRecipeRepositoryAdapterTest {
         assertThat(loaded.get().getIngredients())
                 .extracting(Ingredient::getName)
                 .containsExactly("Olive Oil", "Tomato");
+        assertThat(loaded.get().getSource()).isEqualTo("Cookbook");
+        assertThat(loaded.get().getShortNote()).isEqualTo("Comfort food");
+        assertThat(loaded.get().getInstructions()).isEqualTo("Stir and simmer");
         assertThat(loaded.get().getIngredients().get(0).getQuantity()).isEqualByComparingTo(new BigDecimal("1.5"));
         assertThat(loaded.get().getIngredients().get(0).getUnit()).isEqualTo(IngredientUnit.DL);
     }
@@ -98,6 +104,9 @@ class JpaRecipeRepositoryAdapterTest {
                 recipeId,
                 groupId,
                 "Soup",
+                null,
+                null,
+                null,
                 createdAt,
                 List.of(
                         new Ingredient(UUID.randomUUID(), "Tomato", null, null, 1),
@@ -109,6 +118,9 @@ class JpaRecipeRepositoryAdapterTest {
                 recipeId,
                 groupId,
                 "Soup Updated",
+                "Notebook",
+                "Updated note",
+                "Updated instructions",
                 createdAt,
                 List.of(
                         new Ingredient(UUID.randomUUID(), "Onion", null, null, 1),
@@ -120,6 +132,9 @@ class JpaRecipeRepositoryAdapterTest {
 
         assertThat(loaded).isPresent();
         assertThat(loaded.get().getName()).isEqualTo("Soup Updated");
+        assertThat(loaded.get().getSource()).isEqualTo("Notebook");
+        assertThat(loaded.get().getShortNote()).isEqualTo("Updated note");
+        assertThat(loaded.get().getInstructions()).isEqualTo("Updated instructions");
         assertThat(loaded.get().getIngredients())
                 .extracting(Ingredient::getName)
                 .containsExactly("Onion", "Water");

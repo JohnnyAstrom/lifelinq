@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import app.lifelinq.config.AuthenticationFilter;
@@ -18,6 +19,7 @@ import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
 import app.lifelinq.features.meals.contract.MealsShoppingListNotFoundException;
 import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import app.lifelinq.features.meals.contract.AddMealOutput;
+import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -247,6 +249,61 @@ class MealsControllerTest {
                 recipeId,
                 targetListId,
                 List.of(1, 3)
+        );
+    }
+
+    @Test
+    void createRecipePassesRecipeContentFields() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.createRecipe(
+                groupId,
+                userId,
+                "Pasta",
+                "Family notebook",
+                "Quick favorite",
+                "Boil water\nCook pasta",
+                List.of()
+        )).thenReturn(new RecipeView(
+                recipeId,
+                groupId,
+                "Pasta",
+                "Family notebook",
+                "Quick favorite",
+                "Boil water\nCook pasta",
+                Instant.parse("2026-03-17T10:00:00Z"),
+                List.of()
+        ));
+
+        mockMvc.perform(post("/meals/recipes")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"Pasta",
+                                  "source":"Family notebook",
+                                  "shortNote":"Quick favorite",
+                                  "instructions":"Boil water\\nCook pasta",
+                                  "ingredients":[]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("Family notebook"))
+                .andExpect(jsonPath("$.shortNote").value("Quick favorite"))
+                .andExpect(jsonPath("$.instructions").value("Boil water\nCook pasta"));
+
+        verify(mealsApplicationService).createRecipe(
+                groupId,
+                userId,
+                "Pasta",
+                "Family notebook",
+                "Quick favorite",
+                "Boil water\nCook pasta",
+                List.of()
         );
     }
 

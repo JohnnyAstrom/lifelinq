@@ -73,6 +73,9 @@ public class MealsApplicationService {
             UUID groupId,
             UUID actorUserId,
             String name,
+            String source,
+            String shortNote,
+            String instructions,
             List<IngredientInput> ingredients
     ) {
         ensureMealAccess(groupId, actorUserId);
@@ -80,6 +83,9 @@ public class MealsApplicationService {
                 UUID.randomUUID(),
                 groupId,
                 normalizeRecipeName(name),
+                normalizeOptionalRecipeText(source),
+                normalizeOptionalRecipeText(shortNote),
+                normalizeOptionalInstructions(instructions),
                 clock.instant(),
                 toDomainIngredients(ingredients)
         );
@@ -115,6 +121,9 @@ public class MealsApplicationService {
             UUID actorUserId,
             UUID recipeId,
             String name,
+            String source,
+            String shortNote,
+            String instructions,
             List<IngredientInput> ingredients
     ) {
         ensureMealAccess(groupId, actorUserId);
@@ -123,6 +132,9 @@ public class MealsApplicationService {
                 existing.getId(),
                 existing.getGroupId(),
                 normalizeRecipeName(name),
+                normalizeOptionalRecipeText(source),
+                normalizeOptionalRecipeText(shortNote),
+                normalizeOptionalInstructions(instructions),
                 existing.getCreatedAt(),
                 toDomainIngredients(ingredients)
         );
@@ -261,6 +273,22 @@ public class MealsApplicationService {
         return normalized;
     }
 
+    private String normalizeOptionalRecipeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeOptionalInstructions(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replace("\r\n", "\n");
+        return normalized.isEmpty() ? null : normalized;
+    }
+
     private List<Ingredient> toDomainIngredients(List<IngredientInput> inputs) {
         if (inputs == null) {
             throw new IllegalArgumentException("ingredients must not be null");
@@ -299,6 +327,9 @@ public class MealsApplicationService {
                 recipe.getId(),
                 recipe.getGroupId(),
                 recipe.getName(),
+                recipe.getSource(),
+                recipe.getShortNote(),
+                recipe.getInstructions(),
                 recipe.getCreatedAt(),
                 ingredients
         );

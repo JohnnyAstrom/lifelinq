@@ -8,6 +8,9 @@ public record RecipeResponse(
         UUID recipeId,
         UUID groupId,
         String name,
+        String source,
+        String shortNote,
+        String instructions,
         Instant createdAt,
         List<IngredientResponse> ingredients
 ) {}

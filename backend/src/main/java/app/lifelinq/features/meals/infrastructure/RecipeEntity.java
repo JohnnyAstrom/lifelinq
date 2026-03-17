@@ -31,6 +31,15 @@ public class RecipeEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "source")
+    private String source;
+
+    @Column(name = "short_note", length = 1000)
+    private String shortNote;
+
+    @Column(name = "instructions", columnDefinition = "TEXT")
+    private String instructions;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -41,10 +50,13 @@ public class RecipeEntity {
     protected RecipeEntity() {
     }
 
-    RecipeEntity(UUID id, UUID groupId, String name, Instant createdAt) {
+    RecipeEntity(UUID id, UUID groupId, String name, String source, String shortNote, String instructions, Instant createdAt) {
         this.id = id;
         this.groupId = groupId;
         this.name = name;
+        this.source = source;
+        this.shortNote = shortNote;
+        this.instructions = instructions;
         this.createdAt = createdAt;
     }
 
@@ -60,6 +72,18 @@ public class RecipeEntity {
         return name;
     }
 
+    String getSource() {
+        return source;
+    }
+
+    String getShortNote() {
+        return shortNote;
+    }
+
+    String getInstructions() {
+        return instructions;
+    }
+
     Instant getCreatedAt() {
         return createdAt;
     }
@@ -68,8 +92,11 @@ public class RecipeEntity {
         return ingredients;
     }
 
-    void rename(String name) {
+    void updateContent(String name, String source, String shortNote, String instructions) {
         this.name = name;
+        this.source = source;
+        this.shortNote = shortNote;
+        this.instructions = instructions;
     }
 
     void replaceIngredients(List<RecipeIngredientEntity> ingredients) {

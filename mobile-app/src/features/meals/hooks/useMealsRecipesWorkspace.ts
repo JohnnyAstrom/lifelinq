@@ -35,6 +35,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
+  const [recipeSource, setRecipeSource] = useState('');
+  const [recipeShortNote, setRecipeShortNote] = useState('');
+  const [recipeInstructions, setRecipeInstructions] = useState('');
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [recipeDetailError, setRecipeDetailError] = useState<string | null>(null);
@@ -109,6 +112,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   function applyRecipe(recipe: RecipeResponse) {
     setRecipeId(recipe.recipeId);
     setRecipeTitle(recipe.name);
+    setRecipeSource(recipe.source ?? '');
+    setRecipeShortNote(recipe.shortNote ?? '');
+    setRecipeInstructions(recipe.instructions ?? '');
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
@@ -143,6 +149,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   function openCreateRecipe() {
     setRecipeId(null);
     setRecipeTitle('');
+    setRecipeSource('');
+    setRecipeShortNote('');
+    setRecipeInstructions('');
     setIngredientRows([]);
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
@@ -207,6 +216,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     try {
       const request = {
         name: recipeTitle.trim(),
+        source: recipeSource.trim() || null,
+        shortNote: recipeShortNote.trim() || null,
+        instructions: recipeInstructions.trim() || null,
         ingredients: toIngredientRequests(ingredientRows),
       };
       const saved = recipeId
@@ -242,6 +254,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       isOpen: isRecipeDetailOpen,
       recipeId,
       recipeTitle,
+      recipeSource,
+      recipeShortNote,
+      recipeInstructions,
       ingredientRows,
       isRecipeLoading,
       hasExistingRecipe: !!recipeId,
@@ -250,6 +265,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       isSavingRecipe: pendingDetailAction === 'save',
       isActionPending: pendingDetailAction !== null,
       setRecipeTitle,
+      setRecipeSource,
+      setRecipeShortNote,
+      setRecipeInstructions,
       addIngredientRow,
       removeIngredientRow,
       setIngredientName,

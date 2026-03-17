@@ -1,0 +1,4 @@
+ALTER TABLE recipes
+    ADD COLUMN source VARCHAR(255) NULL,
+    ADD COLUMN short_note VARCHAR(1000) NULL,
+    ADD COLUMN instructions TEXT NULL;

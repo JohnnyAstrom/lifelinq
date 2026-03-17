@@ -8,6 +8,9 @@ public record RecipeView(
         UUID recipeId,
         UUID groupId,
         String name,
+        String source,
+        String shortNote,
+        String instructions,
         Instant createdAt,
         List<IngredientView> ingredients
 ) {}
