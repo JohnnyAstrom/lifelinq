@@ -124,12 +124,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     todayLabel: 'Today',
     planMealTitle: 'Plan a meal',
     planMealSlot: 'Plan',
+    planningLabel: 'Planning',
     mealsLabel: 'Meals',
     mealHint: 'Tap to edit this meal.',
     mealActionHint: 'Tap to plan this meal.',
     dayLabel: 'Day',
-    mealTitlePlaceholder: 'Meal title',
+    mealTypeLabel: 'Meal',
+    recipeLabel: 'Recipe',
+    newRecipeLabel: 'New recipe',
+    usingRecipeLabel: 'Using recipe',
+    recipeNameLabel: 'Recipe name',
+    recipeNamePlaceholder: 'Recipe name',
     ingredientsLabel: 'Ingredients',
+    ingredientsRecipeHint: 'These ingredients belong to the recipe you are planning.',
     ingredientsEmptyState: 'Optional. Add ingredients when you need them.',
     ingredientsSummarySuffix: 'ingredients',
     ingredientsSheetTitle: 'Ingredients',
@@ -583,14 +590,22 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           hasIngredients={editor.hasIngredients}
           onOpenShoppingReview={editor.openShoppingReview}
           hasExistingMeal={!!editor.selectedMeal?.recipeTitle}
+          hasExistingRecipe={!!editor.selectedMealRecipeId}
           isSavingMeal={editor.isSavingMeal}
           isRemovingMeal={editor.isRemovingMeal}
           isActionPending={editor.isActionPending}
           strings={{
             planMealTitle: strings.planMealTitle,
+            planningLabel: strings.planningLabel,
             dayLabel: strings.dayLabel,
-            mealTitlePlaceholder: strings.mealTitlePlaceholder,
+            mealTypeLabel: strings.mealTypeLabel,
+            recipeLabel: strings.recipeLabel,
+            newRecipeLabel: strings.newRecipeLabel,
+            usingRecipeLabel: strings.usingRecipeLabel,
+            recipeNameLabel: strings.recipeNameLabel,
+            recipeNamePlaceholder: strings.recipeNamePlaceholder,
             ingredientsLabel: strings.ingredientsLabel,
+            ingredientsRecipeHint: strings.ingredientsRecipeHint,
             addIngredients: strings.addIngredients,
             editIngredients: strings.editIngredients,
             ingredientsEmptyState: strings.ingredientsEmptyState,

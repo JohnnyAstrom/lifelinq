@@ -14,9 +14,16 @@ type DayOption = {
 
 type MealEditorSheetStrings = {
   planMealTitle: string;
+  planningLabel: string;
   dayLabel: string;
-  mealTitlePlaceholder: string;
+  mealTypeLabel: string;
+  recipeLabel: string;
+  newRecipeLabel: string;
+  usingRecipeLabel: string;
+  recipeNameLabel: string;
+  recipeNamePlaceholder: string;
   ingredientsLabel: string;
+  ingredientsRecipeHint?: string;
   addIngredients: string;
   editIngredients: string;
   ingredientsEmptyState: string;
@@ -49,6 +56,7 @@ type Props = {
   hasIngredients: boolean;
   onOpenShoppingReview: () => void;
   hasExistingMeal: boolean;
+  hasExistingRecipe: boolean;
   isSavingMeal: boolean;
   isRemovingMeal: boolean;
   isActionPending: boolean;
@@ -81,6 +89,7 @@ export function MealEditorSheet({
   hasIngredients,
   onOpenShoppingReview,
   hasExistingMeal,
+  hasExistingRecipe,
   isSavingMeal,
   isRemovingMeal,
   isActionPending,
@@ -107,6 +116,9 @@ export function MealEditorSheet({
     : strings.addIngredients;
   const saveActionLabel = isSavingMeal ? strings.savingMeal : strings.saveMeal;
   const removeActionLabel = isRemovingMeal ? strings.removingMeal : strings.removeMeal;
+  const recipeIdentityLabel = hasExistingRecipe
+    ? strings.usingRecipeLabel
+    : strings.newRecipeLabel;
 
   const ingredientEntryHint = !hasIngredients && !isRecipeLoading
     ? strings.addIngredients
@@ -126,63 +138,86 @@ export function MealEditorSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.daySection}>
-              <Text style={styles.sectionLabel}>{strings.dayLabel}</Text>
-              <View style={styles.dayChipRow}>
-                {dayOptions.map((option) => (
-                  <AppChip
-                    key={option.dayNumber}
-                    label={option.label.split(' ')[0]}
-                    active={sameCalendarDay(option.date, initialDate)}
-                    accentKey="meals"
-                    onPress={() => onSelectDay(option.dayNumber)}
+            <View style={styles.editorSection}>
+              <Text style={styles.sectionLabel}>{strings.planningLabel}</Text>
+              <View style={styles.contextField}>
+                <Text style={styles.fieldLabel}>{strings.dayLabel}</Text>
+                <View style={styles.dayChipRow}>
+                  {dayOptions.map((option) => (
+                    <AppChip
+                      key={option.dayNumber}
+                      label={option.label.split(' ')[0]}
+                      active={sameCalendarDay(option.date, initialDate)}
+                      accentKey="meals"
+                      onPress={() => onSelectDay(option.dayNumber)}
+                    />
+                  ))}
+                </View>
+              </View>
+              <View style={styles.contextField}>
+                <Text style={styles.fieldLabel}>{strings.mealTypeLabel}</Text>
+                <View style={styles.mealTypeRow}>
+                  {MEAL_TYPES.map((mealType) => (
+                    <AppChip
+                      key={mealType}
+                      label={mealTypeLabels[mealType]}
+                      active={mealType === selectedMealType}
+                      accentKey="meals"
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        onSelectMealType(mealType);
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+            </View>
+            <View style={styles.sectionDivider} />
+            <View style={styles.editorSection}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionLabel}>{strings.recipeLabel}</Text>
+                <View style={styles.identityBadge}>
+                  <Text style={styles.identityBadgeText}>{recipeIdentityLabel}</Text>
+                </View>
+              </View>
+              <View style={styles.contextField}>
+                <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
+                <AppInput
+                  placeholder={strings.recipeNamePlaceholder}
+                  value={recipeTitle}
+                  onChangeText={onChangeRecipeTitle}
+                />
+              </View>
+              <View style={styles.ingredientsSection}>
+                <View style={styles.ingredientsSectionHeader}>
+                  <View style={styles.ingredientsSectionCopy}>
+                    <Text style={styles.fieldLabel}>{strings.ingredientsLabel}</Text>
+                    {strings.ingredientsRecipeHint ? (
+                      <Text style={styles.ingredientsHint}>{strings.ingredientsRecipeHint}</Text>
+                    ) : null}
+                  </View>
+                  <AppButton
+                    title={ingredientActionLabel}
+                    onPress={onOpenIngredients}
+                    variant="ghost"
+                    disabled={isActionPending}
                   />
-                ))}
+                </View>
+                {isRecipeLoading ? (
+                  <Subtle>{strings.loadingIngredients}</Subtle>
+                ) : null}
+                {ingredientEntryHint ? <Text style={styles.ingredientsHint}>{strings.ingredientsEmptyState}</Text> : null}
+                {!isRecipeLoading && hasIngredients ? (
+                  <Pressable onPress={onOpenIngredients} style={styles.ingredientsSummaryCard}>
+                    <Text style={styles.ingredientsSummaryTitle}>{ingredientSummary}</Text>
+                    {ingredientPreview ? (
+                      <Text style={styles.ingredientsPreview} numberOfLines={1}>
+                        {ingredientPreview}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                ) : null}
               </View>
-            </View>
-            <View style={styles.mealTypeRow}>
-              {MEAL_TYPES.map((mealType) => (
-                <AppChip
-                  key={mealType}
-                  label={mealTypeLabels[mealType]}
-                  active={mealType === selectedMealType}
-                  accentKey="meals"
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    onSelectMealType(mealType);
-                  }}
-                />
-              ))}
-            </View>
-            <AppInput
-              placeholder={strings.mealTitlePlaceholder}
-              value={recipeTitle}
-              onChangeText={onChangeRecipeTitle}
-            />
-            <View style={styles.ingredientsSection}>
-              <View style={styles.ingredientsSectionHeader}>
-                <Text style={styles.sectionLabel}>{strings.ingredientsLabel}</Text>
-                <AppButton
-                  title={ingredientActionLabel}
-                  onPress={onOpenIngredients}
-                  variant="ghost"
-                  disabled={isActionPending}
-                />
-              </View>
-              {isRecipeLoading ? (
-                <Subtle>{strings.loadingIngredients}</Subtle>
-              ) : null}
-              {ingredientEntryHint ? <Text style={styles.ingredientsHint}>{strings.ingredientsEmptyState}</Text> : null}
-              {!isRecipeLoading && hasIngredients ? (
-                <Pressable onPress={onOpenIngredients} style={styles.ingredientsSummaryCard}>
-                  <Text style={styles.ingredientsSummaryTitle}>{ingredientSummary}</Text>
-                  {ingredientPreview ? (
-                    <Text style={styles.ingredientsPreview} numberOfLines={1}>
-                      {ingredientPreview}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              ) : null}
             </View>
             {hasIngredients ? (
               <View style={styles.shoppingActionSection}>
@@ -264,6 +299,12 @@ const styles = StyleSheet.create({
   daySection: {
     gap: theme.spacing.xs,
   },
+  editorSection: {
+    gap: theme.spacing.sm,
+  },
+  contextField: {
+    gap: theme.spacing.xs,
+  },
   dayChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -274,10 +315,38 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
+  fieldLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
   mealTypeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  identityBadge: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  identityBadgeText: {
+    ...textStyles.subtle,
+    color: theme.colors.text,
+    fontWeight: '600',
   },
   sheetScroll: {
     minHeight: 0,
@@ -302,6 +371,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: theme.spacing.sm,
+  },
+  ingredientsSectionCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   ingredientsSummaryCard: {
     borderWidth: 1,
