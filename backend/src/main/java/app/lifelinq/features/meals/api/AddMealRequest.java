@@ -1,11 +1,13 @@
 package app.lifelinq.features.meals.api;
 
 import java.util.UUID;
+import java.util.List;
 
 public final class AddMealRequest {
     private UUID recipeId;
     private String mealType;
     private UUID targetShoppingListId;
+    private List<Integer> selectedIngredientPositions;
 
     public UUID getRecipeId() {
         return recipeId;
@@ -17,5 +19,9 @@ public final class AddMealRequest {
 
     public UUID getTargetShoppingListId() {
         return targetShoppingListId;
+    }
+
+    public List<Integer> getSelectedIngredientPositions() {
+        return selectedIngredientPositions;
     }
 }

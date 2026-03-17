@@ -18,7 +18,7 @@ Integration is one-way (Meals → Shopping).
 Current implementation: Meals calls `ShoppingApplicationService.addShoppingItem(...)`
 when `targetShoppingListId` is provided, once per ingredient occurrence.
 Current product reality: meals-pushed shopping items now carry narrow shopping provenance so Shopping can show that they came from meal planning. Shopping may also conservatively absorb compatible meal-plan intake into an existing open shopping item instead of always creating a new row.
-Current frontend capture direction: ingredient entry is a lightweight structured row editor with `name`, optional `quantity`, optional `unit`, and implicit `position` from row order. The main `Plan a meal` sheet keeps ingredients as a light summary and opens a secondary ingredient sheet for full editing. Shopping intake is now triggered from a separate explicit review/confirm sheet rather than as a passive save-time toggle.
+Current frontend capture direction: ingredient entry is a lightweight structured row editor with `name`, optional `quantity`, optional `unit`, and implicit `position` from row order. The main `Plan a meal` sheet keeps ingredients as a light summary and opens a secondary ingredient sheet for full editing. Shopping intake is now triggered from a separate explicit review/confirm sheet rather than as a passive save-time toggle. That review step may selectively include only some ingredient positions; Meals still saves the full recipe, but only the chosen ingredient occurrences are pushed to Shopping.
 
 ## Meals Model (Phase 1)
 
@@ -75,6 +75,7 @@ Current frontend capture direction: ingredient entry is a lightweight structured
   - collapse internal whitespace runs to a single space
   - lowercase using `Locale.ROOT`
 - Duplicate ingredient names are not merged in Meals; one shopping item call is made per occurrence. Shopping may still conservatively absorb compatible meal-plan intake on receipt.
+- Selective Meals → Shopping push is allowed by explicit ingredient-position selection. Omitted ingredient positions are not sent to Shopping.
 
 ### Non-goals (V0)
 
@@ -118,14 +119,14 @@ Current frontend capture direction: ingredient entry is a lightweight structured
 
 Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}`  
 Purpose: Add or replace the meal for a specific day + type. Implicitly creates the week plan if missing.  
-Request body: `recipeId`, `mealType`, `targetShoppingListId` (optional; null means no push).  
+Request body: `recipeId`, `mealType`, `targetShoppingListId` (optional; null means no push), `selectedIngredientPositions[]` (optional; when provided with a shopping target, only those ingredient positions are pushed).  
 Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
 Status: 200 OK.  
 Errors: 400 invalid input, 401 missing context, 403 not a group member or shopping list not owned, 404 recipe not found in group.
 
 Endpoint: `POST /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}`  
 Purpose: Add or replace a meal when `mealType` is provided in the request body.  
-Request body: `recipeId`, `mealType` (required), `targetShoppingListId` (optional).  
+Request body: `recipeId`, `mealType` (required), `targetShoppingListId` (optional), `selectedIngredientPositions[]` (optional).  
 Response: `weekPlanId`, `year`, `isoWeek`, `meal`.  
 Status: 200 OK.  
 Errors: 400 invalid input, 401 missing context, 403 not a group member or shopping list not owned, 404 recipe not found in group.

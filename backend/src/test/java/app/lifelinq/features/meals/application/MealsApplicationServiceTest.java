@@ -84,7 +84,8 @@ class MealsApplicationServiceTest {
                 1,
                 MealType.DINNER,
                 recipeId,
-                listId
+                listId,
+                null
         );
 
         InOrder order = inOrder(shopping);
@@ -139,7 +140,7 @@ class MealsApplicationServiceTest {
                 )
         ));
 
-        service.addOrReplaceMeal(groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId);
+        service.addOrReplaceMeal(groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId, null);
 
         verify(shopping, times(2)).addShoppingItem(groupId, userId, listId, "tomato", null, null, "meal-plan", "Soup");
     }
@@ -169,7 +170,8 @@ class MealsApplicationServiceTest {
                 1,
                 MealType.DINNER,
                 recipeId,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         )).isInstanceOf(RecipeNotFoundException.class);
 
         verify(shopping, never()).addShoppingItem(any(), any(), any(), any(), any(), any(), any(), any());
@@ -226,7 +228,7 @@ class MealsApplicationServiceTest {
         ));
 
         service.addOrReplaceMeal(
-                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, null
+                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, null, null
         );
 
         recipes.save(new Recipe(
@@ -271,7 +273,7 @@ class MealsApplicationServiceTest {
         ));
 
         service.addOrReplaceMeal(
-                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
+                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId, null
         );
 
         recipes.save(new Recipe(
@@ -284,12 +286,52 @@ class MealsApplicationServiceTest {
         ));
 
         service.addOrReplaceMeal(
-                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId
+                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId, null
         );
 
         InOrder order = inOrder(shopping);
         order.verify(shopping).addShoppingItem(groupId, userId, listId, "tomato", null, null, "meal-plan", "Recipe");
         order.verify(shopping).addShoppingItem(groupId, userId, listId, "onion", null, null, "meal-plan", "Recipe");
+    }
+
+    @Test
+    void addMealPushesOnlySelectedIngredientPositions() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Soup",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(UUID.randomUUID(), "Tomato", null, null, 1),
+                        new app.lifelinq.features.meals.domain.Ingredient(UUID.randomUUID(), "Onion", null, null, 2),
+                        new app.lifelinq.features.meals.domain.Ingredient(UUID.randomUUID(), "Milk", null, null, 3)
+                )
+        ));
+
+        service.addOrReplaceMeal(
+                groupId, userId, 2026, 5, 1, MealType.DINNER, recipeId, listId, List.of(1, 3)
+        );
+
+        InOrder order = inOrder(shopping);
+        order.verify(shopping).addShoppingItem(groupId, userId, listId, "milk", null, null, "meal-plan", "Soup");
+        order.verify(shopping).addShoppingItem(groupId, userId, listId, "tomato", null, null, "meal-plan", "Soup");
+        verify(shopping, never()).addShoppingItem(groupId, userId, listId, "onion", null, null, "meal-plan", "Soup");
     }
 
     private static final class InMemoryWeekPlanRepository implements WeekPlanRepository {

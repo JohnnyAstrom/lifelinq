@@ -138,7 +138,8 @@ public class MealsApplicationService {
             int dayOfWeek,
             MealType mealType,
             UUID recipeId,
-            UUID targetShoppingListId
+            UUID targetShoppingListId,
+            List<Integer> selectedIngredientPositions
     ) {
         ensureMealAccess(groupId, actorUserId);
         validateIsoWeek(year, isoWeek);
@@ -157,7 +158,14 @@ public class MealsApplicationService {
 
         if (targetShoppingListId != null) {
             // V0.5c intent: recipe ingredients primarily act as shopping-item generators.
-            pushIngredientsToShopping(groupId, actorUserId, targetShoppingListId, recipe.getName(), recipe.getIngredients());
+            pushIngredientsToShopping(
+                    groupId,
+                    actorUserId,
+                    targetShoppingListId,
+                    recipe.getName(),
+                    recipe.getIngredients(),
+                    selectedIngredientPositions
+            );
         }
 
         PlannedMeal savedMeal = saved.getMealOrThrow(dayOfWeek, mealType);
@@ -308,12 +316,19 @@ public class MealsApplicationService {
             UUID actorUserId,
             UUID targetShoppingListId,
             String recipeName,
-            List<Ingredient> ingredients
+            List<Ingredient> ingredients,
+            List<Integer> selectedIngredientPositions
     ) {
+        Set<Integer> selectedPositions = selectedIngredientPositions == null
+                ? null
+                : new HashSet<>(selectedIngredientPositions);
         // Shopping inserts new items at the top. Reverse recipe order here so the
         // final list preserves the original ingredient order for users.
         for (int index = ingredients.size() - 1; index >= 0; index--) {
             Ingredient ingredient = ingredients.get(index);
+            if (selectedPositions != null && !selectedPositions.contains(ingredient.getPosition())) {
+                continue;
+            }
             mealsShoppingPort.addShoppingItem(
                     groupId,
                     actorUserId,

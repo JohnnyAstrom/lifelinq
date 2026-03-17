@@ -19,6 +19,7 @@ export type AddMealRequest = {
   recipeId: string;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   targetShoppingListId?: string | null;
+  selectedIngredientPositions?: number[] | null;
 };
 
 export type AddMealResponse = {

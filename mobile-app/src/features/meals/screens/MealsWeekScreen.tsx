@@ -145,7 +145,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     shoppingReviewTitle: 'Add ingredients to shopping',
     shoppingListLabel: 'Shopping list',
     ingredientsToAddLabel: 'Ingredients to add',
-    confirmAddIngredientsToShopping: 'Add all ingredients',
+    ingredientsToAddHint: 'Tap ingredients to include.',
+    confirmAddIngredientsToShopping: 'Add selected ingredients',
     noShoppingLists: 'No shopping lists yet.',
     shoppingSyncFailed: 'Meal saved, but adding ingredients to shopping failed:',
     saveMeal: 'Save meal',
@@ -608,10 +609,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
       {editor.isOpen && editor.isShoppingReviewOpen ? (
         <MealShoppingReviewSheet
-          ingredientRows={editor.ingredientRows}
+          ingredients={editor.shoppingReviewIngredients}
+          selectedIngredientRowIds={editor.selectedShoppingIngredientRowIds}
           lists={lists}
           effectiveListId={effectiveListId}
           onSelectListId={editor.setSelectedListId}
+          onToggleIngredient={editor.toggleShoppingReviewIngredient}
           shoppingSyncError={editor.shoppingSyncError}
           isSubmitting={editor.isAddingIngredientsToShopping}
           onConfirm={handleAddIngredientsToShopping}
@@ -619,6 +622,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           strings={{
             title: strings.shoppingReviewTitle,
             ingredientsLabel: strings.ingredientsToAddLabel,
+            ingredientsHint: strings.ingredientsToAddHint,
             selectedListLabel: strings.shoppingListLabel,
             noShoppingLists: strings.noShoppingLists,
             shoppingSyncFailed: strings.shoppingSyncFailed,

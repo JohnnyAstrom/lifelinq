@@ -1,20 +1,24 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppChip, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
-import {
-  MEAL_INGREDIENT_UNIT_OPTIONS,
-  type MealIngredientRow,
-} from '../utils/ingredientRows';
 
 type ShoppingListOption = {
   id: string;
   name: string;
 };
 
+type ShoppingReviewIngredient = {
+  rowId: string;
+  name: string;
+  amount: string | null;
+};
+
 type Strings = {
   title: string;
   ingredientsLabel: string;
+  ingredientsHint: string;
   selectedListLabel: string;
   noShoppingLists: string;
   shoppingSyncFailed: string;
@@ -24,10 +28,12 @@ type Strings = {
 };
 
 type Props = {
-  ingredientRows: MealIngredientRow[];
+  ingredients: ShoppingReviewIngredient[];
+  selectedIngredientRowIds: string[];
   lists: ShoppingListOption[];
   effectiveListId: string | null;
   onSelectListId: (id: string) => void;
+  onToggleIngredient: (rowId: string) => void;
   shoppingSyncError: string | null;
   isSubmitting: boolean;
   onConfirm: () => void;
@@ -35,33 +41,21 @@ type Props = {
   strings: Strings;
 };
 
-function formatIngredientAmount(row: MealIngredientRow) {
-  if (!row.quantityText || !row.unit) {
-    return null;
-  }
-
-  const unitLabel = MEAL_INGREDIENT_UNIT_OPTIONS.find((option) => option.value === row.unit)?.label;
-  return unitLabel ? `${row.quantityText} ${unitLabel}` : row.quantityText;
-}
-
 export function MealShoppingReviewSheet({
-  ingredientRows,
+  ingredients,
+  selectedIngredientRowIds,
   lists,
   effectiveListId,
   onSelectListId,
+  onToggleIngredient,
   shoppingSyncError,
   isSubmitting,
   onConfirm,
   onClose,
   strings,
 }: Props) {
-  const ingredients = ingredientRows
-    .map((row) => ({
-      id: row.id,
-      name: row.name.trim(),
-      amount: formatIngredientAmount(row),
-    }))
-    .filter((row) => row.name.length > 0);
+  const selectedIds = new Set(selectedIngredientRowIds);
+  const selectedIngredientCount = ingredients.filter((ingredient) => selectedIds.has(ingredient.rowId)).length;
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
@@ -97,14 +91,31 @@ export function MealShoppingReviewSheet({
 
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{strings.ingredientsLabel}</Text>
+              <Subtle>{strings.ingredientsHint}</Subtle>
               <View style={styles.ingredientList}>
                 {ingredients.map((ingredient) => (
-                  <View key={ingredient.id} style={styles.ingredientRow}>
+                  <Pressable
+                    key={ingredient.rowId}
+                    onPress={() => onToggleIngredient(ingredient.rowId)}
+                    style={({ pressed }) => [
+                      styles.ingredientRow,
+                      !selectedIds.has(ingredient.rowId) ? styles.ingredientRowUnselected : null,
+                      pressed ? styles.ingredientRowPressed : null,
+                    ]}
+                  >
+                    <View style={[
+                      styles.checkbox,
+                      selectedIds.has(ingredient.rowId) ? styles.checkboxSelected : null,
+                    ]}>
+                      {selectedIds.has(ingredient.rowId) ? (
+                        <Ionicons name="checkmark" size={14} color="#fff" />
+                      ) : null}
+                    </View>
                     <Text style={styles.ingredientName}>{ingredient.name}</Text>
                     {ingredient.amount ? (
                       <Text style={styles.ingredientAmount}>{ingredient.amount}</Text>
                     ) : null}
-                  </View>
+                  </Pressable>
                 ))}
               </View>
             </View>
@@ -119,7 +130,7 @@ export function MealShoppingReviewSheet({
                 onPress={onConfirm}
                 fullWidth
                 accentKey="meals"
-                disabled={!effectiveListId || ingredients.length === 0 || isSubmitting}
+                disabled={!effectiveListId || selectedIngredientCount === 0 || isSubmitting}
               />
               <AppButton
                 title={strings.close}
@@ -194,7 +205,7 @@ const styles = StyleSheet.create({
   },
   ingredientRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.sm,
     borderWidth: 1,
@@ -203,6 +214,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     backgroundColor: theme.colors.surfaceAlt,
+  },
+  ingredientRowPressed: {
+    opacity: 0.82,
+  },
+  ingredientRowUnselected: {
+    backgroundColor: theme.colors.surface,
+    opacity: 0.72,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.feature.meals,
+    borderColor: theme.colors.feature.meals,
   },
   ingredientName: {
     ...textStyles.body,

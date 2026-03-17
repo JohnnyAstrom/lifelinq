@@ -115,7 +115,8 @@ public class MealsController {
                 dayOfWeek,
                 app.lifelinq.features.meals.domain.MealType.valueOf(resolvedMealType),
                 request.getRecipeId(),
-                request.getTargetShoppingListId()
+                request.getTargetShoppingListId(),
+                request.getSelectedIngredientPositions()
         );
         return ResponseEntity.ok(toAddMealResponse(output));
     }
