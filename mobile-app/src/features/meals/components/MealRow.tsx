@@ -19,13 +19,20 @@ export function MealRow({
 }: Props) {
   return (
     <Pressable
-      style={styles.mealRow}
+      style={({ pressed }) => [
+        styles.mealRow,
+        pressed ? styles.mealRowPressed : null,
+      ]}
       onPress={onPress}
     >
-      <View style={[styles.mealTypeBadge, styles[`mealType_${mealType}`]]}>
-        <Text style={styles.mealTypeText}>{mealTypeLabels[mealType]}</Text>
+      <View style={styles.mealRowContent}>
+        <View style={[styles.mealTypeBadge, styles[`mealType_${mealType}`]]}>
+          <Text style={styles.mealTypeText}>{mealTypeLabels[mealType]}</Text>
+        </View>
+        <Text style={styles.mealTitle} numberOfLines={1}>
+          {recipeTitle}
+        </Text>
       </View>
-      <Text style={styles.mealTitle}>{recipeTitle}</Text>
     </Pressable>
   );
 }

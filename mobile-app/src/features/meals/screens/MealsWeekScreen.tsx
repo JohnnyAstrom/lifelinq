@@ -8,8 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MealsDailyView } from '../components/MealsDailyView';
+import { MealDayDetailSheet } from '../components/MealDayDetailSheet';
 import { MealEditorSheet } from '../components/MealEditorSheet';
 import { MealIngredientsSheet } from '../components/MealIngredientsSheet';
 import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
@@ -27,10 +26,9 @@ import { useMealsWorkflow } from '../hooks/useMealsWorkflow';
 import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import {
   AppButton,
-  BackIconButton,
   AppCard,
-  AppChip,
   AppScreen,
+  BackIconButton,
   Subtle,
   TopBar,
 } from '../../../shared/ui/components';
@@ -41,7 +39,8 @@ type Props = {
   onDone: () => void;
 };
 
-type ViewMode = 'daily' | 'weekly' | 'monthly';
+type SurfaceMode = 'week' | 'calendar';
+type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MEAL_TYPE_LABELS = {
@@ -93,21 +92,35 @@ function formatMonthLabel(date: Date) {
   return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
 
+function formatWeekRangeLabel(start: Date, end: Date) {
+  const sameMonth = start.getUTCMonth() === end.getUTCMonth()
+    && start.getUTCFullYear() === end.getUTCFullYear();
+  if (sameMonth) {
+    return `${MONTH_LABELS[start.getUTCMonth()]} ${start.getUTCDate()}-${end.getUTCDate()}`;
+  }
+  return `${MONTH_LABELS[start.getUTCMonth()]} ${start.getUTCDate()} - ${MONTH_LABELS[end.getUTCMonth()]} ${end.getUTCDate()}`;
+}
+
 export function MealsWeekScreen({ token, onDone }: Props) {
-  const insets = useSafeAreaInsets();
   const strings = {
     title: 'Meals',
     subtitle: 'Plan your week and add ingredients to shopping when needed.',
-    daily: 'Daily',
-    weekly: 'Weekly',
-    monthly: 'Monthly',
-    prev: 'Prev',
-    next: 'Next',
+    weeklyPlanner: 'Week',
+    calendarOverview: 'Calendar',
+    openCalendar: 'Calendar',
+    backToWeek: 'Back to week',
     weekLabel: 'Week',
-    monthlyOverview: 'Monthly overview. Only current week is loaded in V0.',
+    monthlyOverview: 'Tap a day to open it.',
     loadingPlan: 'Loading week plan...',
     noMeals: 'No meals planned yet.',
+    noMealsThisDay: 'No meals planned for this day.',
+    loadingDay: 'Loading day...',
+    todayLabel: 'Today',
     planMealTitle: 'Plan a meal',
+    planMealSlot: 'Plan',
+    mealsLabel: 'Meals',
+    mealHint: 'Tap to edit this meal.',
+    mealActionHint: 'Tap to plan this meal.',
     dayLabel: 'Day',
     mealTitlePlaceholder: 'Meal title',
     ingredientsLabel: 'Ingredients',
@@ -136,8 +149,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     close: 'Close',
     addingIngredientsToShopping: 'Adding ingredients...',
   };
-  const [viewMode, setViewMode] = useState<ViewMode>('daily');
+  const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const [selectedDayDetailDate, setSelectedDayDetailDate] = useState<Date | null>(null);
   const { year, isoWeek } = useMemo(
     () => getIsoWeekParts(anchorDate),
     [anchorDate]
@@ -172,15 +186,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     return end;
   }, [weekStart]);
 
-  const dailyDayIndex = useMemo(() => {
-    const day = anchorDate.getDay() || 7;
-    return day - 1;
-  }, [anchorDate]);
+  const isAnchorWeekLoaded = plan.data?.year === year && plan.data?.isoWeek === isoWeek;
+  const showInitialPlanLoading = plan.isInitialLoading && !isAnchorWeekLoaded;
+  const shouldRenderPlanViews = !showInitialPlanLoading && (isAnchorWeekLoaded || !plan.error);
 
-  const dailyDayNumber = dailyDayIndex + 1;
-  const dailyMeals = mealsByDay.get(dailyDayNumber) ?? [];
-  const showInitialPlanLoading = plan.isInitialLoading && !plan.data;
-  const shouldRenderPlanViews = !showInitialPlanLoading && (plan.data !== null || !plan.error);
   const selectedEditorDate = useMemo(() => {
     if (!editor.selectedDay) {
       return anchorDate;
@@ -189,6 +198,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     date.setUTCDate(weekStart.getUTCDate() + editor.selectedDay - 1);
     return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   }, [anchorDate, editor.selectedDay, weekStart]);
+
   const editorDayOptions = useMemo(() => {
     return DAY_LABELS.map((_, index) => {
       const date = new Date(weekStart.getTime());
@@ -204,8 +214,31 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   const monthGridCells = useMemo(() => buildMonthGridCells(anchorDate), [anchorDate]);
 
+  const periodSummary = useMemo(() => {
+    if (surfaceMode === 'week') {
+      return {
+        primary: formatWeekRangeLabel(weekStart, weekEnd),
+        secondary: `${strings.weekLabel} ${isoWeek}`,
+      };
+    }
+    return {
+      primary: formatMonthLabel(anchorDate),
+      secondary: null,
+    };
+  }, [
+    anchorDate,
+    isoWeek,
+    strings.weekLabel,
+    surfaceMode,
+    weekEnd,
+    weekStart,
+  ]);
+
   const monthMealCountByDateKey = useMemo(() => {
     const counts: Record<string, number> = {};
+    if (!isAnchorWeekLoaded) {
+      return counts;
+    }
     for (let index = 0; index < 7; index += 1) {
       const date = new Date(weekStart.getTime());
       date.setUTCDate(weekStart.getUTCDate() + index);
@@ -220,7 +253,68 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       counts[toDateKey(localDate)] = meals.length;
     }
     return counts;
-  }, [weekStart, mealsByDay, anchorDate]);
+  }, [anchorDate, isAnchorWeekLoaded, mealsByDay, weekStart]);
+
+  const selectedDayDetail = useMemo(() => {
+    if (!selectedDayDetailDate) {
+      return null;
+    }
+    const normalized = new Date(selectedDayDetailDate.getTime());
+    const { year: selectedYear, isoWeek: selectedIsoWeek } = getIsoWeekParts(normalized);
+    const dayOfWeek = normalized.getDay() || 7;
+    return {
+      date: normalized,
+      dayOfWeek,
+      year: selectedYear,
+      isoWeek: selectedIsoWeek,
+      title: formatRelativeDailyNavLabel(normalized),
+      subtitle: `${strings.weekLabel} ${selectedIsoWeek} · ${selectedYear}`,
+    };
+  }, [selectedDayDetailDate, strings.weekLabel]);
+
+  const isSelectedDayWeekLoaded = selectedDayDetail
+    ? plan.data?.year === selectedDayDetail.year && plan.data?.isoWeek === selectedDayDetail.isoWeek
+    : false;
+  const selectedDayMeals = useMemo(() => {
+    if (!selectedDayDetail || !isSelectedDayWeekLoaded) {
+      return [];
+    }
+    return mealsByDay.get(selectedDayDetail.dayOfWeek) ?? [];
+  }, [isSelectedDayWeekLoaded, mealsByDay, selectedDayDetail]);
+  const dayDetailError = selectedDayDetail && !isSelectedDayWeekLoaded ? plan.error : null;
+  const isDayDetailLoading = !!selectedDayDetail && !isSelectedDayWeekLoaded && !dayDetailError;
+
+  function openDayDetail(date: Date, options?: { fromCalendar?: boolean }) {
+    const nextDate = new Date(date.getTime());
+    setAnchorDate(nextDate);
+    setSelectedDayDetailDate(nextDate);
+    if (options?.fromCalendar) {
+      setSurfaceMode('week');
+    }
+  }
+
+  function closeDayDetail() {
+    if (editor.isActionPending) {
+      return;
+    }
+    setSelectedDayDetailDate(null);
+  }
+
+  function openMealFromDayDetail(mealType: MealType) {
+    if (!selectedDayDetail) {
+      return;
+    }
+    setSelectedDayDetailDate(null);
+    actions.openEditor(selectedDayDetail.dayOfWeek, mealType);
+  }
+
+  function shiftCurrentPeriod(direction: -1 | 1) {
+    if (surfaceMode === 'week') {
+      setAnchorDate(addDays(anchorDate, direction * 7));
+      return;
+    }
+    setAnchorDate(addDays(anchorDate, direction * 30));
+  }
 
   function closeEditor() {
     actions.closeEditor();
@@ -229,12 +323,18 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   useAppBackHandler({
     canGoBack: true,
     onGoBack: onDone,
-    isOverlayOpen: editor.isOpen || editor.isIngredientEditorOpen || editor.isShoppingReviewOpen,
+    isOverlayOpen:
+      !!selectedDayDetailDate
+      || editor.isOpen
+      || editor.isIngredientEditorOpen
+      || editor.isShoppingReviewOpen,
     onCloseOverlay: editor.isIngredientEditorOpen
       ? editor.closeIngredientEditor
       : editor.isShoppingReviewOpen
         ? editor.closeShoppingReview
-        : closeEditor,
+        : editor.isOpen
+          ? closeEditor
+          : closeDayDetail,
   });
 
   return (
@@ -266,153 +366,111 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             )}
           >
             <View style={styles.contentInner}>
-              <AppCard style={styles.headerCard}>
-                <View style={styles.viewSwitchRow}>
-                  <AppChip
-                    label={strings.daily}
-                    active={viewMode === 'daily'}
-                    onPress={() => setViewMode('daily')}
-                    accentKey="meals"
-                  />
-                  <AppChip
-                    label={strings.weekly}
-                    active={viewMode === 'weekly'}
-                    onPress={() => setViewMode('weekly')}
-                    accentKey="meals"
-                  />
-                  <AppChip
-                    label={strings.monthly}
-                    active={viewMode === 'monthly'}
-                    onPress={() => setViewMode('monthly')}
-                    accentKey="meals"
+              <AppCard style={styles.controlsCard}>
+                <View style={styles.controlsHeaderRow}>
+                  <View style={styles.controlsHeaderCopy}>
+                    <Text style={styles.controlsEyebrow}>
+                      {surfaceMode === 'week' ? strings.weeklyPlanner : strings.calendarOverview}
+                    </Text>
+                  </View>
+                  <AppButton
+                    title={surfaceMode === 'week' ? strings.openCalendar : strings.backToWeek}
+                    onPress={() => setSurfaceMode(surfaceMode === 'week' ? 'calendar' : 'week')}
+                    variant="ghost"
                   />
                 </View>
+                <View style={styles.periodControlsRow}>
+                  <Pressable
+                    onPress={() => shiftCurrentPeriod(-1)}
+                    style={({ pressed }) => [
+                      styles.periodNavButton,
+                      pressed ? styles.periodNavButtonPressed : null,
+                    ]}
+                  >
+                    <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
+                  </Pressable>
+                  <View style={styles.periodSummary}>
+                    <Text style={styles.periodSummaryPrimary}>
+                      {periodSummary.primary}
+                    </Text>
+                    {periodSummary.secondary ? (
+                      <Subtle style={styles.periodSummarySecondary}>
+                        {periodSummary.secondary}
+                      </Subtle>
+                    ) : null}
+                  </View>
+                  <Pressable
+                    onPress={() => shiftCurrentPeriod(1)}
+                    style={({ pressed }) => [
+                      styles.periodNavButton,
+                      pressed ? styles.periodNavButtonPressed : null,
+                    ]}
+                  >
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.text} />
+                  </Pressable>
+                </View>
               </AppCard>
-
-              {viewMode === 'weekly' ? (
-                <AppCard style={styles.compactNavCard}>
-                  <View style={[styles.headerRow, styles.compactHeaderRow]}>
-                    <AppButton
-                      title={strings.prev}
-                      onPress={() => setAnchorDate(addDays(anchorDate, -7))}
-                      variant="ghost"
-                    />
-                    <Text style={styles.dailyHeaderText}>
-                      {strings.weekLabel} {isoWeek} · {year}
-                    </Text>
-                    <AppButton
-                      title={strings.next}
-                      onPress={() => setAnchorDate(addDays(anchorDate, 7))}
-                      variant="ghost"
-                    />
-                  </View>
-                  <Subtle>
-                    {formatDayLabel(weekStart, 0)} — {formatDayLabel(weekEnd, 6)}
-                  </Subtle>
-                </AppCard>
-              ) : null}
-
-              {viewMode === 'daily' ? (
-                <AppCard style={styles.compactNavCard}>
-                  <View style={[styles.headerRow, styles.compactHeaderRow]}>
-                    <AppButton
-                      title={strings.prev}
-                      onPress={() => setAnchorDate(addDays(anchorDate, -1))}
-                      variant="ghost"
-                    />
-                    <Text style={styles.dailyHeaderText}>
-                      {formatRelativeDailyNavLabel(anchorDate)}
-                    </Text>
-                    <AppButton
-                      title={strings.next}
-                      onPress={() => setAnchorDate(addDays(anchorDate, 1))}
-                      variant="ghost"
-                    />
-                  </View>
-                  <Subtle style={styles.navSubLabel}>
-                    {strings.weekLabel} {isoWeek} · {year}
-                  </Subtle>
-                </AppCard>
-              ) : null}
-
-              {viewMode === 'monthly' ? (
-                <AppCard style={styles.compactNavCard}>
-                  <View style={[styles.headerRow, styles.compactHeaderRow]}>
-                    <AppButton
-                      title={strings.prev}
-                      onPress={() => setAnchorDate(addDays(anchorDate, -30))}
-                      variant="ghost"
-                    />
-                    <Text style={styles.dailyHeaderText}>{formatMonthLabel(anchorDate)}</Text>
-                    <AppButton
-                      title={strings.next}
-                      onPress={() => setAnchorDate(addDays(anchorDate, 30))}
-                      variant="ghost"
-                    />
-                  </View>
-                </AppCard>
-              ) : null}
 
               {showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
               {plan.error ? <Text style={styles.error}>{plan.error}</Text> : null}
 
               {shouldRenderPlanViews ? (
-                <>
-                  {viewMode === 'weekly' ? (
-                    <MealsWeeklyView
-                      weekStart={weekStart}
-                      mealsByDay={mealsByDay}
-                      onOpenEditor={actions.openEditor}
-                      formatDayLabel={formatDayLabel}
-                      DAY_LABELS={DAY_LABELS}
-                      MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+                surfaceMode === 'week' ? (
+                  <MealsWeeklyView
+                    weekStart={weekStart}
+                    mealsByDay={mealsByDay}
+                    onOpenDay={openDayDetail}
+                    onOpenEditor={actions.openEditor}
+                    formatDayLabel={formatDayLabel}
+                    DAY_LABELS={DAY_LABELS}
+                    MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+                    styles={styles}
+                    emptyText={strings.noMeals}
+                    todayLabel={strings.todayLabel}
+                  />
+                ) : (
+                  <AppCard style={styles.calendarCard}>
+                    <Subtle>{strings.monthlyOverview}</Subtle>
+                    <MealsMonthlyView
+                      monthGridCells={monthGridCells}
+                      monthMealCountByDateKey={monthMealCountByDateKey}
+                      toDateKey={toDateKey}
+                      isTodayDate={isTodayDate}
                       styles={styles}
-                      emptyText={strings.noMeals}
+                      onPressDay={(date) => {
+                        openDayDetail(new Date(date.getTime()), { fromCalendar: true });
+                      }}
+                      weekdayLabels={DAY_LABELS}
                     />
-                  ) : null}
-
-                  {viewMode === 'daily' ? (
-                    <MealsDailyView
-                      dailyDayNumber={dailyDayNumber}
-                      dailyMeals={dailyMeals}
-                      onOpenEditor={actions.openEditor}
-                      MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-                      styles={styles}
-                      emptyText={strings.noMeals}
-                      title={strings.title}
-                    />
-                  ) : null}
-
-                  {viewMode === 'monthly' ? (
-                    <AppCard>
-                      <MealsMonthlyView
-                        monthGridCells={monthGridCells}
-                        monthMealCountByDateKey={monthMealCountByDateKey}
-                        toDateKey={toDateKey}
-                        isTodayDate={isTodayDate}
-                        styles={styles}
-                        onPressDay={(date) => {
-                          setAnchorDate(new Date(date.getTime()));
-                          setViewMode('weekly');
-                        }}
-                        weekdayLabels={DAY_LABELS}
-                      />
-                    </AppCard>
-                  ) : null}
-                </>
+                  </AppCard>
+                )
               ) : null}
             </View>
           </ScrollView>
         </View>
       </View>
 
-      {viewMode === 'daily' ? (
-        <Pressable
-          style={[styles.fab, { bottom: theme.spacing.lg + insets.bottom }]}
-          onPress={() => actions.openEditor(dailyDayNumber, 'DINNER')}
-        >
-          <Text style={styles.fabLabel}>+</Text>
-        </Pressable>
+      {selectedDayDetail ? (
+        <MealDayDetailSheet
+          title={selectedDayDetail.title}
+          subtitle={selectedDayDetail.subtitle}
+          meals={selectedDayMeals}
+          mealTypeLabels={MEAL_TYPE_LABELS}
+          isLoading={isDayDetailLoading}
+          error={dayDetailError}
+          onOpenMeal={openMealFromDayDetail}
+          onClose={closeDayDetail}
+          strings={{
+            title: strings.title,
+            close: strings.close,
+            loadingDay: strings.loadingDay,
+            emptyDay: strings.noMealsThisDay,
+            addMeal: strings.planMealSlot,
+            mealsLabel: strings.mealsLabel,
+            mealHint: strings.mealHint,
+            mealActionHint: strings.mealActionHint,
+          }}
+        />
       ) : null}
 
       {editor.isOpen ? (
@@ -511,18 +569,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentInner: {
-    gap: theme.spacing.md,
-  },
-  headerCard: {
-    gap: theme.spacing.xs,
-  },
-  navCard: {
     gap: theme.spacing.sm,
   },
-  compactNavCard: {
+  controlsCard: {
     gap: theme.spacing.xs,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
   },
   contentOffset: {
     flex: 1,
@@ -537,68 +589,127 @@ const styles = StyleSheet.create({
   mainScrollContent: {
     paddingBottom: theme.spacing.md,
   },
-  viewSwitchRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  headerRow: {
+  controlsHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: theme.spacing.sm,
   },
-  compactHeaderRow: {
+  controlsHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  controlsEyebrow: {
+    ...textStyles.subtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    color: theme.colors.feature.meals,
+    fontWeight: '700',
+  },
+  periodControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: theme.spacing.xs,
   },
-  headerText: {
-    ...textStyles.h2,
+  periodNavButton: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
-  dailyHeaderText: {
-    ...textStyles.h2,
-    textTransform: 'capitalize',
+  periodNavButtonPressed: {
+    opacity: 0.72,
   },
-  navSubLabel: {
-    ...textStyles.subtle,
+  periodSummary: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 1,
+    paddingHorizontal: theme.spacing.xs,
+  },
+  periodSummaryPrimary: {
+    ...textStyles.h2,
+    textAlign: 'center',
+  },
+  periodSummarySecondary: {
+    textAlign: 'center',
+    fontSize: 12,
   },
   dayList: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
-  dayCard: {
+  weekPlannerCard: {
+    paddingVertical: theme.spacing.sm,
+  },
+  weekPlannerRow: {
+    paddingVertical: theme.spacing.md,
+  },
+  weekPlannerRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  weekPlannerRowPressed: {
+    opacity: 0.76,
+  },
+  dayRowInner: {
     gap: theme.spacing.xs,
   },
   dayHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'baseline',
+    gap: theme.spacing.sm,
   },
   dayLabel: {
     ...textStyles.body,
+    flex: 1,
+    fontWeight: '700',
+  },
+  dayLabelToday: {
+    color: theme.colors.feature.meals,
+  },
+  daySummaryText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontSize: 12,
   },
   mealList: {
     gap: theme.spacing.xs,
-    marginTop: theme.spacing.xs,
-  },
-  dailyMealList: {
-    marginTop: theme.spacing.sm,
+    marginTop: 2,
   },
   mealRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  mealRowPressed: {
+    opacity: 0.76,
+  },
+  mealRowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
   },
   mealTypeBadge: {
+    minWidth: 78,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: theme.spacing.xs,
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: 6,
     borderRadius: theme.radius.pill,
   },
   mealTypeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: theme.colors.text,
   },
@@ -613,25 +724,16 @@ const styles = StyleSheet.create({
   },
   mealTitle: {
     ...textStyles.body,
-  },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  weekTitle: {
-    ...textStyles.body,
-  },
-  weekCount: {
-    ...textStyles.subtle,
+    flex: 1,
+    fontWeight: '500',
   },
   weeklyEmptyText: {
     ...textStyles.subtle,
-    opacity: 0.8,
-    fontSize: 13,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  calendarCard: {
+    gap: theme.spacing.sm,
   },
   monthGridHeaderRow: {
     flexDirection: 'row',
@@ -706,22 +808,4 @@ const styles = StyleSheet.create({
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
   },
-  fab: {
-    position: 'absolute',
-    bottom: theme.spacing.lg,
-    right: theme.spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: theme.radius.circle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.feature.meals,
-    ...theme.elevation.floating,
-  },
-  fabLabel: {
-    fontSize: 28,
-    color: theme.colors.surface,
-    lineHeight: 32,
-  },
 });
-
