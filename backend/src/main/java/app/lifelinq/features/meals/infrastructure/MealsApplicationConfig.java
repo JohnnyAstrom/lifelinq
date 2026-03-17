@@ -2,6 +2,8 @@ package app.lifelinq.features.meals.infrastructure;
 
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.application.RecipeImportApplicationService;
+import app.lifelinq.features.meals.contract.RecipeImportPort;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
@@ -26,6 +28,17 @@ public class MealsApplicationConfig {
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
+        );
+    }
+
+    @Bean
+    public RecipeImportApplicationService recipeImportApplicationService(
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
+            RecipeImportPort recipeImportPort
+    ) {
+        return new RecipeImportApplicationService(
+                ensureGroupMemberUseCase,
+                recipeImportPort
         );
     }
 }

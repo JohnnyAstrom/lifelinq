@@ -2,10 +2,13 @@ package app.lifelinq.features.meals.api;
 
 import app.lifelinq.config.RequestContext;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
+import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
+import app.lifelinq.features.meals.contract.RecipeImportDraftView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import java.util.ArrayList;
@@ -23,9 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class MealsController {
     private final MealsApplicationService mealsApplicationService;
+    private final RecipeImportApplicationService recipeImportApplicationService;
 
-    public MealsController(MealsApplicationService mealsApplicationService) {
+    public MealsController(
+            MealsApplicationService mealsApplicationService,
+            RecipeImportApplicationService recipeImportApplicationService
+    ) {
         this.mealsApplicationService = mealsApplicationService;
+        this.recipeImportApplicationService = recipeImportApplicationService;
     }
 
     @PostMapping("/meals/recipes")
@@ -93,6 +101,20 @@ public class MealsController {
                 toIngredientInputs(request.getIngredients())
         );
         return ResponseEntity.ok(toRecipeResponse(recipe));
+    }
+
+    @PostMapping("/meals/recipes/import-drafts")
+    public ResponseEntity<?> createRecipeImportDraft(@RequestBody CreateRecipeImportDraftRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeImportDraftView draft = recipeImportApplicationService.importRecipeDraft(
+                context.getGroupId(),
+                context.getUserId(),
+                request.getUrl()
+        );
+        return ResponseEntity.ok(toRecipeImportDraftResponse(draft));
     }
 
     @PostMapping({
@@ -246,5 +268,26 @@ public class MealsController {
             ));
         }
         return inputs;
+    }
+
+    private RecipeImportDraftResponse toRecipeImportDraftResponse(RecipeImportDraftView view) {
+        List<RecipeImportDraftIngredientResponse> ingredients = new ArrayList<>();
+        for (RecipeImportDraftIngredientView ingredient : view.ingredients()) {
+            ingredients.add(new RecipeImportDraftIngredientResponse(
+                    ingredient.name(),
+                    ingredient.quantity(),
+                    ingredient.unit(),
+                    ingredient.position()
+            ));
+        }
+        return new RecipeImportDraftResponse(
+                view.name(),
+                view.sourceName(),
+                view.sourceUrl(),
+                view.originKind(),
+                view.shortNote(),
+                view.instructions(),
+                ingredients
+        );
     }
 }

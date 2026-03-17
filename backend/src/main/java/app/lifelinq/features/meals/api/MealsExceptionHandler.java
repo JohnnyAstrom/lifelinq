@@ -3,6 +3,7 @@ package app.lifelinq.features.meals.api;
 import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.meals.application.MealsAccessDeniedException;
 import app.lifelinq.features.meals.application.MealNotFoundException;
+import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
 import app.lifelinq.features.meals.contract.MealsShoppingListNotFoundException;
@@ -51,6 +52,12 @@ public final class MealsExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleDuplicateShoppingItem(MealsShoppingDuplicateItemException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiErrorResponse("DUPLICATE_ITEM", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RecipeImportFailedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRecipeImportFailed(RecipeImportFailedException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ApiErrorResponse("RECIPE_IMPORT_FAILED", ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -14,11 +14,15 @@ import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.application.RecipeImportApplicationService;
+import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
 import app.lifelinq.features.meals.contract.MealsShoppingListNotFoundException;
 import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import app.lifelinq.features.meals.contract.AddMealOutput;
+import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
+import app.lifelinq.features.meals.contract.RecipeImportDraftView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import java.nio.charset.StandardCharsets;
@@ -40,13 +44,15 @@ class MealsControllerTest {
 
     private MockMvc mockMvc;
     private MealsApplicationService mealsApplicationService;
+    private RecipeImportApplicationService recipeImportApplicationService;
     private FakeActiveGroupUserRepository userRepository;
 
     @BeforeEach
     void setUp() {
         userRepository = new FakeActiveGroupUserRepository();
         mealsApplicationService = Mockito.mock(MealsApplicationService.class);
-        MealsController controller = new MealsController(mealsApplicationService);
+        recipeImportApplicationService = Mockito.mock(RecipeImportApplicationService.class);
+        MealsController controller = new MealsController(mealsApplicationService, recipeImportApplicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new MealsExceptionHandler())
                 .addFilters(
@@ -317,6 +323,74 @@ class MealsControllerTest {
                 "Boil water\nCook pasta",
                 List.of()
         );
+    }
+
+    @Test
+    void createRecipeImportDraftReturnsNormalizedDraft() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(recipeImportApplicationService.importRecipeDraft(
+                groupId,
+                userId,
+                "https://example.com/pie"
+        )).thenReturn(new RecipeImportDraftView(
+                "Apple Pie",
+                "Example Kitchen",
+                "https://example.com/pie",
+                "URL_IMPORT",
+                "Weekend dessert",
+                "Mix ingredients\nBake",
+                List.of(
+                        new RecipeImportDraftIngredientView("apple", null, null, 1),
+                        new RecipeImportDraftIngredientView("milk", java.math.BigDecimal.ONE, app.lifelinq.features.meals.contract.IngredientUnitView.DL, 2)
+                )
+        ));
+
+        mockMvc.perform(post("/meals/recipes/import-drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "url":"https://example.com/pie"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Apple Pie"))
+                .andExpect(jsonPath("$.sourceName").value("Example Kitchen"))
+                .andExpect(jsonPath("$.sourceUrl").value("https://example.com/pie"))
+                .andExpect(jsonPath("$.originKind").value("URL_IMPORT"))
+                .andExpect(jsonPath("$.ingredients[1].quantity").value(1))
+                .andExpect(jsonPath("$.ingredients[1].unit").value("DL"));
+
+        verify(recipeImportApplicationService).importRecipeDraft(groupId, userId, "https://example.com/pie");
+    }
+
+    @Test
+    void createRecipeImportDraftReturns422WhenImportFails() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(recipeImportApplicationService.importRecipeDraft(
+                groupId,
+                userId,
+                "https://example.com/broken"
+        )).thenThrow(new RecipeImportFailedException("Could not find structured recipe data at that URL"));
+
+        mockMvc.perform(post("/meals/recipes/import-drafts")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "url":"https://example.com/broken"
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("RECIPE_IMPORT_FAILED"));
     }
 
     private String createToken(UUID userId, Instant exp) throws Exception {

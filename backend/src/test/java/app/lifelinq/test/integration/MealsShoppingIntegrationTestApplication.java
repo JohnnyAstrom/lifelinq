@@ -1,10 +1,12 @@
 package app.lifelinq.test.integration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.group.infrastructure.GroupJpaRepository;
 import app.lifelinq.features.group.infrastructure.GroupPersistenceConfig;
 import app.lifelinq.features.meals.infrastructure.MealsApplicationConfig;
+import app.lifelinq.features.meals.infrastructure.MealsImportConfig;
 import app.lifelinq.features.meals.infrastructure.MealsPersistenceConfig;
 import app.lifelinq.features.meals.infrastructure.WeekPlanJpaRepository;
 import app.lifelinq.features.shopping.infrastructure.ShoppingApplicationConfig;
@@ -38,6 +40,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
         ShoppingPersistenceConfig.class,
         MealsPersistenceConfig.class,
         ShoppingApplicationConfig.class,
+        MealsImportConfig.class,
         MealsApplicationConfig.class
 })
 public class MealsShoppingIntegrationTestApplication {
@@ -81,5 +84,10 @@ public class MealsShoppingIntegrationTestApplication {
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }
