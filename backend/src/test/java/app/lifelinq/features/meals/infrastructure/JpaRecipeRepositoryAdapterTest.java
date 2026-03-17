@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import app.lifelinq.features.meals.domain.Ingredient;
 import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.Recipe;
+import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -32,9 +33,12 @@ class JpaRecipeRepositoryAdapterTest {
                 groupId,
                 "Soup",
                 "Cookbook",
+                "https://example.com/soup",
+                RecipeOriginKind.URL_IMPORT,
                 "Comfort food",
                 "Stir and simmer",
                 Instant.parse("2026-02-01T10:00:00Z"),
+                Instant.parse("2026-02-02T09:00:00Z"),
                 List.of(
                         new Ingredient(
                                 UUID.fromString("00000000-0000-0000-0000-000000000002"),
@@ -60,9 +64,12 @@ class JpaRecipeRepositoryAdapterTest {
         assertThat(loaded.get().getIngredients())
                 .extracting(Ingredient::getName)
                 .containsExactly("Olive Oil", "Tomato");
-        assertThat(loaded.get().getSource()).isEqualTo("Cookbook");
+        assertThat(loaded.get().getSourceName()).isEqualTo("Cookbook");
+        assertThat(loaded.get().getSourceUrl()).isEqualTo("https://example.com/soup");
+        assertThat(loaded.get().getOriginKind()).isEqualTo(RecipeOriginKind.URL_IMPORT);
         assertThat(loaded.get().getShortNote()).isEqualTo("Comfort food");
         assertThat(loaded.get().getInstructions()).isEqualTo("Stir and simmer");
+        assertThat(loaded.get().getUpdatedAt()).isEqualTo(Instant.parse("2026-02-02T09:00:00Z"));
         assertThat(loaded.get().getIngredients().get(0).getQuantity()).isEqualByComparingTo(new BigDecimal("1.5"));
         assertThat(loaded.get().getIngredients().get(0).getUnit()).isEqualTo(IngredientUnit.DL);
     }
@@ -119,9 +126,12 @@ class JpaRecipeRepositoryAdapterTest {
                 groupId,
                 "Soup Updated",
                 "Notebook",
+                "https://example.com/updated-soup",
+                RecipeOriginKind.URL_IMPORT,
                 "Updated note",
                 "Updated instructions",
                 createdAt,
+                Instant.parse("2026-02-03T12:00:00Z"),
                 List.of(
                         new Ingredient(UUID.randomUUID(), "Onion", null, null, 1),
                         new Ingredient(UUID.randomUUID(), "Water", new BigDecimal("1.0"), IngredientUnit.L, 2)
@@ -132,9 +142,12 @@ class JpaRecipeRepositoryAdapterTest {
 
         assertThat(loaded).isPresent();
         assertThat(loaded.get().getName()).isEqualTo("Soup Updated");
-        assertThat(loaded.get().getSource()).isEqualTo("Notebook");
+        assertThat(loaded.get().getSourceName()).isEqualTo("Notebook");
+        assertThat(loaded.get().getSourceUrl()).isEqualTo("https://example.com/updated-soup");
+        assertThat(loaded.get().getOriginKind()).isEqualTo(RecipeOriginKind.URL_IMPORT);
         assertThat(loaded.get().getShortNote()).isEqualTo("Updated note");
         assertThat(loaded.get().getInstructions()).isEqualTo("Updated instructions");
+        assertThat(loaded.get().getUpdatedAt()).isEqualTo(Instant.parse("2026-02-03T12:00:00Z"));
         assertThat(loaded.get().getIngredients())
                 .extracting(Ingredient::getName)
                 .containsExactly("Onion", "Water");

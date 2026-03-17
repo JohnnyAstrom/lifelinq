@@ -66,6 +66,8 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 List.of(
                         new IngredientInput("  Olive   Oil  ", new BigDecimal("2"), IngredientUnit.DL, 1),
                         new IngredientInput("Tomato", null, null, 2)
@@ -109,6 +111,8 @@ class MealsShoppingIntegrationTest {
                 groupId,
                 userId,
                 "Salad",
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -159,6 +163,8 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 List.of(new IngredientInput("Tomato", new BigDecimal("2"), IngredientUnit.PCS, 1))
         );
 
@@ -197,6 +203,8 @@ class MealsShoppingIntegrationTest {
                 groupId,
                 userId,
                 "Soup",
+                null,
+                null,
                 null,
                 null,
                 null,

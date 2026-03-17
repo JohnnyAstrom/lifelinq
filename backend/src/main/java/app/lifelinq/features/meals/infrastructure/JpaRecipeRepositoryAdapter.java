@@ -48,9 +48,12 @@ public class JpaRecipeRepositoryAdapter implements RecipeRepository {
     private RecipeEntity updateManagedEntity(RecipeEntity existing, Recipe recipe) {
         existing.updateContent(
                 recipe.getName(),
-                recipe.getSource(),
+                recipe.getSourceName(),
+                recipe.getSourceUrl(),
+                recipe.getOriginKind(),
                 recipe.getShortNote(),
-                recipe.getInstructions()
+                recipe.getInstructions(),
+                recipe.getUpdatedAt()
         );
         existing.getIngredients().clear();
         ingredientRepository.deleteByRecipeId(recipe.getId());

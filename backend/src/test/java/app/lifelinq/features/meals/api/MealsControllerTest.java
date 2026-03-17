@@ -265,6 +265,8 @@ class MealsControllerTest {
                 userId,
                 "Pasta",
                 "Family notebook",
+                "https://example.com/pasta",
+                "URL_IMPORT",
                 "Quick favorite",
                 "Boil water\nCook pasta",
                 List.of()
@@ -273,9 +275,12 @@ class MealsControllerTest {
                 groupId,
                 "Pasta",
                 "Family notebook",
+                "https://example.com/pasta",
+                "URL_IMPORT",
                 "Quick favorite",
                 "Boil water\nCook pasta",
                 Instant.parse("2026-03-17T10:00:00Z"),
+                Instant.parse("2026-03-17T10:15:00Z"),
                 List.of()
         ));
 
@@ -285,22 +290,29 @@ class MealsControllerTest {
                         .content("""
                                 {
                                   "name":"Pasta",
-                                  "source":"Family notebook",
+                                  "sourceName":"Family notebook",
+                                  "sourceUrl":"https://example.com/pasta",
+                                  "originKind":"URL_IMPORT",
                                   "shortNote":"Quick favorite",
                                   "instructions":"Boil water\\nCook pasta",
                                   "ingredients":[]
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.source").value("Family notebook"))
+                .andExpect(jsonPath("$.sourceName").value("Family notebook"))
+                .andExpect(jsonPath("$.sourceUrl").value("https://example.com/pasta"))
+                .andExpect(jsonPath("$.originKind").value("URL_IMPORT"))
                 .andExpect(jsonPath("$.shortNote").value("Quick favorite"))
-                .andExpect(jsonPath("$.instructions").value("Boil water\nCook pasta"));
+                .andExpect(jsonPath("$.instructions").value("Boil water\nCook pasta"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-03-17T10:15:00Z"));
 
         verify(mealsApplicationService).createRecipe(
                 groupId,
                 userId,
                 "Pasta",
                 "Family notebook",
+                "https://example.com/pasta",
+                "URL_IMPORT",
                 "Quick favorite",
                 "Boil water\nCook pasta",
                 List.of()

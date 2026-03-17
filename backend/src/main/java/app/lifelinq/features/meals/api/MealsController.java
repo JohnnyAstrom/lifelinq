@@ -38,7 +38,9 @@ public class MealsController {
                 context.getGroupId(),
                 context.getUserId(),
                 request.getName(),
-                request.getSource(),
+                request.getSourceName(),
+                request.getSourceUrl(),
+                request.getOriginKind(),
                 request.getShortNote(),
                 request.getInstructions(),
                 toIngredientInputs(request.getIngredients())
@@ -83,7 +85,9 @@ public class MealsController {
                 context.getUserId(),
                 recipeId,
                 request.getName(),
-                request.getSource(),
+                request.getSourceName(),
+                request.getSourceUrl(),
+                request.getOriginKind(),
                 request.getShortNote(),
                 request.getInstructions(),
                 toIngredientInputs(request.getIngredients())
@@ -217,10 +221,13 @@ public class MealsController {
                 view.recipeId(),
                 view.groupId(),
                 view.name(),
-                view.source(),
+                view.sourceName(),
+                view.sourceUrl(),
+                view.originKind(),
                 view.shortNote(),
                 view.instructions(),
                 view.createdAt(),
+                view.updatedAt(),
                 ingredients
         );
     }

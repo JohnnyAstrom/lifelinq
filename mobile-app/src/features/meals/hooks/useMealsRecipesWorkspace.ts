@@ -36,6 +36,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
   const [recipeSource, setRecipeSource] = useState('');
+  const [recipeSourceUrl, setRecipeSourceUrl] = useState<string | null>(null);
+  const [recipeOriginKind, setRecipeOriginKind] = useState('MANUAL');
   const [recipeShortNote, setRecipeShortNote] = useState('');
   const [recipeInstructions, setRecipeInstructions] = useState('');
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
@@ -112,7 +114,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   function applyRecipe(recipe: RecipeResponse) {
     setRecipeId(recipe.recipeId);
     setRecipeTitle(recipe.name);
-    setRecipeSource(recipe.source ?? '');
+    setRecipeSource(recipe.sourceName ?? '');
+    setRecipeSourceUrl(recipe.sourceUrl ?? null);
+    setRecipeOriginKind(recipe.originKind);
     setRecipeShortNote(recipe.shortNote ?? '');
     setRecipeInstructions(recipe.instructions ?? '');
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
@@ -150,6 +154,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeId(null);
     setRecipeTitle('');
     setRecipeSource('');
+    setRecipeSourceUrl(null);
+    setRecipeOriginKind('MANUAL');
     setRecipeShortNote('');
     setRecipeInstructions('');
     setIngredientRows([]);
@@ -216,7 +222,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     try {
       const request = {
         name: recipeTitle.trim(),
-        source: recipeSource.trim() || null,
+        sourceName: recipeSource.trim() || null,
+        sourceUrl: recipeSourceUrl,
+        originKind: recipeOriginKind,
         shortNote: recipeShortNote.trim() || null,
         instructions: recipeInstructions.trim() || null,
         ingredients: toIngredientRequests(ingredientRows),

@@ -4,7 +4,9 @@ import java.util.List;
 
 public final class CreateOrUpdateRecipeRequest {
     private String name;
-    private String source;
+    private String sourceName;
+    private String sourceUrl;
+    private String originKind;
     private String shortNote;
     private String instructions;
     private List<IngredientRequest> ingredients;
@@ -17,8 +19,16 @@ public final class CreateOrUpdateRecipeRequest {
         return ingredients;
     }
 
-    public String getSource() {
-        return source;
+    public String getSourceName() {
+        return sourceName;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
+    }
+
+    public String getOriginKind() {
+        return originKind;
     }
 
     public String getShortNote() {

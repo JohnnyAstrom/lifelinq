@@ -15,6 +15,7 @@ import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.PlannedMeal;
 import app.lifelinq.features.meals.domain.Recipe;
+import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
@@ -73,20 +74,26 @@ public class MealsApplicationService {
             UUID groupId,
             UUID actorUserId,
             String name,
-            String source,
+            String sourceName,
+            String sourceUrl,
+            String originKind,
             String shortNote,
             String instructions,
             List<IngredientInput> ingredients
     ) {
         ensureMealAccess(groupId, actorUserId);
+        Instant now = clock.instant();
         Recipe recipe = new Recipe(
                 UUID.randomUUID(),
                 groupId,
                 normalizeRecipeName(name),
-                normalizeOptionalRecipeText(source),
+                normalizeOptionalRecipeText(sourceName),
+                normalizeOptionalRecipeUrl(sourceUrl),
+                normalizeOriginKind(originKind),
                 normalizeOptionalRecipeText(shortNote),
                 normalizeOptionalInstructions(instructions),
-                clock.instant(),
+                now,
+                now,
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(recipe));
@@ -121,7 +128,9 @@ public class MealsApplicationService {
             UUID actorUserId,
             UUID recipeId,
             String name,
-            String source,
+            String sourceName,
+            String sourceUrl,
+            String originKind,
             String shortNote,
             String instructions,
             List<IngredientInput> ingredients
@@ -132,10 +141,13 @@ public class MealsApplicationService {
                 existing.getId(),
                 existing.getGroupId(),
                 normalizeRecipeName(name),
-                normalizeOptionalRecipeText(source),
+                normalizeOptionalRecipeText(sourceName),
+                sourceUrl == null ? existing.getSourceUrl() : normalizeOptionalRecipeUrl(sourceUrl),
+                originKind == null ? existing.getOriginKind() : normalizeOriginKind(originKind),
                 normalizeOptionalRecipeText(shortNote),
                 normalizeOptionalInstructions(instructions),
                 existing.getCreatedAt(),
+                clock.instant(),
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(updated));
@@ -289,6 +301,25 @@ public class MealsApplicationService {
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private String normalizeOptionalRecipeUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private RecipeOriginKind normalizeOriginKind(String value) {
+        if (value == null) {
+            return RecipeOriginKind.MANUAL;
+        }
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            return RecipeOriginKind.MANUAL;
+        }
+        return RecipeOriginKind.valueOf(normalized);
+    }
+
     private List<Ingredient> toDomainIngredients(List<IngredientInput> inputs) {
         if (inputs == null) {
             throw new IllegalArgumentException("ingredients must not be null");
@@ -327,10 +358,13 @@ public class MealsApplicationService {
                 recipe.getId(),
                 recipe.getGroupId(),
                 recipe.getName(),
-                recipe.getSource(),
+                recipe.getSourceName(),
+                recipe.getSourceUrl(),
+                recipe.getOriginKind().name(),
                 recipe.getShortNote(),
                 recipe.getInstructions(),
                 recipe.getCreatedAt(),
+                recipe.getUpdatedAt(),
                 ingredients
         );
     }

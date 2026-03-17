@@ -1,8 +1,11 @@
 package app.lifelinq.features.meals.infrastructure;
 
+import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
@@ -31,8 +34,15 @@ public class RecipeEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "source")
-    private String source;
+    @Column(name = "source_name")
+    private String sourceName;
+
+    @Column(name = "source_url", length = 1000)
+    private String sourceUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origin_kind", nullable = false, length = 32)
+    private RecipeOriginKind originKind;
 
     @Column(name = "short_note", length = 1000)
     private String shortNote;
@@ -43,6 +53,9 @@ public class RecipeEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC, id ASC")
     private List<RecipeIngredientEntity> ingredients = new ArrayList<>();
@@ -50,14 +63,28 @@ public class RecipeEntity {
     protected RecipeEntity() {
     }
 
-    RecipeEntity(UUID id, UUID groupId, String name, String source, String shortNote, String instructions, Instant createdAt) {
+    RecipeEntity(
+            UUID id,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
         this.id = id;
         this.groupId = groupId;
         this.name = name;
-        this.source = source;
+        this.sourceName = sourceName;
+        this.sourceUrl = sourceUrl;
+        this.originKind = originKind;
         this.shortNote = shortNote;
         this.instructions = instructions;
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     UUID getId() {
@@ -72,8 +99,16 @@ public class RecipeEntity {
         return name;
     }
 
-    String getSource() {
-        return source;
+    String getSourceName() {
+        return sourceName;
+    }
+
+    String getSourceUrl() {
+        return sourceUrl;
+    }
+
+    RecipeOriginKind getOriginKind() {
+        return originKind;
     }
 
     String getShortNote() {
@@ -88,15 +123,30 @@ public class RecipeEntity {
         return createdAt;
     }
 
+    Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
     List<RecipeIngredientEntity> getIngredients() {
         return ingredients;
     }
 
-    void updateContent(String name, String source, String shortNote, String instructions) {
+    void updateContent(
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String shortNote,
+            String instructions,
+            Instant updatedAt
+    ) {
         this.name = name;
-        this.source = source;
+        this.sourceName = sourceName;
+        this.sourceUrl = sourceUrl;
+        this.originKind = originKind;
         this.shortNote = shortNote;
         this.instructions = instructions;
+        this.updatedAt = updatedAt;
     }
 
     void replaceIngredients(List<RecipeIngredientEntity> ingredients) {

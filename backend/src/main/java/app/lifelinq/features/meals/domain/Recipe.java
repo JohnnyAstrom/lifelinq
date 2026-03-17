@@ -12,24 +12,55 @@ public final class Recipe {
     private final UUID id;
     private final UUID groupId;
     private final String name;
-    private final String source;
+    private final String sourceName;
+    private final String sourceUrl;
+    private final RecipeOriginKind originKind;
     private final String shortNote;
     private final String instructions;
     private final Instant createdAt;
+    private final Instant updatedAt;
     private final List<Ingredient> ingredients;
 
     public Recipe(UUID id, UUID groupId, String name, Instant createdAt, List<Ingredient> ingredients) {
-        this(id, groupId, name, null, null, null, createdAt, ingredients);
+        this(id, groupId, name, null, null, RecipeOriginKind.MANUAL, null, null, createdAt, createdAt, ingredients);
     }
 
     public Recipe(
             UUID id,
             UUID groupId,
             String name,
-            String source,
+            String sourceName,
             String shortNote,
             String instructions,
             Instant createdAt,
+            List<Ingredient> ingredients
+    ) {
+        this(
+                id,
+                groupId,
+                name,
+                sourceName,
+                null,
+                RecipeOriginKind.MANUAL,
+                shortNote,
+                instructions,
+                createdAt,
+                createdAt,
+                ingredients
+        );
+    }
+
+    public Recipe(
+            UUID id,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt,
             List<Ingredient> ingredients
     ) {
         if (id == null) {
@@ -43,6 +74,12 @@ public final class Recipe {
         }
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt must not be null");
+        }
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt must not be null");
+        }
+        if (updatedAt.isBefore(createdAt)) {
+            throw new IllegalArgumentException("updatedAt must not be before createdAt");
         }
         if (ingredients == null) {
             throw new IllegalArgumentException("ingredients must not be null");
@@ -67,10 +104,13 @@ public final class Recipe {
         this.id = id;
         this.groupId = groupId;
         this.name = name.trim();
-        this.source = normalizeOptionalText(source);
+        this.sourceName = normalizeOptionalText(sourceName);
+        this.sourceUrl = normalizeOptionalText(sourceUrl);
+        this.originKind = originKind == null ? RecipeOriginKind.MANUAL : originKind;
         this.shortNote = normalizeOptionalText(shortNote);
         this.instructions = normalizeOptionalText(instructions);
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
         this.ingredients = List.copyOf(normalizedIngredients);
     }
 
@@ -94,8 +134,16 @@ public final class Recipe {
         return name;
     }
 
-    public String getSource() {
-        return source;
+    public String getSourceName() {
+        return sourceName;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
+    }
+
+    public RecipeOriginKind getOriginKind() {
+        return originKind;
     }
 
     public String getShortNote() {
@@ -108,6 +156,10 @@ public final class Recipe {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 
     public List<Ingredient> getIngredients() {

@@ -197,6 +197,8 @@ class MealsApplicationServiceTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 List.of(
                         new IngredientInput("Milk", null, null, 1),
                         new IngredientInput("Water", null, null, 1)
@@ -223,14 +225,19 @@ class MealsApplicationServiceTest {
                 userId,
                 "Recipe",
                 "Grandma's notebook",
+                "https://example.com/grandma-recipe",
+                "URL_IMPORT",
                 "Best for weekends",
                 "Mix ingredients\nBake for 20 minutes",
                 List.of()
         );
 
-        assertThat(created.source()).isEqualTo("Grandma's notebook");
+        assertThat(created.sourceName()).isEqualTo("Grandma's notebook");
+        assertThat(created.sourceUrl()).isEqualTo("https://example.com/grandma-recipe");
+        assertThat(created.originKind()).isEqualTo("URL_IMPORT");
         assertThat(created.shortNote()).isEqualTo("Best for weekends");
         assertThat(created.instructions()).isEqualTo("Mix ingredients\nBake for 20 minutes");
+        assertThat(created.updatedAt()).isEqualTo(Instant.parse("2026-02-01T10:00:00Z"));
     }
 
     @Test
