@@ -14,11 +14,13 @@ import {
 } from './MealIngredientEditorRow';
 
 type Strings = MealIngredientEditorRowStrings & {
+  eyebrow: string;
   title: string;
   subtitle?: string;
-  recipeLabel: string;
   newRecipeLabel: string;
   usingRecipeLabel: string;
+  newRecipeTitle: string;
+  recipeContextHint?: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
   ingredientsLabel: string;
@@ -67,6 +69,9 @@ export function MealRecipeDetailSheet({
 }: Props) {
   const [activeRowId, setActiveRowId] = useState<string | null>(ingredientRows[0]?.id ?? null);
   const previousRowCountRef = useRef(ingredientRows.length);
+  const resolvedTitle = recipeTitle.trim().length > 0
+    ? recipeTitle.trim()
+    : strings.newRecipeTitle;
 
   useEffect(() => {
     const previousCount = previousRowCountRef.current;
@@ -97,8 +102,22 @@ export function MealRecipeDetailSheet({
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
         <View style={styles.header}>
-          <Text style={textStyles.h2}>{strings.title}</Text>
+          <Text style={styles.eyebrow}>{strings.eyebrow}</Text>
+          <Text style={textStyles.h2}>{resolvedTitle}</Text>
           {strings.subtitle ? <Subtle>{strings.subtitle}</Subtle> : null}
+          <View style={styles.headerMeta}>
+            <View style={styles.identityBadge}>
+              <Text style={styles.identityBadgeText}>
+                {hasExistingRecipe ? strings.usingRecipeLabel : strings.newRecipeLabel}
+              </Text>
+            </View>
+            {strings.recipeContextHint ? (
+              <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
+            ) : null}
+            {showSaveAsNewRecipeHint && strings.saveAsNewRecipeHint ? (
+              <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.body}>
@@ -108,18 +127,6 @@ export function MealRecipeDetailSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{strings.recipeLabel}</Text>
-              <View style={styles.identityBadge}>
-                <Text style={styles.identityBadgeText}>
-                  {hasExistingRecipe ? strings.usingRecipeLabel : strings.newRecipeLabel}
-                </Text>
-              </View>
-              {showSaveAsNewRecipeHint && strings.saveAsNewRecipeHint ? (
-                <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
-              ) : null}
-            </View>
-
             <View style={styles.section}>
               <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
               <AppInput
@@ -208,7 +215,18 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    gap: 2,
+    gap: theme.spacing.xs,
+  },
+  eyebrow: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.meals,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    fontWeight: '700',
+  },
+  headerMeta: {
+    gap: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
   },
   body: {
     flexShrink: 1,
@@ -227,11 +245,6 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: theme.spacing.sm,
-  },
-  sectionLabel: {
-    ...textStyles.subtle,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
   fieldLabel: {
     ...textStyles.subtle,
@@ -262,6 +275,10 @@ const styles = StyleSheet.create({
     ...textStyles.subtle,
     color: theme.colors.text,
     fontWeight: '600',
+  },
+  contextHint: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   ingredientsHint: {
     ...textStyles.subtle,

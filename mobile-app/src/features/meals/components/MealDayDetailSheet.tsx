@@ -18,9 +18,12 @@ type Strings = {
   loadingDay: string;
   emptyDay: string;
   addMeal: string;
+  editMeal: string;
   mealsLabel: string;
   mealHint: string;
   mealActionHint: string;
+  recipeLabel: string;
+  openRecipe: string;
 };
 
 type Props = {
@@ -31,6 +34,7 @@ type Props = {
   isLoading: boolean;
   error: string | null;
   onOpenMeal: (mealType: MealType) => void;
+  onOpenRecipe: (mealType: MealType) => void;
   onClose: () => void;
   strings: Strings;
 };
@@ -45,6 +49,7 @@ export function MealDayDetailSheet({
   isLoading,
   error,
   onOpenMeal,
+  onOpenRecipe,
   onClose,
   strings,
 }: Props) {
@@ -70,23 +75,40 @@ export function MealDayDetailSheet({
               {MEAL_TYPES.map((mealType) => {
                 const meal = mealsByType.get(mealType) ?? null;
                 return (
-                  <Pressable
-                    key={mealType}
-                    onPress={() => onOpenMeal(mealType)}
-                    style={({ pressed }) => [
-                      styles.slotRow,
-                      pressed ? styles.slotRowPressed : null,
-                    ]}
-                  >
-                    <View style={styles.slotHeader}>
-                      <Text style={styles.slotLabel}>{mealTypeLabels[mealType]}</Text>
-                      <Text style={styles.slotActionText}>{meal ? 'Edit' : 'Plan'}</Text>
-                    </View>
-                    <Text style={meal ? styles.slotValue : styles.slotEmptyValue}>
-                      {meal ? meal.recipeTitle : `${strings.addMeal} ${mealTypeLabels[mealType].toLowerCase()}`}
-                    </Text>
-                    <Text style={styles.slotHint}>{meal ? strings.mealHint : strings.mealActionHint}</Text>
-                  </Pressable>
+                  <View key={mealType} style={styles.slotRow}>
+                    <Pressable
+                      onPress={() => onOpenMeal(mealType)}
+                      style={({ pressed }) => [
+                        styles.slotMainPressable,
+                        pressed ? styles.slotRowPressed : null,
+                      ]}
+                    >
+                      <View style={styles.slotHeader}>
+                        <Text style={styles.slotLabel}>{mealTypeLabels[mealType]}</Text>
+                        <Text style={styles.slotActionText}>
+                          {meal ? strings.editMeal : strings.addMeal}
+                        </Text>
+                      </View>
+                      <Text style={meal ? styles.slotValue : styles.slotEmptyValue}>
+                        {meal ? meal.recipeTitle : `${strings.addMeal} ${mealTypeLabels[mealType].toLowerCase()}`}
+                      </Text>
+                      <Text style={styles.slotHint}>{meal ? strings.mealHint : strings.mealActionHint}</Text>
+                    </Pressable>
+                    {meal ? (
+                      <View style={styles.recipeRow}>
+                        <Text style={styles.recipeLabel}>{strings.recipeLabel}</Text>
+                        <Pressable
+                          onPress={() => onOpenRecipe(mealType)}
+                          style={({ pressed }) => [
+                            styles.recipeAction,
+                            pressed ? styles.recipeActionPressed : null,
+                          ]}
+                        >
+                          <Text style={styles.recipeActionText}>{strings.openRecipe}</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                  </View>
                 );
               })}
               {meals.length === 0 ? <Subtle>{strings.emptyDay}</Subtle> : null}
@@ -148,10 +170,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   slotRow: {
-    gap: 2,
+    gap: theme.spacing.xs,
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  slotMainPressable: {
+    gap: 2,
   },
   slotRowPressed: {
     opacity: 0.72,
@@ -181,6 +206,30 @@ const styles = StyleSheet.create({
   },
   slotHint: {
     ...textStyles.subtle,
+  },
+  recipeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+    paddingTop: 2,
+  },
+  recipeLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  recipeAction: {
+    paddingVertical: 2,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: theme.radius.pill,
+  },
+  recipeActionPressed: {
+    opacity: 0.72,
+  },
+  recipeActionText: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.meals,
+    fontWeight: '700',
   },
   footer: {
     gap: theme.spacing.xs,

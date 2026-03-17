@@ -125,10 +125,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     todayLabel: 'Today',
     planMealTitle: 'Plan a meal',
     planMealSlot: 'Plan',
+    editMealSlot: 'Edit meal',
     planningLabel: 'Planning',
     mealsLabel: 'Meals',
-    mealHint: 'Tap to edit this meal.',
+    mealHint: 'Tap to edit this planned meal.',
     mealActionHint: 'Tap to plan this meal.',
+    recipeLinkLabel: 'Recipe',
+    openRecipeFromDay: 'Recipe',
     dayLabel: 'Day',
     mealTypeLabel: 'Meal',
     recipeLabel: 'Recipe',
@@ -140,8 +143,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     addRecipeDetails: 'Add recipe details',
     recipeSummaryHint: 'No recipe details yet.',
     loadingRecipe: 'Loading recipe...',
+    recipeSheetEyebrow: 'Recipe',
     recipeSheetTitle: 'Recipe',
-    recipeSheetSubtitle: 'Recipe changes stay inside this meal flow until you save the meal.',
+    recipeSheetSubtitle: 'Review and edit the recipe used for this meal.',
+    recipeSheetNewRecipeTitle: 'New recipe',
+    recipeSheetContextHint: 'This is the recipe behind the planned meal.',
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
     saveAsNewRecipeHint: 'Changes will be saved as a new recipe for this meal.',
@@ -181,6 +187,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     date: Date;
     dayOfWeek: number;
     mealType: MealType;
+    target: 'slot' | 'recipe';
   } | null>(null);
   const [selectedDayPlan, setSelectedDayPlan] = useState<WeekPlanResponse | null>(null);
   const [isSelectedDayPlanLoading, setIsSelectedDayPlanLoading] = useState(false);
@@ -388,8 +395,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       return;
     }
     actions.openEditor(pendingDayEditorOpen.dayOfWeek, pendingDayEditorOpen.mealType);
+    if (pendingDayEditorOpen.target === 'recipe') {
+      editor.openRecipeDetail();
+    }
     setPendingDayEditorOpen(null);
-  }, [actions, pendingDayEditorOpen, plan.data]);
+  }, [actions.openEditor, editor.openRecipeDetail, pendingDayEditorOpen, plan.data]);
 
   function openDayDetail(date: Date) {
     const nextDate = new Date(date.getTime());
@@ -411,6 +421,21 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       date: selectedDayDetail.date,
       dayOfWeek: selectedDayDetail.dayOfWeek,
       mealType,
+      target: 'slot',
+    });
+    setAnchorDate(selectedDayDetail.date);
+    setSelectedDayDetailDate(null);
+  }
+
+  function openRecipeFromDayDetail(mealType: MealType) {
+    if (!selectedDayDetail) {
+      return;
+    }
+    setPendingDayEditorOpen({
+      date: selectedDayDetail.date,
+      dayOfWeek: selectedDayDetail.dayOfWeek,
+      mealType,
+      target: 'recipe',
     });
     setAnchorDate(selectedDayDetail.date);
     setSelectedDayDetailDate(null);
@@ -571,6 +596,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           isLoading={isDayDetailLoading}
           error={dayDetailError}
           onOpenMeal={openMealFromDayDetail}
+          onOpenRecipe={openRecipeFromDayDetail}
           onClose={closeDayDetail}
           strings={{
             title: strings.title,
@@ -578,9 +604,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             loadingDay: strings.loadingDay,
             emptyDay: strings.noMealsThisDay,
             addMeal: strings.planMealSlot,
+            editMeal: strings.editMealSlot,
             mealsLabel: strings.mealsLabel,
             mealHint: strings.mealHint,
             mealActionHint: strings.mealActionHint,
+            recipeLabel: strings.recipeLinkLabel,
+            openRecipe: strings.openRecipeFromDay,
           }}
         />
       ) : null}
@@ -651,11 +680,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onToggleIngredientUnit={editor.setIngredientUnit}
           onClose={editor.closeRecipeDetail}
           strings={{
+            eyebrow: strings.recipeSheetEyebrow,
             title: strings.recipeSheetTitle,
             subtitle: strings.recipeSheetSubtitle,
-            recipeLabel: strings.recipeLabel,
             newRecipeLabel: strings.newRecipeLabel,
             usingRecipeLabel: strings.usingRecipeLabel,
+            newRecipeTitle: strings.recipeSheetNewRecipeTitle,
+            recipeContextHint: strings.recipeSheetContextHint,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
             ingredientsLabel: strings.ingredientsLabel,
