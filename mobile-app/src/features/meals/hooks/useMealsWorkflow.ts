@@ -103,6 +103,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [availableRecipes, setAvailableRecipes] = useState<RecipeResponse[] | null>(null);
   const [loadedRecipeId, setLoadedRecipeId] = useState<string | null>(null);
   const [pickedRecipeSnapshot, setPickedRecipeSnapshot] = useState<RecipeSnapshot | null>(null);
+  const [isEditingSavedRecipeDirectly, setIsEditingSavedRecipeDirectly] = useState(false);
   const [pendingEditorAction, setPendingEditorAction] = useState<EditorPendingAction>(null);
 
   const effectiveListId =
@@ -169,6 +170,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         || ingredient.position !== current.position;
     });
   }, [currentRecipeDraft, pickedRecipeSnapshot]);
+  const canEnterSavedRecipeEditMode = !!selectedMealRecipeId
+    && !!pickedRecipeSnapshot
+    && !hasModifiedPickedRecipe
+    && !isEditingSavedRecipeDirectly;
 
   function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
@@ -184,6 +189,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
     setPickedRecipeSnapshot(null);
+    setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
     setShoppingSyncError(null);
     setRecipeListError(null);
@@ -210,6 +216,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
     setLoadedRecipeId(recipe.recipeId);
     setPickedRecipeSnapshot(toRecipeSnapshot(recipe));
+    setIsEditingSavedRecipeDirectly(false);
     setShoppingSyncError(null);
   }
 
@@ -287,6 +294,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
     setPickedRecipeSnapshot(null);
+    setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
   }
 
@@ -309,6 +317,13 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return;
     }
     setIsRecipeDetailOpen(false);
+  }
+
+  function startEditingSavedRecipeDirectly() {
+    if (!canEnterSavedRecipeEditMode || pendingEditorAction) {
+      return;
+    }
+    setIsEditingSavedRecipeDirectly(true);
   }
 
   async function loadRecipeOptions(force = false) {
@@ -452,6 +467,19 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       let recipeId = selectedMealRecipeId;
       if (recipeId && pickedRecipeSnapshot && !hasModifiedPickedRecipe) {
         // Reusing an existing saved recipe unchanged keeps the original recipe as-is.
+      } else if (recipeId && pickedRecipeSnapshot && isEditingSavedRecipeDirectly) {
+        const updated = await updateRecipe(
+          recipeId,
+          {
+            name: currentRecipeDraft.name,
+            ingredients,
+          },
+          { token }
+        );
+        setAvailableRecipes((current) => {
+          const others = (current ?? []).filter((entry) => entry.recipeId !== updated.recipeId);
+          return [...others, updated];
+        });
       } else if (recipeId && !hasModifiedPickedRecipe) {
         const updated = await updateRecipe(
           recipeId,
@@ -593,6 +621,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       recipeListError,
       recipePickerOptions,
       hasModifiedPickedRecipe,
+      canEnterSavedRecipeEditMode,
+      isEditingSavedRecipeDirectly,
       hasIngredients,
       shoppingReviewIngredients,
       selectedShoppingIngredientRowIds,
@@ -609,6 +639,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setRecipeTitle,
       openRecipeDetail,
       closeRecipeDetail,
+      startEditingSavedRecipeDirectly,
       openRecipePicker,
       closeRecipePicker,
       loadRecipeOptions,

@@ -20,10 +20,13 @@ type Strings = MealIngredientEditorRowStrings & {
   newRecipeLabel: string;
   usingRecipeLabel: string;
   mealSpecificRecipeLabel: string;
+  editingSavedRecipeLabel: string;
   newRecipeTitle: string;
   recipeContextHint?: string;
   mealAttachmentLabel: string;
   mealAttachmentValue: string;
+  editSavedRecipeAction: string;
+  editingSavedRecipeHint?: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
   ingredientsLabel: string;
@@ -43,12 +46,15 @@ type Props = {
   hasExistingRecipe: boolean;
   hasIngredients: boolean;
   showSaveAsNewRecipeHint: boolean;
+  canEnterSavedRecipeEditMode: boolean;
+  isEditingSavedRecipeDirectly: boolean;
   isActionPending: boolean;
   onAddIngredientRow: () => void;
   onRemoveIngredientRow: (rowId: string) => void;
   onChangeIngredientName: (rowId: string, value: string) => void;
   onChangeIngredientQuantity: (rowId: string, value: string) => void;
   onToggleIngredientUnit: (rowId: string, value: MealIngredientUnit) => void;
+  onStartEditingSavedRecipeDirectly: () => void;
   onClose: () => void;
   strings: Strings;
 };
@@ -61,12 +67,15 @@ export function MealRecipeDetailSheet({
   hasExistingRecipe,
   hasIngredients,
   showSaveAsNewRecipeHint,
+  canEnterSavedRecipeEditMode,
+  isEditingSavedRecipeDirectly,
   isActionPending,
   onAddIngredientRow,
   onRemoveIngredientRow,
   onChangeIngredientName,
   onChangeIngredientQuantity,
   onToggleIngredientUnit,
+  onStartEditingSavedRecipeDirectly,
   onClose,
   strings,
 }: Props) {
@@ -75,9 +84,13 @@ export function MealRecipeDetailSheet({
   const resolvedTitle = recipeTitle.trim().length > 0
     ? recipeTitle.trim()
     : strings.newRecipeTitle;
-  const isMealSpecificDraft = hasExistingRecipe && showSaveAsNewRecipeHint;
+  const isMealSpecificDraft = hasExistingRecipe
+    && showSaveAsNewRecipeHint
+    && !isEditingSavedRecipeDirectly;
   const identityLabel = isMealSpecificDraft
     ? strings.mealSpecificRecipeLabel
+    : isEditingSavedRecipeDirectly
+      ? strings.editingSavedRecipeLabel
     : hasExistingRecipe
       ? strings.usingRecipeLabel
       : strings.newRecipeLabel;
@@ -125,8 +138,19 @@ export function MealRecipeDetailSheet({
             {strings.recipeContextHint ? (
               <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
             ) : null}
-            {showSaveAsNewRecipeHint && strings.saveAsNewRecipeHint ? (
+            {showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && strings.saveAsNewRecipeHint ? (
               <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
+            ) : null}
+            {isEditingSavedRecipeDirectly && strings.editingSavedRecipeHint ? (
+              <Subtle>{strings.editingSavedRecipeHint}</Subtle>
+            ) : null}
+            {canEnterSavedRecipeEditMode ? (
+              <AppButton
+                title={strings.editSavedRecipeAction}
+                onPress={onStartEditingSavedRecipeDirectly}
+                variant="ghost"
+                disabled={isActionPending || isRecipeLoading}
+              />
             ) : null}
           </View>
         </View>

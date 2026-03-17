@@ -145,6 +145,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     newRecipeLabel: 'New recipe',
     usingRecipeLabel: 'Saved recipe',
     mealSpecificRecipeLabel: 'Recipe for this meal',
+    editingSavedRecipeLabel: 'Editing saved recipe',
     useExistingRecipe: 'Use existing',
     changeRecipe: 'Change recipe',
     openRecipe: 'Open recipe',
@@ -157,11 +158,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSheetNewRecipeTitle: 'New recipe',
     recipeSheetSavedRecipeContextHint: 'This meal is using a saved recipe.',
     recipeSheetMealSpecificContextHint: 'Your changes are now creating a recipe for this meal.',
+    recipeSheetEditingSavedRecipeContextHint: 'You are editing the saved recipe used by this meal.',
     recipeSheetNewRecipeContextHint: 'You are adding recipe details for this meal.',
     recipeMealAttachmentLabel: 'Used for',
+    editSavedRecipeAction: 'Edit saved recipe',
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
     saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
+    editingSavedRecipeHint: 'Changes now update the saved recipe itself.',
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'These ingredients belong to the recipe you are planning.',
     recipePickerTitle: 'Choose a recipe',
@@ -689,12 +693,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           hasExistingRecipe={!!editor.selectedMealRecipeId}
           hasIngredients={editor.hasIngredients}
           showSaveAsNewRecipeHint={editor.hasModifiedPickedRecipe}
+          canEnterSavedRecipeEditMode={editor.canEnterSavedRecipeEditMode}
+          isEditingSavedRecipeDirectly={editor.isEditingSavedRecipeDirectly}
           isActionPending={editor.isActionPending}
           onAddIngredientRow={editor.addIngredientRow}
           onRemoveIngredientRow={editor.removeIngredientRow}
           onChangeIngredientName={editor.setIngredientName}
           onChangeIngredientQuantity={editor.setIngredientQuantity}
           onToggleIngredientUnit={editor.setIngredientUnit}
+          onStartEditingSavedRecipeDirectly={editor.startEditingSavedRecipeDirectly}
           onClose={editor.closeRecipeDetail}
           strings={{
             eyebrow: strings.recipeSheetEyebrow,
@@ -703,14 +710,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             newRecipeLabel: strings.newRecipeLabel,
             usingRecipeLabel: strings.usingRecipeLabel,
             mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
+            editingSavedRecipeLabel: strings.editingSavedRecipeLabel,
             newRecipeTitle: strings.recipeSheetNewRecipeTitle,
-            recipeContextHint: editor.selectedMealRecipeId
-              ? editor.hasModifiedPickedRecipe
+            recipeContextHint: editor.isEditingSavedRecipeDirectly
+              ? strings.recipeSheetEditingSavedRecipeContextHint
+              : editor.selectedMealRecipeId
+                ? editor.hasModifiedPickedRecipe
                 ? strings.recipeSheetMealSpecificContextHint
                 : strings.recipeSheetSavedRecipeContextHint
               : strings.recipeSheetNewRecipeContextHint,
             mealAttachmentLabel: strings.recipeMealAttachmentLabel,
             mealAttachmentValue: recipeMealAttachmentValue,
+            editSavedRecipeAction: strings.editSavedRecipeAction,
+            editingSavedRecipeHint: strings.editingSavedRecipeHint,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
             ingredientsLabel: strings.ingredientsLabel,
