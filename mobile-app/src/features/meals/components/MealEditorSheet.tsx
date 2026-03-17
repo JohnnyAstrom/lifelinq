@@ -20,6 +20,8 @@ type MealEditorSheetStrings = {
   recipeLabel: string;
   newRecipeLabel: string;
   usingRecipeLabel: string;
+  useExistingRecipe: string;
+  changeRecipe: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
   ingredientsLabel: string;
@@ -52,6 +54,7 @@ type Props = {
   onChangeRecipeTitle: (value: string) => void;
   ingredientRows: MealIngredientRow[];
   isRecipeLoading: boolean;
+  onOpenRecipePicker: () => void;
   onOpenIngredients: () => void;
   hasIngredients: boolean;
   onOpenShoppingReview: () => void;
@@ -85,6 +88,7 @@ export function MealEditorSheet({
   onChangeRecipeTitle,
   ingredientRows,
   isRecipeLoading,
+  onOpenRecipePicker,
   onOpenIngredients,
   hasIngredients,
   onOpenShoppingReview,
@@ -119,6 +123,9 @@ export function MealEditorSheet({
   const recipeIdentityLabel = hasExistingRecipe
     ? strings.usingRecipeLabel
     : strings.newRecipeLabel;
+  const recipeSelectionActionLabel = hasExistingRecipe
+    ? strings.changeRecipe
+    : strings.useExistingRecipe;
 
   const ingredientEntryHint = !hasIngredients && !isRecipeLoading
     ? strings.addIngredients
@@ -174,11 +181,17 @@ export function MealEditorSheet({
             </View>
             <View style={styles.sectionDivider} />
             <View style={styles.editorSection}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionLabel}>{strings.recipeLabel}</Text>
+              <Text style={styles.sectionLabel}>{strings.recipeLabel}</Text>
+              <View style={styles.recipeMetaRow}>
                 <View style={styles.identityBadge}>
                   <Text style={styles.identityBadgeText}>{recipeIdentityLabel}</Text>
                 </View>
+                <AppButton
+                  title={recipeSelectionActionLabel}
+                  onPress={onOpenRecipePicker}
+                  variant="ghost"
+                  disabled={isActionPending || isRecipeLoading}
+                />
               </View>
               <View style={styles.contextField}>
                 <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
@@ -296,9 +309,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minHeight: 0,
   },
-  daySection: {
-    gap: theme.spacing.xs,
-  },
   editorSection: {
     gap: theme.spacing.sm,
   },
@@ -329,7 +339,7 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.colors.border,
   },
-  sectionHeaderRow: {
+  recipeMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

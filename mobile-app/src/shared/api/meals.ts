@@ -117,6 +117,16 @@ export async function createRecipe(
   );
 }
 
+export async function listRecipes(
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse[]> {
+  return fetchJson<RecipeResponse[]>(
+    '/meals/recipes',
+    {},
+    clientOptions
+  );
+}
+
 export async function getRecipe(
   recipeId: string,
   clientOptions: ApiClientOptions = {}

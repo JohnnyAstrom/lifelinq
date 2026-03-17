@@ -3,6 +3,7 @@ export {
   createRecipe,
   getRecipe,
   getWeekPlan,
+  listRecipes,
   removeMeal,
   updateRecipe,
   type AddMealRequest,

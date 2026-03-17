@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { useShoppingLists } from '../../shopping/hooks/useShoppingLists';
-import { createRecipe, getRecipe, updateRecipe } from '../api/mealsApi';
+import { createRecipe, getRecipe, listRecipes, updateRecipe, type RecipeResponse } from '../api/mealsApi';
 import {
   MEAL_INGREDIENT_UNIT_OPTIONS,
   createEmptyIngredientRow,
@@ -29,6 +29,11 @@ type ShoppingReviewIngredient = {
   position: number;
   name: string;
   amount: string | null;
+};
+type RecipePickerOption = {
+  recipeId: string;
+  name: string;
+  ingredientCount: number;
 };
 
 const MEAL_ORDER = new Map<MealType, number>([
@@ -76,10 +81,15 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
   const [isIngredientEditorOpen, setIsIngredientEditorOpen] = useState(false);
   const [isShoppingReviewOpen, setIsShoppingReviewOpen] = useState(false);
+  const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
+  const [isRecipeListLoading, setIsRecipeListLoading] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [selectedShoppingIngredientRowIds, setSelectedShoppingIngredientRowIds] = useState<string[]>([]);
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
+  const [recipeListError, setRecipeListError] = useState<string | null>(null);
+  const [availableRecipes, setAvailableRecipes] = useState<RecipeResponse[] | null>(null);
+  const [loadedRecipeId, setLoadedRecipeId] = useState<string | null>(null);
   const [pendingEditorAction, setPendingEditorAction] = useState<EditorPendingAction>(null);
 
   const effectiveListId =
@@ -115,6 +125,15 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       .filter((ingredient) => selectedIds.has(ingredient.rowId))
       .map((ingredient) => ingredient.position);
   }, [selectedShoppingIngredientRowIds, shoppingReviewIngredients]);
+  const recipePickerOptions = useMemo<RecipePickerOption[]>(() => {
+    return [...(availableRecipes ?? [])]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((recipe) => ({
+        recipeId: recipe.recipeId,
+        name: recipe.name,
+        ingredientCount: recipe.ingredients.length,
+      }));
+  }, [availableRecipes]);
 
   function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
@@ -125,9 +144,20 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setSelectedMealRecipeId(existing?.recipeId ?? null);
     setIngredientRows([]);
     setIsIngredientEditorOpen(false);
+    setIsRecipePickerOpen(false);
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
+    setLoadedRecipeId(null);
     setSelectedShoppingIngredientRowIds([]);
+    setShoppingSyncError(null);
+    setRecipeListError(null);
+  }
+
+  function applyRecipeSnapshot(recipe: RecipeResponse) {
+    setSelectedMealRecipeId(recipe.recipeId);
+    setRecipeTitle(recipe.name);
+    setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
+    setLoadedRecipeId(recipe.recipeId);
     setShoppingSyncError(null);
   }
 
@@ -140,6 +170,12 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       };
     }
 
+    if (selectedMealRecipeId === loadedRecipeId) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     setIsRecipeLoading(true);
 
     void getRecipe(selectedMealRecipeId, { token })
@@ -147,8 +183,11 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         if (cancelled) {
           return;
         }
-        setRecipeTitle(recipe.name);
-        setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
+        applyRecipeSnapshot(recipe);
+        setAvailableRecipes((current) => {
+          const others = (current ?? []).filter((entry) => entry.recipeId !== recipe.recipeId);
+          return [...others, recipe];
+        });
       })
       .catch(async (err) => {
         if (cancelled) {
@@ -169,7 +208,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     return () => {
       cancelled = true;
     };
-  }, [selectedMealRecipeId, token, handleApiError]);
+  }, [loadedRecipeId, selectedMealRecipeId, token, handleApiError]);
 
   function openEditor(day: number, mealType: MealType) {
     syncEditorSelection(day, mealType);
@@ -191,8 +230,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setSelectedMealRecipeId(null);
     setIngredientRows([]);
     setIsIngredientEditorOpen(false);
+    setIsRecipePickerOpen(false);
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
+    setLoadedRecipeId(null);
     setSelectedShoppingIngredientRowIds([]);
   }
 
@@ -214,6 +255,56 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return;
     }
     setIsIngredientEditorOpen(false);
+  }
+
+  async function loadRecipeOptions(force = false) {
+    if (!token) {
+      return;
+    }
+    if (isRecipeListLoading) {
+      return;
+    }
+    if (!force && availableRecipes) {
+      return;
+    }
+
+    setIsRecipeListLoading(true);
+    setRecipeListError(null);
+    try {
+      const recipes = await listRecipes({ token });
+      setAvailableRecipes(recipes);
+    } catch (err) {
+      await handleApiError(err);
+      setRecipeListError(formatApiError(err));
+    } finally {
+      setIsRecipeListLoading(false);
+    }
+  }
+
+  function openRecipePicker() {
+    if (isRecipeLoading || pendingEditorAction) {
+      return;
+    }
+    setIsRecipePickerOpen(true);
+    if (!availableRecipes) {
+      void loadRecipeOptions();
+    }
+  }
+
+  function closeRecipePicker() {
+    if (pendingEditorAction) {
+      return;
+    }
+    setIsRecipePickerOpen(false);
+  }
+
+  function selectExistingRecipe(recipeId: string) {
+    const selectedRecipe = availableRecipes?.find((recipe) => recipe.recipeId === recipeId);
+    if (!selectedRecipe) {
+      return;
+    }
+    applyRecipeSnapshot(selectedRecipe);
+    setIsRecipePickerOpen(false);
   }
 
   function openShoppingReview() {
@@ -306,7 +397,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     try {
       let recipeId = selectedMealRecipeId;
       if (recipeId) {
-        await updateRecipe(
+        const updated = await updateRecipe(
           recipeId,
           {
             name: recipeTitle.trim(),
@@ -314,6 +405,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           },
           { token }
         );
+        setAvailableRecipes((current) => {
+          const others = (current ?? []).filter((entry) => entry.recipeId !== updated.recipeId);
+          return [...others, updated];
+        });
       } else {
         const created = await createRecipe(
           {
@@ -323,6 +418,11 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           { token }
         );
         recipeId = created.recipeId;
+        setAvailableRecipes((current) => (
+          current
+            ? [...current.filter((entry) => entry.recipeId !== created.recipeId), created]
+            : [created]
+        ));
       }
 
       await plan.addMeal(selectedDay, selectedMealType, {
@@ -430,8 +530,12 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       recipeTitle,
       ingredientRows,
       isIngredientEditorOpen,
+      isRecipePickerOpen,
       isShoppingReviewOpen,
       isRecipeLoading,
+      isRecipeListLoading,
+      recipeListError,
+      recipePickerOptions,
       hasIngredients,
       shoppingReviewIngredients,
       selectedShoppingIngredientRowIds,
@@ -448,6 +552,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setRecipeTitle,
       openIngredientEditor,
       closeIngredientEditor,
+      openRecipePicker,
+      closeRecipePicker,
+      loadRecipeOptions,
+      selectExistingRecipe,
       openShoppingReview,
       closeShoppingReview,
       toggleShoppingReviewIngredient,

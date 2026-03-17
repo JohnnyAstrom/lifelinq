@@ -11,6 +11,7 @@ import {
 import { MealDayDetailSheet } from '../components/MealDayDetailSheet';
 import { MealEditorSheet } from '../components/MealEditorSheet';
 import { MealIngredientsSheet } from '../components/MealIngredientsSheet';
+import { MealRecipePickerSheet } from '../components/MealRecipePickerSheet';
 import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
@@ -133,10 +134,16 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeLabel: 'Recipe',
     newRecipeLabel: 'New recipe',
     usingRecipeLabel: 'Using recipe',
+    useExistingRecipe: 'Use existing',
+    changeRecipe: 'Change recipe',
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'These ingredients belong to the recipe you are planning.',
+    recipePickerTitle: 'Choose a recipe',
+    recipePickerHint: 'Choose a saved recipe for this meal.',
+    loadingRecipes: 'Loading recipes...',
+    noRecipes: 'No saved recipes yet.',
     ingredientsEmptyState: 'Optional. Add ingredients when you need them.',
     ingredientsSummarySuffix: 'ingredients',
     ingredientsSheetTitle: 'Ingredients',
@@ -423,10 +430,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     isOverlayOpen:
       !!selectedDayDetailDate
       || editor.isOpen
+      || editor.isRecipePickerOpen
       || editor.isIngredientEditorOpen
       || editor.isShoppingReviewOpen,
     onCloseOverlay: editor.isIngredientEditorOpen
       ? editor.closeIngredientEditor
+      : editor.isRecipePickerOpen
+        ? editor.closeRecipePicker
       : editor.isShoppingReviewOpen
         ? editor.closeShoppingReview
         : editor.isOpen
@@ -586,6 +596,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onChangeRecipeTitle={editor.setRecipeTitle}
           ingredientRows={editor.ingredientRows}
           isRecipeLoading={editor.isRecipeLoading}
+          onOpenRecipePicker={editor.openRecipePicker}
           onOpenIngredients={editor.openIngredientEditor}
           hasIngredients={editor.hasIngredients}
           onOpenShoppingReview={editor.openShoppingReview}
@@ -602,6 +613,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeLabel: strings.recipeLabel,
             newRecipeLabel: strings.newRecipeLabel,
             usingRecipeLabel: strings.usingRecipeLabel,
+            useExistingRecipe: strings.useExistingRecipe,
+            changeRecipe: strings.changeRecipe,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
             ingredientsLabel: strings.ingredientsLabel,
@@ -617,6 +630,24 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             savingMeal: strings.savingMeal,
             removeMeal: strings.removeMeal,
             removingMeal: strings.removingMeal,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
+      {editor.isOpen && editor.isRecipePickerOpen ? (
+        <MealRecipePickerSheet
+          recipes={editor.recipePickerOptions}
+          selectedRecipeId={editor.selectedMealRecipeId}
+          isLoading={editor.isRecipeListLoading}
+          error={editor.recipeListError}
+          onSelectRecipe={editor.selectExistingRecipe}
+          onClose={editor.closeRecipePicker}
+          strings={{
+            title: strings.recipePickerTitle,
+            hint: strings.recipePickerHint,
+            loadingRecipes: strings.loadingRecipes,
+            noRecipes: strings.noRecipes,
             close: strings.close,
           }}
         />
