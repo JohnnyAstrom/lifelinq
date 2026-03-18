@@ -16,7 +16,8 @@ final class RecipeMapper {
                 recipe.getShortNote(),
                 recipe.getInstructions(),
                 recipe.getCreatedAt(),
-                recipe.getUpdatedAt()
+                recipe.getUpdatedAt(),
+                recipe.getArchivedAt()
         );
         entity.replaceIngredients(toIngredientEntities(recipe, entity));
         return entity;
@@ -59,6 +60,7 @@ final class RecipeMapper {
                 entity.getInstructions(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
+                entity.getArchivedAt(),
                 ingredients
         );
     }

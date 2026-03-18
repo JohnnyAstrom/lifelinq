@@ -15,5 +15,6 @@ public record RecipeView(
         String instructions,
         Instant createdAt,
         Instant updatedAt,
+        Instant archivedAt,
         List<IngredientView> ingredients
 ) {}

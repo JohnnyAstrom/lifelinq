@@ -111,6 +111,7 @@ export type RecipeResponse = {
   instructions: string | null;
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
   ingredients: IngredientResponse[];
 };
 
@@ -176,6 +177,19 @@ export async function updateRecipe(
     {
       method: 'PUT',
       body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function archiveRecipe(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse> {
+  return fetchJson<RecipeResponse>(
+    `/meals/recipes/${recipeId}/archive`,
+    {
+      method: 'POST',
     },
     clientOptions
   );

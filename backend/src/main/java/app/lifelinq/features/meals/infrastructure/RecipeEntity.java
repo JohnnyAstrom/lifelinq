@@ -56,6 +56,9 @@ public class RecipeEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC, id ASC")
     private List<RecipeIngredientEntity> ingredients = new ArrayList<>();
@@ -73,7 +76,8 @@ public class RecipeEntity {
             String shortNote,
             String instructions,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            Instant archivedAt
     ) {
         this.id = id;
         this.groupId = groupId;
@@ -85,6 +89,7 @@ public class RecipeEntity {
         this.instructions = instructions;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.archivedAt = archivedAt;
     }
 
     UUID getId() {
@@ -127,6 +132,10 @@ public class RecipeEntity {
         return updatedAt;
     }
 
+    Instant getArchivedAt() {
+        return archivedAt;
+    }
+
     List<RecipeIngredientEntity> getIngredients() {
         return ingredients;
     }
@@ -138,7 +147,8 @@ public class RecipeEntity {
             RecipeOriginKind originKind,
             String shortNote,
             String instructions,
-            Instant updatedAt
+            Instant updatedAt,
+            Instant archivedAt
     ) {
         this.name = name;
         this.sourceName = sourceName;
@@ -147,6 +157,7 @@ public class RecipeEntity {
         this.shortNote = shortNote;
         this.instructions = instructions;
         this.updatedAt = updatedAt;
+        this.archivedAt = archivedAt;
     }
 
     void replaceIngredients(List<RecipeIngredientEntity> ingredients) {

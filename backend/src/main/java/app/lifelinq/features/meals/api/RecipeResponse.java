@@ -15,5 +15,6 @@ public record RecipeResponse(
         String instructions,
         Instant createdAt,
         Instant updatedAt,
+        Instant archivedAt,
         List<IngredientResponse> ingredients
 ) {}

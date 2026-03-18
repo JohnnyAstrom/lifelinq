@@ -12,7 +12,7 @@ public interface RecipeJpaRepository extends JpaRepository<RecipeEntity, UUID> {
     Optional<RecipeEntity> findByIdAndGroupId(UUID id, UUID groupId);
 
     @EntityGraph(attributePaths = "ingredients")
-    List<RecipeEntity> findByGroupId(UUID groupId);
+    List<RecipeEntity> findByGroupIdAndArchivedAtIsNull(UUID groupId);
 
     @EntityGraph(attributePaths = "ingredients")
     List<RecipeEntity> findByGroupIdAndIdIn(UUID groupId, Collection<UUID> ids);

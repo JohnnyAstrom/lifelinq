@@ -206,6 +206,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     importDraftContextHint: 'This draft was fetched from a recipe URL. Review and adjust it before saving.',
     saveRecipe: 'Save recipe',
     savingRecipe: 'Saving recipe...',
+    archiveRecipe: 'Archive recipe',
+    archivingRecipe: 'Archiving recipe...',
     createRecipe: 'Create recipe',
     creatingRecipe: 'Creating recipe...',
     savedRecipeLabel: 'Saved recipe',
@@ -932,6 +934,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onSave={recipesWorkspace.recipeDetail.saveRecipe}
           onClose={recipesWorkspace.recipeDetail.closeRecipeDetail}
           isSaving={recipesWorkspace.recipeDetail.isSavingRecipe}
+          onArchive={recipesWorkspace.recipeDetail.canArchiveRecipe
+            ? recipesWorkspace.recipeDetail.archiveCurrentRecipe
+            : undefined}
+          isArchiving={recipesWorkspace.recipeDetail.isArchivingRecipe}
           error={recipesWorkspace.recipeDetail.error}
           strings={{
             eyebrow: strings.recipesWorkspace,
@@ -977,6 +983,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             savingRecipe: recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.savingRecipe
               : strings.creatingRecipe,
+            archiveRecipe: recipesWorkspace.recipeDetail.canArchiveRecipe
+              ? strings.archiveRecipe
+              : undefined,
+            archivingRecipe: strings.archivingRecipe,
             close: strings.close,
           }}
         />

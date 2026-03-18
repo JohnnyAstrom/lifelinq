@@ -46,6 +46,8 @@ type Strings = MealIngredientEditorRowStrings & {
   saveAsNewRecipeHint?: string;
   saveRecipe?: string;
   savingRecipe?: string;
+  archiveRecipe?: string;
+  archivingRecipe?: string;
   addIngredient: string;
   close: string;
 };
@@ -77,8 +79,10 @@ type Props = {
   onToggleIngredientUnit: (rowId: string, value: MealIngredientUnit) => void;
   onStartEditingSavedRecipeDirectly: () => void;
   onSave?: () => void;
+  onArchive?: () => void;
   onClose: () => void;
   isSaving?: boolean;
+  isArchiving?: boolean;
   error?: string | null;
   strings: Strings;
 };
@@ -110,8 +114,10 @@ export function MealRecipeDetailSheet({
   onToggleIngredientUnit,
   onStartEditingSavedRecipeDirectly,
   onSave,
+  onArchive,
   onClose,
   isSaving = false,
+  isArchiving = false,
   error = null,
   strings,
 }: Props) {
@@ -308,6 +314,16 @@ export function MealRecipeDetailSheet({
                 fullWidth
                 disabled={isActionPending || isRecipeLoading}
                 accentKey="meals"
+              />
+            ) : null}
+
+            {onArchive && strings.archiveRecipe ? (
+              <AppButton
+                title={isArchiving && strings.archivingRecipe ? strings.archivingRecipe : strings.archiveRecipe}
+                onPress={onArchive}
+                variant="ghost"
+                fullWidth
+                disabled={isActionPending || isRecipeLoading}
               />
             ) : null}
 

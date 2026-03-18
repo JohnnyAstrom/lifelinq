@@ -94,6 +94,7 @@ public class MealsApplicationService {
                 normalizeOptionalInstructions(instructions),
                 now,
                 now,
+                null,
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(recipe));
@@ -109,7 +110,7 @@ public class MealsApplicationService {
     public List<RecipeView> listRecipes(UUID groupId, UUID actorUserId) {
         ensureMealAccess(groupId, actorUserId);
         List<RecipeView> views = new ArrayList<>();
-        for (Recipe recipe : recipeRepository.findByGroupId(groupId)) {
+        for (Recipe recipe : recipeRepository.findActiveByGroupId(groupId)) {
             views.add(toView(recipe));
         }
         views.sort((a, b) -> {
@@ -148,9 +149,35 @@ public class MealsApplicationService {
                 normalizeOptionalInstructions(instructions),
                 existing.getCreatedAt(),
                 clock.instant(),
+                existing.getArchivedAt(),
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(updated));
+    }
+
+    @Transactional
+    public RecipeView archiveRecipe(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        Recipe existing = loadRecipe(groupId, recipeId);
+        if (existing.isArchived()) {
+            return toView(existing);
+        }
+        Instant now = clock.instant();
+        Recipe archived = new Recipe(
+                existing.getId(),
+                existing.getGroupId(),
+                existing.getName(),
+                existing.getSourceName(),
+                existing.getSourceUrl(),
+                existing.getOriginKind(),
+                existing.getShortNote(),
+                existing.getInstructions(),
+                existing.getCreatedAt(),
+                now,
+                now,
+                existing.getIngredients()
+        );
+        return toView(recipeRepository.save(archived));
     }
 
     @Transactional
@@ -365,6 +392,7 @@ public class MealsApplicationService {
                 recipe.getInstructions(),
                 recipe.getCreatedAt(),
                 recipe.getUpdatedAt(),
+                recipe.getArchivedAt(),
                 ingredients
         );
     }

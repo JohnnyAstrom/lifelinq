@@ -19,10 +19,11 @@ public final class Recipe {
     private final String instructions;
     private final Instant createdAt;
     private final Instant updatedAt;
+    private final Instant archivedAt;
     private final List<Ingredient> ingredients;
 
     public Recipe(UUID id, UUID groupId, String name, Instant createdAt, List<Ingredient> ingredients) {
-        this(id, groupId, name, null, null, RecipeOriginKind.MANUAL, null, null, createdAt, createdAt, ingredients);
+        this(id, groupId, name, null, null, RecipeOriginKind.MANUAL, null, null, createdAt, createdAt, null, ingredients);
     }
 
     public Recipe(
@@ -46,6 +47,7 @@ public final class Recipe {
                 instructions,
                 createdAt,
                 createdAt,
+                null,
                 ingredients
         );
     }
@@ -61,6 +63,36 @@ public final class Recipe {
             String instructions,
             Instant createdAt,
             Instant updatedAt,
+            List<Ingredient> ingredients
+    ) {
+        this(
+                id,
+                groupId,
+                name,
+                sourceName,
+                sourceUrl,
+                originKind,
+                shortNote,
+                instructions,
+                createdAt,
+                updatedAt,
+                null,
+                ingredients
+        );
+    }
+
+    public Recipe(
+            UUID id,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant archivedAt,
             List<Ingredient> ingredients
     ) {
         if (id == null) {
@@ -80,6 +112,12 @@ public final class Recipe {
         }
         if (updatedAt.isBefore(createdAt)) {
             throw new IllegalArgumentException("updatedAt must not be before createdAt");
+        }
+        if (archivedAt != null && archivedAt.isBefore(createdAt)) {
+            throw new IllegalArgumentException("archivedAt must not be before createdAt");
+        }
+        if (archivedAt != null && archivedAt.isAfter(updatedAt)) {
+            throw new IllegalArgumentException("archivedAt must not be after updatedAt");
         }
         if (ingredients == null) {
             throw new IllegalArgumentException("ingredients must not be null");
@@ -111,6 +149,7 @@ public final class Recipe {
         this.instructions = normalizeOptionalText(instructions);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.archivedAt = archivedAt;
         this.ingredients = List.copyOf(normalizedIngredients);
     }
 
@@ -160,6 +199,14 @@ public final class Recipe {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Instant getArchivedAt() {
+        return archivedAt;
+    }
+
+    public boolean isArchived() {
+        return archivedAt != null;
     }
 
     public List<Ingredient> getIngredients() {

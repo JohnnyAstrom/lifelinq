@@ -151,6 +151,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   }, [selectedShoppingIngredientRowIds, shoppingReviewIngredients]);
   const recipePickerOptions = useMemo<RecipePickerOption[]>(() => {
     return [...(availableRecipes ?? [])]
+      .filter((recipe) => recipe.archivedAt == null)
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((recipe) => ({
         recipeId: recipe.recipeId,

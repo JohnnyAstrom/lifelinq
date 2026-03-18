@@ -10,7 +10,7 @@ public interface RecipeRepository {
 
     Optional<Recipe> findByIdAndGroupId(UUID recipeId, UUID groupId);
 
-    List<Recipe> findByGroupId(UUID groupId);
+    List<Recipe> findActiveByGroupId(UUID groupId);
 
     List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds);
 }

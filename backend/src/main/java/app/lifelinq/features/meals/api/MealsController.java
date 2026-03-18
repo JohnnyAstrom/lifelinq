@@ -103,6 +103,20 @@ public class MealsController {
         return ResponseEntity.ok(toRecipeResponse(recipe));
     }
 
+    @PostMapping("/meals/recipes/{recipeId}/archive")
+    public ResponseEntity<?> archiveRecipe(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeView recipe = mealsApplicationService.archiveRecipe(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(toRecipeResponse(recipe));
+    }
+
     @PostMapping("/meals/recipes/import-drafts")
     public ResponseEntity<?> createRecipeImportDraft(@RequestBody CreateRecipeImportDraftRequest request) {
         RequestContext context = ApiScoping.getContext();
@@ -250,6 +264,7 @@ public class MealsController {
                 view.instructions(),
                 view.createdAt(),
                 view.updatedAt(),
+                view.archivedAt(),
                 ingredients
         );
     }

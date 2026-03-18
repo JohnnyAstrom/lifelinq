@@ -70,8 +70,47 @@ class JpaRecipeRepositoryAdapterTest {
         assertThat(loaded.get().getShortNote()).isEqualTo("Comfort food");
         assertThat(loaded.get().getInstructions()).isEqualTo("Stir and simmer");
         assertThat(loaded.get().getUpdatedAt()).isEqualTo(Instant.parse("2026-02-02T09:00:00Z"));
+        assertThat(loaded.get().getArchivedAt()).isNull();
         assertThat(loaded.get().getIngredients().get(0).getQuantity()).isEqualByComparingTo(new BigDecimal("1.5"));
         assertThat(loaded.get().getIngredients().get(0).getUnit()).isEqualTo(IngredientUnit.DL);
+    }
+
+    @Test
+    void findActiveByGroupIdExcludesArchivedRecipes() {
+        UUID groupId = UUID.randomUUID();
+
+        repository.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                "Active",
+                "Notebook",
+                null,
+                RecipeOriginKind.MANUAL,
+                null,
+                null,
+                Instant.parse("2026-02-01T10:00:00Z"),
+                Instant.parse("2026-02-01T10:00:00Z"),
+                null,
+                List.of()
+        ));
+        repository.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                "Archived",
+                "Notebook",
+                null,
+                RecipeOriginKind.MANUAL,
+                null,
+                null,
+                Instant.parse("2026-02-01T10:00:00Z"),
+                Instant.parse("2026-02-03T10:00:00Z"),
+                Instant.parse("2026-02-03T10:00:00Z"),
+                List.of()
+        ));
+
+        List<Recipe> result = repository.findActiveByGroupId(groupId);
+
+        assertThat(result).extracting(Recipe::getName).containsExactly("Active");
     }
 
     @Test

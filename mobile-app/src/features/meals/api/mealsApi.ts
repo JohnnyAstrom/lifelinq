@@ -1,5 +1,6 @@
 export {
   addOrReplaceMeal,
+  archiveRecipe,
   createRecipeImportDraft,
   createRecipe,
   getRecipe,

@@ -238,6 +238,41 @@ class MealsApplicationServiceTest {
         assertThat(created.shortNote()).isEqualTo("Best for weekends");
         assertThat(created.instructions()).isEqualTo("Mix ingredients\nBake for 20 minutes");
         assertThat(created.updatedAt()).isEqualTo(Instant.parse("2026-02-01T10:00:00Z"));
+        assertThat(created.archivedAt()).isNull();
+    }
+
+    @Test
+    void archiveRecipeRetiresItFromActiveListButKeepsItReadable() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-18T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Archive Me",
+                Instant.parse("2026-03-10T09:00:00Z"),
+                List.of()
+        ));
+
+        var archived = service.archiveRecipe(groupId, userId, recipeId);
+        var activeRecipes = service.listRecipes(groupId, userId);
+        var loaded = service.getRecipe(groupId, userId, recipeId);
+
+        assertThat(archived.archivedAt()).isEqualTo(Instant.parse("2026-03-18T10:00:00Z"));
+        assertThat(archived.updatedAt()).isEqualTo(Instant.parse("2026-03-18T10:00:00Z"));
+        assertThat(activeRecipes).isEmpty();
+        assertThat(loaded.recipeId()).isEqualTo(recipeId);
+        assertThat(loaded.archivedAt()).isEqualTo(Instant.parse("2026-03-18T10:00:00Z"));
     }
 
     @Test
@@ -281,6 +316,39 @@ class MealsApplicationServiceTest {
         var weekPlan = service.getWeekPlan(groupId, userId, 2026, 5);
         assertThat(weekPlan.meals()).hasSize(1);
         assertThat(weekPlan.meals().get(0).recipeTitle()).isEqualTo("New Name");
+    }
+
+    @Test
+    void getWeekPlanStillResolvesArchivedRecipeNames() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-18T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Archived Recipe",
+                Instant.parse("2026-03-10T09:00:00Z"),
+                List.of()
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, null, null);
+        service.archiveRecipe(groupId, userId, recipeId);
+
+        var weekPlan = service.getWeekPlan(groupId, userId, 2026, 12);
+
+        assertThat(weekPlan.meals()).hasSize(1);
+        assertThat(weekPlan.meals().get(0).recipeTitle()).isEqualTo("Archived Recipe");
     }
 
     @Test
@@ -415,10 +483,10 @@ class MealsApplicationServiceTest {
         }
 
         @Override
-        public List<Recipe> findByGroupId(UUID groupId) {
+        public List<Recipe> findActiveByGroupId(UUID groupId) {
             List<Recipe> result = new ArrayList<>();
             for (Recipe recipe : recipes.values()) {
-                if (recipe.getGroupId().equals(groupId)) {
+                if (recipe.getGroupId().equals(groupId) && !recipe.isArchived()) {
                     result.add(recipe);
                 }
             }

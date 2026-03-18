@@ -38,13 +38,13 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
     }
 
     @Override
-    public List<Recipe> findByGroupId(UUID groupId) {
+    public List<Recipe> findActiveByGroupId(UUID groupId) {
         if (groupId == null) {
             throw new IllegalArgumentException("groupId must not be null");
         }
         List<Recipe> result = new ArrayList<>();
         for (Recipe recipe : byId.values()) {
-            if (groupId.equals(recipe.getGroupId())) {
+            if (groupId.equals(recipe.getGroupId()) && !recipe.isArchived()) {
                 result.add(recipe);
             }
         }

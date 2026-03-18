@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import {
+  archiveRecipe,
   createRecipe,
   createRecipeImportDraft,
   getRecipe,
@@ -20,7 +21,7 @@ import {
   type MealIngredientUnit,
 } from '../utils/ingredientRows';
 
-type DetailPendingAction = 'save' | null;
+type DetailPendingAction = 'save' | 'archive' | null;
 type RecipeDetailMode = 'create' | 'saved' | 'import';
 
 type Params = {
@@ -62,12 +63,13 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   const recipeListItems = useMemo(() => {
     const nameCounts = new Map<string, number>();
-    for (const recipe of recipes ?? []) {
+    const activeRecipes = (recipes ?? []).filter((recipe) => recipe.archivedAt == null);
+    for (const recipe of activeRecipes) {
       const normalizedName = recipe.name.trim().toLocaleLowerCase();
       nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1);
     }
 
-    return [...(recipes ?? [])]
+    return [...activeRecipes]
       .sort((left, right) => {
         const nameComparison = left.name.localeCompare(right.name);
         if (nameComparison !== 0) {
@@ -343,6 +345,27 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
+  async function archiveCurrentRecipe() {
+    if (!recipeId || pendingDetailAction || isRecipeLoading) {
+      return;
+    }
+
+    setPendingDetailAction('archive');
+    setRecipeDetailError(null);
+    try {
+      const archived = await archiveRecipe(recipeId, { token });
+      setRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== archived.recipeId));
+      setHasLoaded(true);
+      setIsRecipeDetailOpen(false);
+      setRecipeId(null);
+    } catch (err) {
+      await handleApiError(err);
+      setRecipeDetailError(formatApiError(err));
+    } finally {
+      setPendingDetailAction(null);
+    }
+  }
+
   return {
     recipes: {
       items: recipeListItems,
@@ -377,9 +400,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       isRecipeLoading,
       hasExistingRecipe: !!recipeId,
       isImportDraft: detailMode === 'import',
+      canArchiveRecipe: !!recipeId && detailMode === 'saved',
       hasIngredients,
       error: recipeDetailError,
       isSavingRecipe: pendingDetailAction === 'save',
+      isArchivingRecipe: pendingDetailAction === 'archive',
       isActionPending: pendingDetailAction !== null,
       setRecipeTitle,
       setRecipeSource,
@@ -392,6 +417,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setIngredientQuantity,
       setIngredientUnit,
       saveRecipe,
+      archiveCurrentRecipe,
       closeRecipeDetail,
     },
   };

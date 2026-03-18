@@ -287,6 +287,7 @@ class MealsControllerTest {
                 "Boil water\nCook pasta",
                 Instant.parse("2026-03-17T10:00:00Z"),
                 Instant.parse("2026-03-17T10:15:00Z"),
+                null,
                 List.of()
         ));
 
@@ -323,6 +324,39 @@ class MealsControllerTest {
                 "Boil water\nCook pasta",
                 List.of()
         );
+    }
+
+    @Test
+    void archiveRecipeReturnsArchivedRecipeResponse() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.archiveRecipe(groupId, userId, recipeId))
+                .thenReturn(new RecipeView(
+                        recipeId,
+                        groupId,
+                        "Soup",
+                        "Notebook",
+                        null,
+                        "MANUAL",
+                        null,
+                        null,
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-18T10:00:00Z"),
+                        Instant.parse("2026-03-18T10:00:00Z"),
+                        List.of()
+                ));
+
+        mockMvc.perform(post("/meals/recipes/" + recipeId + "/archive")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recipeId").value(recipeId.toString()))
+                .andExpect(jsonPath("$.archivedAt").value("2026-03-18T10:00:00Z"));
+
+        verify(mealsApplicationService).archiveRecipe(groupId, userId, recipeId);
     }
 
     @Test

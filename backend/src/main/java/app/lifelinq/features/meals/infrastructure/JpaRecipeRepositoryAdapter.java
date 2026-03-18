@@ -53,7 +53,8 @@ public class JpaRecipeRepositoryAdapter implements RecipeRepository {
                 recipe.getOriginKind(),
                 recipe.getShortNote(),
                 recipe.getInstructions(),
-                recipe.getUpdatedAt()
+                recipe.getUpdatedAt(),
+                recipe.getArchivedAt()
         );
         existing.getIngredients().clear();
         ingredientRepository.deleteByRecipeId(recipe.getId());
@@ -74,12 +75,12 @@ public class JpaRecipeRepositoryAdapter implements RecipeRepository {
     }
 
     @Override
-    public List<Recipe> findByGroupId(UUID groupId) {
+    public List<Recipe> findActiveByGroupId(UUID groupId) {
         if (groupId == null) {
             throw new IllegalArgumentException("groupId must not be null");
         }
         List<Recipe> result = new ArrayList<>();
-        for (RecipeEntity entity : repository.findByGroupId(groupId)) {
+        for (RecipeEntity entity : repository.findByGroupIdAndArchivedAtIsNull(groupId)) {
             result.add(mapper.toDomain(entity));
         }
         return result;
