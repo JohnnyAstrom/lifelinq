@@ -11,8 +11,10 @@ export type MealIngredientEditorRowStrings = {
   ingredientNamePlaceholder: string;
   quantityPlaceholder: string;
   removeIngredient: string;
+  collapseIngredient?: string;
   importedIngredientHint?: string;
   importedIngredientNeedsReviewHint?: string;
+  importedIngredientReviewTag?: string;
 };
 
 type Props = {
@@ -21,6 +23,7 @@ type Props = {
   isReadOnly?: boolean;
   isImportDraft?: boolean;
   onActivate: () => void;
+  onCollapse?: () => void;
   onRemove: () => void;
   onChangeName: (value: string) => void;
   onChangeQuantity: (value: string) => void;
@@ -121,6 +124,7 @@ export function MealIngredientEditorRow({
   isReadOnly = false,
   isImportDraft = false,
   onActivate,
+  onCollapse,
   onRemove,
   onChangeName,
   onChangeQuantity,
@@ -136,7 +140,11 @@ export function MealIngredientEditorRow({
 
   if (isReadOnly) {
     return (
-      <View style={[styles.compactRow, needsImportReview ? styles.importReviewRow : null]}>
+      <View style={[
+        styles.compactRow,
+        isImportDraft ? styles.importCompactRow : null,
+        needsImportReview ? styles.importReviewRow : null,
+      ]}>
         <View style={styles.compactMain}>
           <Text style={styles.compactTitle} numberOfLines={1}>
             {row.name.trim()}
@@ -145,16 +153,13 @@ export function MealIngredientEditorRow({
             <Text style={styles.compactMeta} numberOfLines={1}>
               {meta}
             </Text>
-          ) : needsImportReview && importReview?.keptAsText && strings.importedIngredientNeedsReviewHint ? (
-            <Text style={styles.compactMeta} numberOfLines={2}>
-              {strings.importedIngredientNeedsReviewHint}
-            </Text>
-          ) : importedFallbackHint && strings.importedIngredientHint ? (
-            <Text style={styles.compactMeta} numberOfLines={1}>
-              {strings.importedIngredientHint} {importedFallbackHint}
-            </Text>
           ) : null}
         </View>
+        {needsImportReview && strings.importedIngredientReviewTag ? (
+          <View style={styles.reviewPill}>
+            <Text style={styles.reviewPillText}>{strings.importedIngredientReviewTag}</Text>
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -166,6 +171,7 @@ export function MealIngredientEditorRow({
         accessibilityRole="button"
         style={({ pressed }) => [
           styles.compactRow,
+          isImportDraft ? styles.importCompactRow : null,
           needsImportReview ? styles.importReviewRow : null,
           pressed ? styles.compactRowPressed : null,
         ]}
@@ -178,23 +184,20 @@ export function MealIngredientEditorRow({
             <Text style={styles.compactMeta} numberOfLines={1}>
               {meta}
             </Text>
-          ) : needsImportReview && importReview?.keptAsText && strings.importedIngredientNeedsReviewHint ? (
-            <Text style={styles.compactMeta} numberOfLines={2}>
-              {strings.importedIngredientNeedsReviewHint}
-            </Text>
-          ) : importedFallbackHint && strings.importedIngredientHint ? (
-            <Text style={styles.compactMeta} numberOfLines={1}>
-              {strings.importedIngredientHint} {importedFallbackHint}
-            </Text>
           ) : null}
         </View>
+        {needsImportReview && strings.importedIngredientReviewTag ? (
+          <View style={styles.reviewPill}>
+            <Text style={styles.reviewPillText}>{strings.importedIngredientReviewTag}</Text>
+          </View>
+        ) : null}
         <Pressable
           onPress={onRemove}
           accessibilityRole="button"
           accessibilityLabel={strings.removeIngredient}
           style={({ pressed }) => [
-            styles.removeIconButton,
-            pressed ? styles.removeIconButtonPressed : null,
+            styles.iconButton,
+            pressed ? styles.iconButtonPressed : null,
           ]}
         >
           <Ionicons name="close-outline" size={16} color={theme.colors.textSecondary} />
@@ -204,7 +207,7 @@ export function MealIngredientEditorRow({
   }
 
   return (
-      <View style={[
+    <View style={[
       styles.expandedRow,
       isActive ? styles.expandedRowActive : null,
       needsImportReview ? styles.expandedImportReviewRow : null,
@@ -217,17 +220,33 @@ export function MealIngredientEditorRow({
           onFocus={onActivate}
           style={styles.ingredientNameInput}
         />
-        <Pressable
-          onPress={onRemove}
-          accessibilityRole="button"
-          accessibilityLabel={strings.removeIngredient}
-          style={({ pressed }) => [
-            styles.removeIconButton,
-            pressed ? styles.removeIconButtonPressed : null,
-          ]}
-        >
-          <Ionicons name="close-outline" size={16} color={theme.colors.textSecondary} />
-        </Pressable>
+        <View style={styles.expandedActions}>
+          {!isEffectivelyEmpty && onCollapse ? (
+            <Pressable
+              onPress={onCollapse}
+              accessibilityRole="button"
+              accessibilityLabel={strings.collapseIngredient ?? 'Collapse ingredient'}
+              style={({ pressed }) => [
+                styles.iconButton,
+                styles.collapseIconButton,
+                pressed ? styles.iconButtonPressed : null,
+              ]}
+            >
+              <Ionicons name="chevron-up" size={16} color={theme.colors.textSecondary} />
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={onRemove}
+            accessibilityRole="button"
+            accessibilityLabel={strings.removeIngredient}
+            style={({ pressed }) => [
+              styles.iconButton,
+              pressed ? styles.iconButtonPressed : null,
+            ]}
+          >
+            <Ionicons name="close-outline" size={16} color={theme.colors.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.expandedSecondaryRow}>
@@ -241,16 +260,21 @@ export function MealIngredientEditorRow({
         />
       </View>
 
-      {needsImportReview
-        && (
-          (importReview?.keptAsText && strings.importedIngredientNeedsReviewHint)
-          || (importedFallbackHint && strings.importedIngredientHint)
-        ) ? (
-        <Text style={styles.importReviewInline}>
-          {importReview?.keptAsText && strings.importedIngredientNeedsReviewHint
-            ? strings.importedIngredientNeedsReviewHint
-            : `${strings.importedIngredientHint} ${importedFallbackHint}`}
-        </Text>
+      {needsImportReview ? (
+        <View style={styles.expandedReviewRow}>
+          {strings.importedIngredientReviewTag ? (
+            <View style={styles.reviewPill}>
+              <Text style={styles.reviewPillText}>{strings.importedIngredientReviewTag}</Text>
+            </View>
+          ) : null}
+          {importReview?.keptAsText && strings.importedIngredientNeedsReviewHint ? (
+            <Text style={styles.importReviewInline}>{strings.importedIngredientNeedsReviewHint}</Text>
+          ) : importedFallbackHint && strings.importedIngredientHint ? (
+            <Text style={styles.importReviewInline}>
+              {strings.importedIngredientHint} {importedFallbackHint}
+            </Text>
+          ) : null}
+        </View>
       ) : null}
 
       {row.quantityText.length > 0 && isActive ? (
@@ -282,12 +306,22 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
     backgroundColor: theme.colors.surfaceAlt,
   },
+  importCompactRow: {
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: 'transparent',
+  },
   compactRowPressed: {
     opacity: 0.9,
   },
   importReviewRow: {
     borderLeftWidth: 3,
     borderLeftColor: theme.colors.feature.meals,
+    paddingLeft: theme.spacing.xs,
   },
   compactMain: {
     flex: 1,
@@ -302,6 +336,17 @@ const styles = StyleSheet.create({
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
   },
+  reviewPill: {
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 3,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  reviewPillText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
   expandedRow: {
     gap: theme.spacing.xs,
     borderWidth: 1,
@@ -313,6 +358,11 @@ const styles = StyleSheet.create({
   },
   expandedRowActive: {
     borderColor: theme.colors.feature.meals,
+    shadowColor: theme.colors.feature.meals,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   expandedImportReviewRow: {
     borderLeftWidth: 3,
@@ -322,6 +372,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
+  },
+  expandedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   expandedSecondaryRow: {
     flexDirection: 'row',
@@ -339,19 +394,29 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingTop: 2,
   },
+  expandedReviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
   importReviewInline: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
-    paddingLeft: 2,
+    flex: 1,
+    minWidth: 0,
   },
-  removeIconButton: {
+  iconButton: {
     width: 28,
     height: 28,
     borderRadius: theme.radius.circle,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removeIconButtonPressed: {
+  collapseIconButton: {
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  iconButtonPressed: {
     backgroundColor: theme.colors.surfaceAlt,
   },
 });

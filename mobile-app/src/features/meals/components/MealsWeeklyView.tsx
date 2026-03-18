@@ -20,7 +20,7 @@ type Props = {
   DAY_LABELS: string[];
   MEAL_TYPE_LABELS: Record<MealType, string>;
   styles: Record<string, any>;
-  emptyText: string;
+  emptyText?: string;
   todayLabel: string;
 };
 
@@ -76,7 +76,9 @@ export function MealsWeeklyView({
                 ) : null}
               </View>
               {!hasMeals ? (
+                emptyText ? (
                 <Text style={styles.weeklyEmptyText}>{emptyText}</Text>
+                ) : null
               ) : (
                 <View style={styles.mealList}>
                   {meals.map((meal) => (

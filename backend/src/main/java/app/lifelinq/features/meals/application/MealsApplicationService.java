@@ -851,6 +851,7 @@ public class MealsApplicationService {
             case L -> "L";
             case DL -> "DL";
             case ML -> "ML";
+            case TBSP, TSP, KRM -> null;
         };
     }
 

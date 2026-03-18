@@ -8,5 +8,8 @@ public enum IngredientUnitView {
     G,
     L,
     DL,
-    ML
+    ML,
+    TBSP,
+    TSP,
+    KRM
 }

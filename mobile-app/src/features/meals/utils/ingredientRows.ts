@@ -4,7 +4,7 @@ import type {
   RecipeImportDraftIngredientResponse,
 } from '../api/mealsApi';
 
-export type MealIngredientUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML';
+export type MealIngredientUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL' | 'ML' | 'TBSP' | 'TSP' | 'KRM';
 
 export type MealIngredientRow = {
   id: string;
@@ -28,6 +28,9 @@ export const MEAL_INGREDIENT_UNIT_OPTIONS: MealIngredientUnitOption[] = [
   { label: 'l', value: 'L' },
   { label: 'dl', value: 'DL' },
   { label: 'ml', value: 'ML' },
+  { label: 'tbsp', value: 'TBSP' },
+  { label: 'tsp', value: 'TSP' },
+  { label: 'krm', value: 'KRM' },
 ];
 
 function createRowId() {

@@ -8,5 +8,8 @@ public enum IngredientUnit {
     G,
     L,
     DL,
-    ML
+    ML,
+    TBSP,
+    TSP,
+    KRM
 }

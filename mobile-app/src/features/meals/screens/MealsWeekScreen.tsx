@@ -123,20 +123,16 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const { handleApiError } = useAuth();
   const strings = {
     title: 'Meals',
-    subtitle: 'Plan meals and keep recipes ready when you need them.',
     planWorkspace: 'Plan',
     recipesWorkspace: 'Recipes',
     weeklyPlanner: 'Week',
     calendarOverview: 'Calendar',
     weekLabel: 'Week',
-    monthlyOverview: 'See your month at a glance and open any day.',
     recipesOverviewTitle: 'Recipes',
     activeRecipesTab: 'Active',
     archivedRecipesTab: 'Archived',
     loadingPlan: 'Loading week plan...',
     loadingMonthOverview: 'Loading calendar...',
-    noMeals: 'No meals planned yet.',
-    noMealsThisDay: 'No meals planned for this day.',
     loadingDay: 'Loading day...',
     todayLabel: 'Today',
     planMealTitle: 'Plan a meal',
@@ -144,8 +140,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     editMealSlot: 'Edit meal',
     planningLabel: 'Planning',
     mealsLabel: 'Meals',
-    mealHint: 'Tap to edit this planned meal.',
-    mealActionHint: 'Tap to plan this meal.',
     recipeLinkLabel: 'Recipe',
     openRecipeFromDay: 'Recipe',
     dayLabel: 'Day',
@@ -188,20 +182,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeInstructionsLabel: 'Instructions',
     recipeInstructionsPlaceholder: 'Add the cooking steps or preparation notes',
     recipeInstructionsHint: 'Keep the main cooking flow easy to scan and adjust.',
-    importInstructionsHint: 'Skim the cooking flow here and adjust only the lines that look off.',
+    importInstructionsHint: 'Check the cooking flow and tidy only the lines that read off.',
     saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
     editingSavedRecipeHint: 'Changes now update the saved recipe itself.',
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'Keep the ingredient list ready with this recipe.',
     savedRecipeIngredientsHint: 'These ingredients stay with this saved recipe.',
-    importedIngredientsHint: 'Review the ingredient list first.',
+    importedIngredientsHint: 'Check this list first.',
     importReviewLabel: 'Imported draft',
-    importReviewHint: 'Start with the ingredients, then skim the cooking flow and original page details.',
+    importReviewHint: 'Start with the ingredients.',
     recipePickerTitle: 'Choose a recipe',
     recipePickerHint: 'Choose a saved recipe for this meal.',
     loadingRecipes: 'Loading recipes...',
     noRecipes: 'No saved recipes yet.',
-    noRecipesHint: 'Create a reusable recipe with ingredients, notes, and steps for later planning.',
     createRecipeFromRecipes: 'Create recipe',
     importRecipeFromRecipes: 'Import recipe',
     importRecipeTitle: 'Import a recipe',
@@ -214,10 +207,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeDestinationSubtitle: 'Read and edit this recipe in Meals.',
     savedRecipeContextHint: 'This reusable recipe lives in your Recipes workspace.',
     newSavedRecipeContextHint: 'Start with the ingredients and instructions you want to keep with this recipe.',
-    importDraftSubtitle: 'Review this imported recipe before saving it to Recipes.',
+    importDraftSubtitle: 'Imported recipe draft',
     importDraftContextHint: 'Review the draft calmly, keep what looks right, and tidy only what seems off.',
     importReviewSourceSummaryTitle: 'Original page',
-    importReviewSourceSummaryHint: 'Keep the original page details here while you review.',
+    importReviewSourceSummaryHint: 'Original page details',
     importReviewSourceEmpty: 'No source name came through from this import.',
     importReviewSourceUrlEmpty: 'No source link came through from this import.',
     saveRecipe: 'Save recipe',
@@ -245,7 +238,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     addIngredient: 'Add ingredient',
     removeIngredient: 'Remove',
     importedIngredientHint: 'Imported line:',
-    importedIngredientNeedsReviewHint: 'Imported text kept',
+    importedIngredientNeedsReviewHint: 'Kept from import',
+    importedIngredientReviewTag: 'Check',
+    collapseIngredient: 'Collapse row',
     loadingIngredients: 'Loading ingredients...',
     shoppingLabel: 'Shopping',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
@@ -609,7 +604,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       header={(
         <TopBar
           title={strings.title}
-          subtitle={strings.subtitle}
           icon={<Ionicons name="restaurant-outline" />}
           accentKey="meals"
           right={<BackIconButton onPress={onDone} />}
@@ -739,12 +733,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                       DAY_LABELS={DAY_LABELS}
                       MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
                       styles={styles}
-                      emptyText={strings.noMeals}
                       todayLabel={strings.todayLabel}
                     />
                   ) : (
                     <AppCard style={styles.calendarCard}>
-                      <Subtle>{strings.monthlyOverview}</Subtle>
                       <MealsMonthlyView
                         monthGridCells={monthGridCells}
                         monthMealCountByDateKey={monthOverview.mealCountByDateKey}
@@ -774,18 +766,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   onImportRecipe={recipesWorkspace.recipes.openImportRecipe}
                   strings={{
                     title: strings.recipesOverviewTitle,
-                    subtitle: recipesWorkspace.recipes.items.length > 0
-                      ? 'Open and manage reusable recipes for future planning.'
-                      : 'Create and keep reusable recipes ready for later planning.',
                     activeTab: strings.activeRecipesTab,
                     archivedTab: strings.archivedRecipesTab,
                     newRecipe: strings.createRecipeFromRecipes,
                     importRecipe: strings.importRecipeFromRecipes,
                     loadingRecipes: strings.loadingRecipes,
                     noRecipes: strings.noRecipes,
-                    noRecipesHint: strings.noRecipesHint,
                     noArchivedRecipes: 'No archived recipes yet.',
-                    noArchivedRecipesHint: 'Archived recipes stay here until you restore them to the active workspace.',
                     savedRecipeLabel: strings.savedRecipeLabel,
                     archivedRecipeLabel: strings.archivedRecipeLabel,
                     createdLabel: strings.createdLabel,
@@ -815,12 +802,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             title: strings.title,
             close: strings.close,
             loadingDay: strings.loadingDay,
-            emptyDay: strings.noMealsThisDay,
+            emptyDay: undefined,
             addMeal: strings.planMealSlot,
             editMeal: strings.editMealSlot,
             mealsLabel: strings.mealsLabel,
-            mealHint: strings.mealHint,
-            mealActionHint: strings.mealActionHint,
+            mealHint: undefined,
+            mealActionHint: undefined,
             recipeLabel: strings.recipeLinkLabel,
             openRecipe: strings.openRecipeFromDay,
           }}
@@ -956,6 +943,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             removeIngredient: strings.removeIngredient,
             importedIngredientHint: undefined,
             importedIngredientNeedsReviewHint: undefined,
+            collapseIngredient: undefined,
             close: strings.close,
           }}
         />
@@ -1034,7 +1022,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             eyebrow: strings.recipesWorkspace,
             title: strings.recipeSheetTitle,
             subtitle: recipesWorkspace.recipeDetail.isImportDraft
-              ? strings.importDraftSubtitle
+              ? undefined
               : recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.recipeDestinationSubtitle
               : strings.newSavedRecipeContextHint,
@@ -1087,15 +1075,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : strings.ingredientsRecipeHint,
             importedIngredientsHint: undefined,
             importReviewLabel: undefined,
-            importReviewHint: recipesWorkspace.recipeDetail.isImportDraft
-              ? strings.importReviewHint
-              : undefined,
+            importReviewHint: undefined,
             importReviewSummary: recipesWorkspace.recipeDetail.isImportDraft
               ? (count: number) => count === 0
-                ? 'The ingredient list looks fairly clean. Open only the rows that read off.'
+                ? 'Looks clean'
                 : count === 1
-                  ? '1 row still looks close to the import and is worth a quick check.'
-                  : `${count} rows still look close to the import and are worth a quick check.`
+                  ? '1 worth checking'
+                  : `${count} worth checking`
               : undefined,
             importReviewSourceSummaryTitle: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importReviewSourceSummaryTitle
@@ -1120,6 +1106,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : undefined,
             importedIngredientNeedsReviewHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importedIngredientNeedsReviewHint
+              : undefined,
+            importedIngredientReviewTag: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importedIngredientReviewTag
+              : undefined,
+            collapseIngredient: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.collapseIngredient
               : undefined,
             saveRecipe: recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.saveRecipe
@@ -1239,7 +1231,7 @@ const styles = StyleSheet.create({
   },
   contentOffset: {
     flex: 1,
-    paddingTop: theme.layout.topBarOffset + theme.spacing.md,
+    paddingTop: theme.layout.topBarOffset + theme.spacing.xs,
   },
   mainLayout: {
     flex: 1,

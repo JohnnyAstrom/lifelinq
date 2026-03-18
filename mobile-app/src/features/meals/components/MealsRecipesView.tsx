@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppButton, AppCard, Subtle } from '../../../shared/ui/components';
+import { AppCard, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type RecipeListItem = {
@@ -14,16 +14,16 @@ type RecipeListItem = {
 
 type Strings = {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   activeTab: string;
   archivedTab: string;
   newRecipe: string;
   importRecipe: string;
   loadingRecipes: string;
   noRecipes: string;
-  noRecipesHint: string;
+  noRecipesHint?: string;
   noArchivedRecipes: string;
-  noArchivedRecipesHint: string;
+  noArchivedRecipesHint?: string;
   savedRecipeLabel: string;
   archivedRecipeLabel: string;
   createdLabel: string;
@@ -61,82 +61,88 @@ export function MealsRecipesView({
   onImportRecipe,
   strings,
 }: Props) {
-  const recipeCount = recipes.length;
-
   return (
     <View style={styles.layout}>
-      <View style={styles.header}>
-        <View style={styles.headerCopy}>
-          <Text style={textStyles.h2}>{strings.title}</Text>
-          <Subtle>{strings.subtitle}</Subtle>
-        </View>
-        <View style={styles.headerActions}>
-          <AppButton
-            title={strings.importRecipe}
-            onPress={onImportRecipe}
-            variant="ghost"
-          />
-          <AppButton title={strings.newRecipe} onPress={onCreateRecipe} accentKey="meals" />
-        </View>
-      </View>
-
-      <View style={styles.modeSwitchRow}>
-        <Pressable
-          onPress={onShowActive}
-          style={({ pressed }) => [
-            styles.modeTab,
-            listMode === 'active' ? styles.modeTabActive : null,
-            pressed ? styles.modeTabPressed : null,
-          ]}
-        >
-          <Text style={[styles.modeTabText, listMode === 'active' ? styles.modeTabTextActive : null]}>
-            {strings.activeTab} ({activeCount})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={onShowArchived}
-          style={({ pressed }) => [
-            styles.modeTab,
-            listMode === 'archived' ? styles.modeTabActive : null,
-            pressed ? styles.modeTabPressed : null,
-          ]}
-        >
-          <Text style={[styles.modeTabText, listMode === 'archived' ? styles.modeTabTextActive : null]}>
-            {strings.archivedTab} ({archivedCount})
-          </Text>
-        </Pressable>
-      </View>
-
-      {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      {!isLoading && !error && recipes.length === 0 ? (
-        <AppCard>
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>
-              {listMode === 'active' ? strings.noRecipes : strings.noArchivedRecipes}
-            </Text>
-            <Subtle>
-              {listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint}
-            </Subtle>
+      <AppCard style={styles.workspaceCard}>
+        <View style={styles.toolbarRow}>
+          <View style={styles.modeSwitchRow}>
+            <Pressable
+              onPress={onShowActive}
+              style={({ pressed }) => [
+                styles.modeTab,
+                listMode === 'active' ? styles.modeTabActive : null,
+                pressed ? styles.modeTabPressed : null,
+              ]}
+            >
+              <Text style={[styles.modeTabText, listMode === 'active' ? styles.modeTabTextActive : null]}>
+                {strings.activeTab} ({activeCount})
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={onShowArchived}
+              style={({ pressed }) => [
+                styles.modeTab,
+                listMode === 'archived' ? styles.modeTabActive : null,
+                pressed ? styles.modeTabPressed : null,
+              ]}
+            >
+              <Text style={[styles.modeTabText, listMode === 'archived' ? styles.modeTabTextActive : null]}>
+                {strings.archivedTab} ({archivedCount})
+              </Text>
+            </Pressable>
           </View>
-        </AppCard>
-      ) : null}
-
-      {!isLoading && recipes.length > 0 ? (
-        <AppCard style={styles.listCard}>
-          <View style={styles.listSummaryRow}>
-            <Subtle>
-              {listMode === 'active'
-                ? strings.recipeCountLabel(recipeCount)
-                : strings.archivedCountLabel(recipeCount)}
-            </Subtle>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={onImportRecipe}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.toolbarAction,
+                pressed ? styles.quickActionPressed : null,
+              ]}
+            >
+              <Ionicons name="download-outline" size={16} color={theme.colors.textSecondary} />
+              <Text style={styles.toolbarActionText}>{strings.importRecipe}</Text>
+            </Pressable>
+            <Pressable
+              onPress={onCreateRecipe}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.toolbarAction,
+                styles.toolbarActionPrimary,
+                pressed ? styles.quickActionPressed : null,
+              ]}
+            >
+              <Ionicons name="add" size={16} color={theme.colors.feature.meals} />
+              <Text style={styles.toolbarActionPrimaryText}>{strings.newRecipe}</Text>
+            </Pressable>
           </View>
+        </View>
+
+        {isLoading || error || recipes.length === 0 ? (
+          <View style={styles.workspaceBody}>
+            {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {!isLoading && !error ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateTitle}>
+                  {listMode === 'active' ? strings.noRecipes : strings.noArchivedRecipes}
+                </Text>
+                {(listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint) ? (
+                  <Subtle>
+                    {listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint}
+                  </Subtle>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        ) : (
           <View style={styles.list}>
             {recipes.map((recipe, index) => {
               const ingredientLabel = recipe.ingredientCount === 1
                 ? '1 ingredient'
                 : `${recipe.ingredientCount} ingredients`;
+              const showIdentityBadge = !!recipe.archivedAt;
+              const showMetaTop = showIdentityBadge || recipe.duplicateNameCount > 1;
               return (
                 <Pressable
                   key={recipe.recipeId}
@@ -148,18 +154,20 @@ export function MealsRecipesView({
                   ]}
                 >
                   <View style={styles.rowCopy}>
-                    <View style={styles.rowMetaTop}>
-                      <View style={styles.identityBadge}>
-                        <Text style={styles.identityBadgeText}>
-                          {recipe.archivedAt ? strings.archivedRecipeLabel : strings.savedRecipeLabel}
-                        </Text>
+                    {showMetaTop ? (
+                      <View style={styles.rowMetaTop}>
+                        {showIdentityBadge ? (
+                          <View style={styles.identityBadge}>
+                            <Text style={styles.identityBadgeText}>{strings.archivedRecipeLabel}</Text>
+                          </View>
+                        ) : null}
+                        {recipe.duplicateNameCount > 1 ? (
+                          <Text style={styles.duplicateHint}>
+                            {strings.duplicateNameHint(recipe.duplicateNameCount)}
+                          </Text>
+                        ) : null}
                       </View>
-                      {recipe.duplicateNameCount > 1 ? (
-                        <Text style={styles.duplicateHint}>
-                          {strings.duplicateNameHint(recipe.duplicateNameCount)}
-                        </Text>
-                      ) : null}
-                    </View>
+                    ) : null}
                     <Text style={styles.rowTitle}>{recipe.name}</Text>
                     <Text style={styles.rowMeta}>
                       {ingredientLabel} · {strings.createdLabel} {recipe.createdLabel}
@@ -170,34 +178,61 @@ export function MealsRecipesView({
               );
             })}
           </View>
-        </AppCard>
-      ) : null}
+        )}
+      </AppCard>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   layout: {
-    gap: theme.spacing.sm,
+    gap: 0,
   },
-  header: {
+  workspaceCard: {
+    paddingTop: theme.spacing.xs,
+    paddingBottom: 0,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  toolbarAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 6,
+  },
+  toolbarActionPrimary: {
+    backgroundColor: theme.colors.accentSoft,
+  },
+  quickActionPressed: {
+    opacity: 0.82,
+  },
+  toolbarActionText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  toolbarActionPrimaryText: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.meals,
+    fontWeight: '700',
+  },
+  toolbarRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: theme.spacing.sm,
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  headerActions: {
-    alignItems: 'flex-end',
-    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
   },
   modeSwitchRow: {
     flexDirection: 'row',
-    alignSelf: 'flex-start',
     gap: 4,
     padding: 3,
     borderRadius: theme.radius.pill,
@@ -224,18 +259,18 @@ const styles = StyleSheet.create({
   modeTabTextActive: {
     color: theme.colors.textPrimary,
   },
-  listCard: {
-    paddingVertical: theme.spacing.xs,
-  },
-  listSummaryRow: {
+  workspaceBody: {
     paddingHorizontal: theme.spacing.sm,
-    paddingTop: theme.spacing.xs,
-    paddingBottom: theme.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    gap: theme.spacing.xs,
   },
   list: {
     gap: 0,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   row: {
     flexDirection: 'row',

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, Subtle } from '../../../shared/ui/components';
@@ -16,12 +17,12 @@ type Strings = {
   title: string;
   close: string;
   loadingDay: string;
-  emptyDay: string;
+  emptyDay?: string;
   addMeal: string;
   editMeal: string;
   mealsLabel: string;
-  mealHint: string;
-  mealActionHint: string;
+  mealHint?: string;
+  mealActionHint?: string;
   recipeLabel: string;
   openRecipe: string;
 };
@@ -85,14 +86,19 @@ export function MealDayDetailSheet({
                     >
                       <View style={styles.slotHeader}>
                         <Text style={styles.slotLabel}>{mealTypeLabels[mealType]}</Text>
-                        <Text style={styles.slotActionText}>
-                          {meal ? strings.editMeal : strings.addMeal}
-                        </Text>
+                        <View style={styles.slotAction}>
+                          <Text style={styles.slotActionText}>
+                            {meal ? strings.editMeal : strings.addMeal}
+                          </Text>
+                          <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                        </View>
                       </View>
                       <Text style={meal ? styles.slotValue : styles.slotEmptyValue}>
                         {meal ? meal.recipeTitle : `${strings.addMeal} ${mealTypeLabels[mealType].toLowerCase()}`}
                       </Text>
-                      <Text style={styles.slotHint}>{meal ? strings.mealHint : strings.mealActionHint}</Text>
+                      {(meal ? strings.mealHint : strings.mealActionHint) ? (
+                        <Text style={styles.slotHint}>{meal ? strings.mealHint : strings.mealActionHint}</Text>
+                      ) : null}
                     </Pressable>
                     {meal ? (
                       <View style={styles.recipeRow}>
@@ -111,7 +117,7 @@ export function MealDayDetailSheet({
                   </View>
                 );
               })}
-              {meals.length === 0 ? <Subtle>{strings.emptyDay}</Subtle> : null}
+              {meals.length === 0 && strings.emptyDay ? <Subtle>{strings.emptyDay}</Subtle> : null}
             </View>
           )}
         </View>
@@ -195,6 +201,11 @@ const styles = StyleSheet.create({
   slotActionText: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
+  },
+  slotAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   slotValue: {
     ...textStyles.body,

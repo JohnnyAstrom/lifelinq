@@ -20,14 +20,12 @@ import java.util.regex.Pattern;
 
 public class RecipeImportApplicationService {
     private static final Pattern LEADING_QUANTITY_PATTERN = Pattern.compile(
-            "^(?<quantity>(?:\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d+(?:[\\.,]\\d+)?))\\s*(?<rest>.+)$"
+            "^(?<quantity>(?:\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d+(?:[\\.,]\\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞]|\\d+[¼½¾⅓⅔⅛⅜⅝⅞]))\\s*(?<rest>.+)$"
     );
     private static final Pattern ATTACHED_UNIT_PATTERN = Pattern.compile(
             "^(?<quantity>\\d+(?:[\\.,]\\d+)?)(?<unit>[A-Za-z]+)\\s+(?<rest>.+)$"
     );
     private static final Set<String> UNSUPPORTED_MEASURE_TOKENS = Set.of(
-            "tsp", "tsps", "teaspoon", "teaspoons",
-            "tbsp", "tbsps", "tablespoon", "tablespoons",
             "clove", "cloves",
             "slice", "slices",
             "pinch", "pinches",
@@ -107,6 +105,16 @@ public class RecipeImportApplicationService {
         if (!matcher.matches()) {
             Matcher attachedUnitMatcher = ATTACHED_UNIT_PATTERN.matcher(normalizedLine);
             if (!attachedUnitMatcher.matches()) {
+                String fallbackIngredientName = stripUnsupportedMeasureToken(normalizedLine);
+                if (fallbackIngredientName != null) {
+                    return new RecipeImportDraftIngredientView(
+                            fallbackIngredientName,
+                            normalizedLine,
+                            null,
+                            null,
+                            position
+                    );
+                }
                 return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
             }
             BigDecimal quantity = parseQuantity(attachedUnitMatcher.group("quantity"));
@@ -194,6 +202,10 @@ public class RecipeImportApplicationService {
     private BigDecimal parseQuantity(String quantityText) {
         try {
             String normalized = normalizeFractionQuantity(quantityText);
+            BigDecimal unicodeFraction = parseUnicodeFractionQuantity(normalized);
+            if (unicodeFraction != null) {
+                return unicodeFraction;
+            }
             if (normalized.contains("/")) {
                 String[] parts = normalized.split("\\s+");
                 if (parts.length == 2) {
@@ -254,16 +266,26 @@ public class RecipeImportApplicationService {
     }
 
     private String stripUnsupportedMeasureToken(String value) {
-        int split = value.indexOf(' ');
-        if (split <= 0 || split >= value.length() - 1) {
+        String[] parts = value.split("\\s+", 3);
+        if (parts.length < 2) {
             return null;
         }
-        return stripUnsupportedMeasureToken(value.substring(0, split), value.substring(split + 1));
+        if (parts.length >= 2) {
+            String shaped = stripUnsupportedMeasureToken(parts[0], value.substring(parts[0].length()).trim());
+            if (shaped != null) {
+                return shaped;
+            }
+        }
+        if (parts.length == 3 && isLooseFractionToken(parts[0])) {
+            return stripUnsupportedMeasureToken(parts[1], parts[2]);
+        }
+        return null;
     }
 
     private String stripUnsupportedMeasureToken(String unitToken, String ingredientValue) {
         String normalizedUnitToken = normalizeUnitToken(unitToken);
-        if (!UNSUPPORTED_MEASURE_TOKENS.contains(normalizedUnitToken)) {
+        if (!UNSUPPORTED_MEASURE_TOKENS.contains(normalizedUnitToken)
+                && parseSupportedKitchenMeasure(normalizedUnitToken) == null) {
             return null;
         }
 
@@ -288,6 +310,15 @@ public class RecipeImportApplicationService {
             case "l", "liter", "liters", "litre", "litres" -> IngredientUnitView.L;
             case "dl", "deciliter", "deciliters", "decilitre", "decilitres" -> IngredientUnitView.DL;
             case "ml", "milliliter", "milliliters", "millilitre", "millilitres" -> IngredientUnitView.ML;
+            default -> parseSupportedKitchenMeasure(normalizedUnitToken);
+        };
+    }
+
+    private IngredientUnitView parseSupportedKitchenMeasure(String normalizedUnitToken) {
+        return switch (normalizedUnitToken) {
+            case "tbsp", "tbsps", "tablespoon", "tablespoons", "msk", "matsked", "matskedar" -> IngredientUnitView.TBSP;
+            case "tsp", "tsps", "teaspoon", "teaspoons", "tsk", "tesked", "teskedar" -> IngredientUnitView.TSP;
+            case "krm", "kryddmått" -> IngredientUnitView.KRM;
             default -> null;
         };
     }
@@ -297,6 +328,47 @@ public class RecipeImportApplicationService {
                 .toLowerCase(Locale.ROOT)
                 .replace(".", "")
                 .trim();
+    }
+
+    private boolean isLooseFractionToken(String token) {
+        return switch (token) {
+            case "¼", "½", "¾", "⅓", "⅔", "⅛", "⅜", "⅝", "⅞" -> true;
+            default -> false;
+        };
+    }
+
+    private BigDecimal parseUnicodeFractionQuantity(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        if (isLooseFractionToken(value)) {
+            return unicodeFractionValue(value);
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() >= 2 && isLooseFractionToken(trimmed.substring(trimmed.length() - 1))) {
+            String wholePart = trimmed.substring(0, trimmed.length() - 1);
+            if (wholePart.chars().allMatch(Character::isDigit)) {
+                return new BigDecimal(wholePart).add(
+                        unicodeFractionValue(trimmed.substring(trimmed.length() - 1))
+                );
+            }
+        }
+        return null;
+    }
+
+    private BigDecimal unicodeFractionValue(String token) {
+        return switch (token) {
+            case "¼" -> new BigDecimal("0.25");
+            case "½" -> new BigDecimal("0.5");
+            case "¾" -> new BigDecimal("0.75");
+            case "⅓" -> new BigDecimal("0.3333333333");
+            case "⅔" -> new BigDecimal("0.6666666667");
+            case "⅛" -> new BigDecimal("0.125");
+            case "⅜" -> new BigDecimal("0.375");
+            case "⅝" -> new BigDecimal("0.625");
+            case "⅞" -> new BigDecimal("0.875");
+            default -> null;
+        };
     }
 
     private String normalizeRequiredName(String value) {
