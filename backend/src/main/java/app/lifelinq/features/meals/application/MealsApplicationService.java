@@ -31,9 +31,68 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.transaction.annotation.Transactional;
 
 public class MealsApplicationService {
+    private static final List<String> LEADING_INGREDIENT_MODIFIERS = List.of(
+            "very finely chopped",
+            "finely chopped",
+            "roughly chopped",
+            "lightly beaten",
+            "chopped",
+            "crushed",
+            "mashed",
+            "large",
+            "small",
+            "medium",
+            "finhackad",
+            "grovhackad",
+            "hackad"
+    );
+    private static final List<String> LEADING_COOKING_MEASURE_TOKENS = List.of(
+            "tbsp.", "tbsp",
+            "tsp.", "tsp",
+            "msk",
+            "tsk",
+            "cloves", "clove",
+            "slices", "slice",
+            "pinches", "pinch"
+    );
+    private static final List<String> TRAILING_COUNT_TOKENS = List.of(
+            "cloves", "clove",
+            "slices", "slice"
+    );
+    private static final List<String> SHOPPING_CONTEXT_SUFFIXES = List.of(
+            "plus a little extra",
+            "plus extra",
+            "to serve",
+            "for serving",
+            "for frying",
+            "for dusting",
+            "for greasing",
+            "till servering",
+            "till stekning"
+    );
+    private static final List<String> SHOPPING_PREPARATION_SUFFIXES = List.of(
+            "very finely chopped",
+            "finely chopped",
+            "roughly chopped",
+            "lightly beaten",
+            "beaten",
+            "crushed",
+            "chopped",
+            "finhackad",
+            "grovhackad",
+            "hackad"
+    );
+    private static final Map<String, String> SHOPPING_CANONICAL_NAME_ENDINGS = Map.of(
+            "thyme leaves", "thyme"
+    );
+    private static final Pattern LEADING_QUANTITY_PATTERN = Pattern.compile(
+            "^(?:(?:\\d+[.,]?\\d*|\\d+\\s+\\d+/\\d+|\\d+/\\d+|[½¼¾⅓⅔])\\s+)+"
+    );
+
     private final WeekPlanRepository weekPlanRepository;
     private final RecipeRepository recipeRepository;
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
@@ -510,17 +569,248 @@ public class MealsApplicationService {
             if (selectedPositions != null && !selectedPositions.contains(ingredient.getPosition())) {
                 continue;
             }
+            ShoppingIngredientProjection projection = projectIngredientForShopping(ingredient);
             mealsShoppingPort.addShoppingItem(
                     groupId,
                     actorUserId,
                     targetShoppingListId,
-                    normalizeIngredientName(ingredient.getName()),
-                    ingredient.getQuantity(),
-                    mapRecipeUnitToShoppingUnitName(ingredient.getUnit()),
+                    projection.name(),
+                    projection.quantity(),
+                    projection.unitName(),
                     "meal-plan",
                     normalizeRecipeName(recipeName)
             );
         }
+    }
+
+    private ShoppingIngredientProjection projectIngredientForShopping(Ingredient ingredient) {
+        ReducedIngredientName reducedName = reduceIngredientNameForShopping(ingredient);
+        boolean preserveQuantityDetails = shouldPreserveShoppingQuantityDetails(ingredient, reducedName);
+        return new ShoppingIngredientProjection(
+                reducedName.name(),
+                preserveQuantityDetails ? ingredient.getQuantity() : null,
+                preserveQuantityDetails ? mapRecipeUnitToShoppingUnitName(ingredient.getUnit()) : null
+        );
+    }
+
+    private ReducedIngredientName reduceIngredientNameForShopping(Ingredient ingredient) {
+        String candidate = ingredient.getName();
+        candidate = stripIgnorableTrailingCommaClauses(candidate);
+        candidate = stripKnownShoppingSuffixes(candidate);
+        candidate = stripLeadingIngredientModifiers(candidate);
+
+        boolean strippedLeadingMeasureToken = false;
+        boolean strippedTrailingCountToken = false;
+        if (ingredient.getQuantity() == null || ingredient.getUnit() == null || ingredient.getUnit() == IngredientUnit.PCS) {
+            candidate = stripLeadingStandaloneQuantity(candidate);
+            StripResult leadingMeasureResult = stripLeadingCookingMeasureTokens(candidate);
+            candidate = leadingMeasureResult.value();
+            strippedLeadingMeasureToken = leadingMeasureResult.changed();
+            StripResult trailingCountResult = stripTrailingCountTokens(candidate);
+            candidate = trailingCountResult.value();
+            strippedTrailingCountToken = trailingCountResult.changed();
+        }
+        candidate = stripPreparationSuffixes(candidate);
+        if (ingredient.getQuantity() == null || ingredient.getUnit() == null || ingredient.getUnit() == IngredientUnit.PCS) {
+            StripResult trailingCountResult = stripTrailingCountTokens(candidate);
+            candidate = trailingCountResult.value();
+            strippedTrailingCountToken = strippedTrailingCountToken || trailingCountResult.changed();
+        }
+        candidate = applyLowRiskShoppingCanonicalName(candidate);
+        String normalized = normalizeOptionalIngredientRawText(candidate);
+        if (normalized == null) {
+            normalized = ingredient.getName();
+        }
+        return new ReducedIngredientName(
+                normalizeIngredientName(normalized),
+                strippedLeadingMeasureToken,
+                strippedTrailingCountToken
+        );
+    }
+
+    private boolean shouldPreserveShoppingQuantityDetails(Ingredient ingredient, ReducedIngredientName reducedName) {
+        if (ingredient.getQuantity() == null || ingredient.getUnit() == null) {
+            return false;
+        }
+        if (ingredient.getUnit() == IngredientUnit.PCS
+                && (reducedName.strippedLeadingMeasureToken() || reducedName.strippedTrailingCountToken())) {
+            return false;
+        }
+        return mapRecipeUnitToShoppingUnitName(ingredient.getUnit()) != null;
+    }
+
+    private String stripIgnorableTrailingCommaClauses(String value) {
+        String current = value;
+        while (true) {
+            int commaIndex = current.lastIndexOf(',');
+            if (commaIndex < 0) {
+                return current;
+            }
+            String trailingClause = current.substring(commaIndex + 1).trim();
+            if (!isIgnorableShoppingClause(trailingClause)) {
+                return current;
+            }
+            current = current.substring(0, commaIndex).trim();
+        }
+    }
+
+    private boolean isIgnorableShoppingClause(String clause) {
+        String normalized = normalizeClause(clause);
+        if (normalized == null) {
+            return false;
+        }
+        return SHOPPING_CONTEXT_SUFFIXES.contains(normalized)
+                || SHOPPING_PREPARATION_SUFFIXES.contains(normalized);
+    }
+
+    private String stripKnownShoppingSuffixes(String value) {
+        String current = value;
+        boolean changed;
+        do {
+            changed = false;
+            String normalized = normalizeClause(current);
+            if (normalized == null) {
+                return value;
+            }
+            for (String suffix : SHOPPING_CONTEXT_SUFFIXES) {
+                if (normalized.endsWith(suffix)) {
+                    current = current.substring(0, current.length() - suffix.length()).trim();
+                    changed = true;
+                    break;
+                }
+            }
+        } while (changed);
+        return current;
+    }
+
+    private String stripLeadingIngredientModifiers(String value) {
+        String current = value.trim();
+        boolean changed;
+        do {
+            changed = false;
+            String normalized = normalizeClause(current);
+            if (normalized == null) {
+                return value;
+            }
+            for (String modifier : LEADING_INGREDIENT_MODIFIERS) {
+                if (normalized.equals(modifier)) {
+                    return value;
+                }
+                if (normalized.startsWith(modifier + " ")) {
+                    current = current.substring(modifier.length()).trim();
+                    changed = true;
+                    break;
+                }
+            }
+        } while (changed);
+        return current;
+    }
+
+    private String stripLeadingStandaloneQuantity(String value) {
+        String current = value.trim();
+        while (true) {
+            String updated = LEADING_QUANTITY_PATTERN.matcher(current).replaceFirst("");
+            if (updated.equals(current)) {
+                return current;
+            }
+            current = updated.trim();
+        }
+    }
+
+    private StripResult stripLeadingCookingMeasureTokens(String value) {
+        String current = value.trim();
+        boolean changed = false;
+        do {
+            boolean removedInIteration = false;
+            String normalized = normalizeClause(current);
+            if (normalized == null) {
+                return new StripResult(value, false);
+            }
+            for (String token : LEADING_COOKING_MEASURE_TOKENS) {
+                if (normalized.equals(token)) {
+                    return new StripResult(value, false);
+                }
+                if (normalized.startsWith(token + " ")) {
+                    current = current.substring(token.length()).trim();
+                    if (normalizeClause(current) != null && normalizeClause(current).startsWith("of ")) {
+                        current = current.substring(2).trim();
+                    }
+                    changed = true;
+                    removedInIteration = true;
+                    break;
+                }
+            }
+            if (!removedInIteration) {
+                return new StripResult(current, changed);
+            }
+        } while (true);
+    }
+
+    private StripResult stripTrailingCountTokens(String value) {
+        String current = value.trim();
+        boolean changed = false;
+        while (true) {
+            String normalized = normalizeClause(current);
+            if (normalized == null) {
+                return new StripResult(value, false);
+            }
+            boolean stripped = false;
+            for (String token : TRAILING_COUNT_TOKENS) {
+                if (normalized.endsWith(" " + token)) {
+                    current = current.substring(0, current.length() - token.length()).trim();
+                    changed = true;
+                    stripped = true;
+                    break;
+                }
+            }
+            if (!stripped) {
+                return new StripResult(current, changed);
+            }
+        }
+    }
+
+    private String stripPreparationSuffixes(String value) {
+        String current = value;
+        boolean changed;
+        do {
+            changed = false;
+            String normalized = normalizeClause(current);
+            if (normalized == null) {
+                return value;
+            }
+            for (String suffix : SHOPPING_PREPARATION_SUFFIXES) {
+                if (normalized.endsWith(" " + suffix)) {
+                    current = current.substring(0, current.length() - suffix.length()).trim();
+                    changed = true;
+                    break;
+                }
+            }
+        } while (changed);
+        return current;
+    }
+
+    private String applyLowRiskShoppingCanonicalName(String value) {
+        String current = value;
+        String normalized = normalizeClause(current);
+        if (normalized == null) {
+            return value;
+        }
+        for (Map.Entry<String, String> entry : SHOPPING_CANONICAL_NAME_ENDINGS.entrySet()) {
+            if (normalized.endsWith(entry.getKey())) {
+                return current.substring(0, current.length() - entry.getKey().length())
+                        .concat(entry.getValue())
+                        .trim();
+            }
+        }
+        return current;
+    }
+
+    private String normalizeClause(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private String normalizeRecipeIngredientName(String name) {
@@ -583,6 +873,15 @@ public class MealsApplicationService {
         if (date.get(weekFields.weekBasedYear()) != year) {
             throw new IllegalArgumentException("isoWeek is not valid for year");
         }
+    }
+
+    private record ShoppingIngredientProjection(String name, java.math.BigDecimal quantity, String unitName) {
+    }
+
+    private record ReducedIngredientName(String name, boolean strippedLeadingMeasureToken, boolean strippedTrailingCountToken) {
+    }
+
+    private record StripResult(String value, boolean changed) {
     }
 
 }

@@ -232,4 +232,98 @@ class MealsShoppingIntegrationTest {
         assertEquals("tomato", list.getItems().get(0).getName());
         assertEquals("milk", list.getItems().get(1).getName());
     }
+
+    @Test
+    void shoppingProjectionLetsNoisyMealIngredientMergeWithExistingShoppingItem() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        groupRepository.save(new Group(groupId, "Home"));
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.ADMIN));
+
+        CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
+                groupId,
+                userId,
+                "Groceries"
+        );
+
+        shoppingApplicationService.addShoppingItem(groupId, userId, listOutput.listId(), "olive oil");
+
+        RecipeView recipe = mealsApplicationService.createRecipe(
+                groupId,
+                userId,
+                "Pasta",
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(
+                        new IngredientInput("Olive oil for frying", new BigDecimal("2"), IngredientUnit.DL, 1)
+                )
+        );
+
+        mealsApplicationService.addOrReplaceMeal(
+                groupId,
+                userId,
+                2025,
+                10,
+                1,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                recipe.recipeId(),
+                listOutput.listId(),
+                null
+        );
+
+        ShoppingList list = shoppingListRepository.findById(listOutput.listId()).orElseThrow();
+        assertEquals(1, list.getItems().size());
+        assertEquals("olive oil", list.getItems().get(0).getName());
+        assertEquals(0, new BigDecimal("2").compareTo(list.getItems().get(0).getQuantity()));
+        assertEquals(ShoppingUnit.DL, list.getItems().get(0).getUnit());
+    }
+
+    @Test
+    void shoppingProjectionLetsPreparationHeavyHerbIngredientMergeCleanly() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        groupRepository.save(new Group(groupId, "Home"));
+        membershipRepository.save(new Membership(groupId, userId, GroupRole.ADMIN));
+
+        CreateShoppingListOutput listOutput = shoppingApplicationService.createShoppingList(
+                groupId,
+                userId,
+                "Groceries"
+        );
+
+        shoppingApplicationService.addShoppingItem(groupId, userId, listOutput.listId(), "parsley");
+
+        RecipeView recipe = mealsApplicationService.createRecipe(
+                groupId,
+                userId,
+                "Pasta",
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(
+                        new IngredientInput("finely chopped parsley", null, null, 1)
+                )
+        );
+
+        mealsApplicationService.addOrReplaceMeal(
+                groupId,
+                userId,
+                2025,
+                10,
+                1,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                recipe.recipeId(),
+                listOutput.listId(),
+                null
+        );
+
+        ShoppingList list = shoppingListRepository.findById(listOutput.listId()).orElseThrow();
+        assertEquals(1, list.getItems().size());
+        assertEquals("parsley", list.getItems().get(0).getName());
+    }
 }

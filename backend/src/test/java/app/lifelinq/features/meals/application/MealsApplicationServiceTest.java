@@ -112,6 +112,275 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void addMealReducesCommonCookingNoiseBeforeShoppingPush() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Dinner",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "1 tbsp olive oil plus a little extra",
+                                null,
+                                null,
+                                1
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "olivolja, till stekning",
+                                null,
+                                null,
+                                2
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "msk färsk rosmarin, hackad",
+                                null,
+                                null,
+                                3
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "2 slices prosciutto",
+                                null,
+                                null,
+                                4
+                        )
+                )
+        ));
+
+        service.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                5,
+                1,
+                MealType.DINNER,
+                recipeId,
+                listId,
+                null
+        );
+
+        verify(shopping).addShoppingItem(groupId, userId, listId, "olive oil", null, null, "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "olivolja", null, null, "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "färsk rosmarin", null, null, "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "prosciutto", null, null, "meal-plan", "Dinner");
+    }
+
+    @Test
+    void addMealKeepsStructuredQuantityAndUnitWhenOnlyShoppingNoiseIsRemovedFromName() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Dinner",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "Olive oil for frying",
+                                new BigDecimal("2"),
+                                IngredientUnit.DL,
+                                1
+                        )
+                )
+        ));
+
+        service.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                5,
+                1,
+                MealType.DINNER,
+                recipeId,
+                listId,
+                null
+        );
+
+        verify(shopping).addShoppingItem(
+                groupId,
+                userId,
+                listId,
+                "olive oil",
+                new BigDecimal("2"),
+                "DL",
+                "meal-plan",
+                "Dinner"
+        );
+    }
+
+    @Test
+    void addMealDropsMisleadingPcsWhenRecipeMeasureTokensRemainOnlyAsFallbackNoise() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Dinner",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "½ tbsp english mustard",
+                                new BigDecimal("1"),
+                                IngredientUnit.PCS,
+                                1
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "1 garlic clove crushed",
+                                new BigDecimal("1"),
+                                IngredientUnit.PCS,
+                                2
+                        )
+                )
+        ));
+
+        service.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                5,
+                1,
+                MealType.DINNER,
+                recipeId,
+                listId,
+                null
+        );
+
+        verify(shopping).addShoppingItem(groupId, userId, listId, "english mustard", null, null, "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "garlic", null, null, "meal-plan", "Dinner");
+    }
+
+    @Test
+    void addMealStripsCommonLeadingModifiersForShoppingFacingNames() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Dinner",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "finely chopped thyme leaves",
+                                null,
+                                null,
+                                1
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "finely chopped parsley",
+                                null,
+                                null,
+                                2
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "large shallot",
+                                new BigDecimal("1"),
+                                IngredientUnit.PCS,
+                                3
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "chestnut mushroom very finely chopped",
+                                null,
+                                null,
+                                4
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(),
+                                "mashed root veg",
+                                null,
+                                null,
+                                5
+                        )
+                )
+        ));
+
+        service.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                5,
+                1,
+                MealType.DINNER,
+                recipeId,
+                listId,
+                null
+        );
+
+        verify(shopping).addShoppingItem(groupId, userId, listId, "thyme", null, null, "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "parsley", null, null, "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "shallot", new BigDecimal("1"), "PCS", "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "chestnut mushroom", null, null, "meal-plan", "Dinner");
+        verify(shopping).addShoppingItem(groupId, userId, listId, "root veg", null, null, "meal-plan", "Dinner");
+    }
+
+    @Test
     void duplicateIngredientNamesArePushedAsSeparateOccurrences() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
