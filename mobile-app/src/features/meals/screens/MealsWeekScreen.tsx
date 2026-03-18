@@ -166,7 +166,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSheetSubtitle: 'Review and edit the recipe used for this meal.',
     recipeSheetNewRecipeTitle: 'New recipe',
     importDraftLabel: 'Imported draft',
-    archivedReadOnlyHint: 'Restore this recipe to continue editing it in Recipes.',
+    archivedReadOnlyHint: 'This archived recipe stays readable here until you restore it.',
     recipeSheetSavedRecipeContextHint: 'This meal is using a saved recipe.',
     recipeSheetMealSpecificContextHint: 'Your changes are now creating a recipe for this meal.',
     recipeSheetEditingSavedRecipeContextHint: 'You are editing the saved recipe used by this meal.',
@@ -187,7 +187,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
     editingSavedRecipeHint: 'Changes now update the saved recipe itself.',
     ingredientsLabel: 'Ingredients',
-    ingredientsRecipeHint: 'These ingredients belong to the recipe you are planning.',
+    ingredientsRecipeHint: 'These ingredients are saved with this recipe.',
     savedRecipeIngredientsHint: 'These ingredients belong to this saved recipe.',
     recipePickerTitle: 'Choose a recipe',
     recipePickerHint: 'Choose a saved recipe for this meal.',
@@ -216,7 +216,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     restoringRecipe: 'Restoring recipe...',
     deleteRecipe: 'Delete recipe',
     deletingRecipe: 'Deleting recipe...',
-    deleteRecipeBlockedDefault: 'This recipe cannot be deleted yet.',
+    deleteRecipeBlockedDefault: 'This archived recipe is still used in current or future meal plans.',
     confirmDeleteRecipeTitle: 'Delete recipe?',
     confirmDeleteRecipeMessage: 'This permanently removes the archived recipe from Meals.',
     confirmDeleteRecipeAction: 'Delete',
@@ -1019,7 +1019,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeContextHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importDraftContextHint
               : recipesWorkspace.recipeDetail.isArchivedRecipe
-              ? 'This recipe is archived and hidden from active recipe picks until you restore it.'
+              ? 'This recipe is archived and out of your active recipe workspace until you restore it.'
               : recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.savedRecipeContextHint
               : strings.newSavedRecipeContextHint,
