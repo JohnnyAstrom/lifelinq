@@ -414,7 +414,8 @@ public class MealsApplicationService {
             nextPosition = position + 1;
             ingredients.add(new Ingredient(
                     UUID.randomUUID(),
-                    input.name(),
+                    normalizeRecipeIngredientName(input.name()),
+                    normalizeOptionalIngredientRawText(input.rawText()),
                     input.quantity(),
                     input.unit(),
                     position
@@ -429,6 +430,7 @@ public class MealsApplicationService {
             ingredients.add(new IngredientView(
                     ingredient.getId(),
                     ingredient.getName(),
+                    ingredient.getRawText(),
                     ingredient.getQuantity(),
                     toViewUnit(ingredient.getUnit()),
                     ingredient.getPosition()
@@ -514,22 +516,52 @@ public class MealsApplicationService {
                     targetShoppingListId,
                     normalizeIngredientName(ingredient.getName()),
                     ingredient.getQuantity(),
-                    ingredient.getUnit() == null ? null : ingredient.getUnit().name(),
+                    mapRecipeUnitToShoppingUnitName(ingredient.getUnit()),
                     "meal-plan",
                     normalizeRecipeName(recipeName)
             );
         }
     }
 
-    private String normalizeIngredientName(String name) {
+    private String normalizeRecipeIngredientName(String name) {
         if (name == null) {
             throw new IllegalArgumentException("ingredient name must not be null");
         }
-        String trimmed = name.trim();
-        if (trimmed.isEmpty()) {
+        String normalized = name.trim().replaceAll("\\s+", " ");
+        if (normalized.isEmpty()) {
             throw new IllegalArgumentException("ingredient name must not be blank");
         }
-        return trimmed.replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        return normalized;
+    }
+
+    private String normalizeOptionalIngredientRawText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ");
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeIngredientName(String name) {
+        return normalizeRecipeIngredientName(name).toLowerCase(Locale.ROOT);
+    }
+
+    private String mapRecipeUnitToShoppingUnitName(IngredientUnit unit) {
+        if (unit == null) {
+            return null;
+        }
+        // Recipes and Shopping intentionally remain separate unit concepts even
+        // while the current overlap is still one-to-one.
+        return switch (unit) {
+            case PCS -> "PCS";
+            case PACK -> "PACK";
+            case KG -> "KG";
+            case HG -> "HG";
+            case G -> "G";
+            case L -> "L";
+            case DL -> "DL";
+            case ML -> "ML";
+        };
     }
 
     private void ensureMealAccess(UUID groupId, UUID actorUserId) {

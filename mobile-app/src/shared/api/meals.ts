@@ -77,6 +77,7 @@ export async function removeMeal(
 
 export type IngredientRequest = {
   name: string;
+  rawText?: string | null;
   quantity?: number | null;
   unit?: string | null;
   position: number;
@@ -95,6 +96,7 @@ export type CreateOrUpdateRecipeRequest = {
 export type IngredientResponse = {
   id: string;
   name: string;
+  rawText: string | null;
   quantity: number | null;
   unit: string | null;
   position: number;
@@ -119,6 +121,7 @@ export type RecipeResponse = {
 
 export type RecipeImportDraftIngredientResponse = {
   name: string;
+  rawText: string | null;
   quantity: number | null;
   unit: string | null;
   position: number;

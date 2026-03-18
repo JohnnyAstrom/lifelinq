@@ -36,6 +36,9 @@ public class RecipeIngredientEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "raw_text", length = 1000)
+    private String rawText;
+
     @Column(name = "quantity", precision = 12, scale = 3)
     private BigDecimal quantity;
 
@@ -53,6 +56,7 @@ public class RecipeIngredientEntity {
             UUID id,
             RecipeEntity recipe,
             String name,
+            String rawText,
             BigDecimal quantity,
             IngredientUnit unit,
             int position
@@ -60,6 +64,7 @@ public class RecipeIngredientEntity {
         this.id = id;
         this.recipe = recipe;
         this.name = name;
+        this.rawText = rawText;
         this.quantity = quantity;
         this.unit = unit;
         this.position = position;
@@ -75,6 +80,10 @@ public class RecipeIngredientEntity {
 
     String getName() {
         return name;
+    }
+
+    String getRawText() {
+        return rawText;
     }
 
     BigDecimal getQuantity() {

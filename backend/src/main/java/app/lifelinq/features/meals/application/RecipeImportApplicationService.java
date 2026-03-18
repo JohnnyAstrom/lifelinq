@@ -95,7 +95,7 @@ public class RecipeImportApplicationService {
         if (!matcher.matches()) {
             Matcher attachedUnitMatcher = ATTACHED_UNIT_PATTERN.matcher(normalizedLine);
             if (!attachedUnitMatcher.matches()) {
-                return new RecipeImportDraftIngredientView(normalizedLine, null, null, position);
+                return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
             }
             BigDecimal quantity = parseQuantity(attachedUnitMatcher.group("quantity"));
             UnitParseResult unitResult = parseUnit(
@@ -103,10 +103,11 @@ public class RecipeImportApplicationService {
                     attachedUnitMatcher.group("rest")
             );
             if (quantity == null || unitResult == null) {
-                return new RecipeImportDraftIngredientView(normalizedLine, null, null, position);
+                return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
             }
             return new RecipeImportDraftIngredientView(
                     unitResult.ingredientName(),
+                    normalizedLine,
                     quantity,
                     unitResult.unit(),
                     position
@@ -118,11 +119,12 @@ public class RecipeImportApplicationService {
         UnitParseResult unitResult = parseUnit(rest);
 
         if (quantity == null || unitResult == null) {
-            return new RecipeImportDraftIngredientView(normalizedLine, null, null, position);
+            return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
         }
 
         return new RecipeImportDraftIngredientView(
                 unitResult.ingredientName(),
+                normalizedLine,
                 quantity,
                 unitResult.unit(),
                 position

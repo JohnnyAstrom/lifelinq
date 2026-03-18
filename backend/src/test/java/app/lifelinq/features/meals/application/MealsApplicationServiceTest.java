@@ -242,6 +242,36 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void createRecipeNormalizesIngredientNamesButPreservesRawText() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                new InMemoryRecipeRepository(),
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-02-01T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        var created = service.createRecipe(
+                groupId,
+                userId,
+                "Recipe",
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(new IngredientInput("  Olive   Oil  ", "2 tbsp olive oil", null, null, 1))
+        );
+
+        assertThat(created.ingredients()).hasSize(1);
+        assertThat(created.ingredients().get(0).name()).isEqualTo("Olive Oil");
+        assertThat(created.ingredients().get(0).rawText()).isEqualTo("2 tbsp olive oil");
+    }
+
+    @Test
     void archiveRecipeRetiresItFromActiveListButKeepsItReadable() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

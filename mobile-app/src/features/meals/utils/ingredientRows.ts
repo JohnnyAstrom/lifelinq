@@ -9,6 +9,7 @@ export type MealIngredientUnit = 'PCS' | 'PACK' | 'KG' | 'HG' | 'G' | 'L' | 'DL'
 export type MealIngredientRow = {
   id: string;
   name: string;
+  rawText: string | null;
   quantityText: string;
   unit: MealIngredientUnit | null;
 };
@@ -37,6 +38,7 @@ export function createEmptyIngredientRow(): MealIngredientRow {
   return {
     id: createRowId(),
     name: '',
+    rawText: null,
     quantityText: '',
     unit: null,
   };
@@ -50,6 +52,7 @@ export function ingredientRowsFromResponse(ingredients: IngredientResponse[]): M
   return ingredients.map((ingredient) => ({
     id: ingredient.id,
     name: ingredient.name,
+    rawText: ingredient.rawText,
     quantityText: ingredient.quantity == null ? '' : String(ingredient.quantity),
     unit: ingredient.unit as MealIngredientUnit | null,
   }));
@@ -65,6 +68,7 @@ export function ingredientRowsFromImportDraft(
   return ingredients.map((ingredient) => ({
     id: createRowId(),
     name: ingredient.name,
+    rawText: ingredient.rawText,
     quantityText: ingredient.quantity == null ? '' : String(ingredient.quantity),
     unit: ingredient.unit as MealIngredientUnit | null,
   }));
@@ -104,6 +108,7 @@ export function toIngredientRequests(rows: MealIngredientRow[]): IngredientReque
       const quantity = parseIngredientQuantity(row.quantityText);
       return {
         name: row.name.trim(),
+        rawText: row.rawText,
         quantity,
         unit: quantity == null ? null : row.unit,
         position: index + 1,

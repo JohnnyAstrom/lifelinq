@@ -289,6 +289,7 @@ public class MealsController {
             ingredients.add(new IngredientResponse(
                     ingredient.id(),
                     ingredient.name(),
+                    ingredient.rawText(),
                     ingredient.quantity(),
                     ingredient.unit(),
                     ingredient.position()
@@ -320,6 +321,7 @@ public class MealsController {
         for (IngredientRequest request : requests) {
             inputs.add(new IngredientInput(
                     request.getName(),
+                    request.getRawText(),
                     request.getQuantity(),
                     request.getUnit(),
                     request.getPosition()
@@ -333,6 +335,7 @@ public class MealsController {
         for (RecipeImportDraftIngredientView ingredient : view.ingredients()) {
             ingredients.add(new RecipeImportDraftIngredientResponse(
                     ingredient.name(),
+                    ingredient.rawText(),
                     ingredient.quantity(),
                     ingredient.unit(),
                     ingredient.position()

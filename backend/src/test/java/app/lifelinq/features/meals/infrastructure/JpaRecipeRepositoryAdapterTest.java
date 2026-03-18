@@ -73,6 +73,36 @@ class JpaRecipeRepositoryAdapterTest {
         assertThat(loaded.get().getArchivedAt()).isNull();
         assertThat(loaded.get().getIngredients().get(0).getQuantity()).isEqualByComparingTo(new BigDecimal("1.5"));
         assertThat(loaded.get().getIngredients().get(0).getUnit()).isEqualTo(IngredientUnit.DL);
+        assertThat(loaded.get().getIngredients().get(0).getRawText()).isNull();
+    }
+
+    @Test
+    void savesAndLoadsIngredientRawText() {
+        UUID groupId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        Recipe recipe = new Recipe(
+                recipeId,
+                groupId,
+                "Imported Soup",
+                Instant.parse("2026-02-01T10:00:00Z"),
+                List.of(
+                        new Ingredient(
+                                UUID.randomUUID(),
+                                "Mushrooms",
+                                "400g mushrooms",
+                                new BigDecimal("400"),
+                                IngredientUnit.G,
+                                1
+                        )
+                )
+        );
+
+        repository.save(recipe);
+        Optional<Recipe> loaded = repository.findByIdAndGroupId(recipeId, groupId);
+
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().getIngredients()).hasSize(1);
+        assertThat(loaded.get().getIngredients().get(0).getRawText()).isEqualTo("400g mushrooms");
     }
 
     @Test

@@ -30,6 +30,7 @@ final class RecipeMapper {
                     ingredient.getId(),
                     entity,
                     ingredient.getName(),
+                    ingredient.getRawText(),
                     ingredient.getQuantity(),
                     ingredient.getUnit(),
                     ingredient.getPosition()
@@ -44,6 +45,7 @@ final class RecipeMapper {
             ingredients.add(new Ingredient(
                     ingredient.getId(),
                     ingredient.getName(),
+                    ingredient.getRawText(),
                     ingredient.getQuantity(),
                     ingredient.getUnit(),
                     ingredient.getPosition()

@@ -6,11 +6,16 @@ import java.util.UUID;
 public final class Ingredient {
     private final UUID id;
     private final String name;
+    private final String rawText;
     private final BigDecimal quantity;
     private final IngredientUnit unit;
     private final int position;
 
     public Ingredient(UUID id, String name, BigDecimal quantity, IngredientUnit unit, int position) {
+        this(id, name, null, quantity, unit, position);
+    }
+
+    public Ingredient(UUID id, String name, String rawText, BigDecimal quantity, IngredientUnit unit, int position) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
@@ -27,10 +32,27 @@ public final class Ingredient {
             throw new IllegalArgumentException("position must be greater than or equal to 1");
         }
         this.id = id;
-        this.name = name;
+        this.name = normalizeRequiredName(name);
+        this.rawText = normalizeOptionalText(rawText);
         this.quantity = quantity;
         this.unit = unit;
         this.position = position;
+    }
+
+    private static String normalizeRequiredName(String value) {
+        String normalized = normalizeOptionalText(value);
+        if (normalized == null) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        return normalized;
+    }
+
+    private static String normalizeOptionalText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ");
+        return normalized.isEmpty() ? null : normalized;
     }
 
     public UUID getId() {
@@ -39,6 +61,10 @@ public final class Ingredient {
 
     public String getName() {
         return name;
+    }
+
+    public String getRawText() {
+        return rawText;
     }
 
     public BigDecimal getQuantity() {
