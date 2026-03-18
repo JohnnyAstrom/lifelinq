@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type KeyboardTypeOptions,
+  type StyleProp,
+  type TextStyle,
+} from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -26,6 +34,7 @@ type Strings = MealIngredientEditorRowStrings & {
   newRecipeTitle: string;
   recipeContextHint?: string;
   archivedReadOnlyHint?: string;
+  recipeNameEditHint?: string;
   mealAttachmentLabel?: string;
   mealAttachmentValue?: string;
   editSavedRecipeAction?: string;
@@ -33,14 +42,17 @@ type Strings = MealIngredientEditorRowStrings & {
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
   recipeContentLabel: string;
+  recipeMetadataHint?: string;
   recipeSourceLabel: string;
   recipeSourcePlaceholder: string;
   recipeSourceUrlLabel?: string;
   recipeSourceUrlPlaceholder?: string;
   recipeShortNoteLabel: string;
   recipeShortNotePlaceholder: string;
+  recipeShortNoteHint?: string;
   recipeInstructionsLabel: string;
   recipeInstructionsPlaceholder: string;
+  recipeInstructionsHint?: string;
   ingredientsLabel: string;
   ingredientsRecipeHint?: string;
   ingredientsEmptyState: string;
@@ -80,6 +92,48 @@ function ReadOnlyField({ label, value, emptyText, multiline = false }: ReadOnlyF
             {emptyText ?? `${label} not added yet.`}
           </Text>
         )}
+      </View>
+    </View>
+  );
+}
+
+type EditableFieldProps = {
+  label: string;
+  hint?: string;
+  placeholder: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  multiline?: boolean;
+  keyboardType?: KeyboardTypeOptions;
+  inputStyle?: StyleProp<TextStyle>;
+};
+
+function EditableField({
+  label,
+  hint,
+  placeholder,
+  value,
+  onChangeText,
+  multiline = false,
+  keyboardType,
+  inputStyle,
+}: EditableFieldProps) {
+  return (
+    <View style={styles.subSection}>
+      <View style={styles.sectionCopy}>
+        <Text style={styles.sectionTitle}>{label}</Text>
+        {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
+      </View>
+      <View style={[styles.editorCard, multiline ? styles.editorCardMultiline : null]}>
+        <AppInput
+          placeholder={placeholder}
+          value={value}
+          onChangeText={onChangeText}
+          multiline={multiline}
+          keyboardType={keyboardType}
+          editable
+          style={[styles.embeddedInput, inputStyle]}
+        />
       </View>
     </View>
   );
@@ -263,105 +317,31 @@ export function MealRecipeDetailSheet({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.section}>
-              <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
               {isArchivedRecipe ? (
-                <View style={styles.readOnlyField}>
-                  <Text style={styles.readOnlyValue}>{resolvedTitle}</Text>
-                </View>
+                <>
+                  <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
+                  <View style={styles.readOnlyField}>
+                    <Text style={styles.readOnlyValue}>{resolvedTitle}</Text>
+                  </View>
+                </>
               ) : (
-                <AppInput
+                <EditableField
+                  label={strings.recipeNameLabel}
+                  hint={strings.recipeNameEditHint}
                   placeholder={strings.recipeNamePlaceholder}
                   value={recipeTitle}
                   onChangeText={onChangeRecipeTitle}
-                  editable
+                  inputStyle={styles.titleInput}
                 />
               )}
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
-              {isArchivedRecipe ? (
-                <>
-                  <ReadOnlyField
-                    label={strings.recipeSourceLabel}
-                    value={recipeSource}
-                    emptyText="No source saved."
-                  />
-                  {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
-                    <ReadOnlyField
-                      label={strings.recipeSourceUrlLabel}
-                      value={recipeSourceUrl ?? ''}
-                      emptyText="No source link saved."
-                    />
-                  ) : null}
-                  <ReadOnlyField
-                    label={strings.recipeShortNoteLabel}
-                    value={recipeShortNote}
-                    emptyText="No short note saved."
-                    multiline
-                  />
-                  <ReadOnlyField
-                    label={strings.recipeInstructionsLabel}
-                    value={recipeInstructions}
-                    emptyText="No instructions saved."
-                    multiline
-                  />
-                </>
-              ) : (
-                <>
-                  <View style={styles.subSection}>
-                    <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
-                    <AppInput
-                      placeholder={strings.recipeSourcePlaceholder}
-                      value={recipeSource}
-                      onChangeText={onChangeRecipeSource}
-                      editable
-                    />
-                  </View>
-                  {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
-                    <View style={styles.subSection}>
-                      <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
-                      <AppInput
-                        placeholder={strings.recipeSourceUrlPlaceholder}
-                        value={recipeSourceUrl ?? ''}
-                        onChangeText={onChangeRecipeSourceUrl}
-                        keyboardType="url"
-                        editable
-                      />
-                    </View>
-                  ) : null}
-                  <View style={styles.subSection}>
-                    <Text style={styles.fieldLabel}>{strings.recipeShortNoteLabel}</Text>
-                    <AppInput
-                      placeholder={strings.recipeShortNotePlaceholder}
-                      value={recipeShortNote}
-                      onChangeText={onChangeRecipeShortNote}
-                      editable
-                      multiline
-                      style={styles.noteInput}
-                    />
-                  </View>
-                  <View style={styles.subSection}>
-                    <Text style={styles.fieldLabel}>{strings.recipeInstructionsLabel}</Text>
-                    <AppInput
-                      placeholder={strings.recipeInstructionsPlaceholder}
-                      value={recipeInstructions}
-                      onChangeText={onChangeRecipeInstructions}
-                      editable
-                      multiline
-                      style={styles.instructionsInput}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-
-            <View style={styles.section}>
+            <View style={[styles.section, !isArchivedRecipe ? styles.coreSection : null]}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionCopy}>
-                  <Text style={styles.fieldLabel}>{strings.ingredientsLabel}</Text>
+                  <Text style={styles.sectionTitle}>{strings.ingredientsLabel}</Text>
                   {strings.ingredientsRecipeHint ? (
-                    <Text style={styles.ingredientsHint}>{strings.ingredientsRecipeHint}</Text>
+                    <Text style={styles.sectionHint}>{strings.ingredientsRecipeHint}</Text>
                   ) : null}
                 </View>
                 {!isArchivedRecipe ? (
@@ -382,7 +362,9 @@ export function MealRecipeDetailSheet({
                     <Text style={styles.readOnlyEmpty}>No ingredients saved on this recipe.</Text>
                   </View>
                 ) : (
-                  <Text style={styles.ingredientsHint}>{strings.ingredientsEmptyState}</Text>
+                  <View style={styles.emptyStateCard}>
+                    <Text style={styles.emptyStateText}>{strings.ingredientsEmptyState}</Text>
+                  </View>
                 )
               ) : null}
 
@@ -404,6 +386,106 @@ export function MealRecipeDetailSheet({
                   ))}
                 </View>
               ) : null}
+            </View>
+
+            <View style={styles.section}>
+              {isArchivedRecipe ? (
+                <ReadOnlyField
+                  label={strings.recipeInstructionsLabel}
+                  value={recipeInstructions}
+                  emptyText="No instructions saved."
+                  multiline
+                />
+              ) : (
+                <EditableField
+                  label={strings.recipeInstructionsLabel}
+                  hint={strings.recipeInstructionsHint}
+                  placeholder={strings.recipeInstructionsPlaceholder}
+                  value={recipeInstructions}
+                  onChangeText={onChangeRecipeInstructions}
+                  multiline
+                  inputStyle={styles.instructionsInput}
+                />
+              )}
+            </View>
+
+            <View style={styles.section}>
+              {isArchivedRecipe ? (
+                <ReadOnlyField
+                  label={strings.recipeShortNoteLabel}
+                  value={recipeShortNote}
+                  emptyText="No short note saved."
+                  multiline
+                />
+              ) : (
+                <EditableField
+                  label={strings.recipeShortNoteLabel}
+                  hint={strings.recipeShortNoteHint}
+                  placeholder={strings.recipeShortNotePlaceholder}
+                  value={recipeShortNote}
+                  onChangeText={onChangeRecipeShortNote}
+                  multiline
+                  inputStyle={styles.noteInput}
+                />
+              )}
+            </View>
+
+            <View style={[styles.section, styles.metadataSection]}>
+              {isArchivedRecipe ? (
+                <>
+                  <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
+                  <ReadOnlyField
+                    label={strings.recipeSourceLabel}
+                    value={recipeSource}
+                    emptyText="No source saved."
+                  />
+                  {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
+                    <ReadOnlyField
+                      label={strings.recipeSourceUrlLabel}
+                      value={recipeSourceUrl ?? ''}
+                      emptyText="No source link saved."
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <View style={styles.sectionCopy}>
+                    <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
+                    {strings.recipeMetadataHint ? (
+                      <Text style={styles.sectionHint}>{strings.recipeMetadataHint}</Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.metadataFields}>
+                    <View style={styles.metadataField}>
+                      <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
+                      <View style={styles.metadataInputWrap}>
+                        <AppInput
+                          placeholder={strings.recipeSourcePlaceholder}
+                          value={recipeSource}
+                          onChangeText={onChangeRecipeSource}
+                          editable
+                          style={styles.metadataInput}
+                        />
+                      </View>
+                    </View>
+                    {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
+                      <View style={styles.metadataField}>
+                        <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
+                        <View style={styles.metadataInputWrap}>
+                          <AppInput
+                            placeholder={strings.recipeSourceUrlPlaceholder}
+                            value={recipeSourceUrl ?? ''}
+                            onChangeText={onChangeRecipeSourceUrl}
+                            keyboardType="url"
+                            editable
+                            style={styles.metadataInput}
+                          />
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+                </>
+              )}
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -525,16 +607,59 @@ const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.sm,
   },
+  coreSection: {
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  metadataSection: {
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
   subSection: {
     gap: theme.spacing.xs,
+  },
+  sectionTitle: {
+    ...textStyles.body,
+    color: theme.colors.text,
+    fontWeight: '700',
+  },
+  sectionHint: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   fieldLabel: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
     fontWeight: '600',
   },
+  editorCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  editorCardMultiline: {
+    minHeight: 96,
+  },
+  embeddedInput: {
+    borderWidth: 0,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    color: theme.colors.text,
+  },
+  titleInput: {
+    ...textStyles.body,
+    fontSize: 17,
+    fontWeight: '600',
+  },
   noteInput: {
-    minHeight: 72,
+    minHeight: 88,
     textAlignVertical: 'top',
   },
   readOnlyField: {
@@ -557,8 +682,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   instructionsInput: {
-    minHeight: 140,
+    minHeight: 168,
     textAlignVertical: 'top',
+    lineHeight: 22,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -609,6 +735,39 @@ const styles = StyleSheet.create({
   },
   ingredientList: {
     gap: theme.spacing.xs,
+  },
+  emptyStateCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  emptyStateText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  metadataFields: {
+    gap: theme.spacing.sm,
+  },
+  metadataField: {
+    gap: theme.spacing.xs,
+  },
+  metadataInputWrap: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceSubtle,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+  },
+  metadataInput: {
+    borderWidth: 0,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   error: {
     ...textStyles.body,
