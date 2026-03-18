@@ -22,8 +22,10 @@ type Strings = MealIngredientEditorRowStrings & {
   mealSpecificRecipeLabel: string;
   editingSavedRecipeLabel: string;
   importDraftLabel: string;
+  archivedRecipeLabel?: string;
   newRecipeTitle: string;
   recipeContextHint?: string;
+  archivedReadOnlyHint?: string;
   mealAttachmentLabel?: string;
   mealAttachmentValue?: string;
   editSavedRecipeAction?: string;
@@ -48,6 +50,8 @@ type Strings = MealIngredientEditorRowStrings & {
   savingRecipe?: string;
   archiveRecipe?: string;
   archivingRecipe?: string;
+  restoreRecipe?: string;
+  restoringRecipe?: string;
   addIngredient: string;
   close: string;
 };
@@ -67,6 +71,7 @@ type Props = {
   isRecipeLoading: boolean;
   hasExistingRecipe: boolean;
   isImportDraft?: boolean;
+  isArchivedRecipe?: boolean;
   hasIngredients: boolean;
   showSaveAsNewRecipeHint: boolean;
   canEnterSavedRecipeEditMode: boolean;
@@ -80,6 +85,7 @@ type Props = {
   onStartEditingSavedRecipeDirectly: () => void;
   onSave?: () => void;
   onArchive?: () => void;
+  onRestore?: () => void;
   onClose: () => void;
   isSaving?: boolean;
   isArchiving?: boolean;
@@ -102,6 +108,7 @@ export function MealRecipeDetailSheet({
   isRecipeLoading,
   hasExistingRecipe,
   isImportDraft = false,
+  isArchivedRecipe = false,
   hasIngredients,
   showSaveAsNewRecipeHint,
   canEnterSavedRecipeEditMode,
@@ -115,6 +122,7 @@ export function MealRecipeDetailSheet({
   onStartEditingSavedRecipeDirectly,
   onSave,
   onArchive,
+  onRestore,
   onClose,
   isSaving = false,
   isArchiving = false,
@@ -133,6 +141,8 @@ export function MealRecipeDetailSheet({
     ? strings.mealSpecificRecipeLabel
     : isImportDraft
       ? strings.importDraftLabel
+    : isArchivedRecipe && strings.archivedRecipeLabel
+      ? strings.archivedRecipeLabel
     : isEditingSavedRecipeDirectly
       ? strings.editingSavedRecipeLabel
     : hasExistingRecipe
@@ -188,6 +198,9 @@ export function MealRecipeDetailSheet({
             {strings.recipeContextHint ? (
               <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
             ) : null}
+            {isArchivedRecipe && strings.archivedReadOnlyHint ? (
+              <Subtle>{strings.archivedReadOnlyHint}</Subtle>
+            ) : null}
             {showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && strings.saveAsNewRecipeHint ? (
               <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
             ) : null}
@@ -218,6 +231,7 @@ export function MealRecipeDetailSheet({
                 placeholder={strings.recipeNamePlaceholder}
                 value={recipeTitle}
                 onChangeText={onChangeRecipeTitle}
+                editable={!isArchivedRecipe}
               />
             </View>
 
@@ -229,6 +243,7 @@ export function MealRecipeDetailSheet({
                   placeholder={strings.recipeSourcePlaceholder}
                   value={recipeSource}
                   onChangeText={onChangeRecipeSource}
+                  editable={!isArchivedRecipe}
                 />
               </View>
               {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
@@ -239,6 +254,7 @@ export function MealRecipeDetailSheet({
                     value={recipeSourceUrl ?? ''}
                     onChangeText={onChangeRecipeSourceUrl}
                     keyboardType="url"
+                    editable={!isArchivedRecipe}
                   />
                 </View>
               ) : null}
@@ -248,6 +264,7 @@ export function MealRecipeDetailSheet({
                   placeholder={strings.recipeShortNotePlaceholder}
                   value={recipeShortNote}
                   onChangeText={onChangeRecipeShortNote}
+                  editable={!isArchivedRecipe}
                   multiline
                   style={styles.noteInput}
                 />
@@ -258,6 +275,7 @@ export function MealRecipeDetailSheet({
                   placeholder={strings.recipeInstructionsPlaceholder}
                   value={recipeInstructions}
                   onChangeText={onChangeRecipeInstructions}
+                  editable={!isArchivedRecipe}
                   multiline
                   style={styles.instructionsInput}
                 />
@@ -272,12 +290,14 @@ export function MealRecipeDetailSheet({
                     <Text style={styles.ingredientsHint}>{strings.ingredientsRecipeHint}</Text>
                   ) : null}
                 </View>
-                <AppButton
-                  title={strings.addIngredient}
-                  onPress={onAddIngredientRow}
-                  variant="ghost"
-                  disabled={isActionPending}
-                />
+                {!isArchivedRecipe ? (
+                  <AppButton
+                    title={strings.addIngredient}
+                    onPress={onAddIngredientRow}
+                    variant="ghost"
+                    disabled={isActionPending}
+                  />
+                ) : null}
               </View>
 
               {isRecipeLoading ? <Subtle>{strings.loadingIngredients}</Subtle> : null}
@@ -293,6 +313,7 @@ export function MealRecipeDetailSheet({
                       key={row.id}
                       row={row}
                       isActive={row.id === activeRowId}
+                      isReadOnly={isArchivedRecipe}
                       onActivate={() => setActiveRowId(row.id)}
                       onRemove={() => onRemoveIngredientRow(row.id)}
                       onChangeName={(value) => onChangeIngredientName(row.id, value)}
@@ -307,7 +328,7 @@ export function MealRecipeDetailSheet({
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            {onSave && strings.saveRecipe ? (
+            {onSave && strings.saveRecipe && !isArchivedRecipe ? (
               <AppButton
                 title={isSaving && strings.savingRecipe ? strings.savingRecipe : strings.saveRecipe}
                 onPress={onSave}
@@ -321,6 +342,16 @@ export function MealRecipeDetailSheet({
               <AppButton
                 title={isArchiving && strings.archivingRecipe ? strings.archivingRecipe : strings.archiveRecipe}
                 onPress={onArchive}
+                variant="ghost"
+                fullWidth
+                disabled={isActionPending || isRecipeLoading}
+              />
+            ) : null}
+
+            {onRestore && strings.restoreRecipe ? (
+              <AppButton
+                title={isArchiving && strings.restoringRecipe ? strings.restoringRecipe : strings.restoreRecipe}
+                onPress={onRestore}
                 variant="ghost"
                 fullWidth
                 disabled={isActionPending || isRecipeLoading}

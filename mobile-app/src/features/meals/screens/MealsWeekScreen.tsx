@@ -130,6 +130,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     weekLabel: 'Week',
     monthlyOverview: 'See your month at a glance and open any day.',
     recipesOverviewTitle: 'Recipes',
+    activeRecipesTab: 'Active',
+    archivedRecipesTab: 'Archived',
     loadingPlan: 'Loading week plan...',
     loadingMonthOverview: 'Loading calendar...',
     noMeals: 'No meals planned yet.',
@@ -163,6 +165,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSheetSubtitle: 'Review and edit the recipe used for this meal.',
     recipeSheetNewRecipeTitle: 'New recipe',
     importDraftLabel: 'Imported draft',
+    archivedReadOnlyHint: 'Restore this recipe to continue editing it in Recipes.',
     recipeSheetSavedRecipeContextHint: 'This meal is using a saved recipe.',
     recipeSheetMealSpecificContextHint: 'Your changes are now creating a recipe for this meal.',
     recipeSheetEditingSavedRecipeContextHint: 'You are editing the saved recipe used by this meal.',
@@ -208,9 +211,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     savingRecipe: 'Saving recipe...',
     archiveRecipe: 'Archive recipe',
     archivingRecipe: 'Archiving recipe...',
+    restoreRecipe: 'Restore recipe',
+    restoringRecipe: 'Restoring recipe...',
     createRecipe: 'Create recipe',
     creatingRecipe: 'Creating recipe...',
     savedRecipeLabel: 'Saved recipe',
+    archivedRecipeLabel: 'Archived recipe',
     createdLabel: 'Created',
     ingredientsEmptyState: 'Optional. Add ingredients when you need them.',
     ingredientsSummarySuffix: 'ingredients',
@@ -711,8 +717,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ) : (
                 <MealsRecipesView
                   recipes={recipesWorkspace.recipes.items}
+                  listMode={recipesWorkspace.recipes.listMode}
+                  activeCount={recipesWorkspace.recipes.activeCount}
+                  archivedCount={recipesWorkspace.recipes.archivedCount}
                   isLoading={recipesWorkspace.recipes.isInitialLoading}
                   error={recipesWorkspace.recipes.error}
+                  onShowActive={recipesWorkspace.recipes.showActiveRecipes}
+                  onShowArchived={recipesWorkspace.recipes.showArchivedRecipes}
                   onOpenRecipe={recipesWorkspace.recipes.openRecipe}
                   onCreateRecipe={recipesWorkspace.recipes.openCreateRecipe}
                   onImportRecipe={recipesWorkspace.recipes.openImportRecipe}
@@ -721,15 +732,21 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     subtitle: recipesWorkspace.recipes.items.length > 0
                       ? 'Open and manage reusable recipes for future planning.'
                       : 'Create and keep reusable recipes ready for later planning.',
+                    activeTab: strings.activeRecipesTab,
+                    archivedTab: strings.archivedRecipesTab,
                     newRecipe: strings.createRecipeFromRecipes,
                     importRecipe: strings.importRecipeFromRecipes,
                     loadingRecipes: strings.loadingRecipes,
                     noRecipes: strings.noRecipes,
                     noRecipesHint: strings.noRecipesHint,
+                    noArchivedRecipes: 'No archived recipes yet.',
+                    noArchivedRecipesHint: 'Archived recipes stay here until you restore them to the active workspace.',
                     savedRecipeLabel: strings.savedRecipeLabel,
+                    archivedRecipeLabel: strings.archivedRecipeLabel,
                     createdLabel: strings.createdLabel,
                     duplicateNameHint: (count) => `${count} recipes share this name`,
                     recipeCountLabel: (count) => count === 1 ? '1 saved recipe' : `${count} saved recipes`,
+                    archivedCountLabel: (count) => count === 1 ? '1 archived recipe' : `${count} archived recipes`,
                   }}
                 />
               )}
@@ -920,6 +937,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           isRecipeLoading={recipesWorkspace.recipeDetail.isRecipeLoading}
           hasExistingRecipe={recipesWorkspace.recipeDetail.hasExistingRecipe}
           isImportDraft={recipesWorkspace.recipeDetail.isImportDraft}
+          isArchivedRecipe={recipesWorkspace.recipeDetail.isArchivedRecipe}
           hasIngredients={recipesWorkspace.recipeDetail.hasIngredients}
           showSaveAsNewRecipeHint={false}
           canEnterSavedRecipeEditMode={false}
@@ -937,6 +955,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onArchive={recipesWorkspace.recipeDetail.canArchiveRecipe
             ? recipesWorkspace.recipeDetail.archiveCurrentRecipe
             : undefined}
+          onRestore={recipesWorkspace.recipeDetail.canRestoreRecipe
+            ? recipesWorkspace.recipeDetail.restoreCurrentRecipe
+            : undefined}
           isArchiving={recipesWorkspace.recipeDetail.isArchivingRecipe}
           error={recipesWorkspace.recipeDetail.error}
           strings={{
@@ -952,12 +973,16 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
             editingSavedRecipeLabel: strings.editingSavedRecipeLabel,
             importDraftLabel: strings.importDraftLabel,
+            archivedRecipeLabel: strings.archivedRecipeLabel,
             newRecipeTitle: strings.recipeSheetNewRecipeTitle,
             recipeContextHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importDraftContextHint
+              : recipesWorkspace.recipeDetail.isArchivedRecipe
+              ? 'This recipe is archived and hidden from active recipe picks until you restore it.'
               : recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.savedRecipeContextHint
               : strings.newSavedRecipeContextHint,
+            archivedReadOnlyHint: strings.archivedReadOnlyHint,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
             recipeContentLabel: strings.recipeContentLabel,
@@ -987,6 +1012,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ? strings.archiveRecipe
               : undefined,
             archivingRecipe: strings.archivingRecipe,
+            restoreRecipe: recipesWorkspace.recipeDetail.canRestoreRecipe
+              ? strings.restoreRecipe
+              : undefined,
+            restoringRecipe: strings.restoringRecipe,
             close: strings.close,
           }}
         />

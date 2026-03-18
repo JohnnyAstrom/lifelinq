@@ -290,6 +290,7 @@ type InputProps = {
   value: string;
   placeholder?: string;
   onChangeText: (value: string) => void;
+  editable?: boolean;
   multiline?: boolean;
   style?: StyleProp<TextStyle>;
   autoFocus?: boolean;
@@ -307,6 +308,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
   value,
   placeholder,
   onChangeText,
+  editable = true,
   multiline,
   style,
   autoFocus,
@@ -325,6 +327,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
         value={value}
         placeholder={placeholder}
         onChangeText={onChangeText}
+        editable={editable}
         multiline={multiline}
         autoFocus={autoFocus}
         blurOnSubmit={blurOnSubmit}

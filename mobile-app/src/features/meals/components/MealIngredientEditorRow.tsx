@@ -16,6 +16,7 @@ export type MealIngredientEditorRowStrings = {
 type Props = {
   row: MealIngredientRow;
   isActive: boolean;
+  isReadOnly?: boolean;
   onActivate: () => void;
   onRemove: () => void;
   onChangeName: (value: string) => void;
@@ -44,6 +45,7 @@ export function isMealIngredientRowEffectivelyEmpty(row: MealIngredientRow) {
 export function MealIngredientEditorRow({
   row,
   isActive,
+  isReadOnly = false,
   onActivate,
   onRemove,
   onChangeName,
@@ -54,6 +56,23 @@ export function MealIngredientEditorRow({
   const isEffectivelyEmpty = isMealIngredientRowEffectivelyEmpty(row);
   const isExpanded = isActive || isEffectivelyEmpty;
   const meta = formatIngredientMeta(row);
+
+  if (isReadOnly) {
+    return (
+      <View style={styles.compactRow}>
+        <View style={styles.compactMain}>
+          <Text style={styles.compactTitle} numberOfLines={1}>
+            {row.name.trim()}
+          </Text>
+          {meta ? (
+            <Text style={styles.compactMeta} numberOfLines={1}>
+              {meta}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
 
   if (!isExpanded) {
     return (
