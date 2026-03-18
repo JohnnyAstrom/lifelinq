@@ -887,6 +887,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onToggleIngredientUnit={editor.setIngredientUnit}
           onStartEditingSavedRecipeDirectly={editor.startEditingSavedRecipeDirectly}
           onClose={editor.closeRecipeDetail}
+          error={editor.recipeLoadError}
           strings={{
             eyebrow: strings.recipeSheetEyebrow,
             title: strings.recipeSheetTitle,

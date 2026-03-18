@@ -42,7 +42,7 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
     }
 
     @Override
-    public boolean existsMealReferencingRecipe(UUID groupId, UUID recipeId) {
+    public boolean existsCurrentOrFutureMealReferencingRecipe(UUID groupId, UUID recipeId, int year, int isoWeek) {
         if (groupId == null) {
             throw new IllegalArgumentException("groupId must not be null");
         }
@@ -51,6 +51,7 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
         }
         return byId.values().stream()
                 .filter(plan -> plan.getGroupId().equals(groupId))
+                .filter(plan -> plan.getYear() > year || (plan.getYear() == year && plan.getIsoWeek() >= isoWeek))
                 .flatMap(plan -> plan.getMeals().stream())
                 .anyMatch(meal -> meal.getRecipeId().equals(recipeId));
     }

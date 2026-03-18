@@ -30,17 +30,22 @@ public class PlannedMealEntity {
     @Column(name = "recipe_id", nullable = false)
     private UUID recipeId;
 
+    @Column(name = "recipe_title_snapshot", nullable = false)
+    private String recipeTitleSnapshot;
+
     protected PlannedMealEntity() {
     }
 
     PlannedMealEntity(
             PlannedMealId id,
             WeekPlanEntity weekPlan,
-            UUID recipeId
+            UUID recipeId,
+            String recipeTitleSnapshot
     ) {
         this.id = id;
         this.weekPlan = weekPlan;
         this.recipeId = recipeId;
+        this.recipeTitleSnapshot = recipeTitleSnapshot;
     }
 
     PlannedMealId getId() {
@@ -61,5 +66,9 @@ public class PlannedMealEntity {
 
     UUID getRecipeId() {
         return recipeId;
+    }
+
+    String getRecipeTitleSnapshot() {
+        return recipeTitleSnapshot;
     }
 }

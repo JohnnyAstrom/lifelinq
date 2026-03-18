@@ -355,7 +355,7 @@ class MealsApplicationServiceTest {
     }
 
     @Test
-    void getArchivedRecipeIncludesBlockedDeleteReasonWhenStillPlanned() {
+    void getArchivedRecipeIncludesBlockedDeleteReasonWhenStillPlannedForCurrentWeek() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
@@ -456,7 +456,7 @@ class MealsApplicationServiceTest {
     }
 
     @Test
-    void deleteRecipeIsBlockedWhenArchivedRecipeIsStillPlanned() {
+    void deleteRecipeIsBlockedWhenArchivedRecipeIsStillPlannedForCurrentOrFutureWeek() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         UUID recipeId = UUID.randomUUID();
@@ -468,7 +468,7 @@ class MealsApplicationServiceTest {
                 recipes,
                 membership,
                 mock(MealsShoppingPort.class),
-                Clock.systemUTC()
+                Clock.fixed(Instant.parse("2026-03-20T10:00:00Z"), ZoneOffset.UTC)
         );
 
         recipes.save(new Recipe(
@@ -490,6 +490,43 @@ class MealsApplicationServiceTest {
         assertThatThrownBy(() -> service.deleteRecipe(groupId, userId, recipeId))
                 .isInstanceOf(RecipeDeleteBlockedException.class)
                 .hasMessage("This recipe is still used in planned meals.");
+    }
+
+    @Test
+    void deleteRecipeAllowsPastOnlyHistoricalUsage() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-20T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Archived Recipe",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-10T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                List.of()
+        ));
+        service.addOrReplaceMeal(groupId, userId, 2026, 11, 1, MealType.DINNER, recipeId, null, null);
+
+        service.deleteRecipe(groupId, userId, recipeId);
+
+        assertThat(recipes.findByIdAndGroupId(recipeId, groupId)).isEmpty();
     }
 
     @Test
@@ -566,6 +603,40 @@ class MealsApplicationServiceTest {
 
         assertThat(weekPlan.meals()).hasSize(1);
         assertThat(weekPlan.meals().get(0).recipeTitle()).isEqualTo("Archived Recipe");
+    }
+
+    @Test
+    void getWeekPlanFallsBackToStoredRecipeTitleAfterRecipeDelete() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-20T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Historical Recipe",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of()
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 11, 1, MealType.DINNER, recipeId, null, null);
+        service.archiveRecipe(groupId, userId, recipeId);
+        service.deleteRecipe(groupId, userId, recipeId);
+
+        var weekPlan = service.getWeekPlan(groupId, userId, 2026, 11);
+
+        assertThat(weekPlan.meals()).hasSize(1);
+        assertThat(weekPlan.meals().get(0).recipeTitle()).isEqualTo("Historical Recipe");
     }
 
     @Test
@@ -681,9 +752,10 @@ class MealsApplicationServiceTest {
         }
 
         @Override
-        public boolean existsMealReferencingRecipe(UUID groupId, UUID recipeId) {
+        public boolean existsCurrentOrFutureMealReferencingRecipe(UUID groupId, UUID recipeId, int year, int isoWeek) {
             return byId.values().stream()
                     .filter(plan -> plan.getGroupId().equals(groupId))
+                    .filter(plan -> plan.getYear() > year || (plan.getYear() == year && plan.getIsoWeek() >= isoWeek))
                     .flatMap(plan -> plan.getMeals().stream())
                     .anyMatch(meal -> meal.getRecipeId().equals(recipeId));
         }

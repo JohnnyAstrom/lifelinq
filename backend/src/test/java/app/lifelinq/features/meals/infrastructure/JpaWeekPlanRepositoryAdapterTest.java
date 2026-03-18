@@ -28,7 +28,7 @@ class JpaWeekPlanRepositoryAdapterTest {
         Instant createdAt = Instant.now();
         WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 10, createdAt);
         UUID recipeId = UUID.randomUUID();
-        plan.addOrReplaceMeal(1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId);
+        plan.addOrReplaceMeal(1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, "Soup");
 
         repository.save(plan);
 
@@ -44,6 +44,7 @@ class JpaWeekPlanRepositoryAdapterTest {
         assertEquals(1, loadedPlan.getMeals().size());
         assertEquals(1, loadedPlan.getMeals().get(0).getDayOfWeek());
         assertEquals(recipeId, loadedPlan.getMeals().get(0).getRecipeId());
+        assertEquals("Soup", loadedPlan.getMeals().get(0).getRecipeTitleSnapshot());
     }
 
     @Test
@@ -52,17 +53,18 @@ class JpaWeekPlanRepositoryAdapterTest {
         UUID weekPlanId = UUID.randomUUID();
         Instant createdAt = Instant.now();
         WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 12, createdAt);
-        plan.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, UUID.randomUUID());
+        plan.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, UUID.randomUUID(), "Original");
         repository.save(plan);
 
         WeekPlan reloaded = repository.findByGroupAndWeek(groupId, 2025, 12).orElseThrow();
         UUID newRecipeId = UUID.randomUUID();
-        reloaded.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, newRecipeId);
+        reloaded.addOrReplaceMeal(2, app.lifelinq.features.meals.domain.MealType.DINNER, newRecipeId, "Updated");
         repository.save(reloaded);
 
         WeekPlan updated = repository.findByGroupAndWeek(groupId, 2025, 12).orElseThrow();
         assertEquals(1, updated.getMeals().size());
         assertEquals(newRecipeId, updated.getMeals().get(0).getRecipeId());
+        assertEquals("Updated", updated.getMeals().get(0).getRecipeTitleSnapshot());
     }
 
     @Test
@@ -70,7 +72,7 @@ class JpaWeekPlanRepositoryAdapterTest {
         UUID groupId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();
         WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 15, Instant.now());
-        plan.addOrReplaceMeal(5, app.lifelinq.features.meals.domain.MealType.DINNER, UUID.randomUUID());
+        plan.addOrReplaceMeal(5, app.lifelinq.features.meals.domain.MealType.DINNER, UUID.randomUUID(), "Remove me");
         repository.save(plan);
 
         WeekPlan reloaded = repository.findByGroupAndWeek(groupId, 2025, 15).orElseThrow();

@@ -257,7 +257,7 @@ public class MealsApplicationService {
                         clock.instant()
                 ));
 
-        weekPlan.addOrReplaceMeal(dayOfWeek, mealType, recipeId);
+        weekPlan.addOrReplaceMeal(dayOfWeek, mealType, recipeId, recipe.getName());
         WeekPlan saved = weekPlanRepository.save(weekPlan);
 
         if (targetShoppingListId != null) {
@@ -277,7 +277,7 @@ public class MealsApplicationService {
                 savedMeal.getDayOfWeek(),
                 savedMeal.getMealType().name(),
                 savedMeal.getRecipeId(),
-                recipe.getName()
+                savedMeal.getRecipeTitleSnapshot()
         );
         return new AddMealOutput(saved.getId(), saved.getYear(), saved.getIsoWeek(), mealView);
     }
@@ -334,7 +334,7 @@ public class MealsApplicationService {
                     meal.getDayOfWeek(),
                     meal.getMealType().name(),
                     meal.getRecipeId(),
-                    namesByRecipeId.get(meal.getRecipeId())
+                    namesByRecipeId.getOrDefault(meal.getRecipeId(), meal.getRecipeTitleSnapshot())
             ));
         }
         return new WeekPlanView(
@@ -459,10 +459,25 @@ public class MealsApplicationService {
         if (!recipe.isArchived()) {
             return new DeleteEligibility(false, "Recipe must be archived before you can delete it.");
         }
-        if (weekPlanRepository.existsMealReferencingRecipe(groupId, recipe.getId())) {
+        int[] currentWeek = currentIsoWeek();
+        if (weekPlanRepository.existsCurrentOrFutureMealReferencingRecipe(
+                groupId,
+                recipe.getId(),
+                currentWeek[0],
+                currentWeek[1]
+        )) {
             return new DeleteEligibility(false, "This recipe is still used in planned meals.");
         }
         return new DeleteEligibility(true, null);
+    }
+
+    private int[] currentIsoWeek() {
+        LocalDate today = LocalDate.now(clock);
+        WeekFields weekFields = WeekFields.ISO;
+        return new int[] {
+                today.get(weekFields.weekBasedYear()),
+                today.get(weekFields.weekOfWeekBasedYear())
+        };
     }
 
     private record DeleteEligibility(boolean eligible, String blockedReason) {

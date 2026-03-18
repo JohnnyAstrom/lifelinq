@@ -59,14 +59,14 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
     }
 
     @Override
-    public boolean existsMealReferencingRecipe(UUID groupId, UUID recipeId) {
+    public boolean existsCurrentOrFutureMealReferencingRecipe(UUID groupId, UUID recipeId, int year, int isoWeek) {
         if (groupId == null) {
             throw new IllegalArgumentException("groupId must not be null");
         }
         if (recipeId == null) {
             throw new IllegalArgumentException("recipeId must not be null");
         }
-        return repository.existsMealReferencingRecipe(groupId, recipeId);
+        return repository.existsCurrentOrFutureMealReferencingRecipe(groupId, recipeId, year, isoWeek);
     }
 
     private WeekPlanEntity updateEntity(WeekPlanEntity entity, WeekPlan weekPlan) {
@@ -100,7 +100,12 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
         }
         WeekPlan existing = mapper.toDomain(existingEntity.get());
         for (PlannedMeal meal : weekPlan.getMeals()) {
-            existing.addOrReplaceMeal(meal.getDayOfWeek(), meal.getMealType(), meal.getRecipeId());
+            existing.addOrReplaceMeal(
+                    meal.getDayOfWeek(),
+                    meal.getMealType(),
+                    meal.getRecipeId(),
+                    meal.getRecipeTitleSnapshot()
+            );
         }
         WeekPlanEntity merged = updateEntity(existingEntity.get(), existing);
         WeekPlanEntity saved = repository.save(merged);

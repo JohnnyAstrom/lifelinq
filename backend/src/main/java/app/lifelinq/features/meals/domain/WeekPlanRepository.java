@@ -10,5 +10,5 @@ public interface WeekPlanRepository {
 
     Optional<WeekPlan> findById(UUID id);
 
-    boolean existsMealReferencingRecipe(UUID groupId, UUID recipeId);
+    boolean existsCurrentOrFutureMealReferencingRecipe(UUID groupId, UUID recipeId, int year, int isoWeek);
 }

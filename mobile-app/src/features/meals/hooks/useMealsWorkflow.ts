@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { formatApiError } from '../../../shared/api/client';
+import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import { useShoppingLists } from '../../shopping/hooks/useShoppingLists';
 import {
@@ -109,6 +109,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [selectedShoppingIngredientRowIds, setSelectedShoppingIngredientRowIds] = useState<string[]>([]);
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
+  const [recipeLoadError, setRecipeLoadError] = useState<string | null>(null);
   const [recipeListError, setRecipeListError] = useState<string | null>(null);
   const [availableRecipes, setAvailableRecipes] = useState<RecipeResponse[] | null>(null);
   const [loadedRecipeId, setLoadedRecipeId] = useState<string | null>(null);
@@ -228,6 +229,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
     setShoppingSyncError(null);
+    setRecipeLoadError(null);
     setRecipeListError(null);
   }
 
@@ -264,6 +266,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setPickedRecipeSnapshot(toRecipeSnapshot(recipe));
     setIsEditingSavedRecipeDirectly(false);
     setShoppingSyncError(null);
+    setRecipeLoadError(null);
   }
 
   useEffect(() => {
@@ -302,7 +305,20 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         if (cancelled) {
           return;
         }
-        setShoppingSyncError(formatApiError(err));
+        if (err instanceof ApiError && err.status === 404) {
+          setSelectedMealRecipeId(null);
+          setLoadedRecipeId(null);
+          setPickedRecipeSnapshot(null);
+          setRecipeSource('');
+          setRecipeSourceUrl(null);
+          setRecipeOriginKind('MANUAL');
+          setRecipeShortNote('');
+          setRecipeInstructions('');
+          setIngredientRows([]);
+          setRecipeLoadError('This recipe was deleted from Recipes. The meal keeps its saved title for history.');
+          return;
+        }
+        setRecipeLoadError(formatApiError(err));
       })
       .finally(() => {
         if (!cancelled) {
@@ -347,6 +363,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setPickedRecipeSnapshot(null);
     setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
+    setRecipeLoadError(null);
   }
 
   function closeEditor() {
@@ -714,6 +731,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       selectedListId,
       effectiveListId,
       shoppingSyncError,
+      recipeLoadError,
       pendingAction: pendingEditorAction,
       isActionPending: pendingEditorAction !== null,
       isSavingMeal: pendingEditorAction === 'save-meal',

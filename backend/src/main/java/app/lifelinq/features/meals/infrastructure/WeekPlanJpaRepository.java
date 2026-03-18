@@ -20,7 +20,14 @@ public interface WeekPlanJpaRepository extends JpaRepository<WeekPlanEntity, UUI
             select case when count(pm) > 0 then true else false end
             from PlannedMealEntity pm
             join pm.weekPlan wp
-            where wp.groupId = :groupId and pm.recipeId = :recipeId
+            where wp.groupId = :groupId
+              and pm.recipeId = :recipeId
+              and (wp.year > :year or (wp.year = :year and wp.isoWeek >= :isoWeek))
             """)
-    boolean existsMealReferencingRecipe(@Param("groupId") UUID groupId, @Param("recipeId") UUID recipeId);
+    boolean existsCurrentOrFutureMealReferencingRecipe(
+            @Param("groupId") UUID groupId,
+            @Param("recipeId") UUID recipeId,
+            @Param("year") int year,
+            @Param("isoWeek") int isoWeek
+    );
 }
