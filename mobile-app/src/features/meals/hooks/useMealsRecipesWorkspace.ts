@@ -5,8 +5,11 @@ import {
   archiveRecipe,
   createRecipe,
   createRecipeImportDraft,
+  deleteRecipe,
   getRecipe,
+  listArchivedRecipes,
   listRecipes,
+  restoreRecipe,
   updateRecipe,
   type RecipeImportDraftResponse,
   type RecipeResponse,
@@ -21,8 +24,9 @@ import {
   type MealIngredientUnit,
 } from '../utils/ingredientRows';
 
-type DetailPendingAction = 'save' | 'archive' | null;
+type DetailPendingAction = 'save' | 'archive' | 'delete' | null;
 type RecipeDetailMode = 'create' | 'saved' | 'import';
+type RecipeListMode = 'active' | 'archived';
 
 type Params = {
   token: string;
@@ -31,11 +35,13 @@ type Params = {
 
 export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const { handleApiError } = useAuth();
-  const [recipes, setRecipes] = useState<RecipeResponse[] | null>(null);
+  const [activeRecipes, setActiveRecipes] = useState<RecipeResponse[] | null>(null);
+  const [archivedRecipes, setArchivedRecipes] = useState<RecipeResponse[] | null>(null);
   const [isListLoading, setIsListLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listMode, setListMode] = useState<RecipeListMode>('active');
 
   const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
   const [recipeId, setRecipeId] = useState<string | null>(null);
@@ -45,6 +51,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recipeOriginKind, setRecipeOriginKind] = useState('MANUAL');
   const [recipeShortNote, setRecipeShortNote] = useState('');
   const [recipeInstructions, setRecipeInstructions] = useState('');
+  const [recipeArchivedAt, setRecipeArchivedAt] = useState<string | null>(null);
+  const [recipeDeleteEligible, setRecipeDeleteEligible] = useState(false);
+  const [recipeDeleteBlockedReason, setRecipeDeleteBlockedReason] = useState<string | null>(null);
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [recipeDetailError, setRecipeDetailError] = useState<string | null>(null);
@@ -61,15 +70,19 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     [ingredientRows]
   );
 
+  const visibleRecipes = useMemo(
+    () => listMode === 'active' ? (activeRecipes ?? []) : (archivedRecipes ?? []),
+    [activeRecipes, archivedRecipes, listMode]
+  );
+
   const recipeListItems = useMemo(() => {
     const nameCounts = new Map<string, number>();
-    const activeRecipes = (recipes ?? []).filter((recipe) => recipe.archivedAt == null);
-    for (const recipe of activeRecipes) {
+    for (const recipe of visibleRecipes) {
       const normalizedName = recipe.name.trim().toLocaleLowerCase();
       nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1);
     }
 
-    return [...activeRecipes]
+    return [...visibleRecipes]
       .sort((left, right) => {
         const nameComparison = left.name.localeCompare(right.name);
         if (nameComparison !== 0) {
@@ -86,8 +99,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
           day: 'numeric',
           month: 'short',
         }),
+        archivedAt: recipe.archivedAt,
       }));
-  }, [recipes]);
+  }, [visibleRecipes]);
 
   async function loadRecipes(options?: { refreshing?: boolean }) {
     if (!token) {
@@ -101,8 +115,12 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setError(null);
     try {
-      const nextRecipes = await listRecipes({ token });
-      setRecipes(nextRecipes);
+      const [nextActiveRecipes, nextArchivedRecipes] = await Promise.all([
+        listRecipes({ token }),
+        listArchivedRecipes({ token }),
+      ]);
+      setActiveRecipes(nextActiveRecipes);
+      setArchivedRecipes(nextArchivedRecipes);
       setHasLoaded(true);
     } catch (err) {
       await handleApiError(err);
@@ -160,6 +178,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeOriginKind(recipe.originKind);
     setRecipeShortNote(recipe.shortNote ?? '');
     setRecipeInstructions(recipe.instructions ?? '');
+    setRecipeArchivedAt(recipe.archivedAt);
+    setRecipeDeleteEligible(recipe.deleteEligible);
+    setRecipeDeleteBlockedReason(recipe.deleteBlockedReason);
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
@@ -175,6 +196,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeOriginKind(draft.originKind);
     setRecipeShortNote(draft.shortNote ?? '');
     setRecipeInstructions(draft.instructions ?? '');
+    setRecipeArchivedAt(null);
+    setRecipeDeleteEligible(false);
+    setRecipeDeleteBlockedReason(null);
     setIngredientRows(ingredientRowsFromImportDraft(draft.ingredients));
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
@@ -183,22 +207,36 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   async function openRecipe(recipeIdToOpen: string) {
-    const existing = recipes?.find((recipe) => recipe.recipeId === recipeIdToOpen) ?? null;
+    const existing = activeRecipes?.find((recipe) => recipe.recipeId === recipeIdToOpen)
+      ?? archivedRecipes?.find((recipe) => recipe.recipeId === recipeIdToOpen)
+      ?? null;
     setRecipeDetailError(null);
     setIsRecipeDetailOpen(true);
 
-    if (existing) {
+    if (existing && !existing.archivedAt) {
       applyRecipe(existing);
       return;
     }
 
-    setIsRecipeLoading(true);
+    if (existing) {
+      applyRecipe(existing);
+      setIsRecipeLoading(true);
+    } else {
+      setIsRecipeLoading(true);
+    }
     try {
       const recipe = await getRecipe(recipeIdToOpen, { token });
-      setRecipes((current) => {
-        const others = (current ?? []).filter((entry) => entry.recipeId !== recipe.recipeId);
-        return [...others, recipe];
-      });
+      if (recipe.archivedAt) {
+        setArchivedRecipes((current) => {
+          const others = (current ?? []).filter((entry) => entry.recipeId !== recipe.recipeId);
+          return [...others, recipe];
+        });
+      } else {
+        setActiveRecipes((current) => {
+          const others = (current ?? []).filter((entry) => entry.recipeId !== recipe.recipeId);
+          return [...others, recipe];
+        });
+      }
       applyRecipe(recipe);
     } catch (err) {
       await handleApiError(err);
@@ -215,6 +253,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeOriginKind('MANUAL');
     setRecipeShortNote('');
     setRecipeInstructions('');
+    setRecipeArchivedAt(null);
+    setRecipeDeleteEligible(false);
+    setRecipeDeleteBlockedReason(null);
     setIngredientRows([]);
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
@@ -245,6 +286,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsRecipeDetailOpen(false);
     setRecipeDetailError(null);
+  }
+
+  function showActiveRecipes() {
+    setListMode('active');
+  }
+
+  function showArchivedRecipes() {
+    setListMode('archived');
   }
 
   function addIngredientRow() {
@@ -331,10 +380,18 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         ? await updateRecipe(recipeId, request, { token })
         : await createRecipe(request, { token });
 
-      setRecipes((current) => {
-        const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
-        return [...others, saved];
-      });
+      if (saved.archivedAt) {
+        setArchivedRecipes((current) => {
+          const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
+          return [...others, saved];
+        });
+      } else {
+        setActiveRecipes((current) => {
+          const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
+          return [...others, saved];
+        });
+        setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
+      }
       setHasLoaded(true);
       applyRecipe(saved);
     } catch (err) {
@@ -354,7 +411,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeDetailError(null);
     try {
       const archived = await archiveRecipe(recipeId, { token });
-      setRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== archived.recipeId));
+      setActiveRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== archived.recipeId));
+      setArchivedRecipes((current) => {
+        const others = (current ?? []).filter((entry) => entry.recipeId !== archived.recipeId);
+        return [...others, archived];
+      });
       setHasLoaded(true);
       setIsRecipeDetailOpen(false);
       setRecipeId(null);
@@ -366,14 +427,79 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
+  async function restoreCurrentRecipe() {
+    if (!recipeId || pendingDetailAction || isRecipeLoading) {
+      return;
+    }
+
+    setPendingDetailAction('archive');
+    setRecipeDetailError(null);
+    try {
+      const restored = await restoreRecipe(recipeId, { token });
+      setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== restored.recipeId));
+      setActiveRecipes((current) => {
+        const others = (current ?? []).filter((entry) => entry.recipeId !== restored.recipeId);
+        return [...others, restored];
+      });
+      setHasLoaded(true);
+      setListMode('active');
+      applyRecipe(restored);
+    } catch (err) {
+      await handleApiError(err);
+      setRecipeDetailError(formatApiError(err));
+    } finally {
+      setPendingDetailAction(null);
+    }
+  }
+
+  async function deleteCurrentRecipe() {
+    if (!recipeId || pendingDetailAction || isRecipeLoading || !recipeArchivedAt || !recipeDeleteEligible) {
+      return;
+    }
+
+    setPendingDetailAction('delete');
+    setRecipeDetailError(null);
+    try {
+      await deleteRecipe(recipeId, { token });
+      setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== recipeId));
+      setHasLoaded(true);
+      setIsRecipeDetailOpen(false);
+      setRecipeId(null);
+      setRecipeDeleteEligible(false);
+      setRecipeDeleteBlockedReason(null);
+    } catch (err) {
+      await handleApiError(err);
+      if (err instanceof ApiError && err.status === 409) {
+        try {
+          const payload = JSON.parse(err.body) as { code?: string; message?: string };
+          if (payload.code === 'RECIPE_DELETE_BLOCKED') {
+            setRecipeDeleteEligible(false);
+            setRecipeDeleteBlockedReason(payload.message ?? 'This recipe cannot be deleted yet.');
+            return;
+          }
+        } catch {
+          // fall through to generic error handling below
+        }
+      }
+      setRecipeDetailError(formatApiError(err));
+    } finally {
+      setPendingDetailAction(null);
+    }
+  }
+
   return {
     recipes: {
       items: recipeListItems,
+      listMode,
+      activeCount: activeRecipes?.length ?? 0,
+      archivedCount: archivedRecipes?.length ?? 0,
       isInitialLoading: !hasLoaded && isListLoading,
       isRefreshing,
       error,
       hasLoaded,
       reload: () => loadRecipes({ refreshing: true }),
+      showActiveRecipes,
+      showArchivedRecipes,
       openRecipe,
       openCreateRecipe,
       openImportRecipe,
@@ -396,15 +522,23 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       recipeSourceUrl,
       recipeShortNote,
       recipeInstructions,
+      recipeArchivedAt,
+      recipeDeleteEligible,
+      recipeDeleteBlockedReason,
       ingredientRows,
       isRecipeLoading,
       hasExistingRecipe: !!recipeId,
       isImportDraft: detailMode === 'import',
-      canArchiveRecipe: !!recipeId && detailMode === 'saved',
+      isArchivedRecipe: !!recipeArchivedAt,
+      canArchiveRecipe: !!recipeId && detailMode === 'saved' && !recipeArchivedAt,
+      canRestoreRecipe: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt,
+      canDeleteRecipe: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt && recipeDeleteEligible,
+      showDeleteRecipeAction: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt,
       hasIngredients,
       error: recipeDetailError,
       isSavingRecipe: pendingDetailAction === 'save',
       isArchivingRecipe: pendingDetailAction === 'archive',
+      isDeletingRecipe: pendingDetailAction === 'delete',
       isActionPending: pendingDetailAction !== null,
       setRecipeTitle,
       setRecipeSource,
@@ -418,6 +552,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setIngredientUnit,
       saveRecipe,
       archiveCurrentRecipe,
+      restoreCurrentRecipe,
+      deleteCurrentRecipe,
       closeRecipeDetail,
     },
   };

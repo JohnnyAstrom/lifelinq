@@ -9,26 +9,38 @@ type RecipeListItem = {
   ingredientCount: number;
   duplicateNameCount: number;
   createdLabel: string;
+  archivedAt: string | null;
 };
 
 type Strings = {
   title: string;
   subtitle: string;
+  activeTab: string;
+  archivedTab: string;
   newRecipe: string;
   importRecipe: string;
   loadingRecipes: string;
   noRecipes: string;
   noRecipesHint: string;
+  noArchivedRecipes: string;
+  noArchivedRecipesHint: string;
   savedRecipeLabel: string;
+  archivedRecipeLabel: string;
   createdLabel: string;
   duplicateNameHint: (count: number) => string;
   recipeCountLabel: (count: number) => string;
+  archivedCountLabel: (count: number) => string;
 };
 
 type Props = {
   recipes: RecipeListItem[];
+  listMode: 'active' | 'archived';
+  activeCount: number;
+  archivedCount: number;
   isLoading: boolean;
   error: string | null;
+  onShowActive: () => void;
+  onShowArchived: () => void;
   onOpenRecipe: (recipeId: string) => void;
   onCreateRecipe: () => void;
   onImportRecipe: () => void;
@@ -37,8 +49,13 @@ type Props = {
 
 export function MealsRecipesView({
   recipes,
+  listMode,
+  activeCount,
+  archivedCount,
   isLoading,
   error,
+  onShowActive,
+  onShowArchived,
   onOpenRecipe,
   onCreateRecipe,
   onImportRecipe,
@@ -63,14 +80,45 @@ export function MealsRecipesView({
         </View>
       </View>
 
+      <View style={styles.modeSwitchRow}>
+        <Pressable
+          onPress={onShowActive}
+          style={({ pressed }) => [
+            styles.modeTab,
+            listMode === 'active' ? styles.modeTabActive : null,
+            pressed ? styles.modeTabPressed : null,
+          ]}
+        >
+          <Text style={[styles.modeTabText, listMode === 'active' ? styles.modeTabTextActive : null]}>
+            {strings.activeTab} ({activeCount})
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={onShowArchived}
+          style={({ pressed }) => [
+            styles.modeTab,
+            listMode === 'archived' ? styles.modeTabActive : null,
+            pressed ? styles.modeTabPressed : null,
+          ]}
+        >
+          <Text style={[styles.modeTabText, listMode === 'archived' ? styles.modeTabTextActive : null]}>
+            {strings.archivedTab} ({archivedCount})
+          </Text>
+        </Pressable>
+      </View>
+
       {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {!isLoading && !error && recipes.length === 0 ? (
         <AppCard>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>{strings.noRecipes}</Text>
-            <Subtle>{strings.noRecipesHint}</Subtle>
+            <Text style={styles.emptyStateTitle}>
+              {listMode === 'active' ? strings.noRecipes : strings.noArchivedRecipes}
+            </Text>
+            <Subtle>
+              {listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint}
+            </Subtle>
           </View>
         </AppCard>
       ) : null}
@@ -78,7 +126,11 @@ export function MealsRecipesView({
       {!isLoading && recipes.length > 0 ? (
         <AppCard style={styles.listCard}>
           <View style={styles.listSummaryRow}>
-            <Subtle>{strings.recipeCountLabel(recipeCount)}</Subtle>
+            <Subtle>
+              {listMode === 'active'
+                ? strings.recipeCountLabel(recipeCount)
+                : strings.archivedCountLabel(recipeCount)}
+            </Subtle>
           </View>
           <View style={styles.list}>
             {recipes.map((recipe, index) => {
@@ -98,7 +150,9 @@ export function MealsRecipesView({
                   <View style={styles.rowCopy}>
                     <View style={styles.rowMetaTop}>
                       <View style={styles.identityBadge}>
-                        <Text style={styles.identityBadgeText}>{strings.savedRecipeLabel}</Text>
+                        <Text style={styles.identityBadgeText}>
+                          {recipe.archivedAt ? strings.archivedRecipeLabel : strings.savedRecipeLabel}
+                        </Text>
                       </View>
                       {recipe.duplicateNameCount > 1 ? (
                         <Text style={styles.duplicateHint}>
@@ -140,6 +194,35 @@ const styles = StyleSheet.create({
   headerActions: {
     alignItems: 'flex-end',
     gap: theme.spacing.xs,
+  },
+  modeSwitchRow: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    gap: 4,
+    padding: 3,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSubtle,
+  },
+  modeTab: {
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 5,
+  },
+  modeTabActive: {
+    backgroundColor: theme.colors.surface,
+  },
+  modeTabPressed: {
+    opacity: 0.78,
+  },
+  modeTabText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  modeTabTextActive: {
+    color: theme.colors.textPrimary,
   },
   listCard: {
     paddingVertical: theme.spacing.xs,

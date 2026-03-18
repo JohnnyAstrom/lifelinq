@@ -69,6 +69,19 @@ public class MealsController {
         return ResponseEntity.ok(recipes);
     }
 
+    @GetMapping("/meals/recipes/archived")
+    public ResponseEntity<?> listArchivedRecipes() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<RecipeResponse> recipes = new ArrayList<>();
+        for (RecipeView recipe : mealsApplicationService.listArchivedRecipes(context.getGroupId(), context.getUserId())) {
+            recipes.add(toRecipeResponse(recipe));
+        }
+        return ResponseEntity.ok(recipes);
+    }
+
     @GetMapping("/meals/recipes/{recipeId}")
     public ResponseEntity<?> getRecipe(@PathVariable UUID recipeId) {
         RequestContext context = ApiScoping.getContext();
@@ -115,6 +128,34 @@ public class MealsController {
                 recipeId
         );
         return ResponseEntity.ok(toRecipeResponse(recipe));
+    }
+
+    @PostMapping("/meals/recipes/{recipeId}/restore")
+    public ResponseEntity<?> restoreRecipe(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeView recipe = mealsApplicationService.restoreRecipe(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(toRecipeResponse(recipe));
+    }
+
+    @DeleteMapping("/meals/recipes/{recipeId}")
+    public ResponseEntity<?> deleteRecipe(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        mealsApplicationService.deleteRecipe(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/meals/recipes/import-drafts")
@@ -265,6 +306,8 @@ public class MealsController {
                 view.createdAt(),
                 view.updatedAt(),
                 view.archivedAt(),
+                view.deleteEligible(),
+                view.deleteBlockedReason(),
                 ingredients
         );
     }

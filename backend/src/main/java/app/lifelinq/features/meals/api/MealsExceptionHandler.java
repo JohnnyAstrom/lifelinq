@@ -3,6 +3,7 @@ package app.lifelinq.features.meals.api;
 import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.meals.application.MealsAccessDeniedException;
 import app.lifelinq.features.meals.application.MealNotFoundException;
+import app.lifelinq.features.meals.application.RecipeDeleteBlockedException;
 import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
@@ -58,6 +59,12 @@ public final class MealsExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRecipeImportFailed(RecipeImportFailedException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ApiErrorResponse("RECIPE_IMPORT_FAILED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RecipeDeleteBlockedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRecipeDeleteBlocked(RecipeDeleteBlockedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("RECIPE_DELETE_BLOCKED", ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

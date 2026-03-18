@@ -23,6 +23,14 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
     }
 
     @Override
+    public void delete(Recipe recipe) {
+        if (recipe == null) {
+            throw new IllegalArgumentException("recipe must not be null");
+        }
+        byId.remove(recipe.getId());
+    }
+
+    @Override
     public Optional<Recipe> findByIdAndGroupId(UUID recipeId, UUID groupId) {
         if (recipeId == null) {
             throw new IllegalArgumentException("recipeId must not be null");
@@ -45,6 +53,20 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
         List<Recipe> result = new ArrayList<>();
         for (Recipe recipe : byId.values()) {
             if (groupId.equals(recipe.getGroupId()) && !recipe.isArchived()) {
+                result.add(recipe);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public List<Recipe> findArchivedByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        List<Recipe> result = new ArrayList<>();
+        for (Recipe recipe : byId.values()) {
+            if (groupId.equals(recipe.getGroupId()) && recipe.isArchived()) {
                 result.add(recipe);
             }
         }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -213,6 +214,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     archivingRecipe: 'Archiving recipe...',
     restoreRecipe: 'Restore recipe',
     restoringRecipe: 'Restoring recipe...',
+    deleteRecipe: 'Delete recipe',
+    deletingRecipe: 'Deleting recipe...',
+    deleteRecipeBlockedDefault: 'This recipe cannot be deleted yet.',
+    confirmDeleteRecipeTitle: 'Delete recipe?',
+    confirmDeleteRecipeMessage: 'This permanently removes the archived recipe from Meals.',
+    confirmDeleteRecipeAction: 'Delete',
+    cancelDeleteRecipeAction: 'Cancel',
     createRecipe: 'Create recipe',
     creatingRecipe: 'Creating recipe...',
     savedRecipeLabel: 'Saved recipe',
@@ -290,6 +298,29 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   async function handleAddIngredientsToShopping() {
     await actions.addIngredientsToShopping();
+  }
+
+  function confirmDeleteArchivedRecipe() {
+    if (!recipesWorkspace.recipeDetail.canDeleteRecipe) {
+      return;
+    }
+    Alert.alert(
+      strings.confirmDeleteRecipeTitle,
+      strings.confirmDeleteRecipeMessage,
+      [
+        {
+          text: strings.cancelDeleteRecipeAction,
+          style: 'cancel',
+        },
+        {
+          text: strings.confirmDeleteRecipeAction,
+          style: 'destructive',
+          onPress: () => {
+            void recipesWorkspace.recipeDetail.deleteCurrentRecipe();
+          },
+        },
+      ]
+    );
   }
 
   const weekEnd = useMemo(() => {
@@ -958,7 +989,16 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onRestore={recipesWorkspace.recipeDetail.canRestoreRecipe
             ? recipesWorkspace.recipeDetail.restoreCurrentRecipe
             : undefined}
+          onDelete={recipesWorkspace.recipeDetail.showDeleteRecipeAction
+            ? confirmDeleteArchivedRecipe
+            : undefined}
           isArchiving={recipesWorkspace.recipeDetail.isArchivingRecipe}
+          isDeleting={recipesWorkspace.recipeDetail.isDeletingRecipe}
+          canDelete={recipesWorkspace.recipeDetail.canDeleteRecipe}
+          deleteBlockedHint={recipesWorkspace.recipeDetail.showDeleteRecipeAction
+            && !recipesWorkspace.recipeDetail.canDeleteRecipe
+            ? recipesWorkspace.recipeDetail.recipeDeleteBlockedReason ?? strings.deleteRecipeBlockedDefault
+            : null}
           error={recipesWorkspace.recipeDetail.error}
           strings={{
             eyebrow: strings.recipesWorkspace,
@@ -1016,6 +1056,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ? strings.restoreRecipe
               : undefined,
             restoringRecipe: strings.restoringRecipe,
+            deleteRecipe: recipesWorkspace.recipeDetail.showDeleteRecipeAction
+              ? strings.deleteRecipe
+              : undefined,
+            deletingRecipe: strings.deletingRecipe,
             close: strings.close,
           }}
         />

@@ -3,6 +3,7 @@ package app.lifelinq.features.meals.api;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -14,6 +15,7 @@ import app.lifelinq.config.JwtVerifier;
 import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
+import app.lifelinq.features.meals.application.RecipeDeleteBlockedException;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
@@ -288,6 +290,8 @@ class MealsControllerTest {
                 Instant.parse("2026-03-17T10:00:00Z"),
                 Instant.parse("2026-03-17T10:15:00Z"),
                 null,
+                false,
+                "Recipe must be archived before you can delete it.",
                 List.of()
         ));
 
@@ -347,6 +351,8 @@ class MealsControllerTest {
                         Instant.parse("2026-03-10T09:00:00Z"),
                         Instant.parse("2026-03-18T10:00:00Z"),
                         Instant.parse("2026-03-18T10:00:00Z"),
+                        true,
+                        null,
                         List.of()
                 ));
 
@@ -357,6 +363,110 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.archivedAt").value("2026-03-18T10:00:00Z"));
 
         verify(mealsApplicationService).archiveRecipe(groupId, userId, recipeId);
+    }
+
+    @Test
+    void listArchivedRecipesReturnsArchivedRecipeResponses() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.listArchivedRecipes(groupId, userId))
+                .thenReturn(List.of(new RecipeView(
+                        recipeId,
+                        groupId,
+                        "Archived Soup",
+                        "Notebook",
+                        null,
+                        "MANUAL",
+                        null,
+                        null,
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-18T10:00:00Z"),
+                        Instant.parse("2026-03-18T10:00:00Z"),
+                        false,
+                        "This recipe is still used in planned meals.",
+                        List.of()
+                )));
+
+        mockMvc.perform(get("/meals/recipes/archived")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Archived Soup"))
+                .andExpect(jsonPath("$[0].archivedAt").value("2026-03-18T10:00:00Z"));
+
+        verify(mealsApplicationService).listArchivedRecipes(groupId, userId);
+    }
+
+    @Test
+    void restoreRecipeReturnsActiveRecipeResponse() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.restoreRecipe(groupId, userId, recipeId))
+                .thenReturn(new RecipeView(
+                        recipeId,
+                        groupId,
+                        "Restored Soup",
+                        "Notebook",
+                        null,
+                        "MANUAL",
+                        null,
+                        null,
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-20T10:00:00Z"),
+                        null,
+                        false,
+                        "Recipe must be archived before you can delete it.",
+                        List.of()
+                ));
+
+        mockMvc.perform(post("/meals/recipes/" + recipeId + "/restore")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Restored Soup"))
+                .andExpect(jsonPath("$.archivedAt").value(org.hamcrest.Matchers.nullValue()));
+
+        verify(mealsApplicationService).restoreRecipe(groupId, userId, recipeId);
+    }
+
+    @Test
+    void deleteRecipeReturns204WhenAllowed() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        mockMvc.perform(delete("/meals/recipes/" + recipeId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        verify(mealsApplicationService).deleteRecipe(groupId, userId, recipeId);
+    }
+
+    @Test
+    void deleteRecipeReturns409WhenBlocked() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        Mockito.doThrow(new RecipeDeleteBlockedException("This recipe is still used in planned meals."))
+                .when(mealsApplicationService)
+                .deleteRecipe(groupId, userId, recipeId);
+
+        mockMvc.perform(delete("/meals/recipes/" + recipeId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RECIPE_DELETE_BLOCKED"))
+                .andExpect(jsonPath("$.message").value("This recipe is still used in planned meals."));
     }
 
     @Test

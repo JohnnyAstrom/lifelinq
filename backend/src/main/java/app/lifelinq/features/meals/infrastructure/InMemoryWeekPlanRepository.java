@@ -41,6 +41,20 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
         return Optional.ofNullable(byId.get(id));
     }
 
+    @Override
+    public boolean existsMealReferencingRecipe(UUID groupId, UUID recipeId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        if (recipeId == null) {
+            throw new IllegalArgumentException("recipeId must not be null");
+        }
+        return byId.values().stream()
+                .filter(plan -> plan.getGroupId().equals(groupId))
+                .flatMap(plan -> plan.getMeals().stream())
+                .anyMatch(meal -> meal.getRecipeId().equals(recipeId));
+    }
+
     private String key(UUID groupId, int year, int isoWeek) {
         return groupId + ":" + year + ":" + isoWeek;
     }

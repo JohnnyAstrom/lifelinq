@@ -52,6 +52,8 @@ type Strings = MealIngredientEditorRowStrings & {
   archivingRecipe?: string;
   restoreRecipe?: string;
   restoringRecipe?: string;
+  deleteRecipe?: string;
+  deletingRecipe?: string;
   addIngredient: string;
   close: string;
 };
@@ -86,9 +88,13 @@ type Props = {
   onSave?: () => void;
   onArchive?: () => void;
   onRestore?: () => void;
+  onDelete?: () => void;
   onClose: () => void;
   isSaving?: boolean;
   isArchiving?: boolean;
+  isDeleting?: boolean;
+  canDelete?: boolean;
+  deleteBlockedHint?: string | null;
   error?: string | null;
   strings: Strings;
 };
@@ -123,9 +129,13 @@ export function MealRecipeDetailSheet({
   onSave,
   onArchive,
   onRestore,
+  onDelete,
   onClose,
   isSaving = false,
   isArchiving = false,
+  isDeleting = false,
+  canDelete = false,
+  deleteBlockedHint = null,
   error = null,
   strings,
 }: Props) {
@@ -358,6 +368,19 @@ export function MealRecipeDetailSheet({
               />
             ) : null}
 
+            {strings.deleteRecipe && (onDelete || deleteBlockedHint) ? (
+              <View style={styles.deleteSection}>
+                <AppButton
+                  title={isDeleting && strings.deletingRecipe ? strings.deletingRecipe : strings.deleteRecipe}
+                  onPress={onDelete ?? (() => {})}
+                  variant="ghost"
+                  fullWidth
+                  disabled={isActionPending || isRecipeLoading || !canDelete}
+                />
+                {deleteBlockedHint ? <Subtle>{deleteBlockedHint}</Subtle> : null}
+              </View>
+            ) : null}
+
             <AppButton
               title={strings.close}
               onPress={onClose}
@@ -496,5 +519,8 @@ const styles = StyleSheet.create({
   error: {
     ...textStyles.body,
     color: theme.colors.danger,
+  },
+  deleteSection: {
+    gap: theme.spacing.xs,
   },
 });

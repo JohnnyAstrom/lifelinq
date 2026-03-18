@@ -8,9 +8,13 @@ import java.util.UUID;
 public interface RecipeRepository {
     Recipe save(Recipe recipe);
 
+    void delete(Recipe recipe);
+
     Optional<Recipe> findByIdAndGroupId(UUID recipeId, UUID groupId);
 
     List<Recipe> findActiveByGroupId(UUID groupId);
+
+    List<Recipe> findArchivedByGroupId(UUID groupId);
 
     List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds);
 }

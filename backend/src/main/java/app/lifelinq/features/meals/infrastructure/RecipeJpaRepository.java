@@ -6,6 +6,9 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface RecipeJpaRepository extends JpaRepository<RecipeEntity, UUID> {
     @EntityGraph(attributePaths = "ingredients")
@@ -15,5 +18,12 @@ public interface RecipeJpaRepository extends JpaRepository<RecipeEntity, UUID> {
     List<RecipeEntity> findByGroupIdAndArchivedAtIsNull(UUID groupId);
 
     @EntityGraph(attributePaths = "ingredients")
+    List<RecipeEntity> findByGroupIdAndArchivedAtIsNotNull(UUID groupId);
+
+    @EntityGraph(attributePaths = "ingredients")
     List<RecipeEntity> findByGroupIdAndIdIn(UUID groupId, Collection<UUID> ids);
+
+    @Modifying
+    @Query("delete from RecipeEntity recipe where recipe.id = :recipeId and recipe.groupId = :groupId")
+    void deleteByIdAndGroupId(@Param("recipeId") UUID recipeId, @Param("groupId") UUID groupId);
 }

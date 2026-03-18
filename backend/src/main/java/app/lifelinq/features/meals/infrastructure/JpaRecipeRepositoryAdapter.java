@@ -45,6 +45,16 @@ public class JpaRecipeRepositoryAdapter implements RecipeRepository {
         return mapper.toDomain(saved);
     }
 
+    @Override
+    @Transactional
+    public void delete(Recipe recipe) {
+        if (recipe == null) {
+            throw new IllegalArgumentException("recipe must not be null");
+        }
+        ingredientRepository.deleteByRecipeId(recipe.getId());
+        repository.deleteByIdAndGroupId(recipe.getId(), recipe.getGroupId());
+    }
+
     private RecipeEntity updateManagedEntity(RecipeEntity existing, Recipe recipe) {
         existing.updateContent(
                 recipe.getName(),
@@ -81,6 +91,18 @@ public class JpaRecipeRepositoryAdapter implements RecipeRepository {
         }
         List<Recipe> result = new ArrayList<>();
         for (RecipeEntity entity : repository.findByGroupIdAndArchivedAtIsNull(groupId)) {
+            result.add(mapper.toDomain(entity));
+        }
+        return result;
+    }
+
+    @Override
+    public List<Recipe> findArchivedByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        List<Recipe> result = new ArrayList<>();
+        for (RecipeEntity entity : repository.findByGroupIdAndArchivedAtIsNotNull(groupId)) {
             result.add(mapper.toDomain(entity));
         }
         return result;

@@ -276,6 +276,223 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void listArchivedRecipesReturnsArchivedRecipesOnly() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-18T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                "Active Recipe",
+                Instant.parse("2026-03-10T09:00:00Z"),
+                List.of()
+        ));
+        recipes.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                "Archived Recipe",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-10T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                List.of()
+        ));
+
+        var archivedRecipes = service.listArchivedRecipes(groupId, userId);
+
+        assertThat(archivedRecipes).extracting(view -> view.name()).containsExactly("Archived Recipe");
+    }
+
+    @Test
+    void restoreRecipeReturnsRecipeToActiveList() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-20T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Archived Recipe",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-10T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                List.of()
+        ));
+
+        var restored = service.restoreRecipe(groupId, userId, recipeId);
+
+        assertThat(restored.archivedAt()).isNull();
+        assertThat(restored.updatedAt()).isEqualTo(Instant.parse("2026-03-20T10:00:00Z"));
+        assertThat(service.listRecipes(groupId, userId)).extracting(view -> view.name()).containsExactly("Archived Recipe");
+        assertThat(service.listArchivedRecipes(groupId, userId)).isEmpty();
+    }
+
+    @Test
+    void getArchivedRecipeIncludesBlockedDeleteReasonWhenStillPlanned() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-20T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Archived Recipe",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-10T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                List.of()
+        ));
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, null, null);
+
+        var recipe = service.getRecipe(groupId, userId, recipeId);
+
+        assertThat(recipe.deleteEligible()).isFalse();
+        assertThat(recipe.deleteBlockedReason()).isEqualTo("This recipe is still used in planned meals.");
+    }
+
+    @Test
+    void deleteRecipeRemovesUnusedArchivedRecipe() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Archived Recipe",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-10T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                List.of()
+        ));
+
+        service.deleteRecipe(groupId, userId, recipeId);
+
+        assertThat(recipes.findByIdAndGroupId(recipeId, groupId)).isEmpty();
+    }
+
+    @Test
+    void deleteRecipeIsBlockedWhenRecipeIsNotArchived() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Active Recipe",
+                Instant.parse("2026-03-10T09:00:00Z"),
+                List.of()
+        ));
+
+        assertThatThrownBy(() -> service.deleteRecipe(groupId, userId, recipeId))
+                .isInstanceOf(RecipeDeleteBlockedException.class)
+                .hasMessage("Recipe must be archived before you can delete it.");
+    }
+
+    @Test
+    void deleteRecipeIsBlockedWhenArchivedRecipeIsStillPlanned() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Archived Recipe",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-10T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                List.of()
+        ));
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, null, null);
+
+        assertThatThrownBy(() -> service.deleteRecipe(groupId, userId, recipeId))
+                .isInstanceOf(RecipeDeleteBlockedException.class)
+                .hasMessage("This recipe is still used in planned meals.");
+    }
+
+    @Test
     void getWeekPlanUsesRuntimeRecipeNameLookup() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -462,6 +679,14 @@ class MealsApplicationServiceTest {
         public Optional<WeekPlan> findById(UUID id) {
             return Optional.ofNullable(byId.get(id));
         }
+
+        @Override
+        public boolean existsMealReferencingRecipe(UUID groupId, UUID recipeId) {
+            return byId.values().stream()
+                    .filter(plan -> plan.getGroupId().equals(groupId))
+                    .flatMap(plan -> plan.getMeals().stream())
+                    .anyMatch(meal -> meal.getRecipeId().equals(recipeId));
+        }
     }
 
     private static final class InMemoryRecipeRepository implements RecipeRepository {
@@ -471,6 +696,11 @@ class MealsApplicationServiceTest {
         public Recipe save(Recipe recipe) {
             recipes.put(recipe.getId(), recipe);
             return recipe;
+        }
+
+        @Override
+        public void delete(Recipe recipe) {
+            recipes.remove(recipe.getId());
         }
 
         @Override
@@ -487,6 +717,17 @@ class MealsApplicationServiceTest {
             List<Recipe> result = new ArrayList<>();
             for (Recipe recipe : recipes.values()) {
                 if (recipe.getGroupId().equals(groupId) && !recipe.isArchived()) {
+                    result.add(recipe);
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public List<Recipe> findArchivedByGroupId(UUID groupId) {
+            List<Recipe> result = new ArrayList<>();
+            for (Recipe recipe : recipes.values()) {
+                if (recipe.getGroupId().equals(groupId) && recipe.isArchived()) {
                     result.add(recipe);
                 }
             }

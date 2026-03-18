@@ -16,5 +16,7 @@ public record RecipeView(
         Instant createdAt,
         Instant updatedAt,
         Instant archivedAt,
+        Boolean deleteEligible,
+        String deleteBlockedReason,
         List<IngredientView> ingredients
 ) {}

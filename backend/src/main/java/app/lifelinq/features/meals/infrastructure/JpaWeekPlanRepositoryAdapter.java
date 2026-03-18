@@ -58,6 +58,17 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
         return repository.findById(id).map(mapper::toDomain);
     }
 
+    @Override
+    public boolean existsMealReferencingRecipe(UUID groupId, UUID recipeId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        if (recipeId == null) {
+            throw new IllegalArgumentException("recipeId must not be null");
+        }
+        return repository.existsMealReferencingRecipe(groupId, recipeId);
+    }
+
     private WeekPlanEntity updateEntity(WeekPlanEntity entity, WeekPlan weekPlan) {
         if (!entity.getGroupId().equals(weekPlan.getGroupId())) {
             throw new IllegalArgumentException("groupId cannot be changed");

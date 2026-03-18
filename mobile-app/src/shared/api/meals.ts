@@ -112,6 +112,8 @@ export type RecipeResponse = {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  deleteEligible: boolean;
+  deleteBlockedReason: string | null;
   ingredients: IngredientResponse[];
 };
 
@@ -156,6 +158,16 @@ export async function listRecipes(
   );
 }
 
+export async function listArchivedRecipes(
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse[]> {
+  return fetchJson<RecipeResponse[]>(
+    '/meals/recipes/archived',
+    {},
+    clientOptions
+  );
+}
+
 export async function getRecipe(
   recipeId: string,
   clientOptions: ApiClientOptions = {}
@@ -190,6 +202,32 @@ export async function archiveRecipe(
     `/meals/recipes/${recipeId}/archive`,
     {
       method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function restoreRecipe(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse> {
+  return fetchJson<RecipeResponse>(
+    `/meals/recipes/${recipeId}/restore`,
+    {
+      method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function deleteRecipe(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<void> {
+  return fetchJson<void>(
+    `/meals/recipes/${recipeId}`,
+    {
+      method: 'DELETE',
     },
     clientOptions
   );

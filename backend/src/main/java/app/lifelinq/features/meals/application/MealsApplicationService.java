@@ -97,13 +97,13 @@ public class MealsApplicationService {
                 null,
                 toDomainIngredients(ingredients)
         );
-        return toView(recipeRepository.save(recipe));
+        return toView(recipeRepository.save(recipe), false);
     }
 
     @Transactional(readOnly = true)
     public RecipeView getRecipe(UUID groupId, UUID actorUserId, UUID recipeId) {
         ensureMealAccess(groupId, actorUserId);
-        return toView(loadRecipe(groupId, recipeId));
+        return toView(loadRecipe(groupId, recipeId), true);
     }
 
     @Transactional(readOnly = true)
@@ -111,7 +111,24 @@ public class MealsApplicationService {
         ensureMealAccess(groupId, actorUserId);
         List<RecipeView> views = new ArrayList<>();
         for (Recipe recipe : recipeRepository.findActiveByGroupId(groupId)) {
-            views.add(toView(recipe));
+            views.add(toView(recipe, false));
+        }
+        views.sort((a, b) -> {
+            int nameCompare = a.name().compareToIgnoreCase(b.name());
+            if (nameCompare != 0) {
+                return nameCompare;
+            }
+            return a.recipeId().compareTo(b.recipeId());
+        });
+        return views;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeView> listArchivedRecipes(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        List<RecipeView> views = new ArrayList<>();
+        for (Recipe recipe : recipeRepository.findArchivedByGroupId(groupId)) {
+            views.add(toView(recipe, true));
         }
         views.sort((a, b) -> {
             int nameCompare = a.name().compareToIgnoreCase(b.name());
@@ -152,7 +169,7 @@ public class MealsApplicationService {
                 existing.getArchivedAt(),
                 toDomainIngredients(ingredients)
         );
-        return toView(recipeRepository.save(updated));
+        return toView(recipeRepository.save(updated), true);
     }
 
     @Transactional
@@ -160,7 +177,7 @@ public class MealsApplicationService {
         ensureMealAccess(groupId, actorUserId);
         Recipe existing = loadRecipe(groupId, recipeId);
         if (existing.isArchived()) {
-            return toView(existing);
+            return toView(existing, true);
         }
         Instant now = clock.instant();
         Recipe archived = new Recipe(
@@ -177,7 +194,43 @@ public class MealsApplicationService {
                 now,
                 existing.getIngredients()
         );
-        return toView(recipeRepository.save(archived));
+        return toView(recipeRepository.save(archived), true);
+    }
+
+    @Transactional
+    public RecipeView restoreRecipe(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        Recipe existing = loadRecipe(groupId, recipeId);
+        if (!existing.isArchived()) {
+            return toView(existing, true);
+        }
+        Instant now = clock.instant();
+        Recipe restored = new Recipe(
+                existing.getId(),
+                existing.getGroupId(),
+                existing.getName(),
+                existing.getSourceName(),
+                existing.getSourceUrl(),
+                existing.getOriginKind(),
+                existing.getShortNote(),
+                existing.getInstructions(),
+                existing.getCreatedAt(),
+                now,
+                null,
+                existing.getIngredients()
+        );
+        return toView(recipeRepository.save(restored), true);
+    }
+
+    @Transactional
+    public void deleteRecipe(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        Recipe existing = loadRecipe(groupId, recipeId);
+        DeleteEligibility deleteEligibility = getDeleteEligibility(groupId, existing);
+        if (!deleteEligibility.eligible()) {
+            throw new RecipeDeleteBlockedException(deleteEligibility.blockedReason());
+        }
+        recipeRepository.delete(existing);
     }
 
     @Transactional
@@ -370,7 +423,7 @@ public class MealsApplicationService {
         return ingredients;
     }
 
-    private RecipeView toView(Recipe recipe) {
+    private RecipeView toView(Recipe recipe, boolean includeDeleteMetadata) {
         List<IngredientView> ingredients = new ArrayList<>();
         for (Ingredient ingredient : recipe.getIngredients()) {
             ingredients.add(new IngredientView(
@@ -381,6 +434,9 @@ public class MealsApplicationService {
                     ingredient.getPosition()
             ));
         }
+        DeleteEligibility deleteEligibility = includeDeleteMetadata
+                ? getDeleteEligibility(recipe.getGroupId(), recipe)
+                : new DeleteEligibility(false, null);
         return new RecipeView(
                 recipe.getId(),
                 recipe.getGroupId(),
@@ -393,8 +449,23 @@ public class MealsApplicationService {
                 recipe.getCreatedAt(),
                 recipe.getUpdatedAt(),
                 recipe.getArchivedAt(),
+                deleteEligibility.eligible(),
+                deleteEligibility.blockedReason(),
                 ingredients
         );
+    }
+
+    private DeleteEligibility getDeleteEligibility(UUID groupId, Recipe recipe) {
+        if (!recipe.isArchived()) {
+            return new DeleteEligibility(false, "Recipe must be archived before you can delete it.");
+        }
+        if (weekPlanRepository.existsMealReferencingRecipe(groupId, recipe.getId())) {
+            return new DeleteEligibility(false, "This recipe is still used in planned meals.");
+        }
+        return new DeleteEligibility(true, null);
+    }
+
+    private record DeleteEligibility(boolean eligible, String blockedReason) {
     }
 
     private IngredientUnitView toViewUnit(IngredientUnit unit) {

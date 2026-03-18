@@ -16,5 +16,7 @@ public record RecipeResponse(
         Instant createdAt,
         Instant updatedAt,
         Instant archivedAt,
+        Boolean deleteEligible,
+        String deleteBlockedReason,
         List<IngredientResponse> ingredients
 ) {}

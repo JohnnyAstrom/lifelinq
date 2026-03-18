@@ -114,6 +114,37 @@ class JpaRecipeRepositoryAdapterTest {
     }
 
     @Test
+    void findArchivedByGroupIdReturnsOnlyArchivedRecipes() {
+        UUID groupId = UUID.randomUUID();
+
+        repository.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                "Active",
+                Instant.parse("2026-02-01T10:00:00Z"),
+                List.of()
+        ));
+        repository.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                "Archived",
+                null,
+                null,
+                RecipeOriginKind.MANUAL,
+                null,
+                null,
+                Instant.parse("2026-02-01T10:00:00Z"),
+                Instant.parse("2026-02-03T10:00:00Z"),
+                Instant.parse("2026-02-03T10:00:00Z"),
+                List.of()
+        ));
+
+        List<Recipe> result = repository.findArchivedByGroupId(groupId);
+
+        assertThat(result).extracting(Recipe::getName).containsExactly("Archived");
+    }
+
+    @Test
     void findByGroupIdAndIdsIsScopedByGroup() {
         UUID groupA = UUID.randomUUID();
         UUID groupB = UUID.randomUUID();
@@ -193,5 +224,30 @@ class JpaRecipeRepositoryAdapterTest {
         assertThat(loaded.get().getIngredients())
                 .extracting(Ingredient::getPosition)
                 .containsExactly(1, 2);
+    }
+
+    @Test
+    void deleteRemovesRecipeByGroupScopedIdentity() {
+        UUID groupId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        Recipe recipe = new Recipe(
+                recipeId,
+                groupId,
+                "Archived Soup",
+                null,
+                null,
+                RecipeOriginKind.MANUAL,
+                null,
+                null,
+                Instant.parse("2026-02-01T10:00:00Z"),
+                Instant.parse("2026-02-03T10:00:00Z"),
+                Instant.parse("2026-02-03T10:00:00Z"),
+                List.of()
+        );
+
+        repository.save(recipe);
+        repository.delete(recipe);
+
+        assertThat(repository.findByIdAndGroupId(recipeId, groupId)).isEmpty();
     }
 }
