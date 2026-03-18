@@ -3,9 +3,11 @@ alter table planned_meals
 
 update planned_meals pm
 set recipe_title_snapshot = r.name
-from week_plans wp
-         join recipes r on r.id = pm.recipe_id and r.group_id = wp.group_id
+from week_plans wp,
+     recipes r
 where pm.week_plan_id = wp.id
+  and r.id = pm.recipe_id
+  and r.group_id = wp.group_id
   and pm.recipe_title_snapshot is null;
 
 alter table planned_meals
