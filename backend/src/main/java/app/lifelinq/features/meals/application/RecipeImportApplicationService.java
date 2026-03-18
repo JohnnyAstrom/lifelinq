@@ -13,6 +13,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,6 +24,17 @@ public class RecipeImportApplicationService {
     );
     private static final Pattern ATTACHED_UNIT_PATTERN = Pattern.compile(
             "^(?<quantity>\\d+(?:[\\.,]\\d+)?)(?<unit>[A-Za-z]+)\\s+(?<rest>.+)$"
+    );
+    private static final Set<String> UNSUPPORTED_MEASURE_TOKENS = Set.of(
+            "tsp", "tsps", "teaspoon", "teaspoons",
+            "tbsp", "tbsps", "tablespoon", "tablespoons",
+            "clove", "cloves",
+            "slice", "slices",
+            "pinch", "pinches",
+            "dash", "dashes"
+    );
+    private static final Set<String> BARE_COUNT_BLOCKLIST_TOKENS = Set.of(
+            "x", "about", "approx", "approximately"
     );
 
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
@@ -102,9 +114,49 @@ public class RecipeImportApplicationService {
                     attachedUnitMatcher.group("unit"),
                     attachedUnitMatcher.group("rest")
             );
-            if (quantity == null || unitResult == null) {
+            if (quantity == null) {
                 return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
             }
+            if (unitResult != null) {
+                return new RecipeImportDraftIngredientView(
+                        unitResult.ingredientName(),
+                        normalizedLine,
+                        quantity,
+                        unitResult.unit(),
+                        position
+                );
+            }
+
+            String fallbackIngredientName = stripUnsupportedMeasureToken(
+                    attachedUnitMatcher.group("unit"),
+                    attachedUnitMatcher.group("rest")
+            );
+            if (fallbackIngredientName != null) {
+                return new RecipeImportDraftIngredientView(
+                        fallbackIngredientName,
+                        normalizedLine,
+                        null,
+                        null,
+                        position
+                );
+            }
+            return new RecipeImportDraftIngredientView(
+                    normalizedLine,
+                    normalizedLine,
+                    null,
+                    null,
+                    position
+            );
+        }
+
+        BigDecimal quantity = parseQuantity(matcher.group("quantity"));
+        String rest = matcher.group("rest").trim();
+        UnitParseResult unitResult = parseUnit(rest);
+
+        if (quantity == null) {
+            return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
+        }
+        if (unitResult != null) {
             return new RecipeImportDraftIngredientView(
                     unitResult.ingredientName(),
                     normalizedLine,
@@ -114,21 +166,29 @@ public class RecipeImportApplicationService {
             );
         }
 
-        BigDecimal quantity = parseQuantity(matcher.group("quantity"));
-        String rest = matcher.group("rest").trim();
-        UnitParseResult unitResult = parseUnit(rest);
-
-        if (quantity == null || unitResult == null) {
-            return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
+        String fallbackIngredientName = stripUnsupportedMeasureToken(rest);
+        if (fallbackIngredientName != null) {
+            return new RecipeImportDraftIngredientView(
+                    fallbackIngredientName,
+                    normalizedLine,
+                    null,
+                    null,
+                    position
+            );
         }
 
-        return new RecipeImportDraftIngredientView(
-                unitResult.ingredientName(),
-                normalizedLine,
-                quantity,
-                unitResult.unit(),
-                position
-        );
+        UnitParseResult bareCountResult = parseBareCountIngredient(rest);
+        if (bareCountResult != null) {
+            return new RecipeImportDraftIngredientView(
+                    bareCountResult.ingredientName(),
+                    normalizedLine,
+                    quantity,
+                    bareCountResult.unit(),
+                    position
+            );
+        }
+
+        return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
     }
 
     private BigDecimal parseQuantity(String quantityText) {
@@ -171,11 +231,54 @@ public class RecipeImportApplicationService {
         return new UnitParseResult(unit, ingredientName);
     }
 
+    private UnitParseResult parseBareCountIngredient(String ingredientValue) {
+        String ingredientName = normalizeOptionalText(ingredientValue);
+        if (ingredientName == null) {
+            return null;
+        }
+
+        String firstToken = firstToken(ingredientName);
+        if (firstToken == null) {
+            return null;
+        }
+
+        String normalizedFirstToken = normalizeUnitToken(firstToken);
+        if (normalizedFirstToken.isEmpty()
+                || BARE_COUNT_BLOCKLIST_TOKENS.contains(normalizedFirstToken)
+                || UNSUPPORTED_MEASURE_TOKENS.contains(normalizedFirstToken)
+                || parseSupportedUnit(normalizedFirstToken) != null) {
+            return null;
+        }
+
+        return new UnitParseResult(IngredientUnitView.PCS, ingredientName);
+    }
+
+    private String stripUnsupportedMeasureToken(String value) {
+        int split = value.indexOf(' ');
+        if (split <= 0 || split >= value.length() - 1) {
+            return null;
+        }
+        return stripUnsupportedMeasureToken(value.substring(0, split), value.substring(split + 1));
+    }
+
+    private String stripUnsupportedMeasureToken(String unitToken, String ingredientValue) {
+        String normalizedUnitToken = normalizeUnitToken(unitToken);
+        if (!UNSUPPORTED_MEASURE_TOKENS.contains(normalizedUnitToken)) {
+            return null;
+        }
+
+        String normalizedIngredientValue = normalizeOptionalText(ingredientValue);
+        if (normalizedIngredientValue == null) {
+            return null;
+        }
+
+        String withoutOf = normalizedIngredientValue.replaceFirst("^(?i)of\\s+", "");
+        String shaped = normalizeOptionalText(withoutOf);
+        return shaped;
+    }
+
     private IngredientUnitView parseSupportedUnit(String unitToken) {
-        String normalizedUnitToken = unitToken
-                .toLowerCase(Locale.ROOT)
-                .replace(".", "")
-                .trim();
+        String normalizedUnitToken = normalizeUnitToken(unitToken);
         return switch (normalizedUnitToken) {
             case "pcs", "pc", "piece", "pieces", "st" -> IngredientUnitView.PCS;
             case "pack", "packs", "pkt", "package", "packages" -> IngredientUnitView.PACK;
@@ -187,6 +290,13 @@ public class RecipeImportApplicationService {
             case "ml", "milliliter", "milliliters", "millilitre", "millilitres" -> IngredientUnitView.ML;
             default -> null;
         };
+    }
+
+    private String normalizeUnitToken(String unitToken) {
+        return unitToken
+                .toLowerCase(Locale.ROOT)
+                .replace(".", "")
+                .trim();
     }
 
     private String normalizeRequiredName(String value) {
@@ -255,6 +365,14 @@ public class RecipeImportApplicationService {
                 .replace("\r", "\n")
                 .trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String firstToken(String value) {
+        int split = value.indexOf(' ');
+        if (split < 0) {
+            return value;
+        }
+        return value.substring(0, split);
     }
 
     private String normalizeImportUrl(String value) {

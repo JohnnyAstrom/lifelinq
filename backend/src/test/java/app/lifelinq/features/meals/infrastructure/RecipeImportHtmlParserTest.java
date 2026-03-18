@@ -43,7 +43,7 @@ class RecipeImportHtmlParserTest {
         assertThat(parsed.name()).isEqualTo("Structured Apple Pie");
         assertThat(parsed.sourceName()).isEqualTo("Structured Kitchen");
         assertThat(parsed.shortNote()).isEqualTo("Structured note");
-        assertThat(parsed.instructions()).isEqualTo("Mix ingredients\nBake");
+        assertThat(parsed.instructions()).isEqualTo("1. Mix ingredients\n2. Bake");
         assertThat(parsed.ingredientLines()).containsExactly("2 dl milk", "apple");
     }
 
@@ -106,7 +106,33 @@ class RecipeImportHtmlParserTest {
 
         assertThat(parsed.name()).isEqualTo("Nested soup");
         assertThat(parsed.ingredientLines()).containsExactly("400g mushrooms", "1.5 dl cream", "2 eggs");
-        assertThat(parsed.instructions()).isEqualTo("Cook mushrooms\nAdd cream");
+        assertThat(parsed.instructions()).isEqualTo("1. Cook mushrooms\n2. Add cream");
+    }
+
+    @Test
+    void stripsRepeatedStepPrefixesBeforeNumberingStructuredInstructions() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "@type": "Recipe",
+                        "name": "Toast",
+                        "recipeIngredient": ["2 eggs"],
+                        "recipeInstructions": [
+                          {"@type":"HowToStep", "text":"Step 1: Crack eggs"},
+                          {"@type":"HowToStep", "text":"2. Cook gently"}
+                        ]
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/toast", html));
+
+        assertThat(parsed.instructions()).isEqualTo("1. Crack eggs\n2. Cook gently");
     }
 
     @Test

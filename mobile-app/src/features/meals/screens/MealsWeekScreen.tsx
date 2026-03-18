@@ -193,6 +193,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'Keep the ingredient list ready with this recipe.',
     savedRecipeIngredientsHint: 'These ingredients stay with this saved recipe.',
+    importedIngredientsHint: 'If an imported row kept its original line below, open it and clean it up only if needed.',
     recipePickerTitle: 'Choose a recipe',
     recipePickerHint: 'Choose a saved recipe for this meal.',
     loadingRecipes: 'Loading recipes...',
@@ -236,6 +237,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     quantityPlaceholder: 'Amount',
     addIngredient: 'Add ingredient',
     removeIngredient: 'Remove',
+    importedIngredientHint: 'Imported line:',
     loadingIngredients: 'Loading ingredients...',
     shoppingLabel: 'Shopping',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
@@ -928,6 +930,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeInstructionsHint: strings.recipeInstructionsHint,
             ingredientsLabel: strings.ingredientsLabel,
             ingredientsRecipeHint: strings.savedRecipeIngredientsHint,
+            importedIngredientsHint: undefined,
             ingredientsEmptyState: strings.ingredientsEmptyState,
             loadingIngredients: strings.loadingIngredients,
             saveAsNewRecipeHint: strings.saveAsNewRecipeHint,
@@ -935,6 +938,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             quantityPlaceholder: strings.quantityPlaceholder,
             addIngredient: strings.addIngredient,
             removeIngredient: strings.removeIngredient,
+            importedIngredientHint: undefined,
             close: strings.close,
           }}
         />
@@ -1049,12 +1053,18 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeInstructionsHint: strings.recipeInstructionsHint,
             ingredientsLabel: strings.ingredientsLabel,
             ingredientsRecipeHint: strings.ingredientsRecipeHint,
+            importedIngredientsHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importedIngredientsHint
+              : undefined,
             ingredientsEmptyState: strings.ingredientsEmptyState,
             loadingIngredients: strings.loadingIngredients,
             ingredientNamePlaceholder: strings.ingredientNamePlaceholder,
             quantityPlaceholder: strings.quantityPlaceholder,
             addIngredient: strings.addIngredient,
             removeIngredient: strings.removeIngredient,
+            importedIngredientHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importedIngredientHint
+              : undefined,
             saveRecipe: recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.saveRecipe
               : strings.createRecipe,

@@ -11,12 +11,14 @@ export type MealIngredientEditorRowStrings = {
   ingredientNamePlaceholder: string;
   quantityPlaceholder: string;
   removeIngredient: string;
+  importedIngredientHint?: string;
 };
 
 type Props = {
   row: MealIngredientRow;
   isActive: boolean;
   isReadOnly?: boolean;
+  isImportDraft?: boolean;
   onActivate: () => void;
   onRemove: () => void;
   onChangeName: (value: string) => void;
@@ -38,6 +40,28 @@ function formatIngredientMeta(row: MealIngredientRow) {
   return unitLabel ? `${row.quantityText} ${unitLabel}` : row.quantityText;
 }
 
+function normalizeComparableText(value: string | null) {
+  if (!value) {
+    return '';
+  }
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function getImportedFallbackHint(row: MealIngredientRow) {
+  const rawText = row.rawText?.trim();
+  if (!rawText || row.quantityText.trim().length > 0 || !/\d/.test(rawText)) {
+    return null;
+  }
+
+  const normalizedRaw = normalizeComparableText(rawText);
+  const normalizedName = normalizeComparableText(row.name);
+  if (!normalizedRaw || normalizedRaw === normalizedName) {
+    return null;
+  }
+
+  return rawText;
+}
+
 export function isMealIngredientRowEffectivelyEmpty(row: MealIngredientRow) {
   return row.name.trim().length === 0;
 }
@@ -46,6 +70,7 @@ export function MealIngredientEditorRow({
   row,
   isActive,
   isReadOnly = false,
+  isImportDraft = false,
   onActivate,
   onRemove,
   onChangeName,
@@ -56,6 +81,7 @@ export function MealIngredientEditorRow({
   const isEffectivelyEmpty = isMealIngredientRowEffectivelyEmpty(row);
   const isExpanded = isActive || isEffectivelyEmpty;
   const meta = formatIngredientMeta(row);
+  const importedFallbackHint = isImportDraft ? getImportedFallbackHint(row) : null;
 
   if (isReadOnly) {
     return (
@@ -67,6 +93,10 @@ export function MealIngredientEditorRow({
           {meta ? (
             <Text style={styles.compactMeta} numberOfLines={1}>
               {meta}
+            </Text>
+          ) : importedFallbackHint && strings.importedIngredientHint ? (
+            <Text style={styles.compactMeta} numberOfLines={1}>
+              {strings.importedIngredientHint} {importedFallbackHint}
             </Text>
           ) : null}
         </View>
@@ -91,6 +121,10 @@ export function MealIngredientEditorRow({
           {meta ? (
             <Text style={styles.compactMeta} numberOfLines={1}>
               {meta}
+            </Text>
+          ) : importedFallbackHint && strings.importedIngredientHint ? (
+            <Text style={styles.compactMeta} numberOfLines={1}>
+              {strings.importedIngredientHint} {importedFallbackHint}
             </Text>
           ) : null}
         </View>
@@ -143,6 +177,12 @@ export function MealIngredientEditorRow({
         />
       </View>
 
+      {importedFallbackHint && strings.importedIngredientHint ? (
+        <Text style={styles.importHint}>
+          {strings.importedIngredientHint} {importedFallbackHint}
+        </Text>
+      ) : null}
+
       {row.quantityText.length > 0 && isActive ? (
         <View style={styles.unitChipRow}>
           {MEAL_INGREDIENT_UNIT_OPTIONS.map((option) => (
@@ -185,6 +225,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   compactMeta: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  importHint: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
   },

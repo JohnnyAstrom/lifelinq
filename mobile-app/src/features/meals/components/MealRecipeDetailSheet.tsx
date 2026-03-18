@@ -55,6 +55,7 @@ type Strings = MealIngredientEditorRowStrings & {
   recipeInstructionsHint?: string;
   ingredientsLabel: string;
   ingredientsRecipeHint?: string;
+  importedIngredientsHint?: string;
   ingredientsEmptyState: string;
   loadingIngredients: string;
   saveAsNewRecipeHint?: string;
@@ -67,6 +68,7 @@ type Strings = MealIngredientEditorRowStrings & {
   deleteRecipe?: string;
   deletingRecipe?: string;
   addIngredient: string;
+  importedIngredientHint?: string;
   close: string;
 };
 
@@ -343,6 +345,9 @@ export function MealRecipeDetailSheet({
                   {strings.ingredientsRecipeHint ? (
                     <Text style={styles.sectionHint}>{strings.ingredientsRecipeHint}</Text>
                   ) : null}
+                  {isImportDraft && strings.importedIngredientsHint ? (
+                    <Text style={styles.sectionHint}>{strings.importedIngredientsHint}</Text>
+                  ) : null}
                 </View>
                 {!isArchivedRecipe ? (
                   <AppButton
@@ -376,6 +381,7 @@ export function MealRecipeDetailSheet({
                       row={row}
                       isActive={row.id === activeRowId}
                       isReadOnly={isArchivedRecipe}
+                      isImportDraft={isImportDraft}
                       onActivate={() => setActiveRowId(row.id)}
                       onRemove={() => onRemoveIngredientRow(row.id)}
                       onChangeName={(value) => onChangeIngredientName(row.id, value)}

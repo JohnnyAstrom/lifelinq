@@ -53,13 +53,20 @@ class RecipeImportApplicationServiceTest {
                 url,
                 null,
                 "Cook",
-                List.of("• 400g mushrooms", "1 1/2 dl milk", "- salt to taste")
+                List.of(
+                        "• 400g mushrooms",
+                        "1 1/2 dl milk",
+                        "- salt to taste",
+                        "2 eggs",
+                        "1 tbsp olive oil",
+                        "12 slices prosciutto"
+                )
         );
         RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
 
         var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
 
-        assertThat(draft.ingredients()).hasSize(3);
+        assertThat(draft.ingredients()).hasSize(6);
         assertThat(draft.ingredients().get(0).quantity()).isEqualByComparingTo("400");
         assertThat(draft.ingredients().get(0).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.G);
         assertThat(draft.ingredients().get(0).name()).isEqualTo("mushrooms");
@@ -71,6 +78,18 @@ class RecipeImportApplicationServiceTest {
         assertThat(draft.ingredients().get(2).quantity()).isNull();
         assertThat(draft.ingredients().get(2).name()).isEqualTo("salt to taste");
         assertThat(draft.ingredients().get(2).rawText()).isEqualTo("salt to taste");
+        assertThat(draft.ingredients().get(3).quantity()).isEqualByComparingTo("2");
+        assertThat(draft.ingredients().get(3).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.PCS);
+        assertThat(draft.ingredients().get(3).name()).isEqualTo("eggs");
+        assertThat(draft.ingredients().get(3).rawText()).isEqualTo("2 eggs");
+        assertThat(draft.ingredients().get(4).quantity()).isNull();
+        assertThat(draft.ingredients().get(4).unit()).isNull();
+        assertThat(draft.ingredients().get(4).name()).isEqualTo("olive oil");
+        assertThat(draft.ingredients().get(4).rawText()).isEqualTo("1 tbsp olive oil");
+        assertThat(draft.ingredients().get(5).quantity()).isNull();
+        assertThat(draft.ingredients().get(5).unit()).isNull();
+        assertThat(draft.ingredients().get(5).name()).isEqualTo("prosciutto");
+        assertThat(draft.ingredients().get(5).rawText()).isEqualTo("12 slices prosciutto");
     }
 
     @Test

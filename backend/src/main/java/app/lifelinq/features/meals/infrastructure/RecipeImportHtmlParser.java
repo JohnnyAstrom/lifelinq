@@ -27,6 +27,10 @@ final class RecipeImportHtmlParser {
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL
     );
     private static final Pattern SPLIT_LINE_PATTERN = Pattern.compile("\\s*[\\r\\n]+\\s*");
+    private static final Pattern INSTRUCTION_PREFIX_PATTERN = Pattern.compile(
+            "^(?:step\\s*\\d+[:.)-]?|\\d+[.)-])\\s*",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private final ObjectMapper objectMapper;
 
@@ -188,7 +192,15 @@ final class RecipeImportHtmlParser {
         if (steps.isEmpty()) {
             return null;
         }
-        return String.join("\n", steps);
+        if (steps.size() == 1) {
+            return steps.get(0);
+        }
+
+        List<String> numberedSteps = new ArrayList<>();
+        for (int index = 0; index < steps.size(); index++) {
+            numberedSteps.add((index + 1) + ". " + steps.get(index));
+        }
+        return String.join("\n", numberedSteps);
     }
 
     private void collectInstructionSteps(JsonNode node, List<String> steps) {
@@ -196,7 +208,7 @@ final class RecipeImportHtmlParser {
             return;
         }
         if (node.isTextual()) {
-            String normalized = normalizeInlineText(node.asText());
+            String normalized = normalizeInstructionStep(node.asText());
             if (normalized != null) {
                 steps.add(normalized);
             }
@@ -213,7 +225,7 @@ final class RecipeImportHtmlParser {
                     textValue(node.get("text")),
                     textValue(node.get("name"))
             );
-            String normalized = normalizeInlineText(text);
+            String normalized = normalizeInstructionStep(text);
             if (normalized != null) {
                 steps.add(normalized);
                 return;
@@ -303,6 +315,15 @@ final class RecipeImportHtmlParser {
             return null;
         }
         String normalized = value.replace("\r\n", "\n").replace("\r", "\n").trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeInstructionStep(String value) {
+        String normalized = normalizeInlineText(value);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = INSTRUCTION_PREFIX_PATTERN.matcher(normalized).replaceFirst("").trim();
         return normalized.isEmpty() ? null : normalized;
     }
 
