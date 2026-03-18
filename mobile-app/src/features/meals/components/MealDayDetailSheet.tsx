@@ -9,8 +9,9 @@ type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 type MealEntry = {
   dayOfWeek: number;
   mealType: MealType;
-  recipeId: string;
-  recipeTitle: string;
+  mealTitle: string;
+  recipeId: string | null;
+  recipeTitle: string | null;
 };
 
 type Strings = {
@@ -94,13 +95,13 @@ export function MealDayDetailSheet({
                         </View>
                       </View>
                       <Text style={meal ? styles.slotValue : styles.slotEmptyValue}>
-                        {meal ? meal.recipeTitle : `${strings.addMeal} ${mealTypeLabels[mealType].toLowerCase()}`}
+                        {meal ? meal.mealTitle : `${strings.addMeal} ${mealTypeLabels[mealType].toLowerCase()}`}
                       </Text>
                       {(meal ? strings.mealHint : strings.mealActionHint) ? (
                         <Text style={styles.slotHint}>{meal ? strings.mealHint : strings.mealActionHint}</Text>
                       ) : null}
                     </Pressable>
-                    {meal ? (
+                    {meal?.recipeId ? (
                       <View style={styles.recipeRow}>
                         <Text style={styles.recipeLabel}>{strings.recipeLabel}</Text>
                         <Pressable

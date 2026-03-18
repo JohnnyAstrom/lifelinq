@@ -53,7 +53,7 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
                 .filter(plan -> plan.getGroupId().equals(groupId))
                 .filter(plan -> plan.getYear() > year || (plan.getYear() == year && plan.getIsoWeek() >= isoWeek))
                 .flatMap(plan -> plan.getMeals().stream())
-                .anyMatch(meal -> meal.getRecipeId().equals(recipeId));
+                .anyMatch(meal -> recipeId.equals(meal.getRecipeId()));
     }
 
     private String key(UUID groupId, int year, int isoWeek) {

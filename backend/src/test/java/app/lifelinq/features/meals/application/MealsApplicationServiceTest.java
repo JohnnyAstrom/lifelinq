@@ -447,6 +447,87 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void addMealAllowsLightweightMealTitleWithoutRecipe() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                new InMemoryRecipeRepository(),
+                membership,
+                shopping,
+                Clock.systemUTC()
+        );
+
+        var output = service.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                5,
+                1,
+                MealType.DINNER,
+                "Tacos",
+                null,
+                null,
+                null
+        );
+
+        assertThat(output.meal().mealTitle()).isEqualTo("Tacos");
+        assertThat(output.meal().recipeId()).isNull();
+        assertThat(output.meal().recipeTitle()).isNull();
+
+        var weekPlan = service.getWeekPlan(groupId, userId, 2026, 5);
+        assertThat(weekPlan.meals()).hasSize(1);
+        assertThat(weekPlan.meals().get(0).mealTitle()).isEqualTo("Tacos");
+        assertThat(weekPlan.meals().get(0).recipeId()).isNull();
+
+        verify(shopping, never()).addShoppingItem(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void addMealFallsBackToRecipeNameWhenMealTitleIsOmittedForRecipeBackedMeal() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.systemUTC()
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Tomatsoppa",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                List.of()
+        ));
+
+        var output = service.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                5,
+                1,
+                MealType.DINNER,
+                null,
+                recipeId,
+                null,
+                null
+        );
+
+        assertThat(output.meal().mealTitle()).isEqualTo("Tomatsoppa");
+        assertThat(output.meal().recipeTitle()).isEqualTo("Tomatsoppa");
+    }
+
+    @Test
     void createRecipeRejectsDuplicatePositions() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -1056,7 +1137,7 @@ class MealsApplicationServiceTest {
                     .filter(plan -> plan.getGroupId().equals(groupId))
                     .filter(plan -> plan.getYear() > year || (plan.getYear() == year && plan.getIsoWeek() >= isoWeek))
                     .flatMap(plan -> plan.getMeals().stream())
-                    .anyMatch(meal -> meal.getRecipeId().equals(recipeId));
+                    .anyMatch(meal -> recipeId.equals(meal.getRecipeId()));
         }
     }
 

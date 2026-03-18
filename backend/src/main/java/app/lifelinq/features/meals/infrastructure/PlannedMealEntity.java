@@ -26,11 +26,13 @@ public class PlannedMealEntity {
     @JoinColumn(name = "week_plan_id", nullable = false)
     private WeekPlanEntity weekPlan;
 
+    @Column(name = "meal_title", nullable = false)
+    private String mealTitle;
 
-    @Column(name = "recipe_id", nullable = false)
+    @Column(name = "recipe_id")
     private UUID recipeId;
 
-    @Column(name = "recipe_title_snapshot", nullable = false)
+    @Column(name = "recipe_title_snapshot")
     private String recipeTitleSnapshot;
 
     protected PlannedMealEntity() {
@@ -39,11 +41,13 @@ public class PlannedMealEntity {
     PlannedMealEntity(
             PlannedMealId id,
             WeekPlanEntity weekPlan,
+            String mealTitle,
             UUID recipeId,
             String recipeTitleSnapshot
     ) {
         this.id = id;
         this.weekPlan = weekPlan;
+        this.mealTitle = mealTitle;
         this.recipeId = recipeId;
         this.recipeTitleSnapshot = recipeTitleSnapshot;
     }
@@ -62,6 +66,10 @@ public class PlannedMealEntity {
 
     String getMealType() {
         return id.getMealType();
+    }
+
+    String getMealTitle() {
+        return mealTitle;
     }
 
     UUID getRecipeId() {

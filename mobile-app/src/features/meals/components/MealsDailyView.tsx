@@ -11,8 +11,9 @@ type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 type MealEntry = {
   dayOfWeek: number;
   mealType: MealType;
-  recipeId: string;
-  recipeTitle: string;
+  mealTitle: string;
+  recipeId: string | null;
+  recipeTitle: string | null;
 };
 
 type Props = {
@@ -45,7 +46,7 @@ export function MealsDailyView({
             <MealRow
               key={`${meal.dayOfWeek}-${meal.mealType}`}
               mealType={meal.mealType}
-              recipeTitle={meal.recipeTitle}
+              mealTitle={meal.mealTitle}
               onPress={() => onOpenEditor(dailyDayNumber, meal.mealType)}
               mealTypeLabels={MEAL_TYPE_LABELS}
               styles={styles}

@@ -81,9 +81,19 @@ public final class WeekPlan {
         }
     }
 
-    public void addOrReplaceMeal(int dayOfWeek, MealType mealType, UUID recipeId, String recipeTitleSnapshot) {
-        PlannedMeal meal = new PlannedMeal(dayOfWeek, mealType, recipeId, recipeTitleSnapshot);
+    public void addOrReplaceMeal(
+            int dayOfWeek,
+            MealType mealType,
+            String mealTitle,
+            UUID recipeId,
+            String recipeTitleSnapshot
+    ) {
+        PlannedMeal meal = new PlannedMeal(dayOfWeek, mealType, mealTitle, recipeId, recipeTitleSnapshot);
         mealsBySlot.put(new DaySlot(dayOfWeek, mealType), meal);
+    }
+
+    public void addOrReplaceMeal(int dayOfWeek, MealType mealType, UUID recipeId, String recipeTitleSnapshot) {
+        addOrReplaceMeal(dayOfWeek, mealType, recipeTitleSnapshot, recipeId, recipeTitleSnapshot);
     }
 
     public void removeMeal(int dayOfWeek, MealType mealType) {

@@ -103,6 +103,7 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
             existing.addOrReplaceMeal(
                     meal.getDayOfWeek(),
                     meal.getMealType(),
+                    meal.getMealTitle(),
                     meal.getRecipeId(),
                     meal.getRecipeTitleSnapshot()
             );

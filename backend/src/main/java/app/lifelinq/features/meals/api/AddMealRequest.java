@@ -4,10 +4,15 @@ import java.util.UUID;
 import java.util.List;
 
 public final class AddMealRequest {
+    private String mealTitle;
     private UUID recipeId;
     private String mealType;
     private UUID targetShoppingListId;
     private List<Integer> selectedIngredientPositions;
+
+    public String getMealTitle() {
+        return mealTitle;
+    }
 
     public UUID getRecipeId() {
         return recipeId;

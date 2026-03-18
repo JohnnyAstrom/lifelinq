@@ -1,25 +1,17 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
-import { AppButton, AppChip } from '../../../shared/ui/components';
+import { AppButton, AppChip, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import { type MealIngredientRow } from '../utils/ingredientRows';
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 
-type DayOption = {
-  dayNumber: number;
-  date: Date;
-  label: string;
-};
-
 type MealEditorSheetStrings = {
   planMealTitle: string;
-  planningLabel: string;
-  dayLabel: string;
+  mealTitleLabel: string;
+  mealTitlePlaceholder: string;
   mealTypeLabel: string;
-  recipeLabel: string;
-  newRecipeLabel: string;
-  usingRecipeLabel: string;
   useExistingRecipe: string;
   changeRecipe: string;
   openRecipe: string;
@@ -38,20 +30,21 @@ type MealEditorSheetStrings = {
 
 type Props = {
   initialDate: Date;
-  dayOptions: DayOption[];
-  onSelectDay: (dayNumber: number) => void;
   onClose: () => void;
   onSave: () => void;
   onRemove: () => void;
   selectedMealType: MealType | null;
   onSelectMealType: (mealType: MealType) => void;
   mealTypeLabels: Record<MealType, string>;
+  mealTitle: string;
+  onChangeMealTitle: (value: string) => void;
   recipeTitle: string;
   ingredientRows: MealIngredientRow[];
   isRecipeLoading: boolean;
   onOpenRecipeDetail: () => void;
   onOpenRecipePicker: () => void;
   hasIngredients: boolean;
+  hasRecipeDraftContent: boolean;
   onOpenShoppingReview: () => void;
   hasExistingMeal: boolean;
   hasExistingRecipe: boolean;
@@ -63,28 +56,23 @@ type Props = {
 
 const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER'];
 
-function sameCalendarDay(left: Date, right: Date) {
-  return left.getFullYear() === right.getFullYear()
-    && left.getMonth() === right.getMonth()
-    && left.getDate() === right.getDate();
-}
-
 export function MealEditorSheet({
   initialDate,
-  dayOptions,
-  onSelectDay,
   onClose,
   onSave,
   onRemove,
   selectedMealType,
   onSelectMealType,
   mealTypeLabels,
+  mealTitle,
+  onChangeMealTitle,
   recipeTitle,
   ingredientRows,
   isRecipeLoading,
   onOpenRecipeDetail,
   onOpenRecipePicker,
   hasIngredients,
+  hasRecipeDraftContent,
   onOpenShoppingReview,
   hasExistingMeal,
   hasExistingRecipe,
@@ -111,23 +99,29 @@ export function MealEditorSheet({
       : `${ingredientCount} ${strings.ingredientsSummarySuffix}`;
   const saveActionLabel = isSavingMeal ? strings.savingMeal : strings.saveMeal;
   const removeActionLabel = isRemovingMeal ? strings.removingMeal : strings.removeMeal;
-  const recipeIdentityLabel = hasExistingRecipe
-    ? strings.usingRecipeLabel
-    : strings.newRecipeLabel;
   const recipeSelectionActionLabel = hasExistingRecipe
     ? strings.changeRecipe
     : strings.useExistingRecipe;
-  const recipeActionLabel = hasIngredients || recipeTitle.trim().length > 0
-    ? strings.openRecipe
-    : strings.addRecipeDetails;
-  const recipeSummary = recipeTitle.trim().length > 0
+  const recipeSummary = hasRecipeDraftContent && recipeTitle.trim().length > 0
     ? recipeTitle.trim()
-    : strings.addRecipeDetails;
+    : hasRecipeDraftContent
+      ? strings.openRecipe
+      : strings.addRecipeDetails;
   const recipeMeta = isRecipeLoading
     ? strings.loadingRecipe
     : hasIngredients
-      ? ingredientSummary
+      ? ingredientPreview
+        ? `${ingredientSummary} · ${ingredientPreview}`
+        : ingredientSummary
       : strings.recipeSummaryHint;
+  const recipePrompt = hasRecipeDraftContent
+    ? strings.openRecipe
+    : strings.addRecipeDetails;
+  const dayContext = initialDate.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
@@ -144,20 +138,19 @@ export function MealEditorSheet({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.editorSection}>
-              <Text style={styles.sectionLabel}>{strings.planningLabel}</Text>
+              <View style={styles.planningContextBlock}>
+                <Text style={styles.dayContextText}>{dayContext}</Text>
+                <Subtle style={styles.planningContextValue}>{mealTypeLabels[selectedMealType]}</Subtle>
+              </View>
               <View style={styles.contextField}>
-                <Text style={styles.fieldLabel}>{strings.dayLabel}</Text>
-                <View style={styles.dayChipRow}>
-                  {dayOptions.map((option) => (
-                    <AppChip
-                      key={option.dayNumber}
-                      label={option.label.split(' ')[0]}
-                      active={sameCalendarDay(option.date, initialDate)}
-                      accentKey="meals"
-                      onPress={() => onSelectDay(option.dayNumber)}
-                    />
-                  ))}
-                </View>
+                <Text style={styles.fieldLabel}>{strings.mealTitleLabel}</Text>
+                <AppInput
+                  value={mealTitle}
+                  onChangeText={onChangeMealTitle}
+                  placeholder={strings.mealTitlePlaceholder}
+                  multiline
+                  style={styles.mealTitleInput}
+                />
               </View>
               <View style={styles.contextField}>
                 <Text style={styles.fieldLabel}>{strings.mealTypeLabel}</Text>
@@ -179,11 +172,7 @@ export function MealEditorSheet({
             </View>
             <View style={styles.sectionDivider} />
             <View style={styles.editorSection}>
-              <Text style={styles.sectionLabel}>{strings.recipeLabel}</Text>
-              <View style={styles.recipeMetaRow}>
-                <View style={styles.identityBadge}>
-                  <Text style={styles.identityBadgeText}>{recipeIdentityLabel}</Text>
-                </View>
+              <View style={styles.recipeHeaderRow}>
                 <AppButton
                   title={recipeSelectionActionLabel}
                   onPress={onOpenRecipePicker}
@@ -204,22 +193,20 @@ export function MealEditorSheet({
                   <Text
                     style={[
                       styles.recipeSummaryTitle,
-                      recipeTitle.trim().length === 0 ? styles.recipeSummaryTitlePlaceholder : null,
+                      !hasRecipeDraftContent ? styles.recipeSummaryTitlePlaceholder : null,
                     ]}
-                    numberOfLines={1}
+                    numberOfLines={2}
                   >
                     {recipeSummary}
                   </Text>
-                  <Text style={styles.recipeSummaryMeta} numberOfLines={1}>
-                    {ingredientPreview ? `${recipeMeta} · ${ingredientPreview}` : recipeMeta}
+                  <Text style={styles.recipeSummaryMeta} numberOfLines={2}>
+                    {recipeMeta}
                   </Text>
                 </View>
-                <AppButton
-                  title={recipeActionLabel}
-                  onPress={onOpenRecipeDetail}
-                  variant="ghost"
-                  disabled={isActionPending || isRecipeLoading}
-                />
+                <View style={styles.recipeSummaryAction}>
+                  <Text style={styles.recipeSummaryActionText}>{recipePrompt}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                </View>
               </Pressable>
             </View>
             {hasIngredients ? (
@@ -305,10 +292,14 @@ const styles = StyleSheet.create({
   contextField: {
     gap: theme.spacing.xs,
   },
-  dayChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
+  planningContextBlock: {
+    gap: 2,
+  },
+  dayContextText: {
+    ...textStyles.h2,
+  },
+  planningContextValue: {
+    color: theme.colors.textSecondary,
   },
   sectionLabel: {
     ...textStyles.subtle,
@@ -325,28 +316,24 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
+  mealTitleInput: {
+    ...textStyles.h2,
+    fontWeight: '700',
+    lineHeight: 32,
+    minHeight: 68,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    textAlignVertical: 'top',
+  },
   sectionDivider: {
     height: 1,
     backgroundColor: theme.colors.border,
   },
-  recipeMetaRow: {
+  recipeHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     gap: theme.spacing.sm,
-  },
-  identityBadge: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: theme.colors.surfaceAlt,
-  },
-  identityBadgeText: {
-    ...textStyles.subtle,
-    color: theme.colors.text,
-    fontWeight: '600',
   },
   recipeSummaryCard: {
     borderWidth: 1,
@@ -356,7 +343,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: theme.spacing.sm,
   },
   recipeSummaryCardPressed: {
@@ -380,6 +367,17 @@ const styles = StyleSheet.create({
   },
   recipeSummaryMeta: {
     ...textStyles.subtle,
+  },
+  recipeSummaryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingTop: 2,
+  },
+  recipeSummaryActionText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
   sheetScroll: {
     minHeight: 0,

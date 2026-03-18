@@ -3,8 +3,9 @@ import { fetchJson, type ApiClientOptions } from './client';
 export type PlannedMealResponse = {
   dayOfWeek: number;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
-  recipeId: string;
-  recipeTitle: string;
+  recipeId: string | null;
+  mealTitle: string;
+  recipeTitle: string | null;
 };
 
 export type WeekPlanResponse = {
@@ -16,7 +17,8 @@ export type WeekPlanResponse = {
 };
 
 export type AddMealRequest = {
-  recipeId: string;
+  mealTitle?: string | null;
+  recipeId?: string | null;
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   targetShoppingListId?: string | null;
   selectedIngredientPositions?: number[] | null;

@@ -31,6 +31,7 @@ final class WeekPlanMapper {
                     PlannedMeal.rehydrate(
                             meal.getDayOfWeek(),
                             mealType,
+                            meal.getMealTitle(),
                             meal.getRecipeId(),
                             meal.getRecipeTitleSnapshot()
                     )
@@ -50,6 +51,7 @@ final class WeekPlanMapper {
         return new PlannedMealEntity(
                 new PlannedMealId(weekPlan.getId(), meal.getDayOfWeek(), meal.getMealType().name()),
                 weekPlan,
+                meal.getMealTitle(),
                 meal.getRecipeId(),
                 meal.getRecipeTitleSnapshot()
         );

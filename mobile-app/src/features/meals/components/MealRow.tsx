@@ -4,7 +4,7 @@ type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 
 type Props = {
   mealType: MealType;
-  recipeTitle: string;
+  mealTitle: string;
   onPress: () => void;
   mealTypeLabels: Record<MealType, string>;
   styles: Record<string, any>;
@@ -12,7 +12,7 @@ type Props = {
 
 export function MealRow({
   mealType,
-  recipeTitle,
+  mealTitle,
   onPress,
   mealTypeLabels,
   styles,
@@ -30,7 +30,7 @@ export function MealRow({
           <Text style={styles.mealTypeText}>{mealTypeLabels[mealType]}</Text>
         </View>
         <Text style={styles.mealTitle} numberOfLines={1}>
-          {recipeTitle}
+          {mealTitle}
         </Text>
       </View>
     </Pressable>

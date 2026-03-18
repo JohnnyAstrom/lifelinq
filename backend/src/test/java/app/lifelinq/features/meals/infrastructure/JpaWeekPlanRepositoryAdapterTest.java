@@ -43,6 +43,7 @@ class JpaWeekPlanRepositoryAdapterTest {
         assertTrue(diffNanos <= 1_000);
         assertEquals(1, loadedPlan.getMeals().size());
         assertEquals(1, loadedPlan.getMeals().get(0).getDayOfWeek());
+        assertEquals("Soup", loadedPlan.getMeals().get(0).getMealTitle());
         assertEquals(recipeId, loadedPlan.getMeals().get(0).getRecipeId());
         assertEquals("Soup", loadedPlan.getMeals().get(0).getRecipeTitleSnapshot());
     }
@@ -63,8 +64,25 @@ class JpaWeekPlanRepositoryAdapterTest {
 
         WeekPlan updated = repository.findByGroupAndWeek(groupId, 2025, 12).orElseThrow();
         assertEquals(1, updated.getMeals().size());
+        assertEquals("Updated", updated.getMeals().get(0).getMealTitle());
         assertEquals(newRecipeId, updated.getMeals().get(0).getRecipeId());
         assertEquals("Updated", updated.getMeals().get(0).getRecipeTitleSnapshot());
+    }
+
+    @Test
+    void savesAndLoadsLightweightMealWithoutRecipe() {
+        UUID groupId = UUID.randomUUID();
+        UUID weekPlanId = UUID.randomUUID();
+        WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 13, Instant.now());
+        plan.addOrReplaceMeal(3, app.lifelinq.features.meals.domain.MealType.LUNCH, "Leftovers", null, null);
+
+        repository.save(plan);
+
+        WeekPlan loaded = repository.findByGroupAndWeek(groupId, 2025, 13).orElseThrow();
+        assertEquals(1, loaded.getMeals().size());
+        assertEquals("Leftovers", loaded.getMeals().get(0).getMealTitle());
+        assertEquals(null, loaded.getMeals().get(0).getRecipeId());
+        assertEquals(null, loaded.getMeals().get(0).getRecipeTitleSnapshot());
     }
 
     @Test

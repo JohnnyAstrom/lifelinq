@@ -138,22 +138,23 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     planMealTitle: 'Plan a meal',
     planMealSlot: 'Plan',
     editMealSlot: 'Edit meal',
-    planningLabel: 'Planning',
     mealsLabel: 'Meals',
     recipeLinkLabel: 'Recipe',
     openRecipeFromDay: 'Recipe',
     dayLabel: 'Day',
     mealTypeLabel: 'Meal',
+    mealTitleLabel: 'What are you eating?',
+    mealTitlePlaceholder: 'Meal title',
     recipeLabel: 'Recipe',
-    newRecipeLabel: 'New recipe',
-    usingRecipeLabel: 'Saved recipe',
+    newRecipeLabel: 'No recipe attached',
+    usingRecipeLabel: 'Recipe attached',
     mealSpecificRecipeLabel: 'Recipe for this meal',
     editingSavedRecipeLabel: 'Editing saved recipe',
     useExistingRecipe: 'Use existing',
     changeRecipe: 'Change recipe',
     openRecipe: 'Open recipe',
     addRecipeDetails: 'Add recipe details',
-    recipeSummaryHint: 'No recipe details yet.',
+    recipeSummaryHint: 'Optional ingredients, notes, and cooking steps.',
     loadingRecipe: 'Loading recipe...',
     recipeSheetEyebrow: 'Recipe',
     recipeSheetTitle: 'Recipe',
@@ -363,19 +364,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   }, [anchorDate, editor.selectedDay, weekStart]);
 
-  const editorDayOptions = useMemo(() => {
-    return DAY_LABELS.map((_, index) => {
-      const date = new Date(weekStart.getTime());
-      date.setUTCDate(weekStart.getUTCDate() + index);
-      const localDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-      return {
-        dayNumber: index + 1,
-        date: localDate,
-        label: formatDayLabel(date, index),
-      };
-    });
-  }, [weekStart]);
-
   const monthGridCells = useMemo(() => buildMonthGridCells(anchorDate), [anchorDate]);
   const recipeMealAttachmentValue = useMemo(() => {
     if (!editor.selectedMealType) {
@@ -488,6 +476,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       .map((meal) => ({
         dayOfWeek: meal.dayOfWeek,
         mealType: meal.mealType as MealType,
+        mealTitle: meal.mealTitle,
         recipeId: meal.recipeId,
         recipeTitle: meal.recipeTitle,
       }))
@@ -817,34 +806,32 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       {editor.isOpen ? (
         <MealEditorSheet
           initialDate={selectedEditorDate}
-          dayOptions={editorDayOptions}
-          onSelectDay={editor.setSelectedDay}
           onClose={closeEditor}
           onSave={handleSave}
           onRemove={handleRemove}
           selectedMealType={editor.selectedMealType}
           onSelectMealType={editor.setSelectedMealType}
           mealTypeLabels={MEAL_TYPE_LABELS}
+          mealTitle={editor.mealTitle}
+          onChangeMealTitle={editor.setMealTitle}
           recipeTitle={editor.recipeTitle}
           ingredientRows={editor.ingredientRows}
           isRecipeLoading={editor.isRecipeLoading}
           onOpenRecipeDetail={editor.openRecipeDetail}
           onOpenRecipePicker={editor.openRecipePicker}
           hasIngredients={editor.hasIngredients}
+          hasRecipeDraftContent={editor.hasRecipeDraftContent}
           onOpenShoppingReview={editor.openShoppingReview}
-          hasExistingMeal={!!editor.selectedMeal?.recipeTitle}
+          hasExistingMeal={!!editor.selectedMeal?.mealTitle}
           hasExistingRecipe={!!editor.selectedMealRecipeId}
           isSavingMeal={editor.isSavingMeal}
           isRemovingMeal={editor.isRemovingMeal}
           isActionPending={editor.isActionPending}
           strings={{
             planMealTitle: strings.planMealTitle,
-            planningLabel: strings.planningLabel,
-            dayLabel: strings.dayLabel,
+            mealTitleLabel: strings.mealTitleLabel,
+            mealTitlePlaceholder: strings.mealTitlePlaceholder,
             mealTypeLabel: strings.mealTypeLabel,
-            recipeLabel: strings.recipeLabel,
-            newRecipeLabel: strings.newRecipeLabel,
-            usingRecipeLabel: strings.usingRecipeLabel,
             useExistingRecipe: strings.useExistingRecipe,
             changeRecipe: strings.changeRecipe,
             openRecipe: strings.openRecipe,

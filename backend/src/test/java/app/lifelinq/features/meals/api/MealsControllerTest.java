@@ -68,7 +68,7 @@ class MealsControllerTest {
     void addReturns401WhenTokenMissing() throws Exception {
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"recipeId\":\"" + UUID.randomUUID() + "\",\"mealType\":\"DINNER\"}"))
+                        .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + UUID.randomUUID() + "\",\"mealType\":\"DINNER\"}"))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(mealsApplicationService);
@@ -90,6 +90,7 @@ class MealsControllerTest {
                 10,
                 1,
                 app.lifelinq.features.meals.domain.MealType.DINNER,
+                "Pasta",
                 recipeId,
                 null,
                 null
@@ -97,13 +98,13 @@ class MealsControllerTest {
                 weekPlanId,
                 2025,
                 10,
-                new PlannedMealView(1, "DINNER", recipeId, "Pasta")
+                new PlannedMealView(1, "DINNER", recipeId, "Pasta", "Pasta")
         ));
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\"}"))
+                        .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\"}"))
                 .andExpect(status().isOk());
 
         verify(mealsApplicationService).addOrReplaceMeal(
@@ -113,7 +114,56 @@ class MealsControllerTest {
                 10,
                 1,
                 app.lifelinq.features.meals.domain.MealType.DINNER,
+                "Pasta",
                 recipeId,
+                null,
+                null
+        );
+    }
+
+    @Test
+    void addAllowsLightweightMealTitleWithoutRecipe() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID weekPlanId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.addOrReplaceMeal(
+                groupId,
+                userId,
+                2025,
+                10,
+                1,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                "Tacos",
+                null,
+                null,
+                null
+        )).thenReturn(new AddMealOutput(
+                weekPlanId,
+                2025,
+                10,
+                new PlannedMealView(1, "DINNER", null, "Tacos", null)
+        ));
+
+        mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mealTitle\":\"Tacos\",\"mealType\":\"DINNER\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meal.mealTitle").value("Tacos"))
+                .andExpect(jsonPath("$.meal.recipeTitle").value(org.hamcrest.Matchers.nullValue()));
+
+        verify(mealsApplicationService).addOrReplaceMeal(
+                groupId,
+                userId,
+                2025,
+                10,
+                1,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                "Tacos",
+                null,
                 null,
                 null
         );
@@ -146,12 +196,12 @@ class MealsControllerTest {
 
         Mockito.doThrow(new MealsShoppingAccessDeniedException("Access denied"))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId, null);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, "Pasta", recipeId, targetListId, null);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
+                        .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -166,12 +216,12 @@ class MealsControllerTest {
 
         Mockito.doThrow(new MealsShoppingListNotFoundException("list not found: " + targetListId))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId, null);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, "Pasta", recipeId, targetListId, null);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
+                        .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -186,12 +236,12 @@ class MealsControllerTest {
 
         Mockito.doThrow(new MealsShoppingDuplicateItemException("item name must be unique within list: pasta"))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, targetListId, null);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, "Pasta", recipeId, targetListId, null);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
+                        .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isConflict());
     }
 
@@ -205,12 +255,12 @@ class MealsControllerTest {
 
         Mockito.doThrow(new RecipeNotFoundException(recipeId))
                 .when(mealsApplicationService)
-                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, recipeId, null, null);
+                .addOrReplaceMeal(groupId, userId, 2025, 10, 1, app.lifelinq.features.meals.domain.MealType.DINNER, "Pasta", recipeId, null, null);
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\"}"))
+                        .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\"}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -231,6 +281,7 @@ class MealsControllerTest {
                 10,
                 1,
                 app.lifelinq.features.meals.domain.MealType.DINNER,
+                "Pasta",
                 recipeId,
                 targetListId,
                 List.of(1, 3)
@@ -238,13 +289,13 @@ class MealsControllerTest {
                 weekPlanId,
                 2025,
                 10,
-                new PlannedMealView(1, "DINNER", recipeId, "Pasta")
+                new PlannedMealView(1, "DINNER", recipeId, "Pasta", "Pasta")
         ));
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\",\"selectedIngredientPositions\":[1,3]}"))
+                        .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\",\"selectedIngredientPositions\":[1,3]}"))
                 .andExpect(status().isOk());
 
         verify(mealsApplicationService).addOrReplaceMeal(
@@ -254,6 +305,7 @@ class MealsControllerTest {
                 10,
                 1,
                 app.lifelinq.features.meals.domain.MealType.DINNER,
+                "Pasta",
                 recipeId,
                 targetListId,
                 List.of(1, 3)

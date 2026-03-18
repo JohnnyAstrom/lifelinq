@@ -6,5 +6,6 @@ public record PlannedMealView(
         int dayOfWeek,
         String mealType,
         UUID recipeId,
+        String mealTitle,
         String recipeTitle
 ) {}

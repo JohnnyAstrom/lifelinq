@@ -300,13 +300,15 @@ public class MealsApplicationService {
             int isoWeek,
             int dayOfWeek,
             MealType mealType,
+            String mealTitle,
             UUID recipeId,
             UUID targetShoppingListId,
             List<Integer> selectedIngredientPositions
     ) {
         ensureMealAccess(groupId, actorUserId);
         validateIsoWeek(year, isoWeek);
-        Recipe recipe = loadRecipe(groupId, recipeId);
+        Recipe recipe = recipeId == null ? null : loadRecipe(groupId, recipeId);
+        String normalizedMealTitle = normalizeMealTitle(mealTitle, recipe);
         WeekPlan weekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
                 .orElseGet(() -> new WeekPlan(
                         UUID.randomUUID(),
@@ -316,10 +318,16 @@ public class MealsApplicationService {
                         clock.instant()
                 ));
 
-        weekPlan.addOrReplaceMeal(dayOfWeek, mealType, recipeId, recipe.getName());
+        weekPlan.addOrReplaceMeal(
+                dayOfWeek,
+                mealType,
+                normalizedMealTitle,
+                recipeId,
+                recipe == null ? null : recipe.getName()
+        );
         WeekPlan saved = weekPlanRepository.save(weekPlan);
 
-        if (targetShoppingListId != null) {
+        if (recipe != null && targetShoppingListId != null) {
             // V0.5c intent: recipe ingredients primarily act as shopping-item generators.
             pushIngredientsToShopping(
                     groupId,
@@ -336,9 +344,36 @@ public class MealsApplicationService {
                 savedMeal.getDayOfWeek(),
                 savedMeal.getMealType().name(),
                 savedMeal.getRecipeId(),
+                savedMeal.getMealTitle(),
                 savedMeal.getRecipeTitleSnapshot()
         );
         return new AddMealOutput(saved.getId(), saved.getYear(), saved.getIsoWeek(), mealView);
+    }
+
+    @Transactional
+    public AddMealOutput addOrReplaceMeal(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek,
+            int dayOfWeek,
+            MealType mealType,
+            UUID recipeId,
+            UUID targetShoppingListId,
+            List<Integer> selectedIngredientPositions
+    ) {
+        return addOrReplaceMeal(
+                groupId,
+                actorUserId,
+                year,
+                isoWeek,
+                dayOfWeek,
+                mealType,
+                null,
+                recipeId,
+                targetShoppingListId,
+                selectedIngredientPositions
+        );
     }
 
     @Transactional
@@ -379,7 +414,9 @@ public class MealsApplicationService {
     private WeekPlanView toView(WeekPlan weekPlan) {
         Set<UUID> recipeIds = new HashSet<>();
         for (PlannedMeal meal : weekPlan.getMeals()) {
-            recipeIds.add(meal.getRecipeId());
+            if (meal.getRecipeId() != null) {
+                recipeIds.add(meal.getRecipeId());
+            }
         }
 
         Map<UUID, String> namesByRecipeId = new HashMap<>();
@@ -393,7 +430,10 @@ public class MealsApplicationService {
                     meal.getDayOfWeek(),
                     meal.getMealType().name(),
                     meal.getRecipeId(),
-                    namesByRecipeId.getOrDefault(meal.getRecipeId(), meal.getRecipeTitleSnapshot())
+                    meal.getMealTitle(),
+                    meal.getRecipeId() == null
+                            ? null
+                            : namesByRecipeId.getOrDefault(meal.getRecipeId(), meal.getRecipeTitleSnapshot())
             ));
         }
         return new WeekPlanView(
@@ -411,6 +451,19 @@ public class MealsApplicationService {
         }
         return recipeRepository.findByIdAndGroupId(recipeId, groupId)
                 .orElseThrow(() -> new RecipeNotFoundException(recipeId));
+    }
+
+    private String normalizeMealTitle(String mealTitle, Recipe recipe) {
+        if (mealTitle != null) {
+            String normalized = mealTitle.trim();
+            if (!normalized.isEmpty()) {
+                return normalized;
+            }
+        }
+        if (recipe != null) {
+            return recipe.getName();
+        }
+        throw new IllegalArgumentException("mealTitle must not be blank");
     }
 
     private String normalizeRecipeName(String name) {

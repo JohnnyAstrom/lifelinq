@@ -26,8 +26,9 @@ type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 type MealEntry = {
   dayOfWeek: number;
   mealType: MealType;
-  recipeId: string;
-  recipeTitle: string;
+  mealTitle: string;
+  recipeId: string | null;
+  recipeTitle: string | null;
 };
 
 type EditorPendingAction = 'save-meal' | 'remove-meal' | 'add-ingredients-to-shopping' | null;
@@ -77,6 +78,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         const entry: MealEntry = {
           dayOfWeek: meal.dayOfWeek,
           mealType: meal.mealType as MealType,
+          mealTitle: meal.mealTitle,
           recipeId: meal.recipeId,
           recipeTitle: meal.recipeTitle,
         };
@@ -94,6 +96,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<MealType | null>('DINNER');
   const [selectedMealRecipeId, setSelectedMealRecipeId] = useState<string | null>(null);
+  const [mealTitle, setMealTitle] = useState('');
   const [recipeTitle, setRecipeTitle] = useState('');
   const [recipeSource, setRecipeSource] = useState('');
   const [recipeSourceUrl, setRecipeSourceUrl] = useState<string | null>(null);
@@ -161,14 +164,23 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       }));
   }, [availableRecipes]);
   const currentRecipeDraft = useMemo(() => ({
-    name: recipeTitle.trim(),
+    name: recipeTitle.trim() || mealTitle.trim(),
     sourceName: recipeSource.trim() || null,
     sourceUrl: recipeSourceUrl,
     originKind: recipeOriginKind,
     shortNote: recipeShortNote.trim() || null,
     instructions: recipeInstructions.trim() || null,
     ingredients: toIngredientRequests(ingredientRows),
-  }), [ingredientRows, recipeInstructions, recipeOriginKind, recipeShortNote, recipeSource, recipeSourceUrl, recipeTitle]);
+  }), [ingredientRows, mealTitle, recipeInstructions, recipeOriginKind, recipeShortNote, recipeSource, recipeSourceUrl, recipeTitle]);
+  const hasRecipeDraftContent = useMemo(() => (
+    !!selectedMealRecipeId
+      || currentRecipeDraft.ingredients.length > 0
+      || currentRecipeDraft.sourceName != null
+      || currentRecipeDraft.sourceUrl != null
+      || currentRecipeDraft.shortNote != null
+      || currentRecipeDraft.instructions != null
+      || (recipeTitle.trim().length > 0 && recipeTitle.trim() !== mealTitle.trim())
+  ), [currentRecipeDraft, mealTitle, recipeTitle, selectedMealRecipeId]);
   const hasModifiedPickedRecipe = useMemo(() => {
     if (!pickedRecipeSnapshot) {
       return false;
@@ -212,7 +224,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setSelectedMealType(mealType);
     const list = mealsByDay.get(day) ?? [];
     const existing = list.find((meal) => meal.mealType === mealType);
-    setRecipeTitle(existing?.recipeTitle ?? '');
+    setMealTitle(existing?.mealTitle ?? '');
+    setRecipeTitle(existing?.recipeId ? existing.recipeTitle ?? '' : '');
     setRecipeSource('');
     setRecipeSourceUrl(null);
     setRecipeOriginKind('MANUAL');
@@ -256,6 +269,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   function applyRecipeSnapshot(recipe: RecipeResponse) {
     setSelectedMealRecipeId(recipe.recipeId);
     setRecipeTitle(recipe.name);
+    setMealTitle((current) => (current.trim().length > 0 ? current : recipe.name));
     setRecipeSource(recipe.sourceName ?? '');
     setRecipeSourceUrl(recipe.sourceUrl ?? null);
     setRecipeOriginKind(recipe.originKind);
@@ -309,6 +323,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           setSelectedMealRecipeId(null);
           setLoadedRecipeId(null);
           setPickedRecipeSnapshot(null);
+          setRecipeTitle('');
           setRecipeSource('');
           setRecipeSourceUrl(null);
           setRecipeOriginKind('MANUAL');
@@ -335,10 +350,6 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     syncEditorSelection(day, mealType);
   }
 
-  function selectEditorDay(day: number) {
-    syncEditorSelection(day, selectedMealType ?? 'DINNER');
-  }
-
   function selectEditorMealType(mealType: MealType) {
     if (!selectedDay) {
       return;
@@ -349,6 +360,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   function resetEditorState() {
     setSelectedDay(null);
     setSelectedMealRecipeId(null);
+    setMealTitle('');
+    setRecipeTitle('');
     setRecipeSource('');
     setRecipeSourceUrl(null);
     setRecipeOriginKind('MANUAL');
@@ -376,6 +389,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   function openRecipeDetail() {
     if (isRecipeLoading || pendingEditorAction) {
       return;
+    }
+    if (!selectedMealRecipeId && recipeTitle.trim().length === 0 && mealTitle.trim().length > 0) {
+      setRecipeTitle(mealTitle.trim());
     }
     setIsRecipeDetailOpen(true);
   }
@@ -441,6 +457,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return;
     }
     applyRecipeSnapshot(selectedRecipe);
+    setMealTitle((current) => (current.trim().length > 0 ? current : selectedRecipe.name));
     setIsRecipePickerOpen(false);
   }
 
@@ -519,7 +536,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     if (!selectedDay || !selectedMealType) {
       return false;
     }
-    if (!recipeTitle.trim()) {
+    if (!mealTitle.trim()) {
       return false;
     }
     if (isRecipeLoading) {
@@ -533,7 +550,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
 
     try {
       let recipeId = selectedMealRecipeId;
-      if (recipeId && pickedRecipeSnapshot && !hasModifiedPickedRecipe) {
+      if (!hasRecipeDraftContent) {
+        recipeId = null;
+      } else if (recipeId && pickedRecipeSnapshot && !hasModifiedPickedRecipe) {
         // Reusing an existing saved recipe unchanged keeps the original recipe as-is.
       } else if (recipeId && pickedRecipeSnapshot && isEditingSavedRecipeDirectly) {
         const updated = await updateRecipe(
@@ -593,6 +612,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       }
 
       await plan.addMeal(selectedDay, selectedMealType, {
+        mealTitle: mealTitle.trim(),
         recipeId,
         mealType: selectedMealType,
         targetShoppingListId: shouldPushToShopping ? targetShoppingListId : null,
@@ -635,6 +655,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         return;
       }
 
+      setMealTitle('');
       setRecipeTitle('');
       setRecipeSource('');
       setRecipeSourceUrl(null);
@@ -662,6 +683,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         return;
       }
 
+      setMealTitle('');
       setRecipeTitle('');
       setRecipeSource('');
       setRecipeSourceUrl(null);
@@ -685,6 +707,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         resetEditorState();
         setSelectedMealType('DINNER');
         setSelectedMealRecipeId(null);
+        setMealTitle('');
         setRecipeTitle('');
         setRecipeSource('');
         setRecipeSourceUrl(null);
@@ -709,6 +732,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       selectedDay,
       selectedMealType,
       selectedMealRecipeId,
+      mealTitle,
       recipeTitle,
       recipeSource,
       recipeShortNote,
@@ -725,6 +749,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       canEnterSavedRecipeEditMode,
       isEditingSavedRecipeDirectly,
       hasIngredients,
+      hasRecipeDraftContent,
       shoppingReviewIngredients,
       selectedShoppingIngredientRowIds,
       selectedShoppingIngredientCount: selectedShoppingIngredientPositions.length,
@@ -738,6 +763,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       isRemovingMeal: pendingEditorAction === 'remove-meal',
       isAddingIngredientsToShopping: pendingEditorAction === 'add-ingredients-to-shopping',
       selectedMeal,
+      setMealTitle,
       setRecipeTitle,
       setRecipeSource,
       setRecipeShortNote,
@@ -758,7 +784,6 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setIngredientQuantity,
       setIngredientUnit,
       setSelectedListId,
-      setSelectedDay: selectEditorDay,
       setSelectedMealType: selectEditorMealType,
       setSelectedMealRecipeId,
       setShoppingSyncError,

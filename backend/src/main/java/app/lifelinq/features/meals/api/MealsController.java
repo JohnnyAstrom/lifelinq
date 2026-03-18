@@ -201,6 +201,7 @@ public class MealsController {
                 isoWeek,
                 dayOfWeek,
                 app.lifelinq.features.meals.domain.MealType.valueOf(resolvedMealType),
+                request.getMealTitle(),
                 request.getRecipeId(),
                 request.getTargetShoppingListId(),
                 request.getSelectedIngredientPositions()
@@ -260,7 +261,13 @@ public class MealsController {
                 output.weekPlanId(),
                 output.year(),
                 output.isoWeek(),
-                new PlannedMealResponse(meal.dayOfWeek(), meal.mealType(), meal.recipeId(), meal.recipeTitle())
+                new PlannedMealResponse(
+                        meal.dayOfWeek(),
+                        meal.mealType(),
+                        meal.recipeId(),
+                        meal.mealTitle(),
+                        meal.recipeTitle()
+                )
         );
     }
 
@@ -271,6 +278,7 @@ public class MealsController {
                     meal.dayOfWeek(),
                     meal.mealType(),
                     meal.recipeId(),
+                    meal.mealTitle(),
                     meal.recipeTitle()
             ));
         }
