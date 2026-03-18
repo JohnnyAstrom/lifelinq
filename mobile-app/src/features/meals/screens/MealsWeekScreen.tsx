@@ -188,12 +188,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeInstructionsLabel: 'Instructions',
     recipeInstructionsPlaceholder: 'Add the cooking steps or preparation notes',
     recipeInstructionsHint: 'Keep the main cooking flow easy to scan and adjust.',
+    importInstructionsHint: 'Skim the cooking flow here and adjust only the lines that look off.',
     saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
     editingSavedRecipeHint: 'Changes now update the saved recipe itself.',
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'Keep the ingredient list ready with this recipe.',
     savedRecipeIngredientsHint: 'These ingredients stay with this saved recipe.',
-    importedIngredientsHint: 'If an imported row kept its original line below, open it and clean it up only if needed.',
+    importedIngredientsHint: 'Review the ingredient list first.',
+    importReviewLabel: 'Imported draft',
+    importReviewHint: 'Start with the ingredients, then skim the cooking flow and original page details.',
     recipePickerTitle: 'Choose a recipe',
     recipePickerHint: 'Choose a saved recipe for this meal.',
     loadingRecipes: 'Loading recipes...',
@@ -211,8 +214,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeDestinationSubtitle: 'Read and edit this recipe in Meals.',
     savedRecipeContextHint: 'This reusable recipe lives in your Recipes workspace.',
     newSavedRecipeContextHint: 'Start with the ingredients and instructions you want to keep with this recipe.',
-    importDraftSubtitle: 'Review this imported recipe, then save it to Recipes.',
-    importDraftContextHint: 'Check the ingredients and instructions before you save this recipe.',
+    importDraftSubtitle: 'Review this imported recipe before saving it to Recipes.',
+    importDraftContextHint: 'Review the draft calmly, keep what looks right, and tidy only what seems off.',
+    importReviewSourceSummaryTitle: 'Original page',
+    importReviewSourceSummaryHint: 'Keep the original page details here while you review.',
+    importReviewSourceEmpty: 'No source name came through from this import.',
+    importReviewSourceUrlEmpty: 'No source link came through from this import.',
     saveRecipe: 'Save recipe',
     savingRecipe: 'Saving recipe...',
     archiveRecipe: 'Archive recipe',
@@ -238,6 +245,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     addIngredient: 'Add ingredient',
     removeIngredient: 'Remove',
     importedIngredientHint: 'Imported line:',
+    importedIngredientNeedsReviewHint: 'Imported text kept',
     loadingIngredients: 'Loading ingredients...',
     shoppingLabel: 'Shopping',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
@@ -928,9 +936,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeInstructionsLabel: strings.recipeInstructionsLabel,
             recipeInstructionsPlaceholder: strings.recipeInstructionsPlaceholder,
             recipeInstructionsHint: strings.recipeInstructionsHint,
+            importInstructionsHint: undefined,
             ingredientsLabel: strings.ingredientsLabel,
             ingredientsRecipeHint: strings.savedRecipeIngredientsHint,
             importedIngredientsHint: undefined,
+            importReviewLabel: undefined,
+            importReviewHint: undefined,
+            importReviewSummary: undefined,
+            importReviewSourceSummaryTitle: undefined,
+            importReviewSourceSummaryHint: undefined,
+            importReviewSourceEmpty: undefined,
+            importReviewSourceUrlEmpty: undefined,
             ingredientsEmptyState: strings.ingredientsEmptyState,
             loadingIngredients: strings.loadingIngredients,
             saveAsNewRecipeHint: strings.saveAsNewRecipeHint,
@@ -939,6 +955,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             addIngredient: strings.addIngredient,
             removeIngredient: strings.removeIngredient,
             importedIngredientHint: undefined,
+            importedIngredientNeedsReviewHint: undefined,
             close: strings.close,
           }}
         />
@@ -1029,7 +1046,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             archivedRecipeLabel: strings.archivedRecipeLabel,
             newRecipeTitle: strings.recipeSheetNewRecipeTitle,
             recipeContextHint: recipesWorkspace.recipeDetail.isImportDraft
-              ? strings.importDraftContextHint
+              ? undefined
               : recipesWorkspace.recipeDetail.isArchivedRecipe
               ? 'This recipe is archived and out of your active recipe workspace until you restore it.'
               : recipesWorkspace.recipeDetail.hasExistingRecipe
@@ -1039,22 +1056,58 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
             recipeNameEditHint: strings.recipeNameEditHint,
-            recipeContentLabel: strings.recipeContentLabel,
-            recipeMetadataHint: strings.recipeMetadataHint,
-            recipeSourceLabel: strings.recipeSourceLabel,
+            recipeContentLabel: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importReviewSourceSummaryTitle
+              : strings.recipeContentLabel,
+            recipeMetadataHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importReviewSourceSummaryHint
+              : strings.recipeMetadataHint,
+            recipeSourceLabel: recipesWorkspace.recipeDetail.isImportDraft
+              ? 'Source name'
+              : strings.recipeSourceLabel,
             recipeSourcePlaceholder: strings.recipeSourcePlaceholder,
-            recipeSourceUrlLabel: strings.recipeSourceUrlLabel,
+            recipeSourceUrlLabel: recipesWorkspace.recipeDetail.isImportDraft
+              ? 'Recipe page'
+              : strings.recipeSourceUrlLabel,
             recipeSourceUrlPlaceholder: strings.recipeSourceUrlPlaceholder,
             recipeShortNoteLabel: strings.recipeShortNoteLabel,
             recipeShortNotePlaceholder: strings.recipeShortNotePlaceholder,
-            recipeShortNoteHint: strings.recipeShortNoteHint,
+            recipeShortNoteHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? undefined
+              : strings.recipeShortNoteHint,
             recipeInstructionsLabel: strings.recipeInstructionsLabel,
             recipeInstructionsPlaceholder: strings.recipeInstructionsPlaceholder,
             recipeInstructionsHint: strings.recipeInstructionsHint,
+            importInstructionsHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importInstructionsHint
+              : undefined,
             ingredientsLabel: strings.ingredientsLabel,
-            ingredientsRecipeHint: strings.ingredientsRecipeHint,
-            importedIngredientsHint: recipesWorkspace.recipeDetail.isImportDraft
+            ingredientsRecipeHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importedIngredientsHint
+              : strings.ingredientsRecipeHint,
+            importedIngredientsHint: undefined,
+            importReviewLabel: undefined,
+            importReviewHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importReviewHint
+              : undefined,
+            importReviewSummary: recipesWorkspace.recipeDetail.isImportDraft
+              ? (count: number) => count === 0
+                ? 'The ingredient list looks fairly clean. Open only the rows that read off.'
+                : count === 1
+                  ? '1 row still looks close to the import and is worth a quick check.'
+                  : `${count} rows still look close to the import and are worth a quick check.`
+              : undefined,
+            importReviewSourceSummaryTitle: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importReviewSourceSummaryTitle
+              : undefined,
+            importReviewSourceSummaryHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importReviewSourceSummaryHint
+              : undefined,
+            importReviewSourceEmpty: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importReviewSourceEmpty
+              : undefined,
+            importReviewSourceUrlEmpty: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importReviewSourceUrlEmpty
               : undefined,
             ingredientsEmptyState: strings.ingredientsEmptyState,
             loadingIngredients: strings.loadingIngredients,
@@ -1065,12 +1118,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             importedIngredientHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importedIngredientHint
               : undefined,
+            importedIngredientNeedsReviewHint: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importedIngredientNeedsReviewHint
+              : undefined,
             saveRecipe: recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.saveRecipe
-              : strings.createRecipe,
+              : recipesWorkspace.recipeDetail.isImportDraft
+                ? strings.saveRecipe
+                : strings.createRecipe,
             savingRecipe: recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.savingRecipe
-              : strings.creatingRecipe,
+              : recipesWorkspace.recipeDetail.isImportDraft
+                ? strings.savingRecipe
+                : strings.creatingRecipe,
             archiveRecipe: recipesWorkspace.recipeDetail.canArchiveRecipe
               ? strings.archiveRecipe
               : undefined,

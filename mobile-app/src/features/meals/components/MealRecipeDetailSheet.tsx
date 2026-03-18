@@ -7,6 +7,7 @@ import {
   type KeyboardTypeOptions,
   type StyleProp,
   type TextStyle,
+  type ViewStyle,
 } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppInput, Subtle } from '../../../shared/ui/components';
@@ -16,6 +17,7 @@ import {
   type MealIngredientUnit,
 } from '../utils/ingredientRows';
 import {
+  getImportedIngredientReviewInfo,
   isMealIngredientRowEffectivelyEmpty,
   MealIngredientEditorRow,
   type MealIngredientEditorRowStrings,
@@ -53,9 +55,17 @@ type Strings = MealIngredientEditorRowStrings & {
   recipeInstructionsLabel: string;
   recipeInstructionsPlaceholder: string;
   recipeInstructionsHint?: string;
+  importInstructionsHint?: string;
   ingredientsLabel: string;
   ingredientsRecipeHint?: string;
   importedIngredientsHint?: string;
+  importReviewLabel?: string;
+  importReviewHint?: string;
+  importReviewSummary?: (count: number) => string;
+  importReviewSourceSummaryTitle?: string;
+  importReviewSourceSummaryHint?: string;
+  importReviewSourceEmpty?: string;
+  importReviewSourceUrlEmpty?: string;
   ingredientsEmptyState: string;
   loadingIngredients: string;
   saveAsNewRecipeHint?: string;
@@ -108,6 +118,7 @@ type EditableFieldProps = {
   multiline?: boolean;
   keyboardType?: KeyboardTypeOptions;
   inputStyle?: StyleProp<TextStyle>;
+  cardStyle?: StyleProp<ViewStyle>;
 };
 
 function EditableField({
@@ -119,6 +130,7 @@ function EditableField({
   multiline = false,
   keyboardType,
   inputStyle,
+  cardStyle,
 }: EditableFieldProps) {
   return (
     <View style={styles.subSection}>
@@ -126,7 +138,7 @@ function EditableField({
         <Text style={styles.sectionTitle}>{label}</Text>
         {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
       </View>
-      <View style={[styles.editorCard, multiline ? styles.editorCardMultiline : null]}>
+      <View style={[styles.editorCard, multiline ? styles.editorCardMultiline : null, cardStyle]}>
         <AppInput
           placeholder={placeholder}
           value={value}
@@ -230,6 +242,10 @@ export function MealRecipeDetailSheet({
   const isMealSpecificDraft = hasExistingRecipe
     && showSaveAsNewRecipeHint
     && !isEditingSavedRecipeDirectly;
+  const importReviewRows = isImportDraft
+    ? ingredientRows.filter((row) => getImportedIngredientReviewInfo(row).needsReview)
+    : [];
+  const importReviewCount = importReviewRows.length;
   const identityLabel = isMealSpecificDraft
     ? strings.mealSpecificRecipeLabel
     : isImportDraft
@@ -318,6 +334,17 @@ export function MealRecipeDetailSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {isImportDraft && (strings.importReviewLabel || strings.importReviewHint) ? (
+              <View style={styles.reviewIntro}>
+                {strings.importReviewLabel ? (
+                  <Text style={styles.reviewIntroLabel}>{strings.importReviewLabel}</Text>
+                ) : null}
+                {strings.importReviewHint ? (
+                  <Text style={styles.reviewIntroText}>{strings.importReviewHint}</Text>
+                ) : null}
+              </View>
+            ) : null}
+
             <View style={styles.section}>
               {isArchivedRecipe ? (
                 <>
@@ -329,11 +356,16 @@ export function MealRecipeDetailSheet({
               ) : (
                 <EditableField
                   label={strings.recipeNameLabel}
-                  hint={strings.recipeNameEditHint}
+                  hint={isImportDraft ? undefined : strings.recipeNameEditHint}
                   placeholder={strings.recipeNamePlaceholder}
                   value={recipeTitle}
                   onChangeText={onChangeRecipeTitle}
-                  inputStyle={styles.titleInput}
+                  multiline={isImportDraft}
+                  cardStyle={isImportDraft ? styles.reviewTitleCard : null}
+                  inputStyle={[
+                    styles.titleInput,
+                    isImportDraft ? styles.reviewTitleInput : null,
+                  ]}
                 />
               )}
             </View>
@@ -347,6 +379,11 @@ export function MealRecipeDetailSheet({
                   ) : null}
                   {isImportDraft && strings.importedIngredientsHint ? (
                     <Text style={styles.sectionHint}>{strings.importedIngredientsHint}</Text>
+                  ) : null}
+                  {!isRecipeLoading && isImportDraft && strings.importReviewSummary ? (
+                    <Text style={styles.reviewSectionSummary}>
+                      {strings.importReviewSummary(importReviewCount)}
+                    </Text>
                   ) : null}
                 </View>
                 {!isArchivedRecipe ? (
@@ -405,12 +442,16 @@ export function MealRecipeDetailSheet({
               ) : (
                 <EditableField
                   label={strings.recipeInstructionsLabel}
-                  hint={strings.recipeInstructionsHint}
+                  hint={isImportDraft ? strings.importInstructionsHint ?? strings.recipeInstructionsHint : strings.recipeInstructionsHint}
                   placeholder={strings.recipeInstructionsPlaceholder}
                   value={recipeInstructions}
                   onChangeText={onChangeRecipeInstructions}
                   multiline
-                  inputStyle={styles.instructionsInput}
+                  cardStyle={isImportDraft ? styles.reviewPrimaryCard : null}
+                  inputStyle={[
+                    styles.instructionsInput,
+                    isImportDraft ? styles.reviewInstructionsInput : null,
+                  ]}
                 />
               )}
             </View>
@@ -431,6 +472,7 @@ export function MealRecipeDetailSheet({
                   value={recipeShortNote}
                   onChangeText={onChangeRecipeShortNote}
                   multiline
+                  cardStyle={isImportDraft ? styles.reviewSupportingCard : null}
                   inputStyle={styles.noteInput}
                 />
               )}
@@ -456,7 +498,11 @@ export function MealRecipeDetailSheet({
               ) : (
                 <>
                   <View style={styles.sectionCopy}>
-                    <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
+                    <Text style={styles.fieldLabel}>
+                      {isImportDraft && strings.importReviewSourceSummaryTitle
+                        ? strings.importReviewSourceSummaryTitle
+                        : strings.recipeContentLabel}
+                    </Text>
                     {strings.recipeMetadataHint ? (
                       <Text style={styles.sectionHint}>{strings.recipeMetadataHint}</Text>
                     ) : null}
@@ -464,7 +510,7 @@ export function MealRecipeDetailSheet({
                   <View style={styles.metadataFields}>
                     <View style={styles.metadataField}>
                       <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
-                      <View style={styles.metadataInputWrap}>
+                      <View style={[styles.metadataInputWrap, isImportDraft ? styles.reviewMetadataInputWrap : null]}>
                         <AppInput
                           placeholder={strings.recipeSourcePlaceholder}
                           value={recipeSource}
@@ -477,7 +523,7 @@ export function MealRecipeDetailSheet({
                     {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
                       <View style={styles.metadataField}>
                         <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
-                        <View style={styles.metadataInputWrap}>
+                        <View style={[styles.metadataInputWrap, isImportDraft ? styles.reviewMetadataInputWrap : null]}>
                           <AppInput
                             placeholder={strings.recipeSourceUrlPlaceholder}
                             value={recipeSourceUrl ?? ''}
@@ -613,6 +659,19 @@ const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.sm,
   },
+  reviewIntro: {
+    gap: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
+  },
+  reviewIntroLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.meals,
+    fontWeight: '700',
+  },
+  reviewIntroText: {
+    ...textStyles.subtle,
+    color: theme.colors.text,
+  },
   coreSection: {
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
@@ -664,6 +723,16 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
   },
+  reviewTitleCard: {
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.xs,
+  },
+  reviewTitleInput: {
+    fontSize: 20,
+    lineHeight: 28,
+    minHeight: 56,
+    textAlignVertical: 'top',
+  },
   noteInput: {
     minHeight: 88,
     textAlignVertical: 'top',
@@ -691,6 +760,15 @@ const styles = StyleSheet.create({
     minHeight: 168,
     textAlignVertical: 'top',
     lineHeight: 22,
+  },
+  reviewInstructionsInput: {
+    lineHeight: 24,
+  },
+  reviewPrimaryCard: {
+    backgroundColor: theme.colors.surface,
+  },
+  reviewSupportingCard: {
+    backgroundColor: theme.colors.surfaceSubtle,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -742,6 +820,10 @@ const styles = StyleSheet.create({
   ingredientList: {
     gap: theme.spacing.xs,
   },
+  reviewSectionSummary: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
   emptyStateCard: {
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -756,6 +838,32 @@ const styles = StyleSheet.create({
   },
   metadataFields: {
     gap: theme.spacing.sm,
+  },
+  provenancePreviewCard: {
+    gap: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceAlt,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  provenancePreviewRow: {
+    gap: 2,
+  },
+  provenancePreviewLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  provenancePreviewValue: {
+    ...textStyles.body,
+    color: theme.colors.text,
+  },
+  provenancePreviewHint: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    paddingTop: 2,
   },
   metadataField: {
     gap: theme.spacing.xs,
@@ -774,6 +882,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: 0,
     paddingVertical: 0,
+  },
+  reviewMetadataInputWrap: {
+    backgroundColor: theme.colors.surface,
   },
   error: {
     ...textStyles.body,

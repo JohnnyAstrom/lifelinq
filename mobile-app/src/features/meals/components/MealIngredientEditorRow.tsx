@@ -12,6 +12,7 @@ export type MealIngredientEditorRowStrings = {
   quantityPlaceholder: string;
   removeIngredient: string;
   importedIngredientHint?: string;
+  importedIngredientNeedsReviewHint?: string;
 };
 
 type Props = {
@@ -62,6 +63,54 @@ function getImportedFallbackHint(row: MealIngredientRow) {
   return rawText;
 }
 
+export type ImportedIngredientReviewInfo = {
+  needsReview: boolean;
+  keptAsText: boolean;
+  originalLine: string | null;
+  reviewHint: string | null;
+};
+
+export function getImportedIngredientReviewInfo(row: MealIngredientRow): ImportedIngredientReviewInfo {
+  const rawText = row.rawText?.trim() ?? null;
+  if (!rawText) {
+    return {
+      needsReview: false,
+      keptAsText: false,
+      originalLine: null,
+      reviewHint: null,
+    };
+  }
+
+  const fallbackHint = getImportedFallbackHint(row);
+  if (fallbackHint) {
+    return {
+      needsReview: true,
+      keptAsText: false,
+      originalLine: rawText,
+      reviewHint: fallbackHint,
+    };
+  }
+
+  const normalizedRaw = normalizeComparableText(rawText);
+  const normalizedName = normalizeComparableText(row.name);
+  const hasStructuredAmount = row.quantityText.trim().length > 0;
+  if (!hasStructuredAmount && normalizedRaw.length > 0 && normalizedRaw === normalizedName) {
+    return {
+      needsReview: true,
+      keptAsText: true,
+      originalLine: rawText,
+      reviewHint: rawText,
+    };
+  }
+
+  return {
+    needsReview: false,
+    keptAsText: false,
+    originalLine: rawText,
+    reviewHint: null,
+  };
+}
+
 export function isMealIngredientRowEffectivelyEmpty(row: MealIngredientRow) {
   return row.name.trim().length === 0;
 }
@@ -81,11 +130,13 @@ export function MealIngredientEditorRow({
   const isEffectivelyEmpty = isMealIngredientRowEffectivelyEmpty(row);
   const isExpanded = isActive || isEffectivelyEmpty;
   const meta = formatIngredientMeta(row);
-  const importedFallbackHint = isImportDraft ? getImportedFallbackHint(row) : null;
+  const importReview = isImportDraft ? getImportedIngredientReviewInfo(row) : null;
+  const importedFallbackHint = importReview?.reviewHint ?? null;
+  const needsImportReview = !!importReview?.needsReview;
 
   if (isReadOnly) {
     return (
-      <View style={styles.compactRow}>
+      <View style={[styles.compactRow, needsImportReview ? styles.importReviewRow : null]}>
         <View style={styles.compactMain}>
           <Text style={styles.compactTitle} numberOfLines={1}>
             {row.name.trim()}
@@ -93,6 +144,10 @@ export function MealIngredientEditorRow({
           {meta ? (
             <Text style={styles.compactMeta} numberOfLines={1}>
               {meta}
+            </Text>
+          ) : needsImportReview && importReview?.keptAsText && strings.importedIngredientNeedsReviewHint ? (
+            <Text style={styles.compactMeta} numberOfLines={2}>
+              {strings.importedIngredientNeedsReviewHint}
             </Text>
           ) : importedFallbackHint && strings.importedIngredientHint ? (
             <Text style={styles.compactMeta} numberOfLines={1}>
@@ -111,6 +166,7 @@ export function MealIngredientEditorRow({
         accessibilityRole="button"
         style={({ pressed }) => [
           styles.compactRow,
+          needsImportReview ? styles.importReviewRow : null,
           pressed ? styles.compactRowPressed : null,
         ]}
       >
@@ -121,6 +177,10 @@ export function MealIngredientEditorRow({
           {meta ? (
             <Text style={styles.compactMeta} numberOfLines={1}>
               {meta}
+            </Text>
+          ) : needsImportReview && importReview?.keptAsText && strings.importedIngredientNeedsReviewHint ? (
+            <Text style={styles.compactMeta} numberOfLines={2}>
+              {strings.importedIngredientNeedsReviewHint}
             </Text>
           ) : importedFallbackHint && strings.importedIngredientHint ? (
             <Text style={styles.compactMeta} numberOfLines={1}>
@@ -144,7 +204,11 @@ export function MealIngredientEditorRow({
   }
 
   return (
-    <View style={[styles.expandedRow, isActive ? styles.expandedRowActive : null]}>
+      <View style={[
+      styles.expandedRow,
+      isActive ? styles.expandedRowActive : null,
+      needsImportReview ? styles.expandedImportReviewRow : null,
+    ]}>
       <View style={styles.expandedTopRow}>
         <AppInput
           placeholder={strings.ingredientNamePlaceholder}
@@ -177,9 +241,15 @@ export function MealIngredientEditorRow({
         />
       </View>
 
-      {importedFallbackHint && strings.importedIngredientHint ? (
-        <Text style={styles.importHint}>
-          {strings.importedIngredientHint} {importedFallbackHint}
+      {needsImportReview
+        && (
+          (importReview?.keptAsText && strings.importedIngredientNeedsReviewHint)
+          || (importedFallbackHint && strings.importedIngredientHint)
+        ) ? (
+        <Text style={styles.importReviewInline}>
+          {importReview?.keptAsText && strings.importedIngredientNeedsReviewHint
+            ? strings.importedIngredientNeedsReviewHint
+            : `${strings.importedIngredientHint} ${importedFallbackHint}`}
         </Text>
       ) : null}
 
@@ -215,6 +285,10 @@ const styles = StyleSheet.create({
   compactRowPressed: {
     opacity: 0.9,
   },
+  importReviewRow: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.feature.meals,
+  },
   compactMain: {
     flex: 1,
     minWidth: 0,
@@ -225,10 +299,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   compactMeta: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-  },
-  importHint: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
   },
@@ -243,6 +313,10 @@ const styles = StyleSheet.create({
   },
   expandedRowActive: {
     borderColor: theme.colors.feature.meals,
+  },
+  expandedImportReviewRow: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.feature.meals,
   },
   expandedTopRow: {
     flexDirection: 'row',
@@ -264,6 +338,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.xs,
     paddingTop: 2,
+  },
+  importReviewInline: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    paddingLeft: 2,
   },
   removeIconButton: {
     width: 28,
