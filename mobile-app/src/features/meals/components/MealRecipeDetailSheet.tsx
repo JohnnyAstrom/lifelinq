@@ -40,6 +40,7 @@ type Strings = MealIngredientEditorRowStrings & {
   mealAttachmentLabel?: string;
   mealAttachmentValue?: string;
   editSavedRecipeAction?: string;
+  editRecipeAction?: string;
   editingSavedRecipeHint?: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
@@ -77,13 +78,25 @@ type Strings = MealIngredientEditorRowStrings & {
   archivingRecipe?: string;
   restoreRecipe?: string;
   restoringRecipe?: string;
+  restoreRecipeHint?: string;
   deleteRecipe?: string;
   deletingRecipe?: string;
+  deleteRecipeHint?: string;
   addIngredient: string;
   collapseIngredient?: string;
   importedIngredientHint?: string;
   close: string;
 };
+
+function getInstructionSteps(value: string) {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const numberedSteps = lines.filter((line) => /^\d+[\.\)]\s+/.test(line));
+  return numberedSteps.length >= 2 ? numberedSteps : [];
+}
 
 type ReadOnlyFieldProps = {
   label: string;
@@ -107,6 +120,42 @@ function ReadOnlyField({ label, value, emptyText, multiline = false }: ReadOnlyF
             {emptyText ?? `${label} not added yet.`}
           </Text>
         )}
+      </View>
+    </View>
+  );
+}
+
+type ReadOnlyMetadataListProps = {
+  title: string;
+  items: Array<{
+    label: string;
+    value: string;
+    emptyText: string;
+  }>;
+};
+
+function ReadOnlyMetadataList({ title, items }: ReadOnlyMetadataListProps) {
+  const visibleItems = items.filter((item) => item.label.trim().length > 0);
+
+  return (
+    <View style={styles.subSection}>
+      <Text style={styles.fieldLabel}>{title}</Text>
+      <View style={styles.metadataReadCard}>
+        {visibleItems.map((item, index) => {
+          const trimmedValue = item.value.trim();
+          const hasValue = trimmedValue.length > 0;
+          return (
+            <View
+              key={`${item.label}-${index}`}
+              style={index > 0 ? [styles.metadataReadRow, styles.metadataReadRowBorder] : styles.metadataReadRow}
+            >
+              <Text style={styles.metadataReadLabel}>{item.label}</Text>
+              <Text style={hasValue ? styles.metadataReadValue : styles.metadataReadEmpty}>
+                {hasValue ? trimmedValue : item.emptyText}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -198,6 +247,10 @@ type Props = {
   error?: string | null;
   showTitleField?: boolean;
   showMetadataSection?: boolean;
+  isReadOnlyMode?: boolean;
+  canEnterEditMode?: boolean;
+  onEnterEditMode?: () => void;
+  useContentFirstEditor?: boolean;
   strings: Strings;
 };
 
@@ -243,8 +296,13 @@ export function MealRecipeDetailSheet({
   error = null,
   showTitleField = true,
   showMetadataSection = true,
+  isReadOnlyMode = false,
+  canEnterEditMode = false,
+  onEnterEditMode,
+  useContentFirstEditor = false,
   strings,
 }: Props) {
+  const scrollRef = useRef<ScrollView | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const previousRowCountRef = useRef(ingredientRows.length);
   const resolvedTitle = recipeTitle.trim().length > 0
@@ -261,15 +319,20 @@ export function MealRecipeDetailSheet({
     ? strings.importReviewSummary(importReviewCount)
     : null;
   const hasIngredientRows = ingredientRows.length > 0;
-  const showIdentityBadge = isImportDraft
-    || isArchivedRecipe
-    || isEditingSavedRecipeDirectly
-    || hasExistingRecipe
-    || isMealSpecificDraft;
   const normalizedSourceUrl = recipeSourceUrl?.trim() ?? '';
   const importSourceHost = isImportDraft && normalizedSourceUrl.length > 0
     ? getHostnameLabel(normalizedSourceUrl)
     : null;
+  const instructionSteps = getInstructionSteps(recipeInstructions);
+  const isContentReadOnly = isArchivedRecipe || isReadOnlyMode;
+  const showReadableInstructionSteps = instructionSteps.length > 1;
+  const isContentFirstEditor = useContentFirstEditor && !isContentReadOnly && !isImportDraft;
+  const showsSeparateTitleSection = showTitleField && !isContentFirstEditor;
+  const showIdentityBadge = isImportDraft
+    || isArchivedRecipe
+    || isEditingSavedRecipeDirectly
+    || isMealSpecificDraft
+    || (!isContentFirstEditor && hasExistingRecipe);
   const identityLabel = isMealSpecificDraft
     ? strings.mealSpecificRecipeLabel
     : isImportDraft
@@ -281,6 +344,13 @@ export function MealRecipeDetailSheet({
     : hasExistingRecipe
       ? strings.usingRecipeLabel
       : strings.newRecipeLabel;
+  const hasHeaderMetaContent = showIdentityBadge
+    || (!!strings.mealAttachmentLabel && !!strings.mealAttachmentValue)
+    || !!strings.recipeContextHint
+    || (isArchivedRecipe && !!strings.archivedReadOnlyHint)
+    || (showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && !!strings.saveAsNewRecipeHint)
+    || (isEditingSavedRecipeDirectly && !!strings.editingSavedRecipeHint)
+    || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction);
 
   useEffect(() => {
     const previousCount = previousRowCountRef.current;
@@ -295,7 +365,10 @@ export function MealRecipeDetailSheet({
 
     if (ingredientRows.length > previousCount) {
       setActiveRowId(ingredientRows[ingredientRows.length - 1]?.id ?? null);
-      return;
+      const timeoutId = setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 40);
+      return () => clearTimeout(timeoutId);
     }
 
     if (activeRowId === null) {
@@ -314,55 +387,69 @@ export function MealRecipeDetailSheet({
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
-        <View style={styles.header}>
+        <View style={[styles.header, isContentFirstEditor ? styles.headerCompact : null]}>
           <Text style={styles.eyebrow}>{strings.eyebrow}</Text>
-          <Text style={textStyles.h2}>{resolvedTitle}</Text>
+          {isContentFirstEditor ? (
+            <AppInput
+              placeholder={strings.recipeNamePlaceholder}
+              value={recipeTitle}
+              onChangeText={onChangeRecipeTitle}
+              multiline
+              editable
+              style={[styles.embeddedInput, styles.headerTitleInput]}
+            />
+          ) : (
+            <Text style={textStyles.h2}>{resolvedTitle}</Text>
+          )}
           {strings.subtitle ? <Subtle>{strings.subtitle}</Subtle> : null}
-          <View style={styles.headerMeta}>
-            {showIdentityBadge ? (
-              <View style={styles.identityBadge}>
-                <Text style={styles.identityBadgeText}>{identityLabel}</Text>
-              </View>
-            ) : null}
-            {strings.mealAttachmentLabel && strings.mealAttachmentValue ? (
-              <View style={styles.attachmentRow}>
-                <Text style={styles.attachmentLabel}>{strings.mealAttachmentLabel}</Text>
-                <Text style={styles.attachmentValue}>{strings.mealAttachmentValue}</Text>
-              </View>
-            ) : null}
-            {strings.recipeContextHint ? (
-              <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
-            ) : null}
-            {isArchivedRecipe && strings.archivedReadOnlyHint ? (
-              <Subtle>{strings.archivedReadOnlyHint}</Subtle>
-            ) : null}
-            {showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && strings.saveAsNewRecipeHint ? (
-              <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
-            ) : null}
-            {isEditingSavedRecipeDirectly && strings.editingSavedRecipeHint ? (
-              <Subtle>{strings.editingSavedRecipeHint}</Subtle>
-            ) : null}
-            {canEnterSavedRecipeEditMode && strings.editSavedRecipeAction ? (
-              <AppButton
-                title={strings.editSavedRecipeAction}
-                onPress={onStartEditingSavedRecipeDirectly}
-                variant="ghost"
-                disabled={isActionPending || isRecipeLoading}
-              />
-            ) : null}
-          </View>
+          {hasHeaderMetaContent ? (
+            <View style={styles.headerMeta}>
+              {showIdentityBadge ? (
+                <View style={styles.identityBadge}>
+                  <Text style={styles.identityBadgeText}>{identityLabel}</Text>
+                </View>
+              ) : null}
+              {strings.mealAttachmentLabel && strings.mealAttachmentValue ? (
+                <View style={styles.attachmentRow}>
+                  <Text style={styles.attachmentLabel}>{strings.mealAttachmentLabel}</Text>
+                  <Text style={styles.attachmentValue}>{strings.mealAttachmentValue}</Text>
+                </View>
+              ) : null}
+              {strings.recipeContextHint ? (
+                <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
+              ) : null}
+              {isArchivedRecipe && strings.archivedReadOnlyHint ? (
+                <Subtle>{strings.archivedReadOnlyHint}</Subtle>
+              ) : null}
+              {showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && strings.saveAsNewRecipeHint ? (
+                <Subtle>{strings.saveAsNewRecipeHint}</Subtle>
+              ) : null}
+              {isEditingSavedRecipeDirectly && strings.editingSavedRecipeHint ? (
+                <Subtle>{strings.editingSavedRecipeHint}</Subtle>
+              ) : null}
+              {canEnterSavedRecipeEditMode && strings.editSavedRecipeAction ? (
+                <AppButton
+                  title={strings.editSavedRecipeAction}
+                  onPress={onStartEditingSavedRecipeDirectly}
+                  variant="ghost"
+                  disabled={isActionPending || isRecipeLoading}
+                />
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.body}>
           <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            ref={scrollRef}
+            style={[styles.scroll, isContentFirstEditor ? styles.scrollCompact : null]}
+            contentContainerStyle={[styles.scrollContent, isContentFirstEditor ? styles.scrollContentCompact : null]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {showTitleField ? (
+            {showsSeparateTitleSection ? (
               <View style={styles.section}>
-                {isArchivedRecipe ? (
+                {isContentReadOnly ? (
                   <>
                     <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
                     <View style={styles.readOnlyField}>
@@ -390,13 +477,15 @@ export function MealRecipeDetailSheet({
                     placeholder={strings.recipeNamePlaceholder}
                     value={recipeTitle}
                     onChangeText={onChangeRecipeTitle}
+                    multiline
+                    cardStyle={styles.titleCard}
                     inputStyle={styles.titleInput}
                   />
                 )}
               </View>
             ) : null}
 
-            <View style={[styles.section, !isArchivedRecipe && showTitleField ? styles.coreSection : null]}>
+            <View style={[styles.section, !isArchivedRecipe && showsSeparateTitleSection ? styles.coreSection : null]}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionCopy}>
                   <Text style={styles.sectionTitle}>{strings.ingredientsLabel}</Text>
@@ -409,7 +498,7 @@ export function MealRecipeDetailSheet({
                     </View>
                   ) : null}
                 </View>
-                {!isArchivedRecipe ? (
+                {!isContentReadOnly ? (
                   <AppButton
                     title={strings.addIngredient}
                     onPress={onAddIngredientRow}
@@ -422,7 +511,7 @@ export function MealRecipeDetailSheet({
               {isRecipeLoading ? <Subtle>{strings.loadingIngredients}</Subtle> : null}
 
               {!isRecipeLoading && !hasIngredientRows ? (
-                isArchivedRecipe ? (
+                isContentReadOnly ? (
                   <View style={styles.readOnlyField}>
                     <Text style={styles.readOnlyEmpty}>No ingredients saved on this recipe.</Text>
                   </View>
@@ -442,7 +531,7 @@ export function MealRecipeDetailSheet({
                       key={row.id}
                       row={row}
                       isActive={row.id === activeRowId}
-                      isReadOnly={isArchivedRecipe}
+                      isReadOnly={isContentReadOnly}
                       isImportDraft={isImportDraft}
                       onActivate={() => setActiveRowId(row.id)}
                       onCollapse={() => setActiveRowId(null)}
@@ -458,13 +547,33 @@ export function MealRecipeDetailSheet({
             </View>
 
             <View style={[styles.section, isImportDraft ? styles.reviewSecondarySection : null]}>
-              {isArchivedRecipe ? (
-                <ReadOnlyField
-                  label={strings.recipeInstructionsLabel}
-                  value={recipeInstructions}
-                  emptyText="No instructions saved."
-                  multiline
-                />
+              {isContentReadOnly ? (
+                <View style={styles.subSection}>
+                  <Text style={styles.sectionTitle}>{strings.recipeInstructionsLabel}</Text>
+                  {showReadableInstructionSteps ? (
+                    <View style={[styles.instructionsPreview, styles.instructionsReadPreview]}>
+                      {instructionSteps.map((step, index) => (
+                        <View
+                          key={`${index}-${step}`}
+                          style={index > 0 ? [styles.instructionsPreviewStep, styles.instructionsPreviewStepBorder] : styles.instructionsPreviewStep}
+                        >
+                          <Text style={styles.instructionsPreviewNumber}>{index + 1}</Text>
+                          <Text style={styles.instructionsPreviewText}>
+                            {step.replace(/^\d+[\.\)]\s+/, '')}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <View style={[styles.readOnlyField, styles.readOnlyContentCard, styles.readOnlyFieldMultiline]}>
+                      {recipeInstructions.trim().length > 0 ? (
+                        <Text style={styles.readOnlyValue}>{recipeInstructions.trim()}</Text>
+                      ) : (
+                        <Text style={styles.readOnlyEmpty}>No instructions saved.</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
               ) : (
                 <EditableField
                   label={strings.recipeInstructionsLabel}
@@ -483,10 +592,31 @@ export function MealRecipeDetailSheet({
                   ]}
                 />
               )}
+              {!isContentReadOnly && showReadableInstructionSteps && !isContentFirstEditor ? (
+                <View style={styles.instructionsPreview}>
+                  {instructionSteps.map((step, index) => (
+                    <View
+                      key={`${index}-${step}`}
+                      style={index > 0 ? [styles.instructionsPreviewStep, styles.instructionsPreviewStepBorder] : styles.instructionsPreviewStep}
+                    >
+                      <Text style={styles.instructionsPreviewNumber}>{index + 1}</Text>
+                      <Text style={styles.instructionsPreviewText}>
+                        {step.replace(/^\d+[\.\)]\s+/, '')}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
 
-            <View style={[styles.section, isImportDraft ? styles.reviewTertiarySection : null]}>
-              {isArchivedRecipe ? (
+            <View
+              style={[
+                styles.section,
+                isImportDraft ? styles.reviewTertiarySection : null,
+                isContentFirstEditor ? styles.secondarySection : null,
+              ]}
+            >
+              {isContentReadOnly ? (
                 <ReadOnlyField
                   label={strings.recipeShortNoteLabel}
                   value={recipeShortNote}
@@ -503,6 +633,7 @@ export function MealRecipeDetailSheet({
                   multiline
                   cardStyle={[
                     styles.noteCard,
+                    isContentFirstEditor ? styles.secondaryEditorCard : null,
                     isImportDraft ? styles.reviewSecondaryCard : null,
                   ]}
                   inputStyle={[styles.noteInput, isImportDraft ? styles.reviewNoteInput : null]}
@@ -511,27 +642,35 @@ export function MealRecipeDetailSheet({
             </View>
 
             {showMetadataSection ? (
-              <View style={[styles.section, styles.metadataSection, isImportDraft ? styles.reviewTertiarySection : null]}>
-                {isArchivedRecipe ? (
-                  <>
-                    <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
-                    <ReadOnlyField
-                      label={strings.recipeSourceLabel}
-                      value={recipeSource}
-                      emptyText="No source saved."
-                    />
-                    {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
-                      <ReadOnlyField
-                        label={strings.recipeSourceUrlLabel}
-                        value={recipeSourceUrl ?? ''}
-                        emptyText="No source link saved."
-                      />
-                    ) : null}
-                  </>
+              <View
+                style={[
+                  styles.section,
+                  !isContentFirstEditor ? styles.metadataSection : null,
+                  isImportDraft ? styles.reviewTertiarySection : null,
+                ]}
+              >
+                {isContentReadOnly ? (
+                  <ReadOnlyMetadataList
+                    title={strings.recipeContentLabel}
+                    items={[
+                      {
+                        label: strings.recipeSourceLabel,
+                        value: recipeSource,
+                        emptyText: 'No source saved.',
+                      },
+                      ...(onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel
+                        ? [{
+                            label: strings.recipeSourceUrlLabel,
+                            value: recipeSourceUrl ?? '',
+                            emptyText: 'No source link saved.',
+                          }]
+                        : []),
+                    ]}
+                  />
                 ) : (
                   <>
                     <View style={styles.sectionCopy}>
-                      <Text style={styles.fieldLabel}>
+                      <Text style={isImportDraft ? styles.fieldLabel : styles.sectionTitle}>
                         {isImportDraft && strings.importReviewSourceSummaryTitle
                           ? strings.importReviewSourceSummaryTitle
                           : strings.recipeContentLabel}
@@ -545,7 +684,11 @@ export function MealRecipeDetailSheet({
                     <View style={[styles.metadataFields, isImportDraft ? styles.reviewMetadataFields : null]}>
                       <View style={styles.metadataField}>
                         <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
-                        <View style={[styles.metadataInputWrap, isImportDraft ? styles.reviewMetadataInputWrap : null]}>
+                        <View style={[
+                          styles.metadataInputWrap,
+                          isContentFirstEditor ? styles.secondaryMetadataInputWrap : null,
+                          isImportDraft ? styles.reviewMetadataInputWrap : null,
+                        ]}>
                           <AppInput
                             placeholder={strings.recipeSourcePlaceholder}
                             value={recipeSource}
@@ -558,7 +701,11 @@ export function MealRecipeDetailSheet({
                       {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
                         <View style={styles.metadataField}>
                           <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
-                          <View style={[styles.metadataInputWrap, isImportDraft ? styles.reviewMetadataInputWrap : null]}>
+                          <View style={[
+                            styles.metadataInputWrap,
+                            isContentFirstEditor ? styles.secondaryMetadataInputWrap : null,
+                            isImportDraft ? styles.reviewMetadataInputWrap : null,
+                          ]}>
                             <AppInput
                               placeholder={strings.recipeSourceUrlPlaceholder}
                               value={recipeSourceUrl ?? ''}
@@ -583,7 +730,17 @@ export function MealRecipeDetailSheet({
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <View style={[styles.actionsSection, isImportDraft ? styles.reviewCompletionSection : null]}>
-              {onSave && strings.saveRecipe && !isArchivedRecipe ? (
+              {canEnterEditMode && onEnterEditMode && strings.editRecipeAction ? (
+                <AppButton
+                  title={strings.editRecipeAction}
+                  onPress={onEnterEditMode}
+                  variant="secondary"
+                  fullWidth
+                  disabled={isActionPending || isRecipeLoading}
+                />
+              ) : null}
+
+              {onSave && strings.saveRecipe && !isContentReadOnly ? (
                 <AppButton
                   title={isSaving && strings.savingRecipe ? strings.savingRecipe : strings.saveRecipe}
                   onPress={onSave}
@@ -593,7 +750,7 @@ export function MealRecipeDetailSheet({
                 />
               ) : null}
 
-              {onSaveToRecipes && strings.saveToRecipes && !isArchivedRecipe ? (
+              {onSaveToRecipes && strings.saveToRecipes && !isContentReadOnly ? (
                 <AppButton
                   title={isSavingToRecipes && strings.savingToRecipes ? strings.savingToRecipes : strings.saveToRecipes}
                   onPress={onSaveToRecipes}
@@ -604,13 +761,15 @@ export function MealRecipeDetailSheet({
               ) : null}
 
               {onArchive && strings.archiveRecipe ? (
-                <AppButton
-                  title={isArchiving && strings.archivingRecipe ? strings.archivingRecipe : strings.archiveRecipe}
-                  onPress={onArchive}
-                  variant="ghost"
-                  fullWidth
-                  disabled={isActionPending || isRecipeLoading}
-                />
+                isContentFirstEditor ? null : (
+                  <AppButton
+                    title={isArchiving && strings.archivingRecipe ? strings.archivingRecipe : strings.archiveRecipe}
+                    onPress={onArchive}
+                    variant="ghost"
+                    fullWidth
+                    disabled={isActionPending || isRecipeLoading}
+                  />
+                )
               ) : null}
 
               {onRestore && strings.restoreRecipe ? (
@@ -622,7 +781,7 @@ export function MealRecipeDetailSheet({
                     fullWidth
                     disabled={isActionPending || isRecipeLoading}
                   />
-                  <Subtle>Restore this recipe to bring it back to your active recipe workspace.</Subtle>
+                  {strings.restoreRecipeHint ? <Subtle>{strings.restoreRecipeHint}</Subtle> : null}
                 </View>
               ) : null}
 
@@ -635,19 +794,42 @@ export function MealRecipeDetailSheet({
                     fullWidth
                     disabled={isActionPending || isRecipeLoading || !canDelete}
                   />
-                  <Subtle>
-                    {deleteBlockedHint ?? 'Delete permanently removes this archived recipe from Meals.'}
-                  </Subtle>
+                  {deleteBlockedHint || strings.deleteRecipeHint ? (
+                    <Subtle>{deleteBlockedHint ?? strings.deleteRecipeHint}</Subtle>
+                  ) : null}
                 </View>
               ) : null}
 
-              <AppButton
-                title={strings.close}
-                onPress={onClose}
-                variant="secondary"
-                fullWidth
-                disabled={isActionPending}
-              />
+              {isContentFirstEditor && onArchive ? (
+                <View style={styles.secondaryActionsRow}>
+                  <View style={styles.secondaryAction}>
+                    <AppButton
+                      title={isArchiving && strings.archivingRecipe ? strings.archivingRecipe : strings.archiveRecipe ?? ''}
+                      onPress={onArchive}
+                      variant="ghost"
+                      fullWidth
+                      disabled={isActionPending || isRecipeLoading}
+                    />
+                  </View>
+                  <View style={styles.secondaryAction}>
+                    <AppButton
+                      title={strings.close}
+                      onPress={onClose}
+                      variant="secondary"
+                      fullWidth
+                      disabled={isActionPending}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <AppButton
+                  title={strings.close}
+                  onPress={onClose}
+                  variant={isContentFirstEditor ? 'ghost' : 'secondary'}
+                  fullWidth
+                  disabled={isActionPending}
+                />
+              )}
             </View>
           </ScrollView>
         </View>
@@ -682,6 +864,9 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
     gap: theme.spacing.xs,
   },
+  headerCompact: {
+    paddingBottom: theme.spacing.xs,
+  },
   eyebrow: {
     ...textStyles.subtle,
     color: theme.colors.feature.meals,
@@ -702,11 +887,17 @@ const styles = StyleSheet.create({
     maxHeight: '100%',
     marginTop: theme.spacing.sm,
   },
+  scrollCompact: {
+    marginTop: theme.spacing.xs,
+  },
   scrollContent: {
     gap: theme.spacing.md,
     minWidth: 0,
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
+  },
+  scrollContentCompact: {
+    paddingTop: theme.spacing.xs,
   },
   section: {
     gap: theme.spacing.sm,
@@ -728,6 +919,11 @@ const styles = StyleSheet.create({
   },
   reviewTertiarySection: {
     gap: theme.spacing.xs,
+  },
+  secondarySection: {
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   subSection: {
     gap: theme.spacing.xs,
@@ -773,8 +969,21 @@ const styles = StyleSheet.create({
   },
   titleInput: {
     ...textStyles.body,
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '600',
+    lineHeight: 28,
+    minHeight: 52,
+    textAlignVertical: 'top',
+  },
+  titleCard: {
+    minHeight: 72,
+  },
+  headerTitleInput: {
+    ...textStyles.h2,
+    color: theme.colors.text,
+    lineHeight: 34,
+    minHeight: 52,
+    textAlignVertical: 'top',
   },
   reviewTitleWrap: {
     paddingBottom: theme.spacing.xs,
@@ -799,6 +1008,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
   },
+  readOnlyContentCard: {
+    backgroundColor: theme.colors.surface,
+  },
   readOnlyFieldMultiline: {
     minHeight: 88,
   },
@@ -811,8 +1023,41 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   instructionsInput: {
-    minHeight: 104,
+    minHeight: 132,
     textAlignVertical: 'top',
+    lineHeight: 26,
+  },
+  instructionsPreview: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+  },
+  instructionsReadPreview: {
+    backgroundColor: theme.colors.surface,
+  },
+  instructionsPreviewStep: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  instructionsPreviewStepBorder: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  instructionsPreviewNumber: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.meals,
+    fontWeight: '700',
+    width: 16,
+    paddingTop: 1,
+  },
+  instructionsPreviewText: {
+    ...textStyles.body,
+    color: theme.colors.text,
+    flex: 1,
     lineHeight: 22,
   },
   reviewInstructionsInput: {
@@ -829,6 +1074,17 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     paddingHorizontal: 0,
     paddingVertical: 0,
+  },
+  secondaryEditorCard: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: theme.spacing.xs,
+    minHeight: 0,
   },
   reviewNoteInput: {
     minHeight: 64,
@@ -911,6 +1167,34 @@ const styles = StyleSheet.create({
   metadataFields: {
     gap: theme.spacing.sm,
   },
+  metadataReadCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+  },
+  metadataReadRow: {
+    gap: 4,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  metadataReadRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  metadataReadLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  metadataReadValue: {
+    ...textStyles.body,
+    color: theme.colors.text,
+  },
+  metadataReadEmpty: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
   reviewMetadataFields: {
     gap: theme.spacing.md,
   },
@@ -924,6 +1208,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
+  },
+  secondaryMetadataInputWrap: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: theme.spacing.xs,
   },
   metadataInput: {
     borderWidth: 0,
@@ -955,6 +1249,13 @@ const styles = StyleSheet.create({
   },
   actionsSection: {
     gap: theme.spacing.sm,
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  secondaryAction: {
+    flex: 1,
   },
   reviewCompletionSection: {
     marginTop: theme.spacing.xs,

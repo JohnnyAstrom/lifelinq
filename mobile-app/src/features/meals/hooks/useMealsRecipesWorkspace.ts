@@ -59,6 +59,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recipeDetailError, setRecipeDetailError] = useState<string | null>(null);
   const [pendingDetailAction, setPendingDetailAction] = useState<DetailPendingAction>(null);
   const [detailMode, setDetailMode] = useState<RecipeDetailMode>('create');
+  const [isRecipeReadMode, setIsRecipeReadMode] = useState(false);
 
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
@@ -185,6 +186,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
     setDetailMode('saved');
+    setIsRecipeReadMode(true);
     setIsRecipeDetailOpen(true);
   }
 
@@ -203,6 +205,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
     setDetailMode('import');
+    setIsRecipeReadMode(false);
     setIsRecipeDetailOpen(true);
   }
 
@@ -256,10 +259,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeArchivedAt(null);
     setRecipeDeleteEligible(false);
     setRecipeDeleteBlockedReason(null);
-    setIngredientRows([]);
+    setIngredientRows([createEmptyIngredientRow()]);
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
     setDetailMode('create');
+    setIsRecipeReadMode(false);
     setIsRecipeDetailOpen(true);
   }
 
@@ -286,6 +290,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsRecipeDetailOpen(false);
     setRecipeDetailError(null);
+  }
+
+  function startEditingRecipe() {
+    if (pendingDetailAction || isRecipeLoading || detailMode !== 'saved' || !!recipeArchivedAt) {
+      return;
+    }
+    setRecipeDetailError(null);
+    setIsRecipeReadMode(false);
   }
 
   function showActiveRecipes() {
@@ -530,6 +542,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       hasExistingRecipe: !!recipeId,
       isImportDraft: detailMode === 'import',
       isArchivedRecipe: !!recipeArchivedAt,
+      isReadMode: detailMode === 'saved' && isRecipeReadMode,
+      canEnterEditMode: detailMode === 'saved' && isRecipeReadMode && !recipeArchivedAt,
       canArchiveRecipe: !!recipeId && detailMode === 'saved' && !recipeArchivedAt,
       canRestoreRecipe: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt,
       canDeleteRecipe: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt && recipeDeleteEligible,
@@ -550,6 +564,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setIngredientName,
       setIngredientQuantity,
       setIngredientUnit,
+      startEditingRecipe,
       saveRecipe,
       archiveCurrentRecipe,
       restoreCurrentRecipe,

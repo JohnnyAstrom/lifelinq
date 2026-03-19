@@ -178,6 +178,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     mealUsingSavedRecipeHint: 'This meal is using a saved recipe.',
     mealSpecificDetailsHint: 'The saved recipe stays unchanged. Your changes stay with this meal.',
     editSavedRecipeAction: 'Edit saved recipe',
+    editRecipeAction: 'Edit recipe',
     mealDetailsTitleLabel: 'Title',
     mealDetailsTitlePlaceholder: 'Optional details title',
     mealDetailsTitleHint: 'Use a different title only if these details need one.',
@@ -191,7 +192,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
     recipeNameEditHint: 'Edit the name shown at the top of this recipe.',
-    recipeContentLabel: 'Recipe info',
+    recipeContentLabel: 'Source details',
     recipeMetadataHint: 'Keep source details here without crowding the main recipe content.',
     recipeSourceLabel: 'Source',
     recipeSourcePlaceholder: 'Where this recipe comes from',
@@ -226,9 +227,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     importRecipeHelpText: 'Use a public recipe page URL with ingredients and cooking steps.',
     importRecipeAction: 'Fetch recipe',
     importingRecipeAction: 'Fetching recipe...',
-    recipeDestinationSubtitle: 'Read and edit this recipe in Meals.',
-    savedRecipeContextHint: 'This reusable recipe lives in your Recipes workspace.',
-    newSavedRecipeContextHint: 'Start with the ingredients and instructions you want to keep with this recipe.',
+    recipeDestinationSubtitle: undefined,
+    savedRecipeContextHint: undefined,
+    newSavedRecipeContextHint: undefined,
     importDraftSubtitle: 'Imported recipe draft',
     importDraftContextHint: 'Review the draft calmly, keep what looks right, and tidy only what seems off.',
     importReviewSourceSummaryTitle: 'Original page',
@@ -395,6 +396,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     }
     return formatRecipeMealAttachment(selectedEditorDate, editor.selectedMealType);
   }, [editor.selectedMealType, selectedEditorDate]);
+  const isViewingAttachedSavedRecipe = editor.isSelectedRecipeSavedInRecipes
+    && !editor.hasModifiedPickedRecipe
+    && !editor.isEditingSavedRecipeDirectly;
+  const isMealVariationFromSavedRecipe = editor.hasModifiedPickedRecipe
+    && !editor.isEditingSavedRecipeDirectly;
 
   const periodSummary = useMemo(() => {
     if (surfaceMode === 'week') {
@@ -906,7 +912,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onChangeIngredientQuantity={editor.setIngredientQuantity}
           onToggleIngredientUnit={editor.setIngredientUnit}
           onStartEditingSavedRecipeDirectly={editor.startEditingSavedRecipeDirectly}
-          onSave={handleSave}
+          onSave={isViewingAttachedSavedRecipe ? undefined : handleSave}
           onSaveToRecipes={editor.canSaveToRecipes ? actions.saveToRecipes : undefined}
           onClose={editor.closeRecipeDetail}
           isSaving={editor.isSavingMeal}
@@ -918,7 +924,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             subtitle: undefined,
             newRecipeLabel: 'Meal details',
             usingRecipeLabel: editor.isSelectedRecipeSavedInRecipes ? 'Saved recipe' : 'Meal details',
-            mealSpecificRecipeLabel: 'Meal details',
+            mealSpecificRecipeLabel: 'Meal variation',
             editingSavedRecipeLabel: 'Saved recipe',
             importDraftLabel: strings.importDraftLabel,
             newRecipeTitle: strings.mealDetailSheetNewTitle,
@@ -933,11 +939,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             mealAttachmentValue: recipeMealAttachmentValue,
             editSavedRecipeAction: strings.editSavedRecipeAction,
             editingSavedRecipeHint: strings.editingSavedRecipeHint,
-            recipeNameLabel: editor.isSelectedRecipeSavedInRecipes && !editor.hasModifiedPickedRecipe
+            recipeNameLabel: isViewingAttachedSavedRecipe
               ? 'Saved recipe'
               : strings.mealDetailsTitleLabel,
             recipeNamePlaceholder: strings.mealDetailsTitlePlaceholder,
-            recipeNameEditHint: editor.isSelectedRecipeSavedInRecipes && !editor.hasModifiedPickedRecipe
+            recipeNameEditHint: isViewingAttachedSavedRecipe
               ? strings.recipeNameEditHint
               : strings.mealDetailsTitleHint,
             recipeContentLabel: strings.mealDetailsContextLabel,
@@ -951,8 +957,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeInstructionsPlaceholder: strings.mealDetailsInstructionsPlaceholder,
             recipeInstructionsHint: undefined,
             importInstructionsHint: undefined,
-            ingredientsLabel: strings.ingredientsLabel,
-            ingredientsRecipeHint: editor.isSelectedRecipeSavedInRecipes && !editor.hasModifiedPickedRecipe
+            ingredientsLabel: isMealVariationFromSavedRecipe ? 'Variation ingredients' : strings.ingredientsLabel,
+            ingredientsRecipeHint: isViewingAttachedSavedRecipe
               ? strings.savedRecipeIngredientsHint
               : strings.mealDetailsIngredientsHint,
             importedIngredientsHint: undefined,
@@ -966,8 +972,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             ingredientsEmptyState: strings.ingredientsEmptyState,
             loadingIngredients: strings.loadingIngredients,
             saveAsNewRecipeHint: strings.saveAsNewRecipeHint,
-            saveRecipe: strings.saveMealDetails,
-            savingRecipe: strings.savingMealDetails,
+            saveRecipe: editor.isEditingSavedRecipeDirectly ? strings.saveRecipe : strings.saveMealDetails,
+            savingRecipe: editor.isEditingSavedRecipeDirectly ? strings.savingRecipe : strings.savingMealDetails,
             saveToRecipes: strings.saveToRecipes,
             savingToRecipes: strings.savingToRecipes,
             ingredientNamePlaceholder: strings.ingredientNamePlaceholder,
@@ -977,7 +983,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             importedIngredientHint: undefined,
             importedIngredientNeedsReviewHint: undefined,
             collapseIngredient: undefined,
-            close: 'Back to meal',
+            close: isViewingAttachedSavedRecipe || editor.isEditingSavedRecipeDirectly
+              ? strings.close
+              : 'Back to meal',
           }}
         />
       ) : null}
@@ -1031,6 +1039,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onChangeIngredientQuantity={recipesWorkspace.recipeDetail.setIngredientQuantity}
           onToggleIngredientUnit={recipesWorkspace.recipeDetail.setIngredientUnit}
           onStartEditingSavedRecipeDirectly={() => {}}
+          onEnterEditMode={recipesWorkspace.recipeDetail.startEditingRecipe}
           onSave={recipesWorkspace.recipeDetail.saveRecipe}
           onClose={recipesWorkspace.recipeDetail.closeRecipeDetail}
           isSaving={recipesWorkspace.recipeDetail.isSavingRecipe}
@@ -1051,16 +1060,18 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             ? recipesWorkspace.recipeDetail.recipeDeleteBlockedReason ?? strings.deleteRecipeBlockedDefault
             : null}
           error={recipesWorkspace.recipeDetail.error}
+          showTitleField={!recipesWorkspace.recipeDetail.isReadMode && !recipesWorkspace.recipeDetail.isArchivedRecipe}
+          isReadOnlyMode={recipesWorkspace.recipeDetail.isReadMode}
+          canEnterEditMode={recipesWorkspace.recipeDetail.canEnterEditMode}
+          useContentFirstEditor={!recipesWorkspace.recipeDetail.isImportDraft}
           strings={{
             eyebrow: strings.recipesWorkspace,
             title: strings.recipeSheetTitle,
             subtitle: recipesWorkspace.recipeDetail.isImportDraft
               ? undefined
-              : recipesWorkspace.recipeDetail.hasExistingRecipe
-              ? strings.recipeDestinationSubtitle
-              : strings.newSavedRecipeContextHint,
+              : strings.recipeDestinationSubtitle,
             newRecipeLabel: strings.newRecipeLabel,
-            usingRecipeLabel: strings.usingRecipeLabel,
+            usingRecipeLabel: strings.savedRecipeLabel,
             mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
             editingSavedRecipeLabel: strings.editingSavedRecipeLabel,
             importDraftLabel: strings.importDraftLabel,
@@ -1069,20 +1080,23 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeContextHint: recipesWorkspace.recipeDetail.isImportDraft
               ? undefined
               : recipesWorkspace.recipeDetail.isArchivedRecipe
-              ? 'This recipe is archived and out of your active recipe workspace until you restore it.'
+              ? undefined
               : recipesWorkspace.recipeDetail.hasExistingRecipe
               ? strings.savedRecipeContextHint
               : strings.newSavedRecipeContextHint,
-            archivedReadOnlyHint: strings.archivedReadOnlyHint,
+            archivedReadOnlyHint: undefined,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
-            recipeNameEditHint: strings.recipeNameEditHint,
+            recipeNameEditHint: recipesWorkspace.recipeDetail.hasExistingRecipe
+              ? undefined
+              : strings.recipeNameEditHint,
+            editRecipeAction: strings.editRecipeAction,
             recipeContentLabel: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importReviewSourceSummaryTitle
               : strings.recipeContentLabel,
             recipeMetadataHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importReviewSourceSummaryHint
-              : strings.recipeMetadataHint,
+              : undefined,
             recipeSourceLabel: recipesWorkspace.recipeDetail.isImportDraft
               ? 'Source name'
               : strings.recipeSourceLabel,
@@ -1093,19 +1107,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeSourceUrlPlaceholder: strings.recipeSourceUrlPlaceholder,
             recipeShortNoteLabel: strings.recipeShortNoteLabel,
             recipeShortNotePlaceholder: strings.recipeShortNotePlaceholder,
-            recipeShortNoteHint: recipesWorkspace.recipeDetail.isImportDraft
-              ? undefined
-              : strings.recipeShortNoteHint,
+            recipeShortNoteHint: undefined,
             recipeInstructionsLabel: strings.recipeInstructionsLabel,
             recipeInstructionsPlaceholder: strings.recipeInstructionsPlaceholder,
-            recipeInstructionsHint: strings.recipeInstructionsHint,
+            recipeInstructionsHint: undefined,
             importInstructionsHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importInstructionsHint
               : undefined,
             ingredientsLabel: strings.ingredientsLabel,
             ingredientsRecipeHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importedIngredientsHint
-              : strings.ingredientsRecipeHint,
+              : undefined,
             importedIngredientsHint: undefined,
             importReviewLabel: undefined,
             importReviewHint: undefined,
@@ -1164,10 +1176,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ? strings.restoreRecipe
               : undefined,
             restoringRecipe: strings.restoringRecipe,
+            restoreRecipeHint: undefined,
             deleteRecipe: recipesWorkspace.recipeDetail.showDeleteRecipeAction
               ? strings.deleteRecipe
               : undefined,
             deletingRecipe: strings.deletingRecipe,
+            deleteRecipeHint: undefined,
             close: strings.close,
           }}
         />

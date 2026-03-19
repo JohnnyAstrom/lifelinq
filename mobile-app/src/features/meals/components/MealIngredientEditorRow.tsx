@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppChip, AppInput } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -131,12 +132,35 @@ export function MealIngredientEditorRow({
   onToggleUnit,
   strings,
 }: Props) {
+  const [isDeleteArmed, setIsDeleteArmed] = useState(false);
   const isEffectivelyEmpty = isMealIngredientRowEffectivelyEmpty(row);
   const isExpanded = isActive || isEffectivelyEmpty;
   const meta = formatIngredientMeta(row);
   const importReview = isImportDraft ? getImportedIngredientReviewInfo(row) : null;
   const importedFallbackHint = importReview?.reviewHint ?? null;
   const needsImportReview = !!importReview?.needsReview;
+
+  useEffect(() => {
+    if (!isDeleteArmed) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setIsDeleteArmed(false);
+    }, 1800);
+
+    return () => clearTimeout(timeoutId);
+  }, [isDeleteArmed]);
+
+  function handleRemovePress() {
+    if (!isDeleteArmed) {
+      setIsDeleteArmed(true);
+      return;
+    }
+
+    setIsDeleteArmed(false);
+    onRemove();
+  }
 
   if (isReadOnly) {
     return (
@@ -192,15 +216,20 @@ export function MealIngredientEditorRow({
           </View>
         ) : null}
         <Pressable
-          onPress={onRemove}
+          onPress={handleRemovePress}
           accessibilityRole="button"
           accessibilityLabel={strings.removeIngredient}
           style={({ pressed }) => [
             styles.iconButton,
+            isDeleteArmed ? styles.deleteIconButtonArmed : null,
             pressed ? styles.iconButtonPressed : null,
           ]}
         >
-          <Ionicons name="close-outline" size={16} color={theme.colors.textSecondary} />
+          <Ionicons
+            name={isDeleteArmed ? 'trash-outline' : 'close-outline'}
+            size={16}
+            color={isDeleteArmed ? theme.colors.danger : theme.colors.textSecondary}
+          />
         </Pressable>
       </Pressable>
     );
@@ -218,6 +247,7 @@ export function MealIngredientEditorRow({
           value={row.name}
           onChangeText={onChangeName}
           onFocus={onActivate}
+          autoFocus={isEffectivelyEmpty && isActive}
           style={[styles.ingredientNameInput, styles.lightInput]}
         />
         <View style={styles.expandedActions}>
@@ -236,15 +266,20 @@ export function MealIngredientEditorRow({
             </Pressable>
           ) : null}
           <Pressable
-            onPress={onRemove}
+            onPress={handleRemovePress}
             accessibilityRole="button"
             accessibilityLabel={strings.removeIngredient}
             style={({ pressed }) => [
               styles.iconButton,
+              isDeleteArmed ? styles.deleteIconButtonArmed : null,
               pressed ? styles.iconButtonPressed : null,
             ]}
           >
-            <Ionicons name="close-outline" size={16} color={theme.colors.textSecondary} />
+            <Ionicons
+              name={isDeleteArmed ? 'trash-outline' : 'close-outline'}
+              size={16}
+              color={isDeleteArmed ? theme.colors.danger : theme.colors.textSecondary}
+            />
           </Pressable>
         </View>
       </View>
@@ -418,6 +453,11 @@ const styles = StyleSheet.create({
   },
   collapseIconButton: {
     backgroundColor: theme.colors.surfaceSubtle,
+  },
+  deleteIconButtonArmed: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
   },
   iconButtonPressed: {
     backgroundColor: theme.colors.surfaceSubtle,
