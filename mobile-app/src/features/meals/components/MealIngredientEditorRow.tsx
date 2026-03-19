@@ -354,9 +354,9 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   importReviewRow: {
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.feature.meals,
-    paddingLeft: theme.spacing.xs,
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: theme.spacing.xs,
   },
   compactMain: {
     flex: 1,
@@ -400,8 +400,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   expandedImportReviewRow: {
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.feature.meals,
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderColor: theme.colors.border,
   },
   expandedTopRow: {
     flexDirection: 'row',

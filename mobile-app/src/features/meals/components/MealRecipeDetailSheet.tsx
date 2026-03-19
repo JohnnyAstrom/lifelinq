@@ -416,6 +416,11 @@ export function MealRecipeDetailSheet({
           {strings.subtitle ? <Subtle>{strings.subtitle}</Subtle> : null}
           {hasHeaderMetaContent ? (
             <View style={styles.headerMeta}>
+              {isImportDraft && importReviewSummary ? (
+                <View style={styles.reviewSummaryPill}>
+                  <Text style={styles.reviewSummaryPillText}>{importReviewSummary}</Text>
+                </View>
+              ) : null}
               {showIdentityBadge ? (
                 <View style={styles.identityBadge}>
                   <Text style={styles.identityBadgeText}>{identityLabel}</Text>
@@ -497,11 +502,6 @@ export function MealRecipeDetailSheet({
                   <Text style={styles.sectionTitle}>{strings.ingredientsLabel}</Text>
                   {strings.ingredientsRecipeHint ? (
                     <Text style={styles.sectionHint}>{strings.ingredientsRecipeHint}</Text>
-                  ) : null}
-                  {!isRecipeLoading && isImportDraft && importReviewSummary ? (
-                    <View style={styles.reviewSummaryPill}>
-                      <Text style={styles.reviewSummaryPillText}>{importReviewSummary}</Text>
-                    </View>
                   ) : null}
                 </View>
                 {!isContentReadOnly ? (
