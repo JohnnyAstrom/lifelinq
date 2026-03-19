@@ -20,10 +20,11 @@ public final class Recipe {
     private final Instant createdAt;
     private final Instant updatedAt;
     private final Instant archivedAt;
+    private final boolean savedInRecipes;
     private final List<Ingredient> ingredients;
 
     public Recipe(UUID id, UUID groupId, String name, Instant createdAt, List<Ingredient> ingredients) {
-        this(id, groupId, name, null, null, RecipeOriginKind.MANUAL, null, null, createdAt, createdAt, null, ingredients);
+        this(id, groupId, name, null, null, RecipeOriginKind.MANUAL, null, null, createdAt, createdAt, null, true, ingredients);
     }
 
     public Recipe(
@@ -48,6 +49,7 @@ public final class Recipe {
                 createdAt,
                 createdAt,
                 null,
+                true,
                 ingredients
         );
     }
@@ -77,6 +79,7 @@ public final class Recipe {
                 createdAt,
                 updatedAt,
                 null,
+                true,
                 ingredients
         );
     }
@@ -93,6 +96,7 @@ public final class Recipe {
             Instant createdAt,
             Instant updatedAt,
             Instant archivedAt,
+            boolean savedInRecipes,
             List<Ingredient> ingredients
     ) {
         if (id == null) {
@@ -150,6 +154,7 @@ public final class Recipe {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.archivedAt = archivedAt;
+        this.savedInRecipes = savedInRecipes;
         this.ingredients = List.copyOf(normalizedIngredients);
     }
 
@@ -203,6 +208,10 @@ public final class Recipe {
 
     public Instant getArchivedAt() {
         return archivedAt;
+    }
+
+    public boolean isSavedInRecipes() {
+        return savedInRecipes;
     }
 
     public boolean isArchived() {

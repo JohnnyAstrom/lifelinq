@@ -9,6 +9,7 @@ public final class CreateOrUpdateRecipeRequest {
     private String originKind;
     private String shortNote;
     private String instructions;
+    private Boolean savedInRecipes;
     private List<IngredientRequest> ingredients;
 
     public String getName() {
@@ -37,5 +38,9 @@ public final class CreateOrUpdateRecipeRequest {
 
     public String getInstructions() {
         return instructions;
+    }
+
+    public Boolean getSavedInRecipes() {
+        return savedInRecipes;
     }
 }

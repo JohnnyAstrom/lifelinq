@@ -31,7 +31,7 @@ type MealEntry = {
   recipeTitle: string | null;
 };
 
-type EditorPendingAction = 'save-meal' | 'remove-meal' | 'add-ingredients-to-shopping' | null;
+type EditorPendingAction = 'save-meal' | 'save-to-recipes' | 'remove-meal' | 'add-ingredients-to-shopping' | null;
 type ShoppingReviewIngredient = {
   rowId: string;
   position: number;
@@ -49,6 +49,7 @@ type RecipeSnapshot = {
   sourceName: string | null;
   sourceUrl: string | null;
   originKind: string;
+  savedInRecipes: boolean;
   shortNote: string | null;
   instructions: string | null;
   ingredients: IngredientRequest[];
@@ -117,6 +118,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [availableRecipes, setAvailableRecipes] = useState<RecipeResponse[] | null>(null);
   const [loadedRecipeId, setLoadedRecipeId] = useState<string | null>(null);
   const [pickedRecipeSnapshot, setPickedRecipeSnapshot] = useState<RecipeSnapshot | null>(null);
+  const [isSelectedRecipeSavedInRecipes, setIsSelectedRecipeSavedInRecipes] = useState(false);
   const [isEditingSavedRecipeDirectly, setIsEditingSavedRecipeDirectly] = useState(false);
   const [pendingEditorAction, setPendingEditorAction] = useState<EditorPendingAction>(null);
 
@@ -155,7 +157,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   }, [selectedShoppingIngredientRowIds, shoppingReviewIngredients]);
   const recipePickerOptions = useMemo<RecipePickerOption[]>(() => {
     return [...(availableRecipes ?? [])]
-      .filter((recipe) => recipe.archivedAt == null)
+      .filter((recipe) => recipe.archivedAt == null && recipe.savedInRecipes)
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((recipe) => ({
         recipeId: recipe.recipeId,
@@ -181,6 +183,11 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       || currentRecipeDraft.instructions != null
       || (recipeTitle.trim().length > 0 && recipeTitle.trim() !== mealTitle.trim())
   ), [currentRecipeDraft, mealTitle, recipeTitle, selectedMealRecipeId]);
+  const hasMeaningfulMealDetails = useMemo(() => (
+    currentRecipeDraft.ingredients.length > 0
+      || currentRecipeDraft.shortNote != null
+      || currentRecipeDraft.instructions != null
+  ), [currentRecipeDraft]);
   const hasModifiedPickedRecipe = useMemo(() => {
     if (!pickedRecipeSnapshot) {
       return false;
@@ -216,8 +223,16 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   }, [currentRecipeDraft, pickedRecipeSnapshot]);
   const canEnterSavedRecipeEditMode = !!selectedMealRecipeId
     && !!pickedRecipeSnapshot
+    && isSelectedRecipeSavedInRecipes
     && !hasModifiedPickedRecipe
     && !isEditingSavedRecipeDirectly;
+  const canSaveToRecipes = hasMeaningfulMealDetails
+    && !isEditingSavedRecipeDirectly
+    && (
+      !selectedMealRecipeId
+      || !isSelectedRecipeSavedInRecipes
+      || hasModifiedPickedRecipe
+    );
 
   function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
@@ -239,6 +254,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
     setPickedRecipeSnapshot(null);
+    setIsSelectedRecipeSavedInRecipes(false);
     setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
     setShoppingSyncError(null);
@@ -253,6 +269,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       sourceName: recipe.sourceName?.trim() || null,
       sourceUrl: recipe.sourceUrl?.trim() || null,
       originKind: recipe.originKind,
+      savedInRecipes: recipe.savedInRecipes,
       shortNote: recipe.shortNote?.trim() || null,
       instructions: recipe.instructions?.trim() || null,
       ingredients: recipe.ingredients
@@ -278,6 +295,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
     setLoadedRecipeId(recipe.recipeId);
     setPickedRecipeSnapshot(toRecipeSnapshot(recipe));
+    setIsSelectedRecipeSavedInRecipes(recipe.savedInRecipes);
     setIsEditingSavedRecipeDirectly(false);
     setShoppingSyncError(null);
     setRecipeLoadError(null);
@@ -323,6 +341,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           setSelectedMealRecipeId(null);
           setLoadedRecipeId(null);
           setPickedRecipeSnapshot(null);
+          setIsSelectedRecipeSavedInRecipes(false);
           setRecipeTitle('');
           setRecipeSource('');
           setRecipeSourceUrl(null);
@@ -374,6 +393,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
     setPickedRecipeSnapshot(null);
+    setIsSelectedRecipeSavedInRecipes(false);
     setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
     setRecipeLoadError(null);
@@ -535,7 +555,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
 
   async function persistMeal(
     targetShoppingListId: string | null,
-    options?: { selectedIngredientPositions?: number[] | null }
+    options?: { selectedIngredientPositions?: number[] | null; saveInRecipes?: boolean }
   ) {
     if (!selectedDay || !selectedMealType) {
       return false;
@@ -549,6 +569,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
 
     const ingredients = currentRecipeDraft.ingredients;
     const selectedIngredientPositions = options?.selectedIngredientPositions ?? null;
+    const saveInRecipes = options?.saveInRecipes ?? false;
     const shouldPushToShopping = !!targetShoppingListId
       && (selectedIngredientPositions?.length ?? 0) > 0;
 
@@ -557,6 +578,29 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       if (!hasRecipeDraftContent) {
         recipeId = null;
       } else if (recipeId && pickedRecipeSnapshot && !hasModifiedPickedRecipe) {
+        if (!isSelectedRecipeSavedInRecipes && saveInRecipes) {
+          const promoted = await updateRecipe(
+            recipeId,
+            {
+              name: currentRecipeDraft.name,
+              sourceName: currentRecipeDraft.sourceName,
+              sourceUrl: currentRecipeDraft.sourceUrl,
+              originKind: currentRecipeDraft.originKind,
+              shortNote: currentRecipeDraft.shortNote,
+              instructions: currentRecipeDraft.instructions,
+              savedInRecipes: true,
+              ingredients,
+            },
+            { token }
+          );
+          setAvailableRecipes((current) => (
+            current
+              ? [...current.filter((entry) => entry.recipeId !== promoted.recipeId), promoted]
+              : [promoted]
+          ));
+          setIsSelectedRecipeSavedInRecipes(true);
+          setPickedRecipeSnapshot(toRecipeSnapshot(promoted));
+        }
         // Reusing an existing saved recipe unchanged keeps the original recipe as-is.
       } else if (recipeId && pickedRecipeSnapshot && isEditingSavedRecipeDirectly) {
         const updated = await updateRecipe(
@@ -568,6 +612,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             originKind: currentRecipeDraft.originKind,
             shortNote: currentRecipeDraft.shortNote,
             instructions: currentRecipeDraft.instructions,
+            savedInRecipes: true,
             ingredients,
           },
           { token }
@@ -576,6 +621,30 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           const others = (current ?? []).filter((entry) => entry.recipeId !== updated.recipeId);
           return [...others, updated];
         });
+        setIsSelectedRecipeSavedInRecipes(true);
+        setPickedRecipeSnapshot(toRecipeSnapshot(updated));
+      } else if (recipeId && pickedRecipeSnapshot && !isSelectedRecipeSavedInRecipes) {
+        const updated = await updateRecipe(
+          recipeId,
+          {
+            name: currentRecipeDraft.name,
+            sourceName: currentRecipeDraft.sourceName,
+            sourceUrl: currentRecipeDraft.sourceUrl,
+            originKind: currentRecipeDraft.originKind,
+            shortNote: currentRecipeDraft.shortNote,
+            instructions: currentRecipeDraft.instructions,
+            savedInRecipes: saveInRecipes,
+            ingredients,
+          },
+          { token }
+        );
+        setAvailableRecipes((current) => (
+          current
+            ? [...current.filter((entry) => entry.recipeId !== updated.recipeId), updated]
+            : [updated]
+        ));
+        setIsSelectedRecipeSavedInRecipes(updated.savedInRecipes);
+        setPickedRecipeSnapshot(toRecipeSnapshot(updated));
       } else if (recipeId && !hasModifiedPickedRecipe) {
         const updated = await updateRecipe(
           recipeId,
@@ -586,6 +655,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             originKind: currentRecipeDraft.originKind,
             shortNote: currentRecipeDraft.shortNote,
             instructions: currentRecipeDraft.instructions,
+            savedInRecipes: true,
             ingredients,
           },
           { token }
@@ -594,6 +664,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           const others = (current ?? []).filter((entry) => entry.recipeId !== updated.recipeId);
           return [...others, updated];
         });
+        setIsSelectedRecipeSavedInRecipes(true);
+        setPickedRecipeSnapshot(toRecipeSnapshot(updated));
       } else {
         const created = await createRecipe(
           {
@@ -603,6 +675,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             originKind: currentRecipeDraft.originKind,
             shortNote: currentRecipeDraft.shortNote,
             instructions: currentRecipeDraft.instructions,
+            savedInRecipes: saveInRecipes,
             ingredients,
           },
           { token }
@@ -613,6 +686,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             ? [...current.filter((entry) => entry.recipeId !== created.recipeId), created]
             : [created]
         ));
+        setSelectedMealRecipeId(created.recipeId);
+        setLoadedRecipeId(created.recipeId);
+        setPickedRecipeSnapshot(toRecipeSnapshot(created));
+        setIsSelectedRecipeSavedInRecipes(created.savedInRecipes);
       }
 
       await plan.addMeal(selectedDay, selectedMealType, {
@@ -669,6 +746,16 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setSelectedMealRecipeId(null);
       setIngredientRows([]);
       setSelectedMealType('DINNER');
+      resetEditorState();
+    });
+  }
+
+  async function saveToRecipes() {
+    await runEditorAction('save-to-recipes', async () => {
+      const saved = await persistMeal(null, { saveInRecipes: true });
+      if (!saved) {
+        return;
+      }
       resetEditorState();
     });
   }
@@ -750,10 +837,13 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       recipeListError,
       recipePickerOptions,
       hasModifiedPickedRecipe,
+      isSelectedRecipeSavedInRecipes,
       canEnterSavedRecipeEditMode,
+      canSaveToRecipes,
       isEditingSavedRecipeDirectly,
       hasIngredients,
       hasRecipeDraftContent,
+      hasMeaningfulMealDetails,
       shoppingReviewIngredients,
       selectedShoppingIngredientRowIds,
       selectedShoppingIngredientCount: selectedShoppingIngredientPositions.length,
@@ -764,6 +854,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       pendingAction: pendingEditorAction,
       isActionPending: pendingEditorAction !== null,
       isSavingMeal: pendingEditorAction === 'save-meal',
+      isSavingToRecipes: pendingEditorAction === 'save-to-recipes',
       isRemovingMeal: pendingEditorAction === 'remove-meal',
       isAddingIngredientsToShopping: pendingEditorAction === 'add-ingredients-to-shopping',
       selectedMeal,
@@ -796,6 +887,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       openEditor,
       closeEditor,
       saveMeal,
+      saveToRecipes,
       addIngredientsToShopping,
       removeMeal,
     },

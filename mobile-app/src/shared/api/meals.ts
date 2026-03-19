@@ -92,6 +92,7 @@ export type CreateOrUpdateRecipeRequest = {
   originKind?: string | null;
   shortNote?: string | null;
   instructions?: string | null;
+  savedInRecipes?: boolean | null;
   ingredients: IngredientRequest[];
 };
 
@@ -116,6 +117,7 @@ export type RecipeResponse = {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+  savedInRecipes: boolean;
   deleteEligible: boolean;
   deleteBlockedReason: string | null;
   ingredients: IngredientResponse[];

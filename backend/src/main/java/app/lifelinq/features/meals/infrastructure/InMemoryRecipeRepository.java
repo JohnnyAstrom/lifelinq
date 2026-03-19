@@ -52,7 +52,7 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
         }
         List<Recipe> result = new ArrayList<>();
         for (Recipe recipe : byId.values()) {
-            if (groupId.equals(recipe.getGroupId()) && !recipe.isArchived()) {
+            if (groupId.equals(recipe.getGroupId()) && !recipe.isArchived() && recipe.isSavedInRecipes()) {
                 result.add(recipe);
             }
         }
@@ -66,7 +66,7 @@ public final class InMemoryRecipeRepository implements RecipeRepository {
         }
         List<Recipe> result = new ArrayList<>();
         for (Recipe recipe : byId.values()) {
-            if (groupId.equals(recipe.getGroupId()) && recipe.isArchived()) {
+            if (groupId.equals(recipe.getGroupId()) && recipe.isArchived() && recipe.isSavedInRecipes()) {
                 result.add(recipe);
             }
         }

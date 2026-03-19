@@ -138,6 +138,7 @@ public class MealsApplicationService {
             String originKind,
             String shortNote,
             String instructions,
+            Boolean savedInRecipes,
             List<IngredientInput> ingredients
     ) {
         ensureMealAccess(groupId, actorUserId);
@@ -154,6 +155,7 @@ public class MealsApplicationService {
                 now,
                 now,
                 null,
+                savedInRecipes == null || savedInRecipes,
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(recipe), false);
@@ -210,6 +212,7 @@ public class MealsApplicationService {
             String originKind,
             String shortNote,
             String instructions,
+            Boolean savedInRecipes,
             List<IngredientInput> ingredients
     ) {
         ensureMealAccess(groupId, actorUserId);
@@ -226,6 +229,7 @@ public class MealsApplicationService {
                 existing.getCreatedAt(),
                 clock.instant(),
                 existing.getArchivedAt(),
+                savedInRecipes == null ? existing.isSavedInRecipes() : savedInRecipes,
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(updated), true);
@@ -251,6 +255,7 @@ public class MealsApplicationService {
                 existing.getCreatedAt(),
                 now,
                 now,
+                existing.isSavedInRecipes(),
                 existing.getIngredients()
         );
         return toView(recipeRepository.save(archived), true);
@@ -276,6 +281,7 @@ public class MealsApplicationService {
                 existing.getCreatedAt(),
                 now,
                 null,
+                existing.isSavedInRecipes(),
                 existing.getIngredients()
         );
         return toView(recipeRepository.save(restored), true);
@@ -563,6 +569,7 @@ public class MealsApplicationService {
                 recipe.getCreatedAt(),
                 recipe.getUpdatedAt(),
                 recipe.getArchivedAt(),
+                recipe.isSavedInRecipes(),
                 deleteEligibility.eligible(),
                 deleteEligibility.blockedReason(),
                 ingredients

@@ -236,6 +236,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     savingRecipe: 'Saving recipe...',
     saveMealDetails: 'Save meal details',
     savingMealDetails: 'Saving meal details...',
+    saveToRecipes: 'Save to Recipes',
+    savingToRecipes: 'Saving to Recipes...',
     archiveRecipe: 'Archive recipe',
     archivingRecipe: 'Archiving recipe...',
     restoreRecipe: 'Restore recipe',
@@ -843,7 +845,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           hasRecipeDraftContent={editor.hasRecipeDraftContent}
           onOpenShoppingReview={editor.openShoppingReview}
           hasExistingMeal={!!editor.selectedMeal?.mealTitle}
-          hasExistingRecipe={!!editor.selectedMealRecipeId}
+          hasExistingRecipe={editor.isSelectedRecipeSavedInRecipes}
           isSavingMeal={editor.isSavingMeal}
           isRemovingMeal={editor.isRemovingMeal}
           isActionPending={editor.isActionPending}
@@ -891,8 +893,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           canEnterSavedRecipeEditMode={editor.canEnterSavedRecipeEditMode}
           isEditingSavedRecipeDirectly={editor.isEditingSavedRecipeDirectly}
           isActionPending={editor.isActionPending}
-          showTitleField={!!editor.selectedMealRecipeId}
-          showMetadataSection={!!editor.selectedMealRecipeId}
+          showTitleField={editor.isSelectedRecipeSavedInRecipes}
+          showMetadataSection={editor.isSelectedRecipeSavedInRecipes}
           onAddIngredientRow={editor.addIngredientRow}
           onRemoveIngredientRow={editor.removeIngredientRow}
           onChangeIngredientName={editor.setIngredientName}
@@ -900,15 +902,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onToggleIngredientUnit={editor.setIngredientUnit}
           onStartEditingSavedRecipeDirectly={editor.startEditingSavedRecipeDirectly}
           onSave={handleSave}
+          onSaveToRecipes={editor.canSaveToRecipes ? actions.saveToRecipes : undefined}
           onClose={editor.closeRecipeDetail}
           isSaving={editor.isSavingMeal}
+          isSavingToRecipes={editor.isSavingToRecipes}
           error={editor.recipeLoadError}
           strings={{
             eyebrow: strings.mealDetailSheetEyebrow,
             title: strings.recipeSheetTitle,
             subtitle: undefined,
             newRecipeLabel: 'Meal details',
-            usingRecipeLabel: 'Saved recipe',
+            usingRecipeLabel: editor.isSelectedRecipeSavedInRecipes ? 'Saved recipe' : 'Meal details',
             mealSpecificRecipeLabel: 'Meal details',
             editingSavedRecipeLabel: 'Saved recipe',
             importDraftLabel: strings.importDraftLabel,
@@ -917,18 +921,18 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ? undefined
               : editor.hasModifiedPickedRecipe
                 ? strings.mealSpecificDetailsHint
-                : editor.selectedMealRecipeId
+                : editor.isSelectedRecipeSavedInRecipes
                   ? strings.mealUsingSavedRecipeHint
                   : strings.mealDetailSheetHint,
             mealAttachmentLabel: strings.recipeMealAttachmentLabel,
             mealAttachmentValue: recipeMealAttachmentValue,
             editSavedRecipeAction: strings.editSavedRecipeAction,
             editingSavedRecipeHint: strings.editingSavedRecipeHint,
-            recipeNameLabel: editor.selectedMealRecipeId && !editor.hasModifiedPickedRecipe
+            recipeNameLabel: editor.isSelectedRecipeSavedInRecipes && !editor.hasModifiedPickedRecipe
               ? 'Saved recipe'
               : strings.mealDetailsTitleLabel,
             recipeNamePlaceholder: strings.mealDetailsTitlePlaceholder,
-            recipeNameEditHint: editor.selectedMealRecipeId && !editor.hasModifiedPickedRecipe
+            recipeNameEditHint: editor.isSelectedRecipeSavedInRecipes && !editor.hasModifiedPickedRecipe
               ? strings.recipeNameEditHint
               : strings.mealDetailsTitleHint,
             recipeContentLabel: strings.mealDetailsContextLabel,
@@ -943,7 +947,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeInstructionsHint: undefined,
             importInstructionsHint: undefined,
             ingredientsLabel: strings.ingredientsLabel,
-            ingredientsRecipeHint: editor.selectedMealRecipeId && !editor.hasModifiedPickedRecipe
+            ingredientsRecipeHint: editor.isSelectedRecipeSavedInRecipes && !editor.hasModifiedPickedRecipe
               ? strings.savedRecipeIngredientsHint
               : strings.mealDetailsIngredientsHint,
             importedIngredientsHint: undefined,
@@ -959,6 +963,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             saveAsNewRecipeHint: strings.saveAsNewRecipeHint,
             saveRecipe: strings.saveMealDetails,
             savingRecipe: strings.savingMealDetails,
+            saveToRecipes: strings.saveToRecipes,
+            savingToRecipes: strings.savingToRecipes,
             ingredientNamePlaceholder: strings.ingredientNamePlaceholder,
             quantityPlaceholder: strings.quantityPlaceholder,
             addIngredient: strings.addIngredient,
@@ -1171,7 +1177,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onSelectRecipe={editor.selectExistingRecipe}
           onClose={editor.closeRecipePicker}
           strings={{
-            title: editor.selectedMealRecipeId ? strings.changeRecipe : strings.recipePickerTitle,
+            title: editor.isSelectedRecipeSavedInRecipes ? strings.changeRecipe : strings.recipePickerTitle,
             hint: undefined,
             loadingRecipes: strings.loadingRecipes,
             noRecipes: strings.noRecipes,

@@ -51,6 +51,7 @@ public class MealsController {
                 request.getOriginKind(),
                 request.getShortNote(),
                 request.getInstructions(),
+                request.getSavedInRecipes(),
                 toIngredientInputs(request.getIngredients())
         );
         return ResponseEntity.ok(toRecipeResponse(recipe));
@@ -111,6 +112,7 @@ public class MealsController {
                 request.getOriginKind(),
                 request.getShortNote(),
                 request.getInstructions(),
+                request.getSavedInRecipes(),
                 toIngredientInputs(request.getIngredients())
         );
         return ResponseEntity.ok(toRecipeResponse(recipe));
@@ -315,6 +317,7 @@ public class MealsController {
                 view.createdAt(),
                 view.updatedAt(),
                 view.archivedAt(),
+                view.savedInRecipes(),
                 view.deleteEligible(),
                 view.deleteBlockedReason(),
                 ingredients
