@@ -13,13 +13,16 @@ type MealEditorSheetStrings = {
   mealTitlePlaceholder: string;
   mealTypeLabel: string;
   recipeLabel: string;
+  savedRecipeLabel: string;
   recipeOptionalLabel?: string;
   noRecipeAttached: string;
   useExistingRecipe: string;
   changeRecipe: string;
   openRecipe: string;
+  openSavedRecipe: string;
   addRecipeDetails: string;
   recipeSummaryHint: string;
+  savedRecipeSummaryHint: string;
   loadingRecipe: string;
   ingredientsSummarySuffix: string;
   shoppingLabel: string;
@@ -102,6 +105,7 @@ export function MealEditorSheet({
       : `${ingredientCount} ${strings.ingredientsSummarySuffix}`;
   const saveActionLabel = isSavingMeal ? strings.savingMeal : strings.saveMeal;
   const removeActionLabel = isRemovingMeal ? strings.removingMeal : strings.removeMeal;
+  const recipeSectionLabel = hasExistingRecipe ? strings.savedRecipeLabel : strings.recipeLabel;
   const recipeSelectionActionLabel = hasExistingRecipe
     ? strings.changeRecipe
     : strings.useExistingRecipe;
@@ -116,10 +120,14 @@ export function MealEditorSheet({
       ? ingredientPreview
         ? `${ingredientSummary} · ${ingredientPreview}`
         : ingredientSummary
-      : strings.recipeSummaryHint;
-  const recipePrompt = hasRecipeDraftContent
-    ? strings.openRecipe
-    : strings.addRecipeDetails;
+      : hasExistingRecipe
+        ? strings.savedRecipeSummaryHint
+        : strings.recipeSummaryHint;
+  const recipePrompt = hasExistingRecipe
+    ? strings.openSavedRecipe
+    : hasRecipeDraftContent
+      ? strings.openRecipe
+      : strings.addRecipeDetails;
   const dayContext = initialDate.toLocaleDateString(undefined, {
     weekday: 'short',
     day: 'numeric',
@@ -176,7 +184,7 @@ export function MealEditorSheet({
             <View style={styles.sectionDivider} />
             <View style={styles.editorSection}>
               <View style={styles.recipeSectionHeader}>
-                <Text style={styles.fieldLabel}>{strings.recipeLabel}</Text>
+                <Text style={styles.fieldLabel}>{recipeSectionLabel}</Text>
                 {strings.recipeOptionalLabel ? (
                   <Subtle style={styles.recipeSectionOptional}>{strings.recipeOptionalLabel}</Subtle>
                 ) : null}

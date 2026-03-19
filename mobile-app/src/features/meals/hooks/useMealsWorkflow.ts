@@ -333,10 +333,6 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         if (cancelled) {
           return;
         }
-        await handleApiError(err);
-        if (cancelled) {
-          return;
-        }
         if (err instanceof ApiError && err.status === 404) {
           setSelectedMealRecipeId(null);
           setLoadedRecipeId(null);
@@ -350,6 +346,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           setRecipeInstructions('');
           setIngredientRows([]);
           setRecipeLoadError('This recipe was deleted from Recipes. The meal keeps its saved title for history.');
+          return;
+        }
+        await handleApiError(err);
+        if (cancelled) {
           return;
         }
         setRecipeLoadError(formatApiError(err));
@@ -756,7 +756,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       if (!saved) {
         return;
       }
-      resetEditorState();
+      setIsRecipeDetailOpen(false);
+      setIsRecipePickerOpen(false);
+      setIsShoppingReviewOpen(false);
     });
   }
 
