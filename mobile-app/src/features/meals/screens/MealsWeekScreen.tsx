@@ -228,8 +228,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     importRecipeAction: 'Fetch recipe',
     importingRecipeAction: 'Fetching recipe...',
     recipeDestinationSubtitle: undefined,
-    savedRecipeContextHint: undefined,
-    newSavedRecipeContextHint: undefined,
+    savedRecipeContextHint: 'Reusable recipe in Recipes.',
+    newSavedRecipeContextHint: 'Create a reusable recipe in Recipes.',
     importDraftSubtitle: 'Imported recipe draft',
     importDraftContextHint: 'Review the draft calmly, keep what looks right, and tidy only what seems off.',
     importReviewSourceSummaryTitle: 'Original page',
@@ -1056,31 +1056,33 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           showTitleField={!recipesWorkspace.recipeDetail.isReadMode && !recipesWorkspace.recipeDetail.isArchivedRecipe}
           isReadOnlyMode={recipesWorkspace.recipeDetail.isReadMode}
           canEnterEditMode={recipesWorkspace.recipeDetail.canEnterEditMode}
-          useContentFirstEditor={!recipesWorkspace.recipeDetail.isImportDraft}
+          useContentFirstEditor
+          showHeaderIdentityBadge={false}
           strings={{
-            eyebrow: strings.recipesWorkspace,
+            eyebrow: recipesWorkspace.recipeDetail.isImportDraft
+              ? 'IMPORTED DRAFT'
+              : recipesWorkspace.recipeDetail.isArchivedRecipe
+                ? 'ARCHIVED RECIPE'
+                : recipesWorkspace.recipeDetail.hasExistingRecipe
+                  ? (recipesWorkspace.recipeDetail.isReadMode ? 'SAVED RECIPE' : 'EDIT RECIPE')
+                  : 'CREATE RECIPE',
             title: strings.recipeSheetTitle,
             subtitle: recipesWorkspace.recipeDetail.isImportDraft
               ? undefined
               : strings.recipeDestinationSubtitle,
-            newRecipeLabel: strings.newRecipeLabel,
+            newRecipeLabel: strings.recipeSheetNewRecipeTitle,
             usingRecipeLabel: strings.savedRecipeLabel,
             mealSpecificRecipeLabel: strings.mealSpecificRecipeLabel,
             editingSavedRecipeLabel: strings.editingSavedRecipeLabel,
             importDraftLabel: strings.importDraftLabel,
             archivedRecipeLabel: strings.archivedRecipeLabel,
             newRecipeTitle: strings.recipeSheetNewRecipeTitle,
-            recipeContextHint: recipesWorkspace.recipeDetail.isImportDraft
-              ? undefined
-              : recipesWorkspace.recipeDetail.isArchivedRecipe
-              ? undefined
-              : recipesWorkspace.recipeDetail.hasExistingRecipe
-              ? strings.savedRecipeContextHint
-              : strings.newSavedRecipeContextHint,
-            archivedReadOnlyHint: undefined,
+            recipeContextHint: undefined,
+            archivedReadOnlyHint: strings.archivedReadOnlyHint,
             recipeNameLabel: strings.recipeNameLabel,
             recipeNamePlaceholder: strings.recipeNamePlaceholder,
             recipeNameEditHint: recipesWorkspace.recipeDetail.hasExistingRecipe
+              || recipesWorkspace.recipeDetail.isImportDraft
               ? undefined
               : strings.recipeNameEditHint,
             editRecipeAction: strings.editRecipeAction,
@@ -1089,7 +1091,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : strings.recipeContentLabel,
             recipeMetadataHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importReviewSourceSummaryHint
-              : undefined,
+              : strings.recipeMetadataHint,
             recipeSourceLabel: recipesWorkspace.recipeDetail.isImportDraft
               ? 'Source name'
               : strings.recipeSourceLabel,
@@ -1100,10 +1102,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeSourceUrlPlaceholder: strings.recipeSourceUrlPlaceholder,
             recipeShortNoteLabel: strings.recipeShortNoteLabel,
             recipeShortNotePlaceholder: strings.recipeShortNotePlaceholder,
-            recipeShortNoteHint: undefined,
+            recipeShortNoteHint: strings.recipeShortNoteHint,
             recipeInstructionsLabel: strings.recipeInstructionsLabel,
             recipeInstructionsPlaceholder: strings.recipeInstructionsPlaceholder,
-            recipeInstructionsHint: undefined,
+            recipeInstructionsHint: strings.recipeInstructionsHint,
             importInstructionsHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importInstructionsHint
               : undefined,

@@ -251,6 +251,8 @@ type Props = {
   canEnterEditMode?: boolean;
   onEnterEditMode?: () => void;
   useContentFirstEditor?: boolean;
+  alwaysShowIdentityBadge?: boolean;
+  showHeaderIdentityBadge?: boolean;
   strings: Strings;
 };
 
@@ -300,6 +302,8 @@ export function MealRecipeDetailSheet({
   canEnterEditMode = false,
   onEnterEditMode,
   useContentFirstEditor = false,
+  alwaysShowIdentityBadge = false,
+  showHeaderIdentityBadge = true,
   strings,
 }: Props) {
   const scrollRef = useRef<ScrollView | null>(null);
@@ -326,19 +330,26 @@ export function MealRecipeDetailSheet({
   const instructionSteps = getInstructionSteps(recipeInstructions);
   const isContentReadOnly = isArchivedRecipe || isReadOnlyMode;
   const showReadableInstructionSteps = instructionSteps.length > 1;
-  const isContentFirstEditor = useContentFirstEditor && !isContentReadOnly && !isImportDraft;
+  const isContentFirstEditor = useContentFirstEditor && !isContentReadOnly;
+  const isSavedRecipeEditMode = hasExistingRecipe
+    && !isContentReadOnly
+    && !isImportDraft
+    && !isEditingSavedRecipeDirectly;
   const showsSeparateTitleSection = showTitleField && !isContentFirstEditor;
-  const showIdentityBadge = isImportDraft
+  const showIdentityBadge = showHeaderIdentityBadge && (alwaysShowIdentityBadge
+    || isImportDraft
     || isArchivedRecipe
     || isEditingSavedRecipeDirectly
     || isMealSpecificDraft
-    || (!isContentFirstEditor && hasExistingRecipe);
+    || (!isContentFirstEditor && hasExistingRecipe));
   const identityLabel = isMealSpecificDraft
     ? strings.mealSpecificRecipeLabel
     : isImportDraft
       ? strings.importDraftLabel
     : isArchivedRecipe && strings.archivedRecipeLabel
       ? strings.archivedRecipeLabel
+    : isSavedRecipeEditMode
+      ? strings.editingSavedRecipeLabel
     : isEditingSavedRecipeDirectly
       ? strings.editingSavedRecipeLabel
     : hasExistingRecipe
@@ -350,7 +361,8 @@ export function MealRecipeDetailSheet({
     || (isArchivedRecipe && !!strings.archivedReadOnlyHint)
     || (showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && !!strings.saveAsNewRecipeHint)
     || (isEditingSavedRecipeDirectly && !!strings.editingSavedRecipeHint)
-    || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction);
+    || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction)
+    || (canEnterEditMode && !!onEnterEditMode && !!strings.editRecipeAction);
 
   useEffect(() => {
     const previousCount = previousRowCountRef.current;
@@ -435,6 +447,14 @@ export function MealRecipeDetailSheet({
                   disabled={isActionPending || isRecipeLoading}
                 />
               ) : null}
+              {canEnterEditMode && onEnterEditMode && strings.editRecipeAction ? (
+                <AppButton
+                  title={strings.editRecipeAction}
+                  onPress={onEnterEditMode}
+                  variant="ghost"
+                  disabled={isActionPending || isRecipeLoading}
+                />
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -456,20 +476,6 @@ export function MealRecipeDetailSheet({
                       <Text style={styles.readOnlyValue}>{resolvedTitle}</Text>
                     </View>
                   </>
-                ) : isImportDraft ? (
-                  <View style={styles.subSection}>
-                    <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
-                    <View style={styles.reviewTitleWrap}>
-                      <AppInput
-                        placeholder={strings.recipeNamePlaceholder}
-                        value={recipeTitle}
-                        onChangeText={onChangeRecipeTitle}
-                        multiline
-                        editable
-                        style={[styles.embeddedInput, styles.reviewTitleInput]}
-                      />
-                    </View>
-                  </View>
                 ) : (
                   <EditableField
                     label={strings.recipeNameLabel}
@@ -516,11 +522,9 @@ export function MealRecipeDetailSheet({
                     <Text style={styles.readOnlyEmpty}>No ingredients saved on this recipe.</Text>
                   </View>
                 ) : (
-                  isImportDraft ? <Subtle>{strings.ingredientsEmptyState}</Subtle> : (
-                    <View style={styles.emptyStateCard}>
-                      <Text style={styles.emptyStateText}>{strings.ingredientsEmptyState}</Text>
-                    </View>
-                  )
+                  <View style={styles.emptyStateCard}>
+                    <Text style={styles.emptyStateText}>{strings.ingredientsEmptyState}</Text>
+                  </View>
                 )
               ) : null}
 
@@ -546,7 +550,7 @@ export function MealRecipeDetailSheet({
               ) : null}
             </View>
 
-            <View style={[styles.section, isImportDraft ? styles.reviewSecondarySection : null]}>
+            <View style={styles.section}>
               {isContentReadOnly ? (
                 <View style={styles.subSection}>
                   <Text style={styles.sectionTitle}>{strings.recipeInstructionsLabel}</Text>
@@ -584,11 +588,9 @@ export function MealRecipeDetailSheet({
                   multiline
                   cardStyle={[
                     styles.instructionsCard,
-                    isImportDraft ? styles.reviewInstructionCard : null,
                   ]}
                   inputStyle={[
                     styles.instructionsInput,
-                    isImportDraft ? styles.reviewInstructionsInput : null,
                   ]}
                 />
               )}
@@ -612,7 +614,6 @@ export function MealRecipeDetailSheet({
             <View
               style={[
                 styles.section,
-                isImportDraft ? styles.reviewTertiarySection : null,
                 isContentFirstEditor ? styles.secondarySection : null,
               ]}
             >
@@ -634,9 +635,8 @@ export function MealRecipeDetailSheet({
                   cardStyle={[
                     styles.noteCard,
                     isContentFirstEditor ? styles.secondaryEditorCard : null,
-                    isImportDraft ? styles.reviewSecondaryCard : null,
                   ]}
-                  inputStyle={[styles.noteInput, isImportDraft ? styles.reviewNoteInput : null]}
+                  inputStyle={styles.noteInput}
                 />
               )}
             </View>
@@ -646,7 +646,7 @@ export function MealRecipeDetailSheet({
                 style={[
                   styles.section,
                   !isContentFirstEditor ? styles.metadataSection : null,
-                  isImportDraft ? styles.reviewTertiarySection : null,
+                  isContentFirstEditor ? styles.secondarySection : null,
                 ]}
               >
                 {isContentReadOnly ? (
@@ -670,7 +670,7 @@ export function MealRecipeDetailSheet({
                 ) : (
                   <>
                     <View style={styles.sectionCopy}>
-                      <Text style={isImportDraft ? styles.fieldLabel : styles.sectionTitle}>
+                      <Text style={styles.sectionTitle}>
                         {isImportDraft && strings.importReviewSourceSummaryTitle
                           ? strings.importReviewSourceSummaryTitle
                           : strings.recipeContentLabel}
@@ -681,20 +681,19 @@ export function MealRecipeDetailSheet({
                         </Text>
                       ) : null}
                     </View>
-                    <View style={[styles.metadataFields, isImportDraft ? styles.reviewMetadataFields : null]}>
+                    <View style={styles.metadataFields}>
                       <View style={styles.metadataField}>
                         <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
                         <View style={[
                           styles.metadataInputWrap,
                           isContentFirstEditor ? styles.secondaryMetadataInputWrap : null,
-                          isImportDraft ? styles.reviewMetadataInputWrap : null,
                         ]}>
                           <AppInput
                             placeholder={strings.recipeSourcePlaceholder}
                             value={recipeSource}
                             onChangeText={onChangeRecipeSource}
                             editable
-                            style={[styles.metadataInput, isImportDraft ? styles.reviewMetadataInput : null]}
+                            style={styles.metadataInput}
                           />
                         </View>
                       </View>
@@ -704,7 +703,6 @@ export function MealRecipeDetailSheet({
                           <View style={[
                             styles.metadataInputWrap,
                             isContentFirstEditor ? styles.secondaryMetadataInputWrap : null,
-                            isImportDraft ? styles.reviewMetadataInputWrap : null,
                           ]}>
                             <AppInput
                               placeholder={strings.recipeSourceUrlPlaceholder}
@@ -712,11 +710,7 @@ export function MealRecipeDetailSheet({
                               onChangeText={onChangeRecipeSourceUrl}
                               keyboardType="url"
                               editable
-                              style={[
-                                styles.metadataInput,
-                                isImportDraft ? styles.reviewMetadataInput : null,
-                                isImportDraft ? styles.reviewUrlInput : null,
-                              ]}
+                              style={styles.metadataInput}
                             />
                           </View>
                         </View>
@@ -729,17 +723,7 @@ export function MealRecipeDetailSheet({
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            <View style={[styles.actionsSection, isImportDraft ? styles.reviewCompletionSection : null]}>
-              {canEnterEditMode && onEnterEditMode && strings.editRecipeAction ? (
-                <AppButton
-                  title={strings.editRecipeAction}
-                  onPress={onEnterEditMode}
-                  variant="secondary"
-                  fullWidth
-                  disabled={isActionPending || isRecipeLoading}
-                />
-              ) : null}
-
+            <View style={styles.actionsSection}>
               {onSave && strings.saveRecipe && !isContentReadOnly ? (
                 <AppButton
                   title={isSaving && strings.savingRecipe ? strings.savingRecipe : strings.saveRecipe}
