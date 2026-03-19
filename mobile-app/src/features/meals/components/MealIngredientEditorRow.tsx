@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppChip, AppInput } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -23,6 +23,7 @@ export type MealIngredientEditorRowStrings = {
 type Props = {
   row: MealIngredientRow;
   isActive: boolean;
+  autoFocusField?: 'name' | 'quantity';
   isReadOnly?: boolean;
   isImportDraft?: boolean;
   isMarkedReviewed?: boolean;
@@ -32,6 +33,7 @@ type Props = {
   onChangeName: (value: string) => void;
   onChangeQuantity: (value: string) => void;
   onToggleUnit: (value: typeof MEAL_INGREDIENT_UNIT_OPTIONS[number]['value']) => void;
+  onContinue?: () => void;
   onToggleReviewed?: () => void;
   strings: MealIngredientEditorRowStrings;
 };
@@ -126,6 +128,7 @@ export function isMealIngredientRowEffectivelyEmpty(row: MealIngredientRow) {
 export function MealIngredientEditorRow({
   row,
   isActive,
+  autoFocusField = 'name',
   isReadOnly = false,
   isImportDraft = false,
   isMarkedReviewed = false,
@@ -135,10 +138,13 @@ export function MealIngredientEditorRow({
   onChangeName,
   onChangeQuantity,
   onToggleUnit,
+  onContinue,
   onToggleReviewed,
   strings,
 }: Props) {
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
+  const nameInputRef = useRef<any>(null);
+  const quantityInputRef = useRef<any>(null);
   const isEffectivelyEmpty = isMealIngredientRowEffectivelyEmpty(row);
   const isExpanded = isActive || isEffectivelyEmpty;
   const meta = formatIngredientMeta(row);
@@ -156,6 +162,22 @@ export function MealIngredientEditorRow({
 
     return () => clearTimeout(timeoutId);
   }, [isDeleteArmed]);
+
+  useEffect(() => {
+    if (!isExpanded || !isActive || isReadOnly) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (autoFocusField === 'quantity' && quantityInputRef.current) {
+        quantityInputRef.current.focus();
+        return;
+      }
+      nameInputRef.current?.focus();
+    }, 40);
+
+    return () => clearTimeout(timeoutId);
+  }, [autoFocusField, isActive, isExpanded, isReadOnly]);
 
   function handleRemovePress() {
     if (!isDeleteArmed) {
@@ -289,11 +311,15 @@ export function MealIngredientEditorRow({
     ]}>
       <View style={styles.expandedTopRow}>
         <AppInput
+          ref={nameInputRef}
           placeholder={strings.ingredientNamePlaceholder}
           value={row.name}
           onChangeText={onChangeName}
           onFocus={onActivate}
-          autoFocus={isEffectivelyEmpty && isActive}
+          autoFocus={isEffectivelyEmpty && isActive && autoFocusField === 'name'}
+          blurOnSubmit={false}
+          onSubmitEditing={() => quantityInputRef.current?.focus()}
+          returnKeyType="next"
           style={[styles.ingredientNameInput, styles.lightInput]}
         />
         <View style={styles.expandedActions}>
@@ -332,11 +358,15 @@ export function MealIngredientEditorRow({
 
       <View style={styles.expandedSecondaryRow}>
         <AppInput
+          ref={quantityInputRef}
           placeholder={strings.quantityPlaceholder}
           value={row.quantityText}
           onChangeText={onChangeQuantity}
           onFocus={onActivate}
           keyboardType="decimal-pad"
+          autoFocus={isActive && autoFocusField === 'quantity'}
+          onSubmitEditing={onContinue}
+          returnKeyType="next"
           style={[styles.quantityInput, styles.lightInput]}
         />
       </View>

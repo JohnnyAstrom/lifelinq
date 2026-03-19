@@ -205,6 +205,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeInstructionsPlaceholder: 'Add the cooking steps or preparation notes',
     recipeInstructionsHint: 'Keep the main cooking flow easy to scan and adjust.',
     importInstructionsHint: 'Read through once and tweak only what feels off.',
+    instructionStepCount: (count: number) => `${count} ${count === 1 ? 'step' : 'steps'}`,
+    instructionAddNextStep: 'Add next step',
     saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
     editingSavedRecipeHint: 'Changes now update the saved recipe itself.',
     ingredientsLabel: 'Ingredients',

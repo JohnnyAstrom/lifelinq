@@ -57,6 +57,8 @@ type Strings = MealIngredientEditorRowStrings & {
   recipeInstructionsPlaceholder: string;
   recipeInstructionsHint?: string;
   importInstructionsHint?: string;
+  instructionStepCount?: (count: number) => string;
+  instructionAddNextStep?: string;
   ingredientsLabel: string;
   ingredientsRecipeHint?: string;
   importedIngredientsHint?: string;
@@ -96,6 +98,13 @@ function getInstructionSteps(value: string) {
 
   const numberedSteps = lines.filter((line) => /^\d+[\.\)]\s+/.test(line));
   return numberedSteps.length >= 2 ? numberedSteps : [];
+}
+
+function getEditableInstructionLines(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 }
 
 type ReadOnlyFieldProps = {
@@ -307,7 +316,9 @@ export function MealRecipeDetailSheet({
   strings,
 }: Props) {
   const scrollRef = useRef<ScrollView | null>(null);
+  const instructionsInputRef = useRef<any>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [activeRowFocusField, setActiveRowFocusField] = useState<'name' | 'quantity'>('name');
   const [reviewedImportRowIds, setReviewedImportRowIds] = useState<string[]>([]);
   const previousRowCountRef = useRef(ingredientRows.length);
   const resolvedTitle = recipeTitle.trim().length > 0
@@ -330,6 +341,8 @@ export function MealRecipeDetailSheet({
     ? getHostnameLabel(normalizedSourceUrl)
     : null;
   const instructionSteps = getInstructionSteps(recipeInstructions);
+  const editableInstructionLines = getEditableInstructionLines(recipeInstructions);
+  const instructionLineCount = editableInstructionLines.length;
   const isContentReadOnly = isArchivedRecipe || isReadOnlyMode;
   const showReadableInstructionSteps = instructionSteps.length > 1;
   const isContentFirstEditor = useContentFirstEditor && !isContentReadOnly;
@@ -364,7 +377,21 @@ export function MealRecipeDetailSheet({
     || (showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && !!strings.saveAsNewRecipeHint)
     || (isEditingSavedRecipeDirectly && !!strings.editingSavedRecipeHint)
     || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction)
-    || (canEnterEditMode && !!onEnterEditMode && !!strings.editRecipeAction);
+      || (canEnterEditMode && !!onEnterEditMode && !!strings.editRecipeAction);
+
+  function scheduleScrollToIngredientEditor() {
+    const firstTimeout = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 40);
+    const secondTimeout = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 220);
+
+    return () => {
+      clearTimeout(firstTimeout);
+      clearTimeout(secondTimeout);
+    };
+  }
 
   useEffect(() => {
     const previousCount = previousRowCountRef.current;
@@ -378,11 +405,10 @@ export function MealRecipeDetailSheet({
     }
 
     if (ingredientRows.length > previousCount) {
-      setActiveRowId(ingredientRows[ingredientRows.length - 1]?.id ?? null);
-      const timeoutId = setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 40);
-      return () => clearTimeout(timeoutId);
+      const nextRowId = ingredientRows[ingredientRows.length - 1]?.id ?? null;
+      setActiveRowId(nextRowId);
+      setActiveRowFocusField('name');
+      return scheduleScrollToIngredientEditor();
     }
 
     if (activeRowId === null) {
@@ -396,6 +422,7 @@ export function MealRecipeDetailSheet({
 
     const firstEmptyRow = ingredientRows.find((row) => isMealIngredientRowEffectivelyEmpty(row));
     setActiveRowId(firstEmptyRow?.id ?? null);
+    setActiveRowFocusField('name');
   }, [ingredientRows, activeRowId]);
 
   useEffect(() => {
@@ -418,6 +445,39 @@ export function MealRecipeDetailSheet({
     setReviewedImportRowIds((current) => current.includes(rowId)
       ? current.filter((existingId) => existingId !== rowId)
       : [...current, rowId]);
+  }
+
+  function handleAddNextInstructionStep() {
+    const nextStepNumber = instructionLineCount + 1;
+    const nextValue = instructionLineCount === 0
+      ? `${nextStepNumber}. `
+      : `${recipeInstructions.trimEnd()}\n${nextStepNumber}. `;
+
+    onChangeRecipeInstructions(nextValue);
+    setTimeout(() => {
+      instructionsInputRef.current?.focus();
+    }, 40);
+  }
+
+  function activateIngredientRow(rowId: string, focusField: 'name' | 'quantity' = 'name') {
+    setActiveRowId(rowId);
+    setActiveRowFocusField(focusField);
+  }
+
+  function handleContinueFromIngredientRow(rowId: string) {
+    const currentIndex = ingredientRows.findIndex((row) => row.id === rowId);
+    if (currentIndex < 0) {
+      return;
+    }
+
+    const nextRow = ingredientRows[currentIndex + 1];
+    if (nextRow) {
+      activateIngredientRow(nextRow.id, 'name');
+      scheduleScrollToIngredientEditor();
+      return;
+    }
+
+    onAddIngredientRow();
   }
 
   return (
@@ -557,16 +617,18 @@ export function MealRecipeDetailSheet({
                       key={row.id}
                       row={row}
                       isActive={row.id === activeRowId}
+                      autoFocusField={row.id === activeRowId ? activeRowFocusField : 'name'}
                       isReadOnly={isContentReadOnly}
                       isImportDraft={isImportDraft}
                       isMarkedReviewed={reviewedImportRowIds.includes(row.id)}
-                      onActivate={() => setActiveRowId(row.id)}
+                      onActivate={() => activateIngredientRow(row.id)}
                       onCollapse={() => setActiveRowId(null)}
                       onToggleReviewed={() => toggleImportedRowReviewed(row.id)}
                       onRemove={() => onRemoveIngredientRow(row.id)}
                       onChangeName={(value) => onChangeIngredientName(row.id, value)}
                       onChangeQuantity={(value) => onChangeIngredientQuantity(row.id, value)}
                       onToggleUnit={(value) => onToggleIngredientUnit(row.id, value)}
+                      onContinue={() => handleContinueFromIngredientRow(row.id)}
                       strings={strings}
                     />
                   ))}
@@ -602,22 +664,48 @@ export function MealRecipeDetailSheet({
                     </View>
                   )}
                 </View>
-              ) : (
-                <EditableField
-                  label={strings.recipeInstructionsLabel}
-                  hint={isImportDraft ? strings.importInstructionsHint ?? strings.recipeInstructionsHint : strings.recipeInstructionsHint}
-                  placeholder={strings.recipeInstructionsPlaceholder}
-                  value={recipeInstructions}
-                  onChangeText={onChangeRecipeInstructions}
-                  multiline
-                  cardStyle={[
-                    styles.instructionsCard,
-                  ]}
-                  inputStyle={[
-                    styles.instructionsInput,
-                  ]}
-                />
-              )}
+                ) : (
+                  <View style={styles.subSection}>
+                    <View style={styles.sectionCopy}>
+                      <Text style={styles.sectionTitle}>{strings.recipeInstructionsLabel}</Text>
+                      {isImportDraft ? (
+                        strings.importInstructionsHint ?? strings.recipeInstructionsHint ? (
+                          <Text style={styles.sectionHint}>
+                            {strings.importInstructionsHint ?? strings.recipeInstructionsHint}
+                          </Text>
+                        ) : null
+                      ) : strings.recipeInstructionsHint ? (
+                        <Text style={styles.sectionHint}>{strings.recipeInstructionsHint}</Text>
+                      ) : null}
+                    </View>
+                    <View style={styles.instructionsToolbar}>
+                      {instructionLineCount > 0 && strings.instructionStepCount ? (
+                        <Text style={styles.instructionsToolbarText}>
+                          {strings.instructionStepCount(instructionLineCount)}
+                        </Text>
+                      ) : null}
+                      {strings.instructionAddNextStep ? (
+                        <AppButton
+                          title={strings.instructionAddNextStep}
+                          onPress={handleAddNextInstructionStep}
+                          variant="ghost"
+                          disabled={isActionPending}
+                        />
+                      ) : null}
+                    </View>
+                    <View style={[styles.editorCard, styles.instructionsCard]}>
+                      <AppInput
+                        ref={instructionsInputRef}
+                        placeholder={strings.recipeInstructionsPlaceholder}
+                        value={recipeInstructions}
+                        onChangeText={onChangeRecipeInstructions}
+                        multiline
+                        editable
+                        style={[styles.embeddedInput, styles.instructionsInput]}
+                      />
+                    </View>
+                  </View>
+                )}
               {!isContentReadOnly && showReadableInstructionSteps && !isContentFirstEditor ? (
                 <View style={styles.instructionsPreview}>
                   {instructionSteps.map((step, index) => (
@@ -963,6 +1051,17 @@ const styles = StyleSheet.create({
   },
   instructionsCard: {
     minHeight: 120,
+  },
+  instructionsToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  instructionsToolbarText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    flex: 1,
   },
   noteCard: {
     minHeight: 72,
