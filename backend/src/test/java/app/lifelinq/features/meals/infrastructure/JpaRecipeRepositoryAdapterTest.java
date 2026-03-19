@@ -121,6 +121,7 @@ class JpaRecipeRepositoryAdapterTest {
                 Instant.parse("2026-02-01T10:00:00Z"),
                 Instant.parse("2026-02-01T10:00:00Z"),
                 null,
+                true,
                 List.of()
         ));
         repository.save(new Recipe(
@@ -135,6 +136,7 @@ class JpaRecipeRepositoryAdapterTest {
                 Instant.parse("2026-02-01T10:00:00Z"),
                 Instant.parse("2026-02-03T10:00:00Z"),
                 Instant.parse("2026-02-03T10:00:00Z"),
+                true,
                 List.of()
         ));
 
@@ -166,6 +168,7 @@ class JpaRecipeRepositoryAdapterTest {
                 Instant.parse("2026-02-01T10:00:00Z"),
                 Instant.parse("2026-02-03T10:00:00Z"),
                 Instant.parse("2026-02-03T10:00:00Z"),
+                true,
                 List.of()
         ));
 
@@ -272,6 +275,7 @@ class JpaRecipeRepositoryAdapterTest {
                 Instant.parse("2026-02-01T10:00:00Z"),
                 Instant.parse("2026-02-03T10:00:00Z"),
                 Instant.parse("2026-02-03T10:00:00Z"),
+                true,
                 List.of()
         );
 

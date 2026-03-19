@@ -549,6 +549,7 @@ class MealsApplicationServiceTest {
                 null,
                 null,
                 null,
+                null,
                 List.of(
                         new IngredientInput("Milk", null, null, 1),
                         new IngredientInput("Water", null, null, 1)
@@ -579,6 +580,7 @@ class MealsApplicationServiceTest {
                 "URL_IMPORT",
                 "Best for weekends",
                 "Mix ingredients\nBake for 20 minutes",
+                true,
                 List.of()
         );
 
@@ -589,6 +591,7 @@ class MealsApplicationServiceTest {
         assertThat(created.instructions()).isEqualTo("Mix ingredients\nBake for 20 minutes");
         assertThat(created.updatedAt()).isEqualTo(Instant.parse("2026-02-01T10:00:00Z"));
         assertThat(created.archivedAt()).isNull();
+        assertThat(created.savedInRecipes()).isTrue();
     }
 
     @Test
@@ -613,12 +616,14 @@ class MealsApplicationServiceTest {
                 null,
                 null,
                 null,
+                false,
                 List.of(new IngredientInput("  Olive   Oil  ", "2 tbsp olive oil", null, null, 1))
         );
 
         assertThat(created.ingredients()).hasSize(1);
         assertThat(created.ingredients().get(0).name()).isEqualTo("Olive Oil");
         assertThat(created.ingredients().get(0).rawText()).isEqualTo("2 tbsp olive oil");
+        assertThat(created.savedInRecipes()).isFalse();
     }
 
     @Test
@@ -688,6 +693,7 @@ class MealsApplicationServiceTest {
                 Instant.parse("2026-03-10T09:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
+                true,
                 List.of()
         ));
 
@@ -723,6 +729,7 @@ class MealsApplicationServiceTest {
                 Instant.parse("2026-03-10T09:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
+                true,
                 List.of()
         ));
 
@@ -762,6 +769,7 @@ class MealsApplicationServiceTest {
                 Instant.parse("2026-03-10T09:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
+                true,
                 List.of()
         ));
         service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, null, null);
@@ -799,6 +807,7 @@ class MealsApplicationServiceTest {
                 Instant.parse("2026-03-10T09:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
+                true,
                 List.of()
         ));
 
@@ -863,6 +872,7 @@ class MealsApplicationServiceTest {
                 Instant.parse("2026-03-10T09:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
+                true,
                 List.of()
         ));
         service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, null, null);
@@ -900,6 +910,7 @@ class MealsApplicationServiceTest {
                 Instant.parse("2026-03-10T09:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
                 Instant.parse("2026-03-18T10:00:00Z"),
+                true,
                 List.of()
         ));
         service.addOrReplaceMeal(groupId, userId, 2026, 11, 1, MealType.DINNER, recipeId, null, null);

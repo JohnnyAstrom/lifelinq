@@ -329,6 +329,7 @@ class MealsControllerTest {
                 "URL_IMPORT",
                 "Quick favorite",
                 "Boil water\nCook pasta",
+                null,
                 List.of()
         )).thenReturn(new RecipeView(
                 recipeId,
@@ -342,6 +343,7 @@ class MealsControllerTest {
                 Instant.parse("2026-03-17T10:00:00Z"),
                 Instant.parse("2026-03-17T10:15:00Z"),
                 null,
+                true,
                 false,
                 "Recipe must be archived before you can delete it.",
                 List.of()
@@ -378,6 +380,7 @@ class MealsControllerTest {
                 "URL_IMPORT",
                 "Quick favorite",
                 "Boil water\nCook pasta",
+                null,
                 List.of()
         );
     }
@@ -403,6 +406,7 @@ class MealsControllerTest {
                         Instant.parse("2026-03-10T09:00:00Z"),
                         Instant.parse("2026-03-18T10:00:00Z"),
                         Instant.parse("2026-03-18T10:00:00Z"),
+                        true,
                         true,
                         null,
                         List.of()
@@ -438,6 +442,7 @@ class MealsControllerTest {
                         Instant.parse("2026-03-10T09:00:00Z"),
                         Instant.parse("2026-03-18T10:00:00Z"),
                         Instant.parse("2026-03-18T10:00:00Z"),
+                        true,
                         false,
                         "This recipe is still used in planned meals.",
                         List.of()
@@ -473,6 +478,7 @@ class MealsControllerTest {
                         Instant.parse("2026-03-10T09:00:00Z"),
                         Instant.parse("2026-03-20T10:00:00Z"),
                         null,
+                        true,
                         false,
                         "Recipe must be archived before you can delete it.",
                         List.of()
