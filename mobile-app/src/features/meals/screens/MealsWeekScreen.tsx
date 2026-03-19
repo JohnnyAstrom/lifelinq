@@ -204,14 +204,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeInstructionsLabel: 'Instructions',
     recipeInstructionsPlaceholder: 'Add the cooking steps or preparation notes',
     recipeInstructionsHint: 'Keep the main cooking flow easy to scan and adjust.',
-    importInstructionsHint: 'Read through once and tweak only what needs it.',
+    importInstructionsHint: 'Read through once and tweak only what feels off.',
     saveAsNewRecipeHint: 'The saved recipe stays unchanged.',
     editingSavedRecipeHint: 'Changes now update the saved recipe itself.',
     ingredientsLabel: 'Ingredients',
     ingredientsRecipeHint: 'Keep the ingredient list ready with this recipe.',
     savedRecipeIngredientsHint: 'These ingredients stay with this saved recipe.',
     mealDetailsIngredientsHint: undefined,
-    importedIngredientsHint: 'Check any marked ingredients, then save when it looks good.',
+    importedIngredientsHint: undefined,
     importReviewLabel: 'Imported draft',
     importReviewHint: 'Start with the ingredients.',
     recipePickerTitle: 'Attach saved recipe',
@@ -231,7 +231,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     savedRecipeContextHint: 'Reusable recipe in Recipes.',
     newSavedRecipeContextHint: 'Create a reusable recipe in Recipes.',
     importDraftSubtitle: 'Imported recipe draft',
-    importDraftContextHint: 'Mostly ready to save. Check any marked ingredients first.',
+    importDraftContextHint: undefined,
     importReviewSourceSummaryTitle: 'Original page',
     importReviewSourceSummaryHint: 'Original page details',
     importReviewSourceEmpty: 'No source name came through from this import.',
@@ -263,8 +263,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     addIngredient: 'Add ingredient',
     removeIngredient: 'Remove',
     importedIngredientHint: 'Original line:',
-    importedIngredientNeedsReviewHint: 'Worth a quick check',
-    importedIngredientReviewTag: 'Check',
+    importedIngredientNeedsReviewHint: undefined,
+    importedIngredientReviewTag: undefined,
+    importedIngredientMarkDone: 'Mark reviewed',
+    importedIngredientReviewed: 'Reviewed',
     collapseIngredient: 'Collapse row',
     loadingIngredients: 'Loading ingredients...',
     shoppingLabel: 'Shopping',
@@ -1120,10 +1122,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             importReviewHint: undefined,
             importReviewSummary: recipesWorkspace.recipeDetail.isImportDraft
               ? (count: number) => count === 0
-                ? 'Ready to save'
+                ? 'Review done. Ready to save.'
                 : count === 1
-                  ? '1 ingredient to check'
-                  : `${count} ingredients to check`
+                  ? '1 left to review'
+                  : `${count} left to review`
               : undefined,
             importReviewSourceSummaryTitle: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importReviewSourceSummaryTitle
@@ -1151,6 +1153,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : undefined,
             importedIngredientReviewTag: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importedIngredientReviewTag
+              : undefined,
+            importedIngredientMarkDone: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importedIngredientMarkDone
+              : undefined,
+            importedIngredientReviewed: recipesWorkspace.recipeDetail.isImportDraft
+              ? strings.importedIngredientReviewed
               : undefined,
             collapseIngredient: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.collapseIngredient
@@ -1296,6 +1304,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   periodNavButton: {
     width: 36,

@@ -16,6 +16,8 @@ export type MealIngredientEditorRowStrings = {
   importedIngredientHint?: string;
   importedIngredientNeedsReviewHint?: string;
   importedIngredientReviewTag?: string;
+  importedIngredientMarkDone?: string;
+  importedIngredientReviewed?: string;
 };
 
 type Props = {
@@ -23,12 +25,14 @@ type Props = {
   isActive: boolean;
   isReadOnly?: boolean;
   isImportDraft?: boolean;
+  isMarkedReviewed?: boolean;
   onActivate: () => void;
   onCollapse?: () => void;
   onRemove: () => void;
   onChangeName: (value: string) => void;
   onChangeQuantity: (value: string) => void;
   onToggleUnit: (value: typeof MEAL_INGREDIENT_UNIT_OPTIONS[number]['value']) => void;
+  onToggleReviewed?: () => void;
   strings: MealIngredientEditorRowStrings;
 };
 
@@ -124,12 +128,14 @@ export function MealIngredientEditorRow({
   isActive,
   isReadOnly = false,
   isImportDraft = false,
+  isMarkedReviewed = false,
   onActivate,
   onCollapse,
   onRemove,
   onChangeName,
   onChangeQuantity,
   onToggleUnit,
+  onToggleReviewed,
   strings,
 }: Props) {
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -137,8 +143,7 @@ export function MealIngredientEditorRow({
   const isExpanded = isActive || isEffectivelyEmpty;
   const meta = formatIngredientMeta(row);
   const importReview = isImportDraft ? getImportedIngredientReviewInfo(row) : null;
-  const importedFallbackHint = importReview?.reviewHint ?? null;
-  const needsImportReview = !!importReview?.needsReview;
+  const needsImportReview = !!importReview?.needsReview && !isMarkedReviewed;
 
   useEffect(() => {
     if (!isDeleteArmed) {
@@ -179,10 +184,30 @@ export function MealIngredientEditorRow({
             </Text>
           ) : null}
         </View>
-        {needsImportReview && strings.importedIngredientReviewTag ? (
-          <View style={styles.reviewPill}>
-            <Text style={styles.reviewPillText}>{strings.importedIngredientReviewTag}</Text>
-          </View>
+        {isImportDraft && (needsImportReview || isMarkedReviewed) ? (
+          <Pressable
+            onPress={onToggleReviewed}
+            accessibilityRole="button"
+            accessibilityLabel={isMarkedReviewed
+              ? (strings.importedIngredientReviewed ?? 'Reviewed')
+              : (strings.importedIngredientMarkDone ?? 'Mark done')}
+            style={({ pressed }) => [
+              styles.reviewPill,
+              isMarkedReviewed ? styles.reviewPillDone : styles.reviewPillNeedsReview,
+              pressed ? styles.reviewPillPressed : null,
+            ]}
+          >
+            <Ionicons
+              name={isMarkedReviewed ? 'checkmark-circle' : 'ellipse-outline'}
+              size={14}
+              color={isMarkedReviewed ? theme.colors.feature.meals : theme.colors.textSecondary}
+            />
+            <Text style={[styles.reviewPillText, isMarkedReviewed ? styles.reviewPillTextDone : null]}>
+              {isMarkedReviewed
+                ? (strings.importedIngredientReviewed ?? 'Done')
+                : (strings.importedIngredientMarkDone ?? 'Mark done')}
+            </Text>
+          </Pressable>
         ) : null}
       </View>
     );
@@ -210,10 +235,30 @@ export function MealIngredientEditorRow({
             </Text>
           ) : null}
         </View>
-        {needsImportReview && strings.importedIngredientReviewTag ? (
-          <View style={styles.reviewPill}>
-            <Text style={styles.reviewPillText}>{strings.importedIngredientReviewTag}</Text>
-          </View>
+        {isImportDraft && (needsImportReview || isMarkedReviewed) ? (
+          <Pressable
+            onPress={onToggleReviewed}
+            accessibilityRole="button"
+            accessibilityLabel={isMarkedReviewed
+              ? (strings.importedIngredientReviewed ?? 'Reviewed')
+              : (strings.importedIngredientMarkDone ?? 'Mark done')}
+            style={({ pressed }) => [
+              styles.reviewPill,
+              isMarkedReviewed ? styles.reviewPillDone : styles.reviewPillNeedsReview,
+              pressed ? styles.reviewPillPressed : null,
+            ]}
+          >
+            <Ionicons
+              name={isMarkedReviewed ? 'checkmark-circle' : 'ellipse-outline'}
+              size={14}
+              color={isMarkedReviewed ? theme.colors.feature.meals : theme.colors.textSecondary}
+            />
+            <Text style={[styles.reviewPillText, isMarkedReviewed ? styles.reviewPillTextDone : null]}>
+              {isMarkedReviewed
+                ? (strings.importedIngredientReviewed ?? 'Done')
+                : (strings.importedIngredientMarkDone ?? 'Mark done')}
+            </Text>
+          </Pressable>
         ) : null}
         <Pressable
           onPress={handleRemovePress}
@@ -240,6 +285,7 @@ export function MealIngredientEditorRow({
       styles.expandedRow,
       isActive ? styles.expandedRowActive : null,
       needsImportReview ? styles.expandedImportReviewRow : null,
+      isMarkedReviewed ? styles.expandedReviewedRow : null,
     ]}>
       <View style={styles.expandedTopRow}>
         <AppInput
@@ -297,18 +343,46 @@ export function MealIngredientEditorRow({
 
       {needsImportReview ? (
         <View style={styles.expandedReviewRow}>
-          {strings.importedIngredientReviewTag ? (
-            <View style={styles.reviewPill}>
-              <Text style={styles.reviewPillText}>{strings.importedIngredientReviewTag}</Text>
-            </View>
+          {onToggleReviewed ? (
+            <Pressable
+              onPress={onToggleReviewed}
+              accessibilityRole="button"
+              accessibilityLabel={strings.importedIngredientMarkDone ?? 'Mark done'}
+              style={({ pressed }) => [
+                styles.reviewPill,
+                styles.reviewPillNeedsReview,
+                pressed ? styles.reviewPillPressed : null,
+              ]}
+            >
+              <Ionicons name="ellipse-outline" size={14} color={theme.colors.textSecondary} />
+              <Text style={styles.reviewPillText}>
+                {strings.importedIngredientMarkDone ?? 'Mark done'}
+              </Text>
+            </Pressable>
           ) : null}
-          {importReview?.keptAsText && strings.importedIngredientNeedsReviewHint ? (
-            <Text style={styles.importReviewInline}>{strings.importedIngredientNeedsReviewHint}</Text>
-          ) : importedFallbackHint && strings.importedIngredientHint ? (
+          {!importReview?.keptAsText && importReview?.reviewHint && strings.importedIngredientHint ? (
             <Text style={styles.importReviewInline}>
-              {strings.importedIngredientHint} {importedFallbackHint}
+              {strings.importedIngredientHint} {importReview.reviewHint}
             </Text>
           ) : null}
+        </View>
+      ) : isMarkedReviewed ? (
+        <View style={styles.expandedReviewRow}>
+          <Pressable
+            onPress={onToggleReviewed}
+            accessibilityRole="button"
+            accessibilityLabel={strings.importedIngredientReviewed ?? 'Reviewed'}
+            style={({ pressed }) => [
+              styles.reviewPill,
+              styles.reviewPillDone,
+              pressed ? styles.reviewPillPressed : null,
+            ]}
+          >
+            <Ionicons name="checkmark-circle" size={14} color={theme.colors.feature.meals} />
+            <Text style={[styles.reviewPillText, styles.reviewPillTextDone]}>
+              {strings.importedIngredientReviewed ?? 'Done'}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -354,9 +428,10 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   importReviewRow: {
-    backgroundColor: theme.colors.surfaceSubtle,
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: theme.spacing.xs,
+    backgroundColor: 'transparent',
+    borderLeftWidth: 2,
+    borderLeftColor: theme.colors.feature.meals,
+    paddingLeft: theme.spacing.xs,
   },
   compactMain: {
     flex: 1,
@@ -372,15 +447,34 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   reviewPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
+  },
+  reviewPillNeedsReview: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.feature.meals,
+  },
+  reviewPillDone: {
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderColor: theme.colors.success,
+  },
+  reviewPillPressed: {
+    opacity: 0.82,
   },
   reviewPillText: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
     fontWeight: '600',
+  },
+  reviewPillTextDone: {
+    color: theme.colors.success,
   },
   expandedRow: {
     gap: theme.spacing.xs,
@@ -400,8 +494,16 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   expandedImportReviewRow: {
-    backgroundColor: theme.colors.surfaceSubtle,
+    backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
+    borderLeftWidth: 2,
+    borderLeftColor: theme.colors.feature.meals,
+  },
+  expandedReviewedRow: {
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderLeftWidth: 2,
+    borderLeftColor: theme.colors.success,
   },
   expandedTopRow: {
     flexDirection: 'row',
@@ -434,9 +536,10 @@ const styles = StyleSheet.create({
   },
   expandedReviewRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexWrap: 'wrap',
     gap: theme.spacing.xs,
+    paddingTop: 2,
   },
   importReviewInline: {
     ...textStyles.subtle,

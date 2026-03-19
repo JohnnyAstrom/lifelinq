@@ -308,6 +308,7 @@ export function MealRecipeDetailSheet({
 }: Props) {
   const scrollRef = useRef<ScrollView | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [reviewedImportRowIds, setReviewedImportRowIds] = useState<string[]>([]);
   const previousRowCountRef = useRef(ingredientRows.length);
   const resolvedTitle = recipeTitle.trim().length > 0
     ? recipeTitle.trim()
@@ -319,8 +320,9 @@ export function MealRecipeDetailSheet({
     ? ingredientRows.filter((row) => getImportedIngredientReviewInfo(row).needsReview)
     : [];
   const importReviewCount = importReviewRows.length;
-  const importReviewSummary = strings.importReviewSummary
-    ? strings.importReviewSummary(importReviewCount)
+  const pendingImportReviewCount = importReviewRows.filter((row) => !reviewedImportRowIds.includes(row.id)).length;
+  const importReviewSummary = importReviewCount > 0 && strings.importReviewSummary
+    ? strings.importReviewSummary(pendingImportReviewCount)
     : null;
   const hasIngredientRows = ingredientRows.length > 0;
   const normalizedSourceUrl = recipeSourceUrl?.trim() ?? '';
@@ -396,6 +398,28 @@ export function MealRecipeDetailSheet({
     setActiveRowId(firstEmptyRow?.id ?? null);
   }, [ingredientRows, activeRowId]);
 
+  useEffect(() => {
+    if (!isImportDraft) {
+      setReviewedImportRowIds((current) => current.length > 0 ? [] : current);
+      return;
+    }
+
+    const reviewableRowIds = new Set(importReviewRows.map((row) => row.id));
+    setReviewedImportRowIds((current) => {
+      const next = current.filter((rowId) => reviewableRowIds.has(rowId));
+      return next.length === current.length ? current : next;
+    });
+  }, [importReviewRows, isImportDraft]);
+
+  function toggleImportedRowReviewed(rowId: string) {
+    if (!isImportDraft) {
+      return;
+    }
+    setReviewedImportRowIds((current) => current.includes(rowId)
+      ? current.filter((existingId) => existingId !== rowId)
+      : [...current, rowId]);
+  }
+
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
@@ -417,9 +441,7 @@ export function MealRecipeDetailSheet({
           {hasHeaderMetaContent ? (
             <View style={styles.headerMeta}>
               {isImportDraft && importReviewSummary ? (
-                <View style={styles.reviewSummaryPill}>
-                  <Text style={styles.reviewSummaryPillText}>{importReviewSummary}</Text>
-                </View>
+                <Text style={styles.reviewProgressText}>{importReviewSummary}</Text>
               ) : null}
               {showIdentityBadge ? (
                 <View style={styles.identityBadge}>
@@ -537,8 +559,10 @@ export function MealRecipeDetailSheet({
                       isActive={row.id === activeRowId}
                       isReadOnly={isContentReadOnly}
                       isImportDraft={isImportDraft}
+                      isMarkedReviewed={reviewedImportRowIds.includes(row.id)}
                       onActivate={() => setActiveRowId(row.id)}
                       onCollapse={() => setActiveRowId(null)}
+                      onToggleReviewed={() => toggleImportedRowReviewed(row.id)}
                       onRemove={() => onRemoveIngredientRow(row.id)}
                       onChangeName={(value) => onChangeIngredientName(row.id, value)}
                       onChangeQuantity={(value) => onChangeIngredientQuantity(row.id, value)}
@@ -1124,17 +1148,9 @@ const styles = StyleSheet.create({
   ingredientList: {
     gap: theme.spacing.xs,
   },
-  reviewSummaryPill: {
-    alignSelf: 'flex-start',
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 4,
-    backgroundColor: theme.colors.surfaceSubtle,
-  },
-  reviewSummaryPillText: {
+  reviewProgressText: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
-    fontWeight: '600',
   },
   emptyStateCard: {
     borderWidth: 1,
