@@ -3,6 +3,7 @@ import { getApiBaseUrl } from './apiConfig';
 
 export type ApiClientOptions = {
   token?: string | null;
+  suppressErrorLoggingStatuses?: number[];
 };
 
 let refreshInFlight: Promise<string | null> | null = null;
@@ -64,6 +65,7 @@ export async function fetchJson<T>(
   }
 
   const token = clientOptions.token ?? (await getToken());
+  const suppressErrorLoggingStatuses = clientOptions.suppressErrorLoggingStatuses ?? [];
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -91,11 +93,13 @@ export async function fetchJson<T>(
     if (!retriedResponse.ok) {
       const text = await retriedResponse.text();
       const error = new ApiError(retriedResponse.status, text);
-      console.error('API error', {
-        url: `${baseUrl}${path}`,
-        status: retriedResponse.status,
-        body: text,
-      });
+      if (!suppressErrorLoggingStatuses.includes(retriedResponse.status)) {
+        console.error('API error', {
+          url: `${baseUrl}${path}`,
+          status: retriedResponse.status,
+          body: text,
+        });
+      }
       throw error;
     }
     if (retriedResponse.status === 204) {
@@ -107,12 +111,14 @@ export async function fetchJson<T>(
   if (!response.ok) {
     const text = await response.text();
     const error = new ApiError(response.status, text);
-    // Dev-friendly logging to surface API failures during debugging.
-    console.error('API error', {
-      url: `${baseUrl}${path}`,
-      status: response.status,
-      body: text,
-    });
+    if (!suppressErrorLoggingStatuses.includes(response.status)) {
+      // Dev-friendly logging to surface API failures during debugging.
+      console.error('API error', {
+        url: `${baseUrl}${path}`,
+        status: response.status,
+        body: text,
+      });
+    }
     throw error;
   }
 

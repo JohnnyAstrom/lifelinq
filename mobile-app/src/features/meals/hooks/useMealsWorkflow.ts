@@ -318,7 +318,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
 
     setIsRecipeLoading(true);
 
-    void getRecipe(selectedMealRecipeId, { token })
+    void getRecipe(selectedMealRecipeId, {
+      token,
+      suppressErrorLoggingStatuses: [404],
+    })
       .then((recipe) => {
         if (cancelled) {
           return;
