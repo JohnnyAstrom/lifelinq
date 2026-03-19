@@ -31,6 +31,10 @@ final class RecipeImportHtmlParser {
             "^(?:step\\s*\\d+[:.)-]?|\\d+[.)-])\\s*",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern INLINE_NUMBERED_STEP_PATTERN = Pattern.compile(
+            "(?:^|\\s)(?:step\\s*)?\\d+[.):-]\\s+",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private final ObjectMapper objectMapper;
 
@@ -49,8 +53,14 @@ final class RecipeImportHtmlParser {
                 textValue(structuredRecipe.get("name")),
                 metadata.title()
         );
-        List<String> ingredients = extractIngredientLines(structuredRecipe.get("recipeIngredient"));
-        String instructions = extractInstructions(structuredRecipe.get("recipeInstructions"));
+        List<String> ingredients = extractIngredientLines(firstNonNull(
+                structuredRecipe.get("recipeIngredient"),
+                structuredRecipe.get("ingredients")
+        ));
+        String instructions = extractInstructions(firstNonNull(
+                structuredRecipe.get("recipeInstructions"),
+                structuredRecipe.get("instructions")
+        ));
         String sourceName = firstNonBlank(
                 extractSourceName(structuredRecipe),
                 metadata.siteName(),
@@ -164,20 +174,48 @@ final class RecipeImportHtmlParser {
         }
         if (ingredientsNode.isArray()) {
             for (JsonNode ingredientNode : ingredientsNode) {
-                if (ingredientNode.isTextual()) {
-                    appendNormalizedIngredientText(ingredientNode.asText(), ingredients);
-                    continue;
-                }
-                if (ingredientNode.isObject()) {
-                    String ingredient = firstNonBlank(
-                            textValue(ingredientNode.get("text")),
-                            textValue(ingredientNode.get("name"))
-                    );
-                    appendNormalizedIngredientText(ingredient, ingredients);
-                }
+                appendIngredientNode(ingredientNode, ingredients);
             }
+            return ingredients;
+        }
+        if (ingredientsNode.isObject()) {
+            appendIngredientNode(ingredientsNode, ingredients);
         }
         return ingredients;
+    }
+
+    private void appendIngredientNode(JsonNode ingredientNode, List<String> ingredients) {
+        if (ingredientNode == null || ingredientNode.isNull()) {
+            return;
+        }
+        if (ingredientNode.isTextual()) {
+            appendNormalizedIngredientText(ingredientNode.asText(), ingredients);
+            return;
+        }
+        if (ingredientNode.isArray()) {
+            for (JsonNode child : ingredientNode) {
+                appendIngredientNode(child, ingredients);
+            }
+            return;
+        }
+        if (ingredientNode.isObject()) {
+            String ingredient = firstNonBlank(
+                    textValue(ingredientNode.get("text")),
+                    textValue(ingredientNode.get("name")),
+                    textValue(ingredientNode.get("value"))
+            );
+            appendNormalizedIngredientText(ingredient, ingredients);
+
+            JsonNode item = ingredientNode.get("item");
+            if (item != null) {
+                appendIngredientNode(item, ingredients);
+            }
+
+            JsonNode itemListElement = ingredientNode.get("itemListElement");
+            if (itemListElement != null) {
+                appendIngredientNode(itemListElement, ingredients);
+            }
+        }
     }
 
     private String extractInstructions(JsonNode instructionsNode) {
@@ -185,7 +223,7 @@ final class RecipeImportHtmlParser {
             return null;
         }
         if (instructionsNode.isTextual()) {
-            return normalizeInstructions(instructionsNode.asText());
+            return normalizeInstructionBlob(instructionsNode.asText());
         }
         List<String> steps = new ArrayList<>();
         collectInstructionSteps(instructionsNode, steps);
@@ -208,10 +246,7 @@ final class RecipeImportHtmlParser {
             return;
         }
         if (node.isTextual()) {
-            String normalized = normalizeInstructionStep(node.asText());
-            if (normalized != null) {
-                steps.add(normalized);
-            }
+            appendInstructionText(node.asText(), steps);
             return;
         }
         if (node.isArray()) {
@@ -223,12 +258,20 @@ final class RecipeImportHtmlParser {
         if (node.isObject()) {
             String text = firstNonBlank(
                     textValue(node.get("text")),
-                    textValue(node.get("name"))
+                    textValue(node.get("name")),
+                    textValue(node.get("value"))
             );
-            String normalized = normalizeInstructionStep(text);
-            if (normalized != null) {
-                steps.add(normalized);
+            int before = steps.size();
+            appendInstructionText(text, steps);
+            if (steps.size() > before) {
                 return;
+            }
+            JsonNode item = node.get("item");
+            if (item != null) {
+                collectInstructionSteps(item, steps);
+                if (steps.size() > before) {
+                    return;
+                }
             }
             JsonNode itemListElement = node.get("itemListElement");
             if (itemListElement != null) {
@@ -318,6 +361,87 @@ final class RecipeImportHtmlParser {
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private String normalizeInstructionBlob(String value) {
+        List<String> steps = splitInstructionText(value);
+        if (steps.isEmpty()) {
+            return null;
+        }
+        if (steps.size() == 1) {
+            return steps.get(0);
+        }
+
+        List<String> numberedSteps = new ArrayList<>();
+        for (int index = 0; index < steps.size(); index++) {
+            numberedSteps.add((index + 1) + ". " + steps.get(index));
+        }
+        return String.join("\n", numberedSteps);
+    }
+
+    private void appendInstructionText(String value, List<String> steps) {
+        steps.addAll(splitInstructionText(value));
+    }
+
+    private List<String> splitInstructionText(String value) {
+        String normalized = normalizeInstructions(value);
+        if (normalized == null) {
+            return List.of();
+        }
+
+        List<String> newlineSteps = splitInstructionLines(normalized);
+        if (newlineSteps.size() > 1) {
+            return newlineSteps;
+        }
+
+        List<String> numberedSteps = splitInlineNumberedInstructions(normalized);
+        if (numberedSteps.size() > 1) {
+            return numberedSteps;
+        }
+
+        String singleStep = normalizeInstructionStep(normalized);
+        return singleStep == null ? List.of() : List.of(singleStep);
+    }
+
+    private List<String> splitInstructionLines(String value) {
+        if (!value.contains("\n")) {
+            return List.of();
+        }
+
+        List<String> steps = new ArrayList<>();
+        for (String part : value.split("\\n+")) {
+            String normalized = normalizeInstructionStep(part);
+            if (normalized != null) {
+                steps.add(normalized);
+            }
+        }
+        return steps.size() > 1 ? steps : List.of();
+    }
+
+    private List<String> splitInlineNumberedInstructions(String value) {
+        Matcher matcher = INLINE_NUMBERED_STEP_PATTERN.matcher(value);
+        List<Integer> starts = new ArrayList<>();
+        while (matcher.find()) {
+            int start = matcher.start();
+            if (start < value.length() && Character.isWhitespace(value.charAt(start))) {
+                start += 1;
+            }
+            starts.add(start);
+        }
+        if (starts.size() < 2) {
+            return List.of();
+        }
+
+        List<String> steps = new ArrayList<>();
+        for (int index = 0; index < starts.size(); index++) {
+            int start = starts.get(index);
+            int end = index + 1 < starts.size() ? starts.get(index + 1) : value.length();
+            String normalized = normalizeInstructionStep(value.substring(start, end));
+            if (normalized != null) {
+                steps.add(normalized);
+            }
+        }
+        return steps.size() > 1 ? steps : List.of();
+    }
+
     private String normalizeInstructionStep(String value) {
         String normalized = normalizeInlineText(value);
         if (normalized == null) {
@@ -372,6 +496,15 @@ final class RecipeImportHtmlParser {
 
     private <T> Iterable<T> iterable(java.util.Iterator<T> iterator) {
         return () -> iterator;
+    }
+
+    private JsonNode firstNonNull(JsonNode... nodes) {
+        for (JsonNode node : nodes) {
+            if (node != null && !node.isNull()) {
+                return node;
+            }
+        }
+        return null;
     }
 
     private String firstNonBlank(String... values) {

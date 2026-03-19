@@ -23,16 +23,48 @@ public class RecipeImportApplicationService {
             "^(?<quantity>(?:\\d+\\s+\\d+/\\d+|\\d+/\\d+|\\d+(?:[\\.,]\\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞]|\\d+[¼½¾⅓⅔⅛⅜⅝⅞]))\\s*(?<rest>.+)$"
     );
     private static final Pattern ATTACHED_UNIT_PATTERN = Pattern.compile(
-            "^(?<quantity>\\d+(?:[\\.,]\\d+)?)(?<unit>[A-Za-z]+)\\s+(?<rest>.+)$"
+            "^(?<quantity>\\d+(?:[\\.,]\\d+)?)(?<unit>[\\p{L}]+)\\s+(?<rest>.+)$"
     );
     private static final Set<String> UNSUPPORTED_MEASURE_TOKENS = Set.of(
             "clove", "cloves",
             "slice", "slices",
+            "skiva", "skivor",
+            "klyfta", "klyftor",
             "pinch", "pinches",
-            "dash", "dashes"
+            "nypa", "nypor",
+            "dash", "dashes",
+            "skvatt", "skvattar",
+            "skvätt", "skvättar",
+            "handful", "handfuls",
+            "bunch", "bunches",
+            "sprig", "sprigs",
+            "tin", "tins",
+            "can", "cans",
+            "jar", "jars",
+            "burk", "burkar"
     );
     private static final Set<String> BARE_COUNT_BLOCKLIST_TOKENS = Set.of(
             "x", "about", "approx", "approximately"
+    );
+    private static final Set<String> IGNORABLE_INGREDIENT_LINES = Set.of(
+            "ingredients",
+            "ingredienser",
+            "serving",
+            "servering",
+            "to serve",
+            "for serving",
+            "till servering",
+            "för servering",
+            "att servera",
+            "garnish",
+            "garnering",
+            "topping",
+            "toppings",
+            "sauce",
+            "sås",
+            "dressing",
+            "marinade",
+            "marinad"
     );
 
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
@@ -89,6 +121,9 @@ public class RecipeImportApplicationService {
             if (normalizedLine == null) {
                 continue;
             }
+            if (isIgnorableIngredientLine(normalizedLine)) {
+                continue;
+            }
             ingredients.add(toIngredientView(normalizedLine, nextPosition));
             nextPosition += 1;
         }
@@ -125,34 +160,20 @@ public class RecipeImportApplicationService {
             if (quantity == null) {
                 return new RecipeImportDraftIngredientView(normalizedLine, normalizedLine, null, null, position);
             }
-            if (unitResult != null) {
-                return new RecipeImportDraftIngredientView(
-                        unitResult.ingredientName(),
-                        normalizedLine,
-                        quantity,
-                        unitResult.unit(),
-                        position
-                );
-            }
-
-            String fallbackIngredientName = stripUnsupportedMeasureToken(
-                    attachedUnitMatcher.group("unit"),
-                    attachedUnitMatcher.group("rest")
-            );
-            if (fallbackIngredientName != null) {
-                return new RecipeImportDraftIngredientView(
-                        fallbackIngredientName,
-                        normalizedLine,
-                        null,
-                        null,
-                        position
-                );
-            }
+        if (unitResult != null) {
             return new RecipeImportDraftIngredientView(
+                    unitResult.ingredientName(),
                     normalizedLine,
-                    normalizedLine,
-                    null,
-                    null,
+                    quantity,
+                    unitResult.unit(),
+                    position
+            );
+        }
+        return new RecipeImportDraftIngredientView(
+                normalizedLine,
+                normalizedLine,
+                null,
+                null,
                     position
             );
         }
@@ -170,17 +191,6 @@ public class RecipeImportApplicationService {
                     normalizedLine,
                     quantity,
                     unitResult.unit(),
-                    position
-            );
-        }
-
-        String fallbackIngredientName = stripUnsupportedMeasureToken(rest);
-        if (fallbackIngredientName != null) {
-            return new RecipeImportDraftIngredientView(
-                    fallbackIngredientName,
-                    normalizedLine,
-                    null,
-                    null,
                     position
             );
         }
@@ -257,6 +267,7 @@ public class RecipeImportApplicationService {
         String normalizedFirstToken = normalizeUnitToken(firstToken);
         if (normalizedFirstToken.isEmpty()
                 || BARE_COUNT_BLOCKLIST_TOKENS.contains(normalizedFirstToken)
+                || hasSecondaryMeasureToken(ingredientName)
                 || UNSUPPORTED_MEASURE_TOKENS.contains(normalizedFirstToken)
                 || parseSupportedUnit(normalizedFirstToken) != null) {
             return null;
@@ -316,8 +327,10 @@ public class RecipeImportApplicationService {
 
     private IngredientUnitView parseSupportedKitchenMeasure(String normalizedUnitToken) {
         return switch (normalizedUnitToken) {
-            case "tbsp", "tbsps", "tablespoon", "tablespoons", "msk", "matsked", "matskedar" -> IngredientUnitView.TBSP;
-            case "tsp", "tsps", "teaspoon", "teaspoons", "tsk", "tesked", "teskedar" -> IngredientUnitView.TSP;
+            case "tbsp", "tbsps", "tblsp", "tblsps", "tbl", "tbls", "tbs", "tablespoon", "tablespoons",
+                    "msk", "matsk", "matsked", "matskedar" -> IngredientUnitView.TBSP;
+            case "tsp", "tsps", "teasp", "teasps", "teaspoon", "teaspoons",
+                    "tsk", "tesk", "tesked", "teskedar" -> IngredientUnitView.TSP;
             case "krm", "kryddmått" -> IngredientUnitView.KRM;
             default -> null;
         };
@@ -327,7 +340,42 @@ public class RecipeImportApplicationService {
         return unitToken
                 .toLowerCase(Locale.ROOT)
                 .replace(".", "")
+                .replaceAll("^[^\\p{L}\\p{N}]+|[^\\p{L}\\p{N}]+$", "")
                 .trim();
+    }
+
+    private boolean isIgnorableIngredientLine(String value) {
+        String normalizedLine = normalizeOptionalText(value);
+        if (normalizedLine == null) {
+            return true;
+        }
+
+        String lowercaseLine = normalizedLine.toLowerCase(Locale.ROOT);
+        if (IGNORABLE_INGREDIENT_LINES.contains(lowercaseLine)) {
+            return true;
+        }
+
+        if (LEADING_QUANTITY_PATTERN.matcher(normalizedLine).matches()
+                || ATTACHED_UNIT_PATTERN.matcher(normalizedLine).matches()) {
+            return false;
+        }
+
+        return normalizedLine.endsWith(":");
+    }
+
+    private boolean hasSecondaryMeasureToken(String ingredientName) {
+        String[] tokens = ingredientName.split("\\s+");
+        if (tokens.length < 2) {
+            return false;
+        }
+
+        String normalizedSecondToken = normalizeUnitToken(tokens[1]);
+        if (normalizedSecondToken.isEmpty()) {
+            return false;
+        }
+
+        return UNSUPPORTED_MEASURE_TOKENS.contains(normalizedSecondToken)
+                || parseSupportedUnit(normalizedSecondToken) != null;
     }
 
     private boolean isLooseFractionToken(String token) {

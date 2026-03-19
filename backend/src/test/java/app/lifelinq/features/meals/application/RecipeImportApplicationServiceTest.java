@@ -88,7 +88,7 @@ class RecipeImportApplicationServiceTest {
         assertThat(draft.ingredients().get(4).rawText()).isEqualTo("1 tbsp olive oil");
         assertThat(draft.ingredients().get(5).quantity()).isNull();
         assertThat(draft.ingredients().get(5).unit()).isNull();
-        assertThat(draft.ingredients().get(5).name()).isEqualTo("prosciutto");
+        assertThat(draft.ingredients().get(5).name()).isEqualTo("12 slices prosciutto");
         assertThat(draft.ingredients().get(5).rawText()).isEqualTo("12 slices prosciutto");
     }
 
@@ -191,6 +191,224 @@ class RecipeImportApplicationServiceTest {
         assertThat(draft.ingredients().get(2).quantity()).isEqualByComparingTo("0.5");
         assertThat(draft.ingredients().get(2).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TBSP);
         assertThat(draft.ingredients().get(2).name()).isEqualTo("english mustard");
+    }
+
+    @Test
+    void importRecipeDraftRecognizesAdditionalKitchenUnitAliasesAcrossSwedishAndEnglish() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of(
+                        "2 matsk tomatpuré",
+                        "1 tesk senap",
+                        "1 kryddmått salt",
+                        "2 tbs olive oil",
+                        "1 teasp cumin"
+                )
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(5);
+        assertThat(draft.ingredients().get(0).quantity()).isEqualByComparingTo("2");
+        assertThat(draft.ingredients().get(0).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TBSP);
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("tomatpuré");
+        assertThat(draft.ingredients().get(1).quantity()).isEqualByComparingTo("1");
+        assertThat(draft.ingredients().get(1).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TSP);
+        assertThat(draft.ingredients().get(1).name()).isEqualTo("senap");
+        assertThat(draft.ingredients().get(2).quantity()).isEqualByComparingTo("1");
+        assertThat(draft.ingredients().get(2).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.KRM);
+        assertThat(draft.ingredients().get(2).name()).isEqualTo("salt");
+        assertThat(draft.ingredients().get(3).quantity()).isEqualByComparingTo("2");
+        assertThat(draft.ingredients().get(3).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TBSP);
+        assertThat(draft.ingredients().get(3).name()).isEqualTo("olive oil");
+        assertThat(draft.ingredients().get(4).quantity()).isEqualByComparingTo("1");
+        assertThat(draft.ingredients().get(4).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TSP);
+        assertThat(draft.ingredients().get(4).name()).isEqualTo("cumin");
+    }
+
+    @Test
+    void importRecipeDraftRecognizesAttachedAndUppercaseKitchenUnitAliases() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of(
+                        "2MSK tomatpuré",
+                        "1TSK senap",
+                        "1KRYDDMÅTT salt",
+                        "2Tblsp olive oil"
+                )
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(4);
+        assertThat(draft.ingredients().get(0).quantity()).isEqualByComparingTo("2");
+        assertThat(draft.ingredients().get(0).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TBSP);
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("tomatpuré");
+        assertThat(draft.ingredients().get(1).quantity()).isEqualByComparingTo("1");
+        assertThat(draft.ingredients().get(1).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TSP);
+        assertThat(draft.ingredients().get(1).name()).isEqualTo("senap");
+        assertThat(draft.ingredients().get(2).quantity()).isEqualByComparingTo("1");
+        assertThat(draft.ingredients().get(2).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.KRM);
+        assertThat(draft.ingredients().get(2).name()).isEqualTo("salt");
+        assertThat(draft.ingredients().get(3).quantity()).isEqualByComparingTo("2");
+        assertThat(draft.ingredients().get(3).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TBSP);
+        assertThat(draft.ingredients().get(3).name()).isEqualTo("olive oil");
+    }
+
+    @Test
+    void importRecipeDraftFiltersObviousNonIngredientLabelsAndHeadings() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of(
+                        "Ingredients",
+                        "Till servering",
+                        "Sauce:",
+                        "2 eggs",
+                        "1 tbsp olive oil"
+                )
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(2);
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("eggs");
+        assertThat(draft.ingredients().get(0).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.PCS);
+        assertThat(draft.ingredients().get(1).name()).isEqualTo("olive oil");
+        assertThat(draft.ingredients().get(1).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.TBSP);
+    }
+
+    @Test
+    void importRecipeDraftFallsBackConservativelyForUnsupportedMeasureTokensInsteadOfFalsePcs() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of(
+                        "2 skivor bacon",
+                        "1 klyfta vitlök",
+                        "2 burkar tomater"
+                )
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(3);
+        assertThat(draft.ingredients().get(0).quantity()).isNull();
+        assertThat(draft.ingredients().get(0).unit()).isNull();
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("2 skivor bacon");
+        assertThat(draft.ingredients().get(0).rawText()).isEqualTo("2 skivor bacon");
+        assertThat(draft.ingredients().get(1).quantity()).isNull();
+        assertThat(draft.ingredients().get(1).unit()).isNull();
+        assertThat(draft.ingredients().get(1).name()).isEqualTo("1 klyfta vitlök");
+        assertThat(draft.ingredients().get(1).rawText()).isEqualTo("1 klyfta vitlök");
+        assertThat(draft.ingredients().get(2).quantity()).isNull();
+        assertThat(draft.ingredients().get(2).unit()).isNull();
+        assertThat(draft.ingredients().get(2).name()).isEqualTo("2 burkar tomater");
+        assertThat(draft.ingredients().get(2).rawText()).isEqualTo("2 burkar tomater");
+    }
+
+    @Test
+    void importRecipeDraftPreservesMeaningForUnsupportedSwedishClovePhrases() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of(
+                        "2 klyftor vitlök",
+                        "1 klyfta vitlök"
+                )
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(2);
+        assertThat(draft.ingredients().get(0).quantity()).isNull();
+        assertThat(draft.ingredients().get(0).unit()).isNull();
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("2 klyftor vitlök");
+        assertThat(draft.ingredients().get(0).rawText()).isEqualTo("2 klyftor vitlök");
+        assertThat(draft.ingredients().get(1).quantity()).isNull();
+        assertThat(draft.ingredients().get(1).unit()).isNull();
+        assertThat(draft.ingredients().get(1).name()).isEqualTo("1 klyfta vitlök");
+        assertThat(draft.ingredients().get(1).rawText()).isEqualTo("1 klyfta vitlök");
+    }
+
+    @Test
+    void importRecipeDraftPreservesMeaningForUnsupportedEnglishClovePhrases() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of("2 cloves garlic")
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(1);
+        assertThat(draft.ingredients().get(0).quantity()).isNull();
+        assertThat(draft.ingredients().get(0).unit()).isNull();
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("2 cloves garlic");
+        assertThat(draft.ingredients().get(0).rawText()).isEqualTo("2 cloves garlic");
+    }
+
+    @Test
+    void importRecipeDraftPrefersRawFallbackForUnclearMeasuredPhrases() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                null,
+                "Cook",
+                List.of(
+                        "2 heaped tbsp sugar",
+                        "1 generous dl cream",
+                        "2 large eggs"
+                )
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.ingredients()).hasSize(3);
+        assertThat(draft.ingredients().get(0).quantity()).isNull();
+        assertThat(draft.ingredients().get(0).unit()).isNull();
+        assertThat(draft.ingredients().get(0).name()).isEqualTo("2 heaped tbsp sugar");
+        assertThat(draft.ingredients().get(1).quantity()).isNull();
+        assertThat(draft.ingredients().get(1).unit()).isNull();
+        assertThat(draft.ingredients().get(1).name()).isEqualTo("1 generous dl cream");
+        assertThat(draft.ingredients().get(2).quantity()).isEqualByComparingTo("2");
+        assertThat(draft.ingredients().get(2).unit()).isEqualTo(app.lifelinq.features.meals.contract.IngredientUnitView.PCS);
+        assertThat(draft.ingredients().get(2).name()).isEqualTo("large eggs");
     }
 
     @Test

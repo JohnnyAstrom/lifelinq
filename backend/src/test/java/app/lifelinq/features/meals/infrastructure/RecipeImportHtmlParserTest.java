@@ -136,6 +136,150 @@ class RecipeImportHtmlParserTest {
     }
 
     @Test
+    void splitsInstructionTextBlobOnMultipleLinesIntoNumberedSteps() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "@type": "Recipe",
+                        "name": "Toast",
+                        "recipeIngredient": ["bread"],
+                        "recipeInstructions": "Heat pan\\nToast bread\\nServe warm"
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/toast", html));
+
+        assertThat(parsed.instructions()).isEqualTo("1. Heat pan\n2. Toast bread\n3. Serve warm");
+    }
+
+    @Test
+    void splitsInlineNumberedInstructionBlobIntoCleanNumberedSteps() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "@type": "Recipe",
+                        "name": "Toast",
+                        "recipeIngredient": ["bread"],
+                        "recipeInstructions": "1. Heat pan 2. Toast bread 3. Serve warm"
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/toast", html));
+
+        assertThat(parsed.instructions()).isEqualTo("1. Heat pan\n2. Toast bread\n3. Serve warm");
+    }
+
+    @Test
+    void preservesAlreadyStructuredHowToSectionsWithoutRegression() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "@type": "Recipe",
+                        "name": "Layered pasta",
+                        "recipeIngredient": ["pasta"],
+                        "recipeInstructions": [
+                          {
+                            "@type": "HowToSection",
+                            "itemListElement": [
+                              {"@type":"HowToStep", "text":"Boil pasta"},
+                              {"@type":"HowToStep", "text":"Drain"}
+                            ]
+                          },
+                          {
+                            "@type": "HowToSection",
+                            "itemListElement": [
+                              {"@type":"HowToStep", "text":"Add sauce"},
+                              {"@type":"HowToStep", "text":"Serve"}
+                            ]
+                          }
+                        ]
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/pasta", html));
+
+        assertThat(parsed.instructions()).isEqualTo("1. Boil pasta\n2. Drain\n3. Add sauce\n4. Serve");
+    }
+
+    @Test
+    void parsesNearbyStructuredIngredientAndInstructionVariantsFromItemLists() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "@type": "Recipe",
+                        "name": "Structured stew",
+                        "ingredients": {
+                          "@type": "ItemList",
+                          "itemListElement": [
+                            {"@type":"ListItem", "item": {"name":"2 dl stock"}},
+                            {"@type":"ListItem", "text":"1 onion"}
+                          ]
+                        },
+                        "instructions": {
+                          "@type": "ItemList",
+                          "itemListElement": [
+                            {"@type":"ListItem", "item": {"text":"Heat stock"}},
+                            {"@type":"ListItem", "value":"Add onion"}
+                          ]
+                        }
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/stew", html));
+
+        assertThat(parsed.ingredientLines()).containsExactly("2 dl stock", "1 onion");
+        assertThat(parsed.instructions()).isEqualTo("1. Heat stock\n2. Add onion");
+    }
+
+    @Test
+    void parsesStructuredFallbackWhenRecipeUsesAlternativeInstructionAndIngredientFields() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "@type": "Recipe",
+                        "name": "Quiet soup",
+                        "ingredients": ["2 potatoes", "1 leek"],
+                        "instructions": "1. Boil water 2. Add vegetables"
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/quiet-soup", html));
+
+        assertThat(parsed.ingredientLines()).containsExactly("2 potatoes", "1 leek");
+        assertThat(parsed.instructions()).isEqualTo("1. Boil water\n2. Add vegetables");
+    }
+
+    @Test
     void failsWhenStructuredRecipeDataIsMissing() {
         String html = """
                 <html>
