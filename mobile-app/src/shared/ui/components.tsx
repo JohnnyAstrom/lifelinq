@@ -270,6 +270,70 @@ export function AppChip({ label, active, onPress, style, textStyle, accentKey, a
   );
 }
 
+type SegmentedControlOption<T extends string> = {
+  label: string;
+  value: T;
+};
+
+type SegmentedControlProps<T extends string> = {
+  options: SegmentedControlOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+  style?: StyleProp<ViewStyle>;
+  accentKey?: FeatureAccentKey;
+  accentColor?: string;
+};
+
+export function AppSegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+  style,
+  accentKey,
+  accentColor,
+}: SegmentedControlProps<T>) {
+  const resolvedAccentColor = accentColor ?? (accentKey ? theme.colors.feature[accentKey] : null);
+
+  return (
+    <View style={[styles.segmentedControl, style]}>
+      {options.map((option) => {
+        const isActive = option.value === value;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => onChange(option.value)}
+            style={({ pressed }) => [
+              styles.segmentedControlSegment,
+              isActive
+                ? (resolvedAccentColor
+                  ? {
+                      backgroundColor: resolvedAccentColor,
+                      borderColor: resolvedAccentColor,
+                    }
+                  : styles.segmentedControlSegmentActive)
+                : null,
+              pressed ? styles.segmentedControlSegmentPressed : null,
+            ]}
+          >
+            <Text
+              style={[
+                styles.segmentedControlLabel,
+                isActive
+                  ? (resolvedAccentColor
+                    ? styles.segmentedControlLabelActive
+                    : styles.segmentedControlLabelActiveNeutral)
+                  : null,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function BackIconButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
@@ -503,6 +567,39 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: theme.colors.card,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 3,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSubtle,
+    alignSelf: 'flex-start',
+  },
+  segmentedControlSegment: {
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 5,
+  },
+  segmentedControlSegmentActive: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.surface,
+  },
+  segmentedControlSegmentPressed: {
+    opacity: 0.8,
+  },
+  segmentedControlLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  segmentedControlLabelActive: {
+    color: theme.colors.card,
+  },
+  segmentedControlLabelActiveNeutral: {
+    color: theme.colors.textPrimary,
   },
   input: {
     borderWidth: 1,

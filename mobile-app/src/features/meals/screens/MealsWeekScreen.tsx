@@ -36,7 +36,7 @@ import { useAppBackHandler } from '../../../shared/hooks/useAppBackHandler';
 import {
   AppButton,
   AppCard,
-  AppChip,
+  AppSegmentedControl,
   AppScreen,
   BackIconButton,
   Subtle,
@@ -256,7 +256,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     createRecipe: 'Create recipe',
     creatingRecipe: 'Creating recipe...',
     archivedRecipeLabel: 'Archived recipe',
-    createdLabel: 'Created',
     ingredientsEmptyState: 'Optional. Add ingredients when you need them.',
     ingredientsSummarySuffix: 'ingredients',
     ingredientNamePlaceholder: 'Ingredient name',
@@ -688,20 +687,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               {workspaceMode === 'plan' ? (
                 <AppCard style={styles.controlsCard}>
                   <View style={styles.planSurfaceRow}>
-                    <View style={styles.planSurfaceModeRow}>
-                      <AppChip
-                        label={strings.weeklyPlanner}
-                        active={surfaceMode === 'week'}
-                        onPress={() => setSurfaceMode('week')}
-                        accentKey="meals"
-                      />
-                      <AppChip
-                        label={strings.calendarOverview}
-                        active={surfaceMode === 'calendar'}
-                        onPress={() => setSurfaceMode('calendar')}
-                        accentKey="meals"
-                      />
-                    </View>
+                    <AppSegmentedControl
+                      options={[
+                        { value: 'week', label: strings.weeklyPlanner },
+                        { value: 'calendar', label: strings.calendarOverview },
+                      ]}
+                      value={surfaceMode}
+                      onChange={setSurfaceMode}
+                      accentKey="meals"
+                    />
                   </View>
                   <View style={styles.periodControlsRow}>
                     <Pressable
@@ -794,7 +788,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     noArchivedRecipes: 'No archived recipes yet.',
                     savedRecipeLabel: strings.savedRecipeLabel,
                     archivedRecipeLabel: strings.archivedRecipeLabel,
-                    createdLabel: strings.createdLabel,
                     duplicateNameHint: (count) => `${count} recipes share this name`,
                     recipeCountLabel: (count) => count === 1 ? '1 saved recipe' : `${count} saved recipes`,
                     archivedCountLabel: (count) => count === 1 ? '1 archived recipe' : `${count} archived recipes`,
@@ -1293,10 +1286,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-  },
-  planSurfaceModeRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.xs,
   },
   periodControlsRow: {
     flexDirection: 'row',

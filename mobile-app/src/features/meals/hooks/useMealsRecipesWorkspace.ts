@@ -96,10 +96,6 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         name: recipe.name,
         ingredientCount: recipe.ingredients.length,
         duplicateNameCount: nameCounts.get(recipe.name.trim().toLocaleLowerCase()) ?? 1,
-        createdLabel: new Date(recipe.createdAt).toLocaleDateString(undefined, {
-          day: 'numeric',
-          month: 'short',
-        }),
         archivedAt: recipe.archivedAt,
       }));
   }, [visibleRecipes]);
