@@ -22,7 +22,7 @@ Current frontend capture direction: ingredient entry is a lightweight structured
 
 ## Meals Model (Phase 1)
 
-Current editor emphasis: the meal editor now uses the already chosen day/slot context instead of repeating a full day selector, keeps the meal title as the primary planning question, and presents recipe attachment as lighter secondary enrichment underneath that title-first flow.
+Current editor emphasis: the meal editor now uses the already chosen day/slot context instead of repeating a full day selector, keeps the meal title as the primary planning question, and presents a lighter `Details` companion block underneath that title-first flow. When no saved recipe is attached, the editor shows one calm details block with a clear way to either add details to this meal or attach a saved recipe explicitly. That detail path is intentionally meal-scoped in meaning: the user can add ingredients, cooking guidance, and notes as enrichment for the planned meal without the UI primarily framing the step as entering recipe management. In that first enrichment path, extra recipe-style structure such as a separate detail title or source metadata is intentionally deferred so the surface reads more like a deeper layer of meal planning. When a saved recipe is attached, the same block becomes the attached saved-recipe row and keeps open/swap behavior available without turning the editor into a cluster of separate recipe controls.
 
 ### Aggregate root
 

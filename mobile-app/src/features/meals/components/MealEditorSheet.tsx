@@ -12,6 +12,9 @@ type MealEditorSheetStrings = {
   mealTitleLabel: string;
   mealTitlePlaceholder: string;
   mealTypeLabel: string;
+  recipeLabel: string;
+  recipeOptionalLabel?: string;
+  noRecipeAttached: string;
   useExistingRecipe: string;
   changeRecipe: string;
   openRecipe: string;
@@ -106,7 +109,7 @@ export function MealEditorSheet({
     ? recipeTitle.trim()
     : hasRecipeDraftContent
       ? strings.openRecipe
-      : strings.addRecipeDetails;
+      : strings.noRecipeAttached;
   const recipeMeta = isRecipeLoading
     ? strings.loadingRecipe
     : hasIngredients
@@ -172,13 +175,11 @@ export function MealEditorSheet({
             </View>
             <View style={styles.sectionDivider} />
             <View style={styles.editorSection}>
-              <View style={styles.recipeHeaderRow}>
-                <AppButton
-                  title={recipeSelectionActionLabel}
-                  onPress={onOpenRecipePicker}
-                  variant="ghost"
-                  disabled={isActionPending || isRecipeLoading}
-                />
+              <View style={styles.recipeSectionHeader}>
+                <Text style={styles.fieldLabel}>{strings.recipeLabel}</Text>
+                {strings.recipeOptionalLabel ? (
+                  <Subtle style={styles.recipeSectionOptional}>{strings.recipeOptionalLabel}</Subtle>
+                ) : null}
               </View>
               <Pressable
                 onPress={onOpenRecipeDetail}
@@ -208,6 +209,14 @@ export function MealEditorSheet({
                   <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
                 </View>
               </Pressable>
+              <View style={styles.recipeSecondaryActionRow}>
+                <AppButton
+                  title={recipeSelectionActionLabel}
+                  onPress={onOpenRecipePicker}
+                  variant="ghost"
+                  disabled={isActionPending || isRecipeLoading}
+                />
+              </View>
             </View>
             {hasIngredients ? (
               <View style={styles.shoppingActionSection}>
@@ -329,11 +338,14 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.colors.border,
   },
-  recipeHeaderRow: {
+  recipeSectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.sm,
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: theme.spacing.xs,
+  },
+  recipeSectionOptional: {
+    color: theme.colors.textSecondary,
   },
   recipeSummaryCard: {
     borderWidth: 1,
@@ -379,6 +391,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: '600',
   },
+  recipeSecondaryActionRow: {
+    alignItems: 'flex-start',
+    marginTop: -2,
+  },
   sheetScroll: {
     minHeight: 0,
     maxHeight: '100%',
@@ -412,7 +428,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   footerCloseLinkPressed: {
     opacity: 0.7,

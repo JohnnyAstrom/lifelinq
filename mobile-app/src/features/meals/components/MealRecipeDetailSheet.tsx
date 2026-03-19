@@ -192,6 +192,8 @@ type Props = {
   canDelete?: boolean;
   deleteBlockedHint?: string | null;
   error?: string | null;
+  showTitleField?: boolean;
+  showMetadataSection?: boolean;
   strings: Strings;
 };
 
@@ -233,6 +235,8 @@ export function MealRecipeDetailSheet({
   canDelete = false,
   deleteBlockedHint = null,
   error = null,
+  showTitleField = true,
+  showMetadataSection = true,
   strings,
 }: Props) {
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
@@ -250,6 +254,12 @@ export function MealRecipeDetailSheet({
   const importReviewSummary = strings.importReviewSummary
     ? strings.importReviewSummary(importReviewCount)
     : null;
+  const hasIngredientRows = ingredientRows.length > 0;
+  const showIdentityBadge = isImportDraft
+    || isArchivedRecipe
+    || isEditingSavedRecipeDirectly
+    || hasExistingRecipe
+    || isMealSpecificDraft;
   const normalizedSourceUrl = recipeSourceUrl?.trim() ?? '';
   const importSourceHost = isImportDraft && normalizedSourceUrl.length > 0
     ? getHostnameLabel(normalizedSourceUrl)
@@ -303,9 +313,11 @@ export function MealRecipeDetailSheet({
           <Text style={textStyles.h2}>{resolvedTitle}</Text>
           {strings.subtitle ? <Subtle>{strings.subtitle}</Subtle> : null}
           <View style={styles.headerMeta}>
-            <View style={styles.identityBadge}>
-              <Text style={styles.identityBadgeText}>{identityLabel}</Text>
-            </View>
+            {showIdentityBadge ? (
+              <View style={styles.identityBadge}>
+                <Text style={styles.identityBadgeText}>{identityLabel}</Text>
+              </View>
+            ) : null}
             {strings.mealAttachmentLabel && strings.mealAttachmentValue ? (
               <View style={styles.attachmentRow}>
                 <Text style={styles.attachmentLabel}>{strings.mealAttachmentLabel}</Text>
@@ -342,41 +354,43 @@ export function MealRecipeDetailSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.section}>
-              {isArchivedRecipe ? (
-                <>
-                  <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
-                  <View style={styles.readOnlyField}>
-                    <Text style={styles.readOnlyValue}>{resolvedTitle}</Text>
+            {showTitleField ? (
+              <View style={styles.section}>
+                {isArchivedRecipe ? (
+                  <>
+                    <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyValue}>{resolvedTitle}</Text>
+                    </View>
+                  </>
+                ) : isImportDraft ? (
+                  <View style={styles.subSection}>
+                    <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
+                    <View style={styles.reviewTitleWrap}>
+                      <AppInput
+                        placeholder={strings.recipeNamePlaceholder}
+                        value={recipeTitle}
+                        onChangeText={onChangeRecipeTitle}
+                        multiline
+                        editable
+                        style={[styles.embeddedInput, styles.reviewTitleInput]}
+                      />
+                    </View>
                   </View>
-                </>
-              ) : isImportDraft ? (
-                <View style={styles.subSection}>
-                  <Text style={styles.fieldLabel}>{strings.recipeNameLabel}</Text>
-                  <View style={styles.reviewTitleWrap}>
-                    <AppInput
-                      placeholder={strings.recipeNamePlaceholder}
-                      value={recipeTitle}
-                      onChangeText={onChangeRecipeTitle}
-                      multiline
-                      editable
-                      style={[styles.embeddedInput, styles.reviewTitleInput]}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <EditableField
-                  label={strings.recipeNameLabel}
-                  hint={strings.recipeNameEditHint}
-                  placeholder={strings.recipeNamePlaceholder}
-                  value={recipeTitle}
-                  onChangeText={onChangeRecipeTitle}
-                  inputStyle={styles.titleInput}
-                />
-              )}
-            </View>
+                ) : (
+                  <EditableField
+                    label={strings.recipeNameLabel}
+                    hint={strings.recipeNameEditHint}
+                    placeholder={strings.recipeNamePlaceholder}
+                    value={recipeTitle}
+                    onChangeText={onChangeRecipeTitle}
+                    inputStyle={styles.titleInput}
+                  />
+                )}
+              </View>
+            ) : null}
 
-            <View style={[styles.section, !isArchivedRecipe ? styles.coreSection : null]}>
+            <View style={[styles.section, !isArchivedRecipe && showTitleField ? styles.coreSection : null]}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionCopy}>
                   <Text style={styles.sectionTitle}>{strings.ingredientsLabel}</Text>
@@ -401,7 +415,7 @@ export function MealRecipeDetailSheet({
 
               {isRecipeLoading ? <Subtle>{strings.loadingIngredients}</Subtle> : null}
 
-              {!isRecipeLoading && !hasIngredients ? (
+              {!isRecipeLoading && !hasIngredientRows ? (
                 isArchivedRecipe ? (
                   <View style={styles.readOnlyField}>
                     <Text style={styles.readOnlyEmpty}>No ingredients saved on this recipe.</Text>
@@ -415,7 +429,7 @@ export function MealRecipeDetailSheet({
                 )
               ) : null}
 
-              {!isRecipeLoading && hasIngredients ? (
+              {!isRecipeLoading && hasIngredientRows ? (
                 <View style={styles.ingredientList}>
                   {ingredientRows.map((row) => (
                     <MealIngredientEditorRow
@@ -453,7 +467,10 @@ export function MealRecipeDetailSheet({
                   value={recipeInstructions}
                   onChangeText={onChangeRecipeInstructions}
                   multiline
-                  cardStyle={isImportDraft ? styles.reviewInstructionCard : null}
+                  cardStyle={[
+                    styles.instructionsCard,
+                    isImportDraft ? styles.reviewInstructionCard : null,
+                  ]}
                   inputStyle={[
                     styles.instructionsInput,
                     isImportDraft ? styles.reviewInstructionsInput : null,
@@ -478,79 +495,84 @@ export function MealRecipeDetailSheet({
                   value={recipeShortNote}
                   onChangeText={onChangeRecipeShortNote}
                   multiline
-                  cardStyle={isImportDraft ? styles.reviewSecondaryCard : null}
+                  cardStyle={[
+                    styles.noteCard,
+                    isImportDraft ? styles.reviewSecondaryCard : null,
+                  ]}
                   inputStyle={[styles.noteInput, isImportDraft ? styles.reviewNoteInput : null]}
                 />
               )}
             </View>
 
-            <View style={[styles.section, styles.metadataSection, isImportDraft ? styles.reviewTertiarySection : null]}>
-              {isArchivedRecipe ? (
-                <>
-                  <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
-                  <ReadOnlyField
-                    label={strings.recipeSourceLabel}
-                    value={recipeSource}
-                    emptyText="No source saved."
-                  />
-                  {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
+            {showMetadataSection ? (
+              <View style={[styles.section, styles.metadataSection, isImportDraft ? styles.reviewTertiarySection : null]}>
+                {isArchivedRecipe ? (
+                  <>
+                    <Text style={styles.fieldLabel}>{strings.recipeContentLabel}</Text>
                     <ReadOnlyField
-                      label={strings.recipeSourceUrlLabel}
-                      value={recipeSourceUrl ?? ''}
-                      emptyText="No source link saved."
+                      label={strings.recipeSourceLabel}
+                      value={recipeSource}
+                      emptyText="No source saved."
                     />
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <View style={styles.sectionCopy}>
-                    <Text style={styles.fieldLabel}>
-                      {isImportDraft && strings.importReviewSourceSummaryTitle
-                        ? strings.importReviewSourceSummaryTitle
-                        : strings.recipeContentLabel}
-                    </Text>
-                    {(isImportDraft ? importSourceHost : strings.recipeMetadataHint) ? (
-                      <Text style={styles.sectionHint}>
-                        {isImportDraft ? importSourceHost : strings.recipeMetadataHint}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View style={[styles.metadataFields, isImportDraft ? styles.reviewMetadataFields : null]}>
-                    <View style={styles.metadataField}>
-                      <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
-                      <View style={[styles.metadataInputWrap, isImportDraft ? styles.reviewMetadataInputWrap : null]}>
-                        <AppInput
-                          placeholder={strings.recipeSourcePlaceholder}
-                          value={recipeSource}
-                          onChangeText={onChangeRecipeSource}
-                          editable
-                          style={[styles.metadataInput, isImportDraft ? styles.reviewMetadataInput : null]}
-                        />
-                      </View>
-                    </View>
                     {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
+                      <ReadOnlyField
+                        label={strings.recipeSourceUrlLabel}
+                        value={recipeSourceUrl ?? ''}
+                        emptyText="No source link saved."
+                      />
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.sectionCopy}>
+                      <Text style={styles.fieldLabel}>
+                        {isImportDraft && strings.importReviewSourceSummaryTitle
+                          ? strings.importReviewSourceSummaryTitle
+                          : strings.recipeContentLabel}
+                      </Text>
+                      {(isImportDraft ? importSourceHost : strings.recipeMetadataHint) ? (
+                        <Text style={styles.sectionHint}>
+                          {isImportDraft ? importSourceHost : strings.recipeMetadataHint}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <View style={[styles.metadataFields, isImportDraft ? styles.reviewMetadataFields : null]}>
                       <View style={styles.metadataField}>
-                        <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
+                        <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
                         <View style={[styles.metadataInputWrap, isImportDraft ? styles.reviewMetadataInputWrap : null]}>
                           <AppInput
-                            placeholder={strings.recipeSourceUrlPlaceholder}
-                            value={recipeSourceUrl ?? ''}
-                            onChangeText={onChangeRecipeSourceUrl}
-                            keyboardType="url"
+                            placeholder={strings.recipeSourcePlaceholder}
+                            value={recipeSource}
+                            onChangeText={onChangeRecipeSource}
                             editable
-                            style={[
-                              styles.metadataInput,
-                              isImportDraft ? styles.reviewMetadataInput : null,
-                              isImportDraft ? styles.reviewUrlInput : null,
-                            ]}
+                            style={[styles.metadataInput, isImportDraft ? styles.reviewMetadataInput : null]}
                           />
                         </View>
                       </View>
-                    ) : null}
-                  </View>
-                </>
-              )}
-            </View>
+                      {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
+                        <View style={styles.metadataField}>
+                          <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
+                          <View style={[styles.metadataInputWrap, isImportDraft ? styles.reviewMetadataInputWrap : null]}>
+                            <AppInput
+                              placeholder={strings.recipeSourceUrlPlaceholder}
+                              value={recipeSourceUrl ?? ''}
+                              onChangeText={onChangeRecipeSourceUrl}
+                              keyboardType="url"
+                              editable
+                              style={[
+                                styles.metadataInput,
+                                isImportDraft ? styles.reviewMetadataInput : null,
+                                isImportDraft ? styles.reviewUrlInput : null,
+                              ]}
+                            />
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  </>
+                )}
+              </View>
+            ) : null}
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -714,10 +736,16 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surface,
   },
   editorCardMultiline: {
     minHeight: 96,
+  },
+  instructionsCard: {
+    minHeight: 120,
+  },
+  noteCard: {
+    minHeight: 72,
   },
   embeddedInput: {
     borderWidth: 0,
@@ -744,7 +772,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   noteInput: {
-    minHeight: 88,
+    minHeight: 48,
     textAlignVertical: 'top',
   },
   readOnlyField: {
@@ -753,7 +781,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surface,
   },
   readOnlyFieldMultiline: {
     minHeight: 88,
@@ -767,7 +795,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   instructionsInput: {
-    minHeight: 168,
+    minHeight: 104,
     textAlignVertical: 'top',
     lineHeight: 22,
   },
@@ -808,7 +836,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.pill,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surface,
   },
   identityBadgeText: {
     ...textStyles.subtle,
@@ -858,7 +886,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surface,
   },
   emptyStateText: {
     ...textStyles.subtle,
@@ -877,7 +905,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceSubtle,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
   },

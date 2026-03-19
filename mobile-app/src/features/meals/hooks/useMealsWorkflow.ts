@@ -441,6 +441,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsRecipePickerOpen(true);
     if (!availableRecipes) {
       void loadRecipeOptions();
+      return;
+    }
+    if (availableRecipes.length === 0) {
+      void loadRecipeOptions(true);
     }
   }
 

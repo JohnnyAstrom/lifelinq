@@ -218,7 +218,7 @@ export function MealIngredientEditorRow({
           value={row.name}
           onChangeText={onChangeName}
           onFocus={onActivate}
-          style={styles.ingredientNameInput}
+          style={[styles.ingredientNameInput, styles.lightInput]}
         />
         <View style={styles.expandedActions}>
           {!isEffectivelyEmpty && onCollapse ? (
@@ -256,7 +256,7 @@ export function MealIngredientEditorRow({
           onChangeText={onChangeQuantity}
           onFocus={onActivate}
           keyboardType="decimal-pad"
-          style={styles.quantityInput}
+          style={[styles.quantityInput, styles.lightInput]}
         />
       </View>
 
@@ -303,8 +303,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.surfaceAlt,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.surface,
   },
   importCompactRow: {
     borderWidth: 0,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.pill,
     paddingHorizontal: theme.spacing.xs,
     paddingVertical: 3,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surface,
   },
   reviewPillText: {
     ...textStyles.subtle,
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: 6,
     backgroundColor: theme.colors.surface,
   },
   expandedRowActive: {
@@ -385,8 +385,11 @@ const styles = StyleSheet.create({
   ingredientNameInput: {
     flex: 1,
   },
+  lightInput: {
+    backgroundColor: theme.colors.surface,
+  },
   quantityInput: {
-    width: 112,
+    width: 96,
   },
   unitChipRow: {
     flexDirection: 'row',
@@ -414,9 +417,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   collapseIconButton: {
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surfaceSubtle,
   },
   iconButtonPressed: {
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surfaceSubtle,
   },
 });

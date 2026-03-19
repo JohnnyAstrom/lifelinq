@@ -12,7 +12,7 @@ type RecipeOption = {
 
 type Strings = {
   title: string;
-  hint: string;
+  hint?: string;
   loadingRecipes: string;
   noRecipes: string;
   close: string;
@@ -51,7 +51,7 @@ export function MealRecipePickerSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Subtle>{strings.hint}</Subtle>
+            {strings.hint ? <Subtle>{strings.hint}</Subtle> : null}
 
             {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
