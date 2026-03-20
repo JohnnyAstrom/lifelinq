@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
@@ -41,6 +42,34 @@ type RecipeSaveRequest = {
   ingredients: ReturnType<typeof toIngredientRequests>;
 };
 
+function normalizeClipboardUrlCandidate(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    const hasLikelyPagePath = parsed.pathname.trim().length > 1 || parsed.search.trim().length > 0;
+    if (!isHttp || !parsed.hostname.includes('.') || !hasLikelyPagePath) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function getClipboardUrlLabel(value: string) {
+  try {
+    const parsed = new URL(value);
+    return parsed.hostname.replace(/^www\./i, '');
+  } catch {
+    return value;
+  }
+}
+
 type Params = {
   token: string;
   enabled: boolean;
@@ -80,6 +109,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [importUrl, setImportUrl] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
   const [isImportingDraft, setIsImportingDraft] = useState(false);
+  const [clipboardImportUrl, setClipboardImportUrl] = useState<string | null>(null);
+  const [clipboardImportLabel, setClipboardImportLabel] = useState<string | null>(null);
 
   const hasIngredients = useMemo(
     () => toIngredientRequests(ingredientRows).length > 0,
@@ -334,13 +365,34 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setIsRecipeDetailOpen(true);
   }
 
+  async function hydrateImportUrlFromClipboard() {
+    try {
+      const clipboardValue = await Clipboard.getStringAsync();
+      const normalizedUrl = normalizeClipboardUrlCandidate(clipboardValue);
+      if (!normalizedUrl) {
+        setClipboardImportUrl(null);
+        setClipboardImportLabel(null);
+        return;
+      }
+      setClipboardImportUrl(normalizedUrl);
+      setClipboardImportLabel(getClipboardUrlLabel(normalizedUrl));
+      setImportUrl((current) => (current.trim().length === 0 ? normalizedUrl : current));
+    } catch {
+      setClipboardImportUrl(null);
+      setClipboardImportLabel(null);
+    }
+  }
+
   function openImportRecipe() {
     if (isImportingDraft || pendingDetailAction) {
       return;
     }
     setImportUrl('');
     setImportError(null);
+    setClipboardImportUrl(null);
+    setClipboardImportLabel(null);
     setIsImportSheetOpen(true);
+    void hydrateImportUrlFromClipboard();
   }
 
   function closeImportRecipe() {
@@ -349,6 +401,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsImportSheetOpen(false);
     setImportError(null);
+    setClipboardImportUrl(null);
+    setClipboardImportLabel(null);
   }
 
   function closeRecipeDetail() {
@@ -655,6 +709,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       importUrl,
       error: importError,
       isImportingDraft,
+      clipboardImportUrl,
+      clipboardImportLabel,
       setImportUrl,
       openImportRecipe,
       closeImportRecipe,

@@ -9,6 +9,7 @@ type Strings = {
   urlLabel: string;
   urlPlaceholder: string;
   helpText: string;
+  clipboardHint?: (label: string) => string;
   importAction: string;
   importingAction: string;
   close: string;
@@ -16,6 +17,8 @@ type Strings = {
 
 type Props = {
   importUrl: string;
+  clipboardImportUrl?: string | null;
+  clipboardImportLabel?: string | null;
   onChangeImportUrl: (value: string) => void;
   onImport: () => void;
   onClose: () => void;
@@ -26,6 +29,8 @@ type Props = {
 
 export function MealRecipeImportSheet({
   importUrl,
+  clipboardImportUrl,
+  clipboardImportLabel,
   onChangeImportUrl,
   onImport,
   onClose,
@@ -33,6 +38,10 @@ export function MealRecipeImportSheet({
   error,
   strings,
 }: Props) {
+  const isUsingClipboardLink = !!clipboardImportUrl
+    && importUrl.trim().length > 0
+    && importUrl.trim() === clipboardImportUrl;
+
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
@@ -43,12 +52,17 @@ export function MealRecipeImportSheet({
 
         <View style={styles.body}>
           <Text style={styles.fieldLabel}>{strings.urlLabel}</Text>
-          <AppInput
-            value={importUrl}
-            onChangeText={onChangeImportUrl}
-            placeholder={strings.urlPlaceholder}
-            keyboardType="url"
-          />
+          <View style={styles.captureCard}>
+            <AppInput
+              value={importUrl}
+              onChangeText={onChangeImportUrl}
+              placeholder={strings.urlPlaceholder}
+              keyboardType="url"
+            />
+            {isUsingClipboardLink && clipboardImportLabel && strings.clipboardHint ? (
+              <Subtle>{strings.clipboardHint(clipboardImportLabel)}</Subtle>
+            ) : null}
+          </View>
           <Subtle>{strings.helpText}</Subtle>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -101,6 +115,15 @@ const styles = StyleSheet.create({
   },
   body: {
     gap: theme.spacing.sm,
+  },
+  captureCard: {
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   fieldLabel: {
     ...textStyles.subtle,

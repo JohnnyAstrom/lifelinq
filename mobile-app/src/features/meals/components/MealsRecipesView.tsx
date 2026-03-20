@@ -104,7 +104,7 @@ export function MealsRecipesView({
               pressed ? styles.quickActionPressed : null,
             ]}
           >
-            <Ionicons name="download-outline" size={16} color={theme.colors.textSecondary} />
+            <Ionicons name="bookmark-outline" size={16} color={theme.colors.textSecondary} />
             <Text style={styles.toolbarActionText}>{strings.importRecipe}</Text>
           </Pressable>
         </View>
