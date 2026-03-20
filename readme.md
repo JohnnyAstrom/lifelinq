@@ -1,97 +1,136 @@
 # LifeLinq
 
-LifeLinq is a **group‑first life assistant**.
+LifeLinq is a mobile-first app for shared everyday coordination.
 
-It is designed to reduce mental load by acting as a shared external memory for everyday life — the kind of things that otherwise live in people’s heads and cause friction, stress, or forgetfulness.
+It helps people keep track of the things that otherwise live in their heads:
+- things to do
+- meals
+- shopping
+- important household documents
 
-LifeLinq is **mobile‑first**, collaborative by default, and built for long‑term use.
+The product is built for shared use, but the experience should always feel calm, personal, and easy to start with.
 
 ---
 
 ## What LifeLinq is
 
-LifeLinq focuses on four core domains of everyday group life:
+LifeLinq is designed to reduce everyday mental load.
 
-### 1. Things to do / remember
+It acts as a shared external memory for home and household life:
+- what needs to be done
+- what we are eating
+- what needs to be bought
+- what is important to keep
 
-Simple, non‑project tasks and reminders with a **time-scope model**:
-- **Daily** for execution and completion
-- **Weekly** for planning and overview
-- **Monthly** for calendar overview and navigation
-
-Completion is distinct from deletion, and scheduled items may sync with Google Calendar.
-
----
-
-### 2. Meals
-
-Meal planning is a **core** use case with week view as the primary planning surface.
-Recipes can be attached to meals and ingredients can be pushed to shopping lists.
-Calendar sync for meals is optional and export‑only.
+It is not a project-management tool or a productivity system.
+It is a practical coordination product for real life.
 
 ---
 
-### 3. Shopping
+## Core product areas
 
-Shopping lists are **simple, fast, and shared**.
-Bought items stay in the same list (toggle back and forth).
-Items can optionally include quantity and unit (e.g. "2 kg").
+### Todos
+
+Simple everyday items with three time views:
+- Daily
+- Weekly
+- Monthly
+
+Todos are for remembering and coordinating, not managing projects.
+
+### Meals
+
+Meal planning with week view as the primary surface.
+
+Recipes support planning, reuse, and ingredient-aware follow-up into shopping.
+
+### Shopping
+
+Simple shared shopping lists.
+
+Lists are fast to update, easy to reuse, and designed for real household use.
+
+### Documents
+
+A lightweight household archive for things that are stressful to lose or hard to replace.
+
+The current product is metadata-first, with attachment evolution planned later.
 
 ---
 
-### 4. Documents
+## Product direction
 
-A safety layer for items that are expensive, hard to replace, or stressful to lose.
+LifeLinq should feel:
+- calm
+- human
+- low-friction
+- content-first
+- household-close
 
-Documents roadmap:
-- **V0 (now)**: metadata only (title, notes, date, category, tags, external link)
-- **V0.5 (future)**: local attachments (visible to group as "stored locally by X")
-- **V1 (future)**: cloud attachments with compression, previews, and sharing
+It should not feel:
+- enterprise-like
+- admin-heavy
+- dashboard-first
+- system-explanatory
 
----
-
-## Core principles
-
-- **Group‑first**: all data belongs to a group, not an individual user
-- **Low friction**: it must be easier to write something down than to remember it
-- **Tolerance for messiness**: real life is incomplete and inconsistent
-- **Shared by default**: multiple people collaborate in the same group
-- **Backend authority**: all business rules live on the server
-- **Bilingual by default**: full support for Swedish and English from the start
+The system architecture may be group-first, but the product experience should feel simple and natural to use.
 
 ---
 
-## Architecture overview
+## Current internal references
 
-LifeLinq is built using a strict **feature‑based architecture**.
+The strongest current product references in the app are:
+- Meals Plan week view
+- saved recipe read mode
+- Recipes overview
 
-Everything related to the same real‑world capability lives in the same feature folder — both on the backend and the frontend.
+These currently represent the clearest direction for workspace hierarchy, calm structure, and content-first UX.
+
+---
+
+## Architecture
+
+LifeLinq uses a feature-based architecture across backend and frontend.
+
+Core rules:
+- all business rules are enforced server-side
+- clients are untrusted
+- domain data belongs to a group context
+- frontend features stay thin and feature-owned
 
 Authoritative documentation lives in `docs/`:
 
-- `docs/00_overview.md` – system purpose and scope
-- `docs/invariants.md` – system laws (non‑negotiable rules)
-- `docs/roadmap.md` – phased delivery plan
-- `docs/architecture/` – backend & frontend structure
-- `docs/architecture/context-model.md` – canonical context/scoping model
-- `docs/decisions/` – architectural decision records (ADRs)
+- `docs/00_overview.md`
+- `docs/invariants.md`
+- `docs/roadmap.md`
+- `docs/architecture/`
+- `docs/design/`
+- `docs/decisions/`
 
-If something is unclear, **the docs are the source of truth**.
+If code and docs disagree, the docs must be updated or the change is wrong.
 
-### Frontend architecture (canonical)
+---
 
-Frontend structure is feature-based and uses thin screens, data hooks, workflow hooks, and feature-owned API façades.
-The canonical frontend architecture reference is `docs/architecture/frontend-architecture.md`.
+## Design guidance
+
+Frontend and product work is guided by the design document set in `docs/design/`:
+
+- `docs/design/ux-principles.md`
+- `docs/design/ui-foundation.md`
+- `docs/design/ui-reference-framework.md`
+
+These define:
+- product experience principles
+- visual UI rules
+- practical review and implementation guidance
 
 ---
 
 ## Technology stack
 
-- **Backend**: Spring Boot (Java)
-- **Frontend**: React Native (mobile‑first)
-- **Database**: PostgreSQL
-
-The stack is intentionally conservative and well‑supported.
+- Backend: Spring Boot (Java)
+- Frontend: React Native
+- Database: PostgreSQL
 
 ---
 
@@ -99,73 +138,50 @@ The stack is intentionally conservative and well‑supported.
 
 ```text
 lifelinq/
-  backend/        # Spring Boot application
-  mobile-app/     # React Native app
-  infra/          # Docker, database, deployment helpers
-  docs/           # Architecture and system documentation
+  backend/
+  mobile-app/
+  infra/
+  docs/
 ```
 
 ---
 
-## Project status
+## Current project status
 
 LifeLinq is under active development.
 
-The current focus is Phase 1 (see `docs/roadmap.md`):
-- solid domain model and group scoping
-- invitation flow and onboarding foundation
-- durable feature boundaries for future growth
+The current phase is focused on product maturity and platform hardening:
+- stable architecture boundaries
+- stronger feature UX
+- improved workspace, detail, and editor quality
+- continued backend correctness and import quality work
+
+See `docs/roadmap.md` for the longer-term direction.
+
+---
+
+## Local development
+
+### Mobile app
+
+- Copy `.env.example` to `.env`
+- Adjust `EXPO_PUBLIC_API_BASE_URL` if needed
+
+### Dev auth flow
+
+1. Start backend in dev profile.
+2. Start Expo in `mobile-app/`.
+3. Log in with a dev email.
+4. Ensure group or place context exists before using scoped features.
+
+### PostgreSQL
+
+Use the PostgreSQL Docker compose setup in `infra/` and run the backend with the documented profiles when needed.
 
 ---
 
 ## Guiding rule
 
-If a change conflicts with the documented invariants or architecture, **the change is wrong**.
+LifeLinq should evolve without drifting.
 
-LifeLinq is designed to evolve — but never drift.
-## Mobile dev setup
-
-- Copy .env.example to .env.
-- Adjust EXPO_PUBLIC_API_BASE_URL if the backend runs elsewhere.
-
-## Dev auth flow (local)
-
-1. Start backend in dev profile:
-   - `mvn spring-boot:run "-Dspring-boot.run.profiles=dev"`
-2. Start Expo:
-   - `npm start` in `mobile-app/` and press `w` for web.
-3. Log in with any email in the UI (dev-only):
-   - The app calls `POST /auth/dev-login` and stores a JWT.
-4. If `/me` returns `groupId: null`, create a group once.
-5. Todos and other scoped endpoints require a group context.
-
-## Local PostgreSQL (Phase 6.1)
-
-Start PostgreSQL:
-
-- `docker compose -f infra/docker-compose.postgres.yml up -d`
-
-Start backend against PostgreSQL + Flyway (keeping dev auth and persistence adapters):
-
-- `mvn spring-boot:run "-Dspring-boot.run.profiles=dev,persistence,dev-postgres"`
-
-Notes:
-
-- Flyway runs from `classpath:db/migration-postgres`.
-- `spring.jpa.hibernate.ddl-auto` is `validate` in `dev-postgres` (schema is Flyway-owned).
-
-## Invitation Preview URL (dev)
-
-Invitation emails use `lifelinq.group.invitation.previewBaseUrl` to build links like `/invite/{token}`.
-
-In `application-dev.properties`, this is safely configured via env var with localhost fallback:
-
-- `lifelinq.group.invitation.previewBaseUrl=${INVITATION_PREVIEW_BASE_URL:http://localhost:8080}`
-
-For real-device testing, set `INVITATION_PREVIEW_BASE_URL` to a reachable public/LAN URL:
-
-- LAN example: `http://192.168.1.50:8080`
-- ngrok example: `https://your-subdomain.ngrok-free.app`
-
-Do not commit secrets; only host/base URL is needed for this setting.
-
+If a change conflicts with documented invariants, architecture, or design principles, the change is wrong.
