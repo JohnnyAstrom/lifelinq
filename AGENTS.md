@@ -34,6 +34,12 @@ Before proposing or implementing changes, read:
 Note:
 `docs/v0.5.md` is a historical milestone document and not a current architecture source.
 
+For frontend/product UX and UI decisions, also use the design document set when relevant:
+
+- `docs/design/ux-principles.md`
+- `docs/design/ui-foundation.md`
+- `docs/design/ui-reference-framework.md`
+
 ---
 
 # Core invariants (non-negotiable)

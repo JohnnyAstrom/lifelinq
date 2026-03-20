@@ -3,6 +3,11 @@
 This document is the canonical frontend architecture source for LifeLinq.
 It describes the structure that exists in `mobile-app/src/` today and the rules used to keep the frontend aligned with backend feature boundaries.
 
+For product UX principles and visual UI rules, use the design document set in `docs/design/`:
+- `docs/design/ux-principles.md`
+- `docs/design/ui-foundation.md`
+- `docs/design/ui-reference-framework.md`
+
 ---
 
 ## Purpose
