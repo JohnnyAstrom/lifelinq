@@ -18,6 +18,7 @@ import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
 import { MealsRecipesView } from '../components/MealsRecipesView';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
+import { DuplicateRecipeWarningSheet } from '../components/DuplicateRecipeWarningSheet';
 import { getWeekPlan, type WeekPlanResponse } from '../api/mealsApi';
 import {
   addDays,
@@ -255,11 +256,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     confirmDeleteRecipeMessage: 'This permanently removes the archived recipe from Meals.',
     confirmDeleteRecipeAction: 'Delete',
     cancelDeleteRecipeAction: 'Cancel',
-    duplicateRecipeTitle: 'Already saved in Recipes?',
-    duplicateRecipeFromUrlMessage: 'This looks like the same recipe page already saved in Recipes.',
+    duplicateRecipeTitle: 'Already in Recipes?',
+    duplicateRecipeFromUrlMessage: 'This looks like the same recipe already saved in Recipes.',
     duplicateRecipeFromNameMessage: 'This looks very close to a recipe already saved in Recipes.',
     duplicateRecipeArchivedSuffix: 'The existing recipe is archived.',
-    duplicateRecipeOpenExistingAction: 'Open existing recipe',
+    duplicateRecipeOpenExistingAction: 'Open saved recipe',
     duplicateRecipeUseExistingAction: 'Use existing recipe',
     duplicateRecipeSaveCopyAction: 'Save another copy',
     duplicateRecipeCancelAction: 'Cancel',
@@ -370,108 +371,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       ]
     );
   }
-
-  useEffect(() => {
-    const candidate = pendingRecipesDuplicateCandidate;
-    if (!candidate) {
-      return;
-    }
-
-    const lines = [
-      candidate.matchType === 'source-url'
-        ? strings.duplicateRecipeFromUrlMessage
-        : strings.duplicateRecipeFromNameMessage,
-      candidate.name,
-    ];
-    if (candidate.archivedAt) {
-      lines.push(strings.duplicateRecipeArchivedSuffix);
-    }
-
-    Alert.alert(
-      strings.duplicateRecipeTitle,
-      lines.join('\n\n'),
-      [
-        {
-          text: strings.duplicateRecipeCancelAction,
-          style: 'cancel',
-          onPress: recipesWorkspace.recipeDetail.dismissDuplicateRecipeWarning,
-        },
-        {
-          text: strings.duplicateRecipeOpenExistingAction,
-          onPress: () => {
-            void recipesWorkspace.recipeDetail.openDuplicateRecipe();
-          },
-        },
-        {
-          text: strings.duplicateRecipeSaveCopyAction,
-          onPress: () => {
-            void recipesWorkspace.recipeDetail.saveDuplicateRecipeAnyway();
-          },
-        },
-      ]
-    );
-  }, [
-    pendingRecipesDuplicateCandidate,
-    recipesWorkspace.recipeDetail.dismissDuplicateRecipeWarning,
-    recipesWorkspace.recipeDetail.openDuplicateRecipe,
-    recipesWorkspace.recipeDetail.saveDuplicateRecipeAnyway,
-    strings.duplicateRecipeArchivedSuffix,
-    strings.duplicateRecipeCancelAction,
-    strings.duplicateRecipeFromNameMessage,
-    strings.duplicateRecipeFromUrlMessage,
-    strings.duplicateRecipeOpenExistingAction,
-    strings.duplicateRecipeSaveCopyAction,
-    strings.duplicateRecipeTitle,
-  ]);
-
-  useEffect(() => {
-    const candidate = pendingMealDuplicateCandidate;
-    if (!candidate) {
-      return;
-    }
-
-    const lines = [
-      candidate.matchType === 'source-url'
-        ? strings.duplicateRecipeFromUrlMessage
-        : strings.duplicateRecipeFromNameMessage,
-      candidate.name,
-    ];
-
-    Alert.alert(
-      strings.duplicateRecipeTitle,
-      lines.join('\n\n'),
-      [
-        {
-          text: strings.duplicateRecipeCancelAction,
-          style: 'cancel',
-          onPress: actions.dismissDuplicateRecipeWarning,
-        },
-        {
-          text: strings.duplicateRecipeUseExistingAction,
-          onPress: () => {
-            actions.useDuplicateRecipe(candidate.recipeId);
-          },
-        },
-        {
-          text: strings.duplicateRecipeSaveCopyAction,
-          onPress: () => {
-            void actions.saveDuplicateRecipeAnyway();
-          },
-        },
-      ]
-    );
-  }, [
-    actions.dismissDuplicateRecipeWarning,
-    actions.saveDuplicateRecipeAnyway,
-    actions.useDuplicateRecipe,
-    pendingMealDuplicateCandidate,
-    strings.duplicateRecipeCancelAction,
-    strings.duplicateRecipeFromNameMessage,
-    strings.duplicateRecipeFromUrlMessage,
-    strings.duplicateRecipeSaveCopyAction,
-    strings.duplicateRecipeTitle,
-    strings.duplicateRecipeUseExistingAction,
-  ]);
 
   const weekEnd = useMemo(() => {
     const end = new Date(weekStart.getTime());
@@ -1120,6 +1019,56 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           }}
         />
       ) : null}
+
+      <DuplicateRecipeWarningSheet
+        visible={!!pendingRecipesDuplicateCandidate}
+        body={
+          pendingRecipesDuplicateCandidate?.matchType === 'source-url'
+            ? strings.duplicateRecipeFromUrlMessage
+            : strings.duplicateRecipeFromNameMessage
+        }
+        recipeName={pendingRecipesDuplicateCandidate?.name ?? ''}
+        archivedHint={pendingRecipesDuplicateCandidate?.archivedAt ? strings.duplicateRecipeArchivedSuffix : undefined}
+        onPrimaryAction={() => {
+          void recipesWorkspace.recipeDetail.openDuplicateRecipe();
+        }}
+        onSecondaryAction={() => {
+          void recipesWorkspace.recipeDetail.saveDuplicateRecipeAnyway();
+        }}
+        onClose={recipesWorkspace.recipeDetail.dismissDuplicateRecipeWarning}
+        strings={{
+          title: strings.duplicateRecipeTitle,
+          primaryAction: strings.duplicateRecipeOpenExistingAction,
+          secondaryAction: strings.duplicateRecipeSaveCopyAction,
+          cancelAction: strings.duplicateRecipeCancelAction,
+        }}
+      />
+
+      <DuplicateRecipeWarningSheet
+        visible={!!pendingMealDuplicateCandidate}
+        body={
+          pendingMealDuplicateCandidate?.matchType === 'source-url'
+            ? strings.duplicateRecipeFromUrlMessage
+            : strings.duplicateRecipeFromNameMessage
+        }
+        recipeName={pendingMealDuplicateCandidate?.name ?? ''}
+        archivedHint={pendingMealDuplicateCandidate?.archivedAt ? strings.duplicateRecipeArchivedSuffix : undefined}
+        onPrimaryAction={() => {
+          if (pendingMealDuplicateCandidate) {
+            actions.useDuplicateRecipe(pendingMealDuplicateCandidate.recipeId);
+          }
+        }}
+        onSecondaryAction={() => {
+          void actions.saveDuplicateRecipeAnyway();
+        }}
+        onClose={actions.dismissDuplicateRecipeWarning}
+        strings={{
+          title: strings.duplicateRecipeTitle,
+          primaryAction: strings.duplicateRecipeUseExistingAction,
+          secondaryAction: strings.duplicateRecipeSaveCopyAction,
+          cancelAction: strings.duplicateRecipeCancelAction,
+        }}
+      />
 
       {recipesWorkspace.recipeDetail.isOpen ? (
         <MealRecipeDetailSheet
