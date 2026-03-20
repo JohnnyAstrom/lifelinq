@@ -3,6 +3,7 @@ package app.lifelinq.features.meals.infrastructure;
 import app.lifelinq.features.meals.domain.PlannedMeal;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -67,6 +68,14 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
             throw new IllegalArgumentException("recipeId must not be null");
         }
         return repository.existsCurrentOrFutureMealReferencingRecipe(groupId, recipeId, year, isoWeek);
+    }
+
+    @Override
+    public List<UUID> findRecentRecipeIdsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        return repository.findRecentRecipeIdsOnOrBefore(groupId, year, isoWeek, dayOfWeek);
     }
 
     private WeekPlanEntity updateEntity(WeekPlanEntity entity, WeekPlan weekPlan) {

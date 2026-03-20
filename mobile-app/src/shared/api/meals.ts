@@ -177,6 +177,16 @@ export async function listArchivedRecipes(
   );
 }
 
+export async function listRecentlyUsedRecipes(
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse[]> {
+  return fetchJson<RecipeResponse[]>(
+    '/meals/recipes/recently-used',
+    {},
+    clientOptions
+  );
+}
+
 export async function getRecipe(
   recipeId: string,
   clientOptions: ApiClientOptions = {}

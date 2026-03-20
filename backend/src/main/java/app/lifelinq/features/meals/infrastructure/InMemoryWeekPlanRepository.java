@@ -3,9 +3,11 @@ package app.lifelinq.features.meals.infrastructure;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.Comparator;
 
 public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
     private final ConcurrentMap<UUID, WeekPlan> byId = new ConcurrentHashMap<>();
@@ -54,6 +56,63 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
                 .filter(plan -> plan.getYear() > year || (plan.getYear() == year && plan.getIsoWeek() >= isoWeek))
                 .flatMap(plan -> plan.getMeals().stream())
                 .anyMatch(meal -> recipeId.equals(meal.getRecipeId()));
+    }
+
+    @Override
+    public List<UUID> findRecentRecipeIdsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        return byId.values().stream()
+                .filter(plan -> plan.getGroupId().equals(groupId))
+                .filter(plan -> isPlanOnOrBefore(plan.getYear(), plan.getIsoWeek(), year, isoWeek))
+                .flatMap(plan -> plan.getMeals().stream()
+                        .filter(meal -> meal.getRecipeId() != null)
+                        .filter(meal -> isMealOnOrBefore(
+                                plan.getYear(),
+                                plan.getIsoWeek(),
+                                meal.getDayOfWeek(),
+                                year,
+                                isoWeek,
+                                dayOfWeek
+                        ))
+                        .map(meal -> new RecentMealRecipe(plan.getYear(), plan.getIsoWeek(), meal.getDayOfWeek(), meal.getRecipeId())))
+                .sorted(Comparator
+                        .comparingInt(RecentMealRecipe::year).reversed()
+                        .thenComparing(Comparator.comparingInt(RecentMealRecipe::isoWeek).reversed())
+                        .thenComparing(Comparator.comparingInt(RecentMealRecipe::dayOfWeek).reversed()))
+                .map(RecentMealRecipe::recipeId)
+                .toList();
+    }
+
+    private boolean isPlanOnOrBefore(int planYear, int planIsoWeek, int year, int isoWeek) {
+        return planYear < year || (planYear == year && planIsoWeek <= isoWeek);
+    }
+
+    private boolean isMealOnOrBefore(
+            int planYear,
+            int planIsoWeek,
+            int mealDayOfWeek,
+            int year,
+            int isoWeek,
+            int dayOfWeek
+    ) {
+        if (planYear < year) {
+            return true;
+        }
+        if (planYear > year) {
+            return false;
+        }
+        if (planIsoWeek < isoWeek) {
+            return true;
+        }
+        if (planIsoWeek > isoWeek) {
+            return false;
+        }
+        return mealDayOfWeek <= dayOfWeek;
+    }
+
+    private record RecentMealRecipe(int year, int isoWeek, int dayOfWeek, UUID recipeId) {
     }
 
     private String key(UUID groupId, int year, int isoWeek) {

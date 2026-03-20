@@ -221,6 +221,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipePickerHint: 'Saved recipes',
     loadingRecipes: 'Loading recipes...',
     noRecipes: 'No saved recipes yet.',
+    recentlyUsedRecipesTitle: 'Recently used',
+    searchRecipesPlaceholder: 'Search recipes',
+    noRecipeSearchResults: 'No recipes match this search.',
+    noRecipeSearchResultsHint: 'Try a title or source.',
     createRecipeFromRecipes: 'Create recipe',
     importRecipeFromRecipes: 'Save recipe',
     importRecipeTitle: 'Save recipe',
@@ -335,6 +339,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     token,
     enabled: workspaceMode === 'recipes',
   });
+
+  useEffect(() => {
+    if (workspaceMode !== 'recipes' || !recipesWorkspace.recipes.hasLoaded) {
+      return;
+    }
+    void recipesWorkspace.recipes.reload();
+  }, [workspaceMode]);
   const shopping = workflow.shopping;
   const mealsByDay = workflow.mealsByDay;
   const lists = shopping.lists;
@@ -787,6 +798,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ) : (
                 <MealsRecipesView
                   recipes={recipesWorkspace.recipes.items}
+                  recentRecipes={recipesWorkspace.recipes.recentItems}
+                  searchQuery={recipesWorkspace.recipes.searchQuery}
                   listMode={recipesWorkspace.recipes.listMode}
                   activeCount={recipesWorkspace.recipes.activeCount}
                   archivedCount={recipesWorkspace.recipes.archivedCount}
@@ -794,6 +807,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   error={recipesWorkspace.recipes.error}
                   onShowActive={recipesWorkspace.recipes.showActiveRecipes}
                   onShowArchived={recipesWorkspace.recipes.showArchivedRecipes}
+                  onChangeSearchQuery={recipesWorkspace.recipes.setSearchQuery}
                   onOpenRecipe={recipesWorkspace.recipes.openRecipe}
                   onCreateRecipe={recipesWorkspace.recipes.openCreateRecipe}
                   onImportRecipe={recipesWorkspace.recipes.openImportRecipe}
@@ -803,9 +817,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     archivedTab: strings.archivedRecipesTab,
                     newRecipe: strings.createRecipeFromRecipes,
                     importRecipe: strings.importRecipeFromRecipes,
+                    recentlyUsedTitle: strings.recentlyUsedRecipesTitle,
+                    searchPlaceholder: strings.searchRecipesPlaceholder,
                     loadingRecipes: strings.loadingRecipes,
                     noRecipes: strings.noRecipes,
                     noArchivedRecipes: 'No archived recipes yet.',
+                    noSearchResults: strings.noRecipeSearchResults,
+                    noSearchResultsHint: strings.noRecipeSearchResultsHint,
                     savedRecipeLabel: strings.savedRecipeLabel,
                     archivedRecipeLabel: strings.archivedRecipeLabel,
                     duplicateNameHint: (count) => `${count} recipes share this name`,

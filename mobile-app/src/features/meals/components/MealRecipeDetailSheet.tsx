@@ -376,8 +376,7 @@ export function MealRecipeDetailSheet({
     || (isArchivedRecipe && !!strings.archivedReadOnlyHint)
     || (showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && !!strings.saveAsNewRecipeHint)
     || (isEditingSavedRecipeDirectly && !!strings.editingSavedRecipeHint)
-    || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction)
-      || (canEnterEditMode && !!onEnterEditMode && !!strings.editRecipeAction);
+    || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction);
 
   function scheduleScrollToIngredientEditor() {
     const firstTimeout = setTimeout(() => {
@@ -530,14 +529,6 @@ export function MealRecipeDetailSheet({
                 <AppButton
                   title={strings.editSavedRecipeAction}
                   onPress={onStartEditingSavedRecipeDirectly}
-                  variant="ghost"
-                  disabled={isActionPending || isRecipeLoading}
-                />
-              ) : null}
-              {canEnterEditMode && onEnterEditMode && strings.editRecipeAction ? (
-                <AppButton
-                  title={strings.editRecipeAction}
-                  onPress={onEnterEditMode}
                   variant="ghost"
                   disabled={isActionPending || isRecipeLoading}
                 />
@@ -850,6 +841,16 @@ export function MealRecipeDetailSheet({
                 <AppButton
                   title={isSavingToRecipes && strings.savingToRecipes ? strings.savingToRecipes : strings.saveToRecipes}
                   onPress={onSaveToRecipes}
+                  variant="ghost"
+                  fullWidth
+                  disabled={isActionPending || isRecipeLoading}
+                />
+              ) : null}
+
+              {canEnterEditMode && onEnterEditMode && strings.editRecipeAction ? (
+                <AppButton
+                  title={strings.editRecipeAction}
+                  onPress={onEnterEditMode}
                   variant="ghost"
                   fullWidth
                   disabled={isActionPending || isRecipeLoading}

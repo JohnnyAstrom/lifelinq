@@ -458,6 +458,41 @@ class MealsControllerTest {
     }
 
     @Test
+    void listRecentlyUsedRecipesReturnsRecipeResponses() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.listRecentlyUsedRecipes(groupId, userId))
+                .thenReturn(List.of(new RecipeView(
+                        recipeId,
+                        groupId,
+                        "Recent Pasta",
+                        "Koket",
+                        null,
+                        "MANUAL",
+                        null,
+                        null,
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-18T10:00:00Z"),
+                        null,
+                        true,
+                        false,
+                        "Recipe must be archived before you can delete it.",
+                        List.of()
+                )));
+
+        mockMvc.perform(get("/meals/recipes/recently-used")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Recent Pasta"));
+
+        verify(mealsApplicationService).listRecentlyUsedRecipes(groupId, userId);
+    }
+
+    @Test
     void restoreRecipeReturnsActiveRecipeResponse() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

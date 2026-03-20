@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppCard, AppSegmentedControl, Subtle } from '../../../shared/ui/components';
+import { AppCard, AppInput, AppSegmentedControl, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type RecipeListItem = {
   recipeId: string;
   name: string;
+  sourceName: string | null;
   ingredientCount: number;
   duplicateNameCount: number;
   similarNameCount: number;
@@ -20,11 +21,15 @@ type Strings = {
   archivedTab: string;
   newRecipe: string;
   importRecipe: string;
+  recentlyUsedTitle: string;
+  searchPlaceholder: string;
   loadingRecipes: string;
   noRecipes: string;
   noRecipesHint?: string;
   noArchivedRecipes: string;
   noArchivedRecipesHint?: string;
+  noSearchResults: string;
+  noSearchResultsHint?: string;
   savedRecipeLabel: string;
   archivedRecipeLabel: string;
   duplicateNameHint: (count: number) => string;
@@ -35,6 +40,8 @@ type Strings = {
 
 type Props = {
   recipes: RecipeListItem[];
+  recentRecipes: RecipeListItem[];
+  searchQuery: string;
   listMode: 'active' | 'archived';
   activeCount: number;
   archivedCount: number;
@@ -42,6 +49,7 @@ type Props = {
   error: string | null;
   onShowActive: () => void;
   onShowArchived: () => void;
+  onChangeSearchQuery: (value: string) => void;
   onOpenRecipe: (recipeId: string) => void;
   onCreateRecipe: () => void;
   onImportRecipe: () => void;
@@ -50,6 +58,8 @@ type Props = {
 
 export function MealsRecipesView({
   recipes,
+  recentRecipes,
+  searchQuery,
   listMode,
   activeCount,
   archivedCount,
@@ -57,12 +67,60 @@ export function MealsRecipesView({
   error,
   onShowActive,
   onShowArchived,
+  onChangeSearchQuery,
   onOpenRecipe,
   onCreateRecipe,
   onImportRecipe,
   strings,
 }: Props) {
-  const shouldShowContentCard = isLoading || error != null || recipes.length > 0;
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const showRecentlyUsed = listMode === 'active' && !hasSearchQuery && recentRecipes.length > 0;
+  const shouldShowContentCard = isLoading || error != null || recipes.length > 0 || hasSearchQuery;
+
+  function renderRecipeRows(items: RecipeListItem[], sectionKey: string) {
+    return items.map((recipe, index) => {
+      const ingredientLabel = recipe.ingredientCount === 1
+        ? '1 ingredient'
+        : `${recipe.ingredientCount} ingredients`;
+      const hasCollisionHint = recipe.duplicateNameCount > 1 || recipe.similarNameCount > 1;
+      const metaLine = recipe.identitySummary && !hasCollisionHint
+        ? `${ingredientLabel} · ${recipe.identitySummary}`
+        : ingredientLabel;
+      return (
+        <Pressable
+          key={`${sectionKey}-${recipe.recipeId}`}
+          onPress={() => onOpenRecipe(recipe.recipeId)}
+          style={({ pressed }) => [
+            styles.row,
+            index > 0 ? styles.rowBorder : null,
+            pressed ? styles.rowPressed : null,
+          ]}
+        >
+          <View style={styles.rowCopy}>
+            {hasCollisionHint ? (
+              <View style={styles.rowMetaTop}>
+                <Text style={styles.duplicateHint}>
+                  {recipe.duplicateNameCount > 1
+                    ? strings.duplicateNameHint(recipe.duplicateNameCount)
+                    : strings.similarNameHint}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.rowTitle}>{recipe.name}</Text>
+            {hasCollisionHint && recipe.identitySummary ? (
+              <Text style={styles.rowIdentity} numberOfLines={1}>
+                {recipe.identitySummary}
+              </Text>
+            ) : null}
+            <Text style={styles.rowMeta} numberOfLines={1}>
+              {metaLine}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+        </Pressable>
+      );
+    });
+  }
 
   return (
     <View style={styles.layout}>
@@ -82,6 +140,14 @@ export function MealsRecipesView({
               onShowArchived();
             }}
             accentKey="meals"
+          />
+        </View>
+        <View style={styles.searchRow}>
+          <AppInput
+            value={searchQuery}
+            onChangeText={onChangeSearchQuery}
+            placeholder={strings.searchPlaceholder}
+            style={styles.searchInput}
           />
         </View>
         <View style={styles.controlsActionsRow}>
@@ -118,50 +184,26 @@ export function MealsRecipesView({
                 {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
                 {error ? <Text style={styles.error}>{error}</Text> : null}
               </>
+            ) : recipes.length === 0 && hasSearchQuery ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateTitle}>{strings.noSearchResults}</Text>
+                {strings.noSearchResultsHint ? (
+                  <Subtle>{strings.noSearchResultsHint}</Subtle>
+                ) : null}
+              </View>
             ) : (
-              <View style={styles.list}>
-                {recipes.map((recipe, index) => {
-                  const ingredientLabel = recipe.ingredientCount === 1
-                    ? '1 ingredient'
-                    : `${recipe.ingredientCount} ingredients`;
-                  const hasCollisionHint = recipe.duplicateNameCount > 1 || recipe.similarNameCount > 1;
-                  const metaLine = recipe.identitySummary && !hasCollisionHint
-                    ? `${ingredientLabel} · ${recipe.identitySummary}`
-                    : ingredientLabel;
-                  return (
-                    <Pressable
-                      key={recipe.recipeId}
-                      onPress={() => onOpenRecipe(recipe.recipeId)}
-                      style={({ pressed }) => [
-                        styles.row,
-                        index > 0 ? styles.rowBorder : null,
-                        pressed ? styles.rowPressed : null,
-                      ]}
-                    >
-                      <View style={styles.rowCopy}>
-                        {hasCollisionHint ? (
-                          <View style={styles.rowMetaTop}>
-                            <Text style={styles.duplicateHint}>
-                              {recipe.duplicateNameCount > 1
-                                ? strings.duplicateNameHint(recipe.duplicateNameCount)
-                                : strings.similarNameHint}
-                            </Text>
-                          </View>
-                        ) : null}
-                        <Text style={styles.rowTitle}>{recipe.name}</Text>
-                        {hasCollisionHint && recipe.identitySummary ? (
-                          <Text style={styles.rowIdentity} numberOfLines={1}>
-                            {recipe.identitySummary}
-                          </Text>
-                        ) : null}
-                        <Text style={styles.rowMeta} numberOfLines={1}>
-                          {metaLine}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
-                    </Pressable>
-                  );
-                })}
+              <View style={styles.sections}>
+                {showRecentlyUsed ? (
+                  <View style={styles.sectionBlock}>
+                    <Text style={styles.sectionLabel}>{strings.recentlyUsedTitle}</Text>
+                    <View style={styles.list}>
+                      {renderRecipeRows(recentRecipes, 'recent')}
+                    </View>
+                  </View>
+                ) : null}
+                <View style={[styles.list, showRecentlyUsed ? styles.mainListWithRecent : null]}>
+                  {renderRecipeRows(recipes, 'main')}
+                </View>
               </View>
             )}
           </View>
@@ -184,6 +226,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
+  },
+  searchRow: {
+    paddingTop: 2,
+  },
+  searchInput: {
+    backgroundColor: theme.colors.surfaceSubtle,
   },
   controlsActionsRow: {
     flexDirection: 'row',
@@ -218,8 +266,36 @@ const styles = StyleSheet.create({
   workspaceBody: {
     gap: theme.spacing.xs,
   },
+  sections: {
+    gap: theme.spacing.sm,
+  },
+  sectionBlock: {
+    gap: theme.spacing.xs,
+  },
+  sectionLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: 2,
+  },
+  emptyState: {
+    gap: 4,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+  },
+  emptyStateTitle: {
+    ...textStyles.body,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
   list: {
     gap: 0,
+  },
+  mainListWithRecent: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: theme.spacing.xs,
   },
   row: {
     flexDirection: 'row',

@@ -83,6 +83,19 @@ public class MealsController {
         return ResponseEntity.ok(recipes);
     }
 
+    @GetMapping("/meals/recipes/recently-used")
+    public ResponseEntity<?> listRecentlyUsedRecipes() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<RecipeResponse> recipes = new ArrayList<>();
+        for (RecipeView recipe : mealsApplicationService.listRecentlyUsedRecipes(context.getGroupId(), context.getUserId())) {
+            recipes.add(toRecipeResponse(recipe));
+        }
+        return ResponseEntity.ok(recipes);
+    }
+
     @GetMapping("/meals/recipes/{recipeId}")
     public ResponseEntity<?> getRecipe(@PathVariable UUID recipeId) {
         RequestContext context = ApiScoping.getContext();

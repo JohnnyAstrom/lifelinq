@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 import org.springframework.transaction.annotation.Transactional;
 
 public class MealsApplicationService {
+    private static final int RECENTLY_USED_RECIPES_LIMIT = 3;
     private static final List<String> LEADING_INGREDIENT_MODIFIERS = List.of(
             "very finely chopped",
             "finely chopped",
@@ -198,6 +199,57 @@ public class MealsApplicationService {
             }
             return a.recipeId().compareTo(b.recipeId());
         });
+        return views;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeView> listRecentlyUsedRecipes(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        LocalDate today = LocalDate.now(clock);
+        int currentYear = today.get(WeekFields.ISO.weekBasedYear());
+        int currentIsoWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
+        int currentDayOfWeek = today.getDayOfWeek().getValue();
+
+        List<UUID> orderedRecipeIds = weekPlanRepository.findRecentRecipeIdsOnOrBefore(
+                groupId,
+                currentYear,
+                currentIsoWeek,
+                currentDayOfWeek
+        );
+        if (orderedRecipeIds.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> seenRecipeIds = new HashSet<>();
+        List<UUID> recentRecipeIds = new ArrayList<>();
+        for (UUID recipeId : orderedRecipeIds) {
+            if (!seenRecipeIds.add(recipeId)) {
+                continue;
+            }
+            recentRecipeIds.add(recipeId);
+        }
+        if (recentRecipeIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Recipe> recipesById = new HashMap<>();
+        for (Recipe recipe : recipeRepository.findByGroupIdAndIds(groupId, new HashSet<>(recentRecipeIds))) {
+            if (recipe.isArchived() || !recipe.isSavedInRecipes()) {
+                continue;
+            }
+            recipesById.put(recipe.getId(), recipe);
+        }
+
+        List<RecipeView> views = new ArrayList<>();
+        for (UUID recipeId : recentRecipeIds) {
+            Recipe recipe = recipesById.get(recipeId);
+            if (recipe != null) {
+                views.add(toView(recipe, false));
+                if (views.size() >= RECENTLY_USED_RECIPES_LIMIT) {
+                    break;
+                }
+            }
+        }
         return views;
     }
 

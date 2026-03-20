@@ -7,6 +7,7 @@ export {
   getRecipe,
   getWeekPlan,
   listArchivedRecipes,
+  listRecentlyUsedRecipes,
   listRecipes,
   removeMeal,
   restoreRecipe,

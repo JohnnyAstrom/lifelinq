@@ -24,6 +24,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -847,6 +848,58 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void listRecentlyUsedRecipesReturnsRecentActiveRecipesFromPlannedMeals() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID fridayRecipeId = UUID.randomUUID();
+        UUID tuesdayRecipeId = UUID.randomUUID();
+        UUID priorWeekRecipeId = UUID.randomUUID();
+        UUID archivedRecipeId = UUID.randomUUID();
+        UUID futureRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-20T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(fridayRecipeId, groupId, "Friday Pasta", Instant.parse("2026-03-10T09:00:00Z"), List.of()));
+        recipes.save(new Recipe(tuesdayRecipeId, groupId, "Tuesday Soup", Instant.parse("2026-03-09T09:00:00Z"), List.of()));
+        recipes.save(new Recipe(priorWeekRecipeId, groupId, "Last Week Pie", Instant.parse("2026-03-08T09:00:00Z"), List.of()));
+        recipes.save(new Recipe(
+                archivedRecipeId,
+                groupId,
+                "Archived Stew",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-07T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                true,
+                List.of()
+        ));
+        recipes.save(new Recipe(futureRecipeId, groupId, "Future Curry", Instant.parse("2026-03-11T09:00:00Z"), List.of()));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 5, MealType.DINNER, fridayRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 2, MealType.DINNER, tuesdayRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 11, 4, MealType.DINNER, priorWeekRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, archivedRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 1, MealType.DINNER, futureRecipeId, null, null);
+
+        var recentRecipes = service.listRecentlyUsedRecipes(groupId, userId);
+
+        assertThat(recentRecipes).extracting(view -> view.name())
+                .containsExactly("Friday Pasta", "Tuesday Soup", "Last Week Pie");
+    }
+
+    @Test
     void restoreRecipeReturnsRecipeToActiveList() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -1294,6 +1347,27 @@ class MealsApplicationServiceTest {
                     .flatMap(plan -> plan.getMeals().stream())
                     .anyMatch(meal -> recipeId.equals(meal.getRecipeId()));
         }
+
+        @Override
+        public List<UUID> findRecentRecipeIdsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek) {
+            return byId.values().stream()
+                    .filter(plan -> plan.getGroupId().equals(groupId))
+                    .flatMap(plan -> plan.getMeals().stream()
+                            .filter(meal -> meal.getRecipeId() != null)
+                            .filter(meal -> plan.getYear() < year
+                                    || (plan.getYear() == year && plan.getIsoWeek() < isoWeek)
+                                    || (plan.getYear() == year && plan.getIsoWeek() == isoWeek && meal.getDayOfWeek() <= dayOfWeek))
+                            .map(meal -> new RecentMealRecipe(plan.getYear(), plan.getIsoWeek(), meal.getDayOfWeek(), meal.getRecipeId())))
+                    .sorted(Comparator
+                            .comparingInt(RecentMealRecipe::year).reversed()
+                            .thenComparing(Comparator.comparingInt(RecentMealRecipe::isoWeek).reversed())
+                            .thenComparing(Comparator.comparingInt(RecentMealRecipe::dayOfWeek).reversed()))
+                    .map(RecentMealRecipe::recipeId)
+                    .toList();
+        }
+    }
+
+    private record RecentMealRecipe(int year, int isoWeek, int dayOfWeek, UUID recipeId) {
     }
 
     private static final class InMemoryRecipeRepository implements RecipeRepository {

@@ -9,6 +9,7 @@ import {
   deleteRecipe,
   getRecipe,
   listArchivedRecipes,
+  listRecentlyUsedRecipes,
   listRecipes,
   restoreRecipe,
   updateRecipe,
@@ -40,6 +41,17 @@ type RecipeSaveRequest = {
   shortNote: string | null;
   instructions: string | null;
   ingredients: ReturnType<typeof toIngredientRequests>;
+};
+
+type RecipeListItem = {
+  recipeId: string;
+  name: string;
+  sourceName: string | null;
+  ingredientCount: number;
+  duplicateNameCount: number;
+  similarNameCount: number;
+  identitySummary: string | null;
+  archivedAt: string | null;
 };
 
 function normalizeClipboardUrlCandidate(value: string) {
@@ -75,6 +87,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listMode, setListMode] = useState<RecipeListMode>('active');
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
+  const [recentlyUsedRecipes, setRecentlyUsedRecipes] = useState<RecipeResponse[] | null>(null);
 
   const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
   const [recipeId, setRecipeId] = useState<string | null>(null);
@@ -107,12 +121,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     [ingredientRows]
   );
 
-  const visibleRecipes = useMemo(
-    () => listMode === 'active' ? (activeRecipes ?? []) : (archivedRecipes ?? []),
-    [activeRecipes, archivedRecipes, listMode]
-  );
-
-  const recipeListItems = useMemo(() => {
+  function toRecipeListItems(recipes: RecipeResponse[]): RecipeListItem[] {
     const nameCounts = new Map<string, number>();
     const titleFamilyCounts = new Map<string, number>();
 
@@ -136,7 +145,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return `${tokens[0]} ${tokens[1]}`;
     }
 
-    for (const recipe of visibleRecipes) {
+    for (const recipe of recipes) {
       const normalizedName = normalizeTitle(recipe.name);
       nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1);
 
@@ -169,7 +178,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return null;
     }
 
-    return [...visibleRecipes]
+    return [...recipes]
       .sort((left, right) => {
         const nameComparison = left.name.localeCompare(right.name);
         if (nameComparison !== 0) {
@@ -184,13 +193,44 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       .map((recipe) => ({
         recipeId: recipe.recipeId,
         name: recipe.name,
+        sourceName: recipe.sourceName ?? null,
         ingredientCount: recipe.ingredients.length,
         duplicateNameCount: nameCounts.get(normalizeTitle(recipe.name)) ?? 1,
         similarNameCount: titleFamilyCounts.get(buildTitleFamilyKey(recipe.name) ?? '') ?? 1,
         identitySummary: buildIdentitySummary(recipe),
         archivedAt: recipe.archivedAt,
       }));
-  }, [visibleRecipes]);
+  }
+
+  const activeRecipeListItems = useMemo(
+    () => toRecipeListItems(activeRecipes ?? []),
+    [activeRecipes]
+  );
+  const archivedRecipeListItems = useMemo(
+    () => toRecipeListItems(archivedRecipes ?? []),
+    [archivedRecipes]
+  );
+  const recentlyUsedRecipeItems = useMemo(
+    () => toRecipeListItems(recentlyUsedRecipes ?? []),
+    [recentlyUsedRecipes]
+  );
+  const visibleRecipeListItems = useMemo(
+    () => listMode === 'active' ? activeRecipeListItems : archivedRecipeListItems,
+    [activeRecipeListItems, archivedRecipeListItems, listMode]
+  );
+
+  const filteredRecipeListItems = useMemo(() => {
+    const normalizedQuery = recipeSearchQuery.trim().toLocaleLowerCase();
+    if (normalizedQuery.length === 0) {
+      return visibleRecipeListItems;
+    }
+
+    return visibleRecipeListItems.filter((recipe) => {
+      const titleMatch = recipe.name.toLocaleLowerCase().includes(normalizedQuery);
+      const sourceMatch = (recipe.sourceName ?? '').toLocaleLowerCase().includes(normalizedQuery);
+      return titleMatch || sourceMatch;
+    });
+  }, [visibleRecipeListItems, recipeSearchQuery]);
 
   async function loadRecipes(options?: { refreshing?: boolean }) {
     if (!token) {
@@ -204,12 +244,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setError(null);
     try {
-      const [nextActiveRecipes, nextArchivedRecipes] = await Promise.all([
+      const [nextActiveRecipes, nextArchivedRecipes, nextRecentlyUsedRecipes] = await Promise.all([
         listRecipes({ token }),
         listArchivedRecipes({ token }),
+        listRecentlyUsedRecipes({ token }),
       ]);
       setActiveRecipes(nextActiveRecipes);
       setArchivedRecipes(nextArchivedRecipes);
+      setRecentlyUsedRecipes(nextRecentlyUsedRecipes);
       setHasLoaded(true);
     } catch (err) {
       await handleApiError(err);
@@ -674,7 +716,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   return {
     recipes: {
-      items: recipeListItems,
+      items: filteredRecipeListItems,
+      recentItems: recentlyUsedRecipeItems,
+      searchQuery: recipeSearchQuery,
       listMode,
       activeCount: activeRecipes?.length ?? 0,
       archivedCount: archivedRecipes?.length ?? 0,
@@ -685,6 +729,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       reload: () => loadRecipes({ refreshing: true }),
       showActiveRecipes,
       showArchivedRecipes,
+      setSearchQuery: setRecipeSearchQuery,
       openRecipe,
       openCreateRecipe,
       openImportRecipe,
