@@ -23,10 +23,23 @@ import {
   type MealIngredientRow,
   type MealIngredientUnit,
 } from '../utils/ingredientRows';
+import {
+  findLikelyRecipeDuplicate,
+  type RecipeDuplicateCandidate,
+} from '../utils/recipeDuplicateGuard';
 
 type DetailPendingAction = 'save' | 'archive' | 'delete' | null;
 type RecipeDetailMode = 'create' | 'saved' | 'import';
 type RecipeListMode = 'active' | 'archived';
+type RecipeSaveRequest = {
+  name: string;
+  sourceName: string | null;
+  sourceUrl: string | null;
+  originKind: string;
+  shortNote: string | null;
+  instructions: string | null;
+  ingredients: ReturnType<typeof toIngredientRequests>;
+};
 
 type Params = {
   token: string;
@@ -60,6 +73,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [pendingDetailAction, setPendingDetailAction] = useState<DetailPendingAction>(null);
   const [detailMode, setDetailMode] = useState<RecipeDetailMode>('create');
   const [isRecipeReadMode, setIsRecipeReadMode] = useState(false);
+  const [pendingDuplicateCandidate, setPendingDuplicateCandidate] = useState<RecipeDuplicateCandidate | null>(null);
+  const [pendingDuplicateSaveRequest, setPendingDuplicateSaveRequest] = useState<RecipeSaveRequest | null>(null);
 
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
@@ -342,6 +357,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsRecipeDetailOpen(false);
     setRecipeDetailError(null);
+    setPendingDuplicateCandidate(null);
+    setPendingDuplicateSaveRequest(null);
   }
 
   function startEditingRecipe() {
@@ -423,27 +440,58 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
+  function buildRecipeSaveRequest(): RecipeSaveRequest {
+    return {
+      name: recipeTitle.trim(),
+      sourceName: recipeSource.trim() || null,
+      sourceUrl: recipeSourceUrl.trim() || null,
+      originKind: recipeOriginKind,
+      shortNote: recipeShortNote.trim() || null,
+      instructions: recipeInstructions.trim() || null,
+      ingredients: toIngredientRequests(ingredientRows),
+    };
+  }
+
+  async function createRecipeFromRequest(request: RecipeSaveRequest) {
+    const saved = await createRecipe(request, { token });
+    setActiveRecipes((current) => {
+      const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
+      return [...others, saved];
+    });
+    setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
+    setHasLoaded(true);
+    applyRecipe(saved);
+  }
+
   async function saveRecipe() {
     if (pendingDetailAction || isRecipeLoading || !recipeTitle.trim()) {
       return;
     }
 
+    const request = buildRecipeSaveRequest();
+    if (!recipeId) {
+      const duplicateCandidate = findLikelyRecipeDuplicate({
+        recipes: [...(activeRecipes ?? []), ...(archivedRecipes ?? [])],
+        name: request.name,
+        sourceName: request.sourceName,
+        sourceUrl: request.sourceUrl,
+      });
+      if (duplicateCandidate) {
+        setPendingDuplicateCandidate(duplicateCandidate);
+        setPendingDuplicateSaveRequest(request);
+        return;
+      }
+    }
+
     setPendingDetailAction('save');
     setRecipeDetailError(null);
     try {
-      const request = {
-        name: recipeTitle.trim(),
-        sourceName: recipeSource.trim() || null,
-        sourceUrl: recipeSourceUrl.trim() || null,
-        originKind: recipeOriginKind,
-        shortNote: recipeShortNote.trim() || null,
-        instructions: recipeInstructions.trim() || null,
-        ingredients: toIngredientRequests(ingredientRows),
-      };
       const saved = recipeId
         ? await updateRecipe(recipeId, request, { token })
         : await createRecipe(request, { token });
 
+      setPendingDuplicateCandidate(null);
+      setPendingDuplicateSaveRequest(null);
       if (saved.archivedAt) {
         setArchivedRecipes((current) => {
           const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
@@ -464,6 +512,40 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     } finally {
       setPendingDetailAction(null);
     }
+  }
+
+  async function saveDuplicateRecipeAnyway() {
+    if (!pendingDuplicateSaveRequest || pendingDetailAction || isRecipeLoading) {
+      return;
+    }
+
+    setPendingDetailAction('save');
+    setRecipeDetailError(null);
+    try {
+      await createRecipeFromRequest(pendingDuplicateSaveRequest);
+      setPendingDuplicateCandidate(null);
+      setPendingDuplicateSaveRequest(null);
+    } catch (err) {
+      await handleApiError(err);
+      setRecipeDetailError(formatApiError(err));
+    } finally {
+      setPendingDetailAction(null);
+    }
+  }
+
+  async function openDuplicateRecipe() {
+    if (!pendingDuplicateCandidate) {
+      return;
+    }
+    const duplicateRecipeId = pendingDuplicateCandidate.recipeId;
+    setPendingDuplicateCandidate(null);
+    setPendingDuplicateSaveRequest(null);
+    await openRecipe(duplicateRecipeId);
+  }
+
+  function dismissDuplicateRecipeWarning() {
+    setPendingDuplicateCandidate(null);
+    setPendingDuplicateSaveRequest(null);
   }
 
   async function archiveCurrentRecipe() {
@@ -606,6 +688,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       isArchivingRecipe: pendingDetailAction === 'archive',
       isDeletingRecipe: pendingDetailAction === 'delete',
       isActionPending: pendingDetailAction !== null,
+      pendingDuplicateCandidate,
       setRecipeTitle,
       setRecipeSource,
       setRecipeSourceUrl,
@@ -618,6 +701,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setIngredientUnit,
       startEditingRecipe,
       saveRecipe,
+      saveDuplicateRecipeAnyway,
+      openDuplicateRecipe,
+      dismissDuplicateRecipeWarning,
       archiveCurrentRecipe,
       restoreCurrentRecipe,
       deleteCurrentRecipe,

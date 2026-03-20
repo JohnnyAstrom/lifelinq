@@ -255,6 +255,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     confirmDeleteRecipeMessage: 'This permanently removes the archived recipe from Meals.',
     confirmDeleteRecipeAction: 'Delete',
     cancelDeleteRecipeAction: 'Cancel',
+    duplicateRecipeTitle: 'Already saved in Recipes?',
+    duplicateRecipeFromUrlMessage: 'This looks like the same recipe page already saved in Recipes.',
+    duplicateRecipeFromNameMessage: 'This looks very close to a recipe already saved in Recipes.',
+    duplicateRecipeArchivedSuffix: 'The existing recipe is archived.',
+    duplicateRecipeOpenExistingAction: 'Open existing recipe',
+    duplicateRecipeUseExistingAction: 'Use existing recipe',
+    duplicateRecipeSaveCopyAction: 'Save another copy',
+    duplicateRecipeCancelAction: 'Cancel',
     createRecipe: 'Create recipe',
     creatingRecipe: 'Creating recipe...',
     archivedRecipeLabel: 'Archived recipe',
@@ -325,6 +333,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const mealsByDay = workflow.mealsByDay;
   const lists = shopping.lists;
   const effectiveListId = editor.effectiveListId;
+  const pendingRecipesDuplicateCandidate = recipesWorkspace.recipeDetail.pendingDuplicateCandidate;
+  const pendingMealDuplicateCandidate = editor.pendingDuplicateCandidate;
 
   async function handleSave() {
     await actions.saveMeal();
@@ -360,6 +370,108 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       ]
     );
   }
+
+  useEffect(() => {
+    const candidate = pendingRecipesDuplicateCandidate;
+    if (!candidate) {
+      return;
+    }
+
+    const lines = [
+      candidate.matchType === 'source-url'
+        ? strings.duplicateRecipeFromUrlMessage
+        : strings.duplicateRecipeFromNameMessage,
+      candidate.name,
+    ];
+    if (candidate.archivedAt) {
+      lines.push(strings.duplicateRecipeArchivedSuffix);
+    }
+
+    Alert.alert(
+      strings.duplicateRecipeTitle,
+      lines.join('\n\n'),
+      [
+        {
+          text: strings.duplicateRecipeCancelAction,
+          style: 'cancel',
+          onPress: recipesWorkspace.recipeDetail.dismissDuplicateRecipeWarning,
+        },
+        {
+          text: strings.duplicateRecipeOpenExistingAction,
+          onPress: () => {
+            void recipesWorkspace.recipeDetail.openDuplicateRecipe();
+          },
+        },
+        {
+          text: strings.duplicateRecipeSaveCopyAction,
+          onPress: () => {
+            void recipesWorkspace.recipeDetail.saveDuplicateRecipeAnyway();
+          },
+        },
+      ]
+    );
+  }, [
+    pendingRecipesDuplicateCandidate,
+    recipesWorkspace.recipeDetail.dismissDuplicateRecipeWarning,
+    recipesWorkspace.recipeDetail.openDuplicateRecipe,
+    recipesWorkspace.recipeDetail.saveDuplicateRecipeAnyway,
+    strings.duplicateRecipeArchivedSuffix,
+    strings.duplicateRecipeCancelAction,
+    strings.duplicateRecipeFromNameMessage,
+    strings.duplicateRecipeFromUrlMessage,
+    strings.duplicateRecipeOpenExistingAction,
+    strings.duplicateRecipeSaveCopyAction,
+    strings.duplicateRecipeTitle,
+  ]);
+
+  useEffect(() => {
+    const candidate = pendingMealDuplicateCandidate;
+    if (!candidate) {
+      return;
+    }
+
+    const lines = [
+      candidate.matchType === 'source-url'
+        ? strings.duplicateRecipeFromUrlMessage
+        : strings.duplicateRecipeFromNameMessage,
+      candidate.name,
+    ];
+
+    Alert.alert(
+      strings.duplicateRecipeTitle,
+      lines.join('\n\n'),
+      [
+        {
+          text: strings.duplicateRecipeCancelAction,
+          style: 'cancel',
+          onPress: actions.dismissDuplicateRecipeWarning,
+        },
+        {
+          text: strings.duplicateRecipeUseExistingAction,
+          onPress: () => {
+            actions.useDuplicateRecipe(candidate.recipeId);
+          },
+        },
+        {
+          text: strings.duplicateRecipeSaveCopyAction,
+          onPress: () => {
+            void actions.saveDuplicateRecipeAnyway();
+          },
+        },
+      ]
+    );
+  }, [
+    actions.dismissDuplicateRecipeWarning,
+    actions.saveDuplicateRecipeAnyway,
+    actions.useDuplicateRecipe,
+    pendingMealDuplicateCandidate,
+    strings.duplicateRecipeCancelAction,
+    strings.duplicateRecipeFromNameMessage,
+    strings.duplicateRecipeFromUrlMessage,
+    strings.duplicateRecipeSaveCopyAction,
+    strings.duplicateRecipeTitle,
+    strings.duplicateRecipeUseExistingAction,
+  ]);
 
   const weekEnd = useMemo(() => {
     const end = new Date(weekStart.getTime());

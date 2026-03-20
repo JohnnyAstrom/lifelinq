@@ -19,6 +19,10 @@ import {
   type MealIngredientRow,
   type MealIngredientUnit,
 } from '../utils/ingredientRows';
+import {
+  findLikelyRecipeDuplicate,
+  type RecipeDuplicateCandidate,
+} from '../utils/recipeDuplicateGuard';
 import { useWeekPlan } from './useWeekPlan';
 
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
@@ -121,6 +125,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [isSelectedRecipeSavedInRecipes, setIsSelectedRecipeSavedInRecipes] = useState(false);
   const [isEditingSavedRecipeDirectly, setIsEditingSavedRecipeDirectly] = useState(false);
   const [pendingEditorAction, setPendingEditorAction] = useState<EditorPendingAction>(null);
+  const [pendingDuplicateCandidate, setPendingDuplicateCandidate] = useState<RecipeDuplicateCandidate | null>(null);
 
   const effectiveListId =
     selectedListId ?? (shopping.lists.length > 0 ? shopping.lists[0].id : null);
@@ -406,6 +411,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     if (pendingEditorAction) {
       return;
     }
+    setPendingDuplicateCandidate(null);
     resetEditorState();
   }
 
@@ -423,6 +429,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     if (pendingEditorAction) {
       return;
     }
+    setPendingDuplicateCandidate(null);
     setIsRecipeDetailOpen(false);
   }
 
@@ -475,6 +482,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     if (pendingEditorAction) {
       return;
     }
+    setPendingDuplicateCandidate(null);
     setIsRecipePickerOpen(false);
   }
 
@@ -754,6 +762,42 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   }
 
   async function saveToRecipes() {
+    if (pendingEditorAction) {
+      return;
+    }
+
+    const willCreateNewSavedRecipe = canSaveToRecipes
+      && hasRecipeDraftContent
+      && (
+        !selectedMealRecipeId
+        || (!pickedRecipeSnapshot && selectedMealRecipeId != null)
+        || (pickedRecipeSnapshot != null && hasModifiedPickedRecipe)
+      );
+
+    if (willCreateNewSavedRecipe) {
+      let recipes = availableRecipes;
+      if (!recipes) {
+        try {
+          recipes = await listRecipes({ token });
+          setAvailableRecipes(recipes);
+        } catch (err) {
+          await handleApiError(err);
+          setRecipeListError(formatApiError(err));
+          return;
+        }
+      }
+      const duplicateCandidate = findLikelyRecipeDuplicate({
+        recipes: recipes.filter((recipe) => recipe.archivedAt == null && recipe.savedInRecipes),
+        name: currentRecipeDraft.name,
+        sourceName: currentRecipeDraft.sourceName,
+        sourceUrl: currentRecipeDraft.sourceUrl,
+      });
+      if (duplicateCandidate) {
+        setPendingDuplicateCandidate(duplicateCandidate);
+        return;
+      }
+    }
+
     await runEditorAction('save-to-recipes', async () => {
       const saved = await persistMeal(null, { saveInRecipes: true });
       if (!saved) {
@@ -763,6 +807,38 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setIsRecipePickerOpen(false);
       setIsShoppingReviewOpen(false);
     });
+  }
+
+  async function saveDuplicateRecipeAnyway() {
+    if (pendingEditorAction) {
+      return;
+    }
+    setPendingDuplicateCandidate(null);
+    await runEditorAction('save-to-recipes', async () => {
+      const saved = await persistMeal(null, { saveInRecipes: true });
+      if (!saved) {
+        return;
+      }
+      setIsRecipeDetailOpen(false);
+      setIsRecipePickerOpen(false);
+      setIsShoppingReviewOpen(false);
+    });
+  }
+
+  function dismissDuplicateRecipeWarning() {
+    setPendingDuplicateCandidate(null);
+  }
+
+  function useDuplicateRecipe(recipeId: string) {
+    const selectedRecipe = availableRecipes?.find((recipe) => recipe.recipeId === recipeId);
+    if (!selectedRecipe) {
+      return;
+    }
+    setPendingDuplicateCandidate(null);
+    applyRecipeSnapshot(selectedRecipe);
+    setMealTitle((current) => (current.trim().length > 0 ? current : selectedRecipe.name));
+    setIsRecipePickerOpen(false);
+    setIsRecipeDetailOpen(false);
   }
 
   async function addIngredientsToShopping() {
@@ -856,6 +932,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       effectiveListId,
       shoppingSyncError,
       recipeLoadError,
+      pendingDuplicateCandidate,
       pendingAction: pendingEditorAction,
       isActionPending: pendingEditorAction !== null,
       isSavingMeal: pendingEditorAction === 'save-meal',
@@ -893,6 +970,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       closeEditor,
       saveMeal,
       saveToRecipes,
+      saveDuplicateRecipeAnyway,
+      dismissDuplicateRecipeWarning,
+      useDuplicateRecipe,
       addIngredientsToShopping,
       removeMeal,
     },
