@@ -323,17 +323,35 @@ public class MealsApplicationService {
                         isoWeek,
                         clock.instant()
                 ));
+        PlannedMeal existingMeal = weekPlan.getMeal(dayOfWeek, mealType);
+        boolean shouldPushToShopping = recipe != null && targetShoppingListId != null;
+        Instant shoppingHandledAt = null;
+        UUID shoppingListId = null;
+        if (shouldPushToShopping) {
+            shoppingHandledAt = clock.instant();
+            shoppingListId = targetShoppingListId;
+        } else if (existingMeal != null && sameMealContent(
+                existingMeal,
+                normalizedMealTitle,
+                recipeId,
+                recipe == null ? null : recipe.getName()
+        )) {
+            shoppingHandledAt = existingMeal.getShoppingHandledAt();
+            shoppingListId = existingMeal.getShoppingListId();
+        }
 
         weekPlan.addOrReplaceMeal(
                 dayOfWeek,
                 mealType,
                 normalizedMealTitle,
                 recipeId,
-                recipe == null ? null : recipe.getName()
+                recipe == null ? null : recipe.getName(),
+                shoppingHandledAt,
+                shoppingListId
         );
         WeekPlan saved = weekPlanRepository.save(weekPlan);
 
-        if (recipe != null && targetShoppingListId != null) {
+        if (shouldPushToShopping) {
             // V0.5c intent: recipe ingredients primarily act as shopping-item generators.
             pushIngredientsToShopping(
                     groupId,
@@ -351,7 +369,9 @@ public class MealsApplicationService {
                 savedMeal.getMealType().name(),
                 savedMeal.getRecipeId(),
                 savedMeal.getMealTitle(),
-                savedMeal.getRecipeTitleSnapshot()
+                savedMeal.getRecipeTitleSnapshot(),
+                savedMeal.getShoppingHandledAt(),
+                savedMeal.getShoppingListId()
         );
         return new AddMealOutput(saved.getId(), saved.getYear(), saved.getIsoWeek(), mealView);
     }
@@ -439,7 +459,9 @@ public class MealsApplicationService {
                     meal.getMealTitle(),
                     meal.getRecipeId() == null
                             ? null
-                            : namesByRecipeId.getOrDefault(meal.getRecipeId(), meal.getRecipeTitleSnapshot())
+                            : namesByRecipeId.getOrDefault(meal.getRecipeId(), meal.getRecipeTitleSnapshot()),
+                    meal.getShoppingHandledAt(),
+                    meal.getShoppingListId()
             ));
         }
         return new WeekPlanView(
@@ -470,6 +492,17 @@ public class MealsApplicationService {
             return recipe.getName();
         }
         throw new IllegalArgumentException("mealTitle must not be blank");
+    }
+
+    private boolean sameMealContent(
+            PlannedMeal existingMeal,
+            String normalizedMealTitle,
+            UUID recipeId,
+            String recipeTitleSnapshot
+    ) {
+        return existingMeal.getMealTitle().equals(normalizedMealTitle)
+                && java.util.Objects.equals(existingMeal.getRecipeId(), recipeId)
+                && java.util.Objects.equals(existingMeal.getRecipeTitleSnapshot(), recipeTitleSnapshot);
     }
 
     private String normalizeRecipeName(String name) {

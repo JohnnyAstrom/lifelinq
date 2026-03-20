@@ -86,6 +86,32 @@ class JpaWeekPlanRepositoryAdapterTest {
     }
 
     @Test
+    void savesAndLoadsShoppingHandledSnapshot() {
+        UUID groupId = UUID.randomUUID();
+        UUID weekPlanId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID shoppingListId = UUID.randomUUID();
+        Instant handledAt = Instant.parse("2026-03-20T10:15:00Z");
+        WeekPlan plan = new WeekPlan(weekPlanId, groupId, 2025, 14, Instant.now());
+        plan.addOrReplaceMeal(
+                4,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                "Soup",
+                recipeId,
+                "Soup",
+                handledAt,
+                shoppingListId
+        );
+
+        repository.save(plan);
+
+        WeekPlan loaded = repository.findByGroupAndWeek(groupId, 2025, 14).orElseThrow();
+        assertEquals(1, loaded.getMeals().size());
+        assertEquals(handledAt, loaded.getMeals().get(0).getShoppingHandledAt());
+        assertEquals(shoppingListId, loaded.getMeals().get(0).getShoppingListId());
+    }
+
+    @Test
     void removesMeal() {
         UUID groupId = UUID.randomUUID();
         UUID weekPlanId = UUID.randomUUID();

@@ -7,6 +7,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -35,6 +36,12 @@ public class PlannedMealEntity {
     @Column(name = "recipe_title_snapshot")
     private String recipeTitleSnapshot;
 
+    @Column(name = "shopping_handled_at")
+    private Instant shoppingHandledAt;
+
+    @Column(name = "shopping_list_id")
+    private UUID shoppingListId;
+
     protected PlannedMealEntity() {
     }
 
@@ -43,13 +50,17 @@ public class PlannedMealEntity {
             WeekPlanEntity weekPlan,
             String mealTitle,
             UUID recipeId,
-            String recipeTitleSnapshot
+            String recipeTitleSnapshot,
+            Instant shoppingHandledAt,
+            UUID shoppingListId
     ) {
         this.id = id;
         this.weekPlan = weekPlan;
         this.mealTitle = mealTitle;
         this.recipeId = recipeId;
         this.recipeTitleSnapshot = recipeTitleSnapshot;
+        this.shoppingHandledAt = shoppingHandledAt;
+        this.shoppingListId = shoppingListId;
     }
 
     PlannedMealId getId() {
@@ -78,5 +89,13 @@ public class PlannedMealEntity {
 
     String getRecipeTitleSnapshot() {
         return recipeTitleSnapshot;
+    }
+
+    Instant getShoppingHandledAt() {
+        return shoppingHandledAt;
+    }
+
+    UUID getShoppingListId() {
+        return shoppingListId;
     }
 }

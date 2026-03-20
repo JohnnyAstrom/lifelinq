@@ -33,6 +33,8 @@ type MealEntry = {
   mealTitle: string;
   recipeId: string | null;
   recipeTitle: string | null;
+  shoppingHandledAt: string | null;
+  shoppingListId: string | null;
 };
 
 type EditorPendingAction = 'save-meal' | 'save-to-recipes' | 'remove-meal' | 'add-ingredients-to-shopping' | null;
@@ -86,6 +88,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           mealTitle: meal.mealTitle,
           recipeId: meal.recipeId,
           recipeTitle: meal.recipeTitle,
+          shoppingHandledAt: meal.shoppingHandledAt,
+          shoppingListId: meal.shoppingListId,
         };
         const list = map.get(meal.dayOfWeek) ?? [];
         list.push(entry);
@@ -115,6 +119,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [isRecipeListLoading, setIsRecipeListLoading] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [lastUsedShoppingListId, setLastUsedShoppingListId] = useState<string | null>(null);
   const [selectedShoppingIngredientRowIds, setSelectedShoppingIngredientRowIds] = useState<string[]>([]);
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
   const [recipeLoadError, setRecipeLoadError] = useState<string | null>(null);
@@ -127,9 +132,6 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [pendingEditorAction, setPendingEditorAction] = useState<EditorPendingAction>(null);
   const [pendingDuplicateCandidate, setPendingDuplicateCandidate] = useState<RecipeDuplicateCandidate | null>(null);
 
-  const effectiveListId =
-    selectedListId ?? (shopping.lists.length > 0 ? shopping.lists[0].id : null);
-
   const selectedMeal = useMemo(() => {
     if (!selectedDay || !selectedMealType) {
       return null;
@@ -137,6 +139,14 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     const list = mealsByDay.get(selectedDay) ?? [];
     return list.find((meal) => meal.mealType === selectedMealType) ?? null;
   }, [selectedDay, selectedMealType, mealsByDay]);
+  const selectedMealHandledListId = selectedMeal?.shoppingListId ?? null;
+  const selectedMealHandledAt = selectedMeal?.shoppingHandledAt ?? null;
+  const effectiveListId =
+    selectedListId
+    ?? selectedMealHandledListId
+    ?? lastUsedShoppingListId
+    ?? (shopping.lists.length > 0 ? shopping.lists[0].id : null);
+  const effectiveListName = shopping.lists.find((list) => list.id === effectiveListId)?.name ?? null;
 
   const hasIngredients = useMemo(
     () => toIngredientRequests(ingredientRows).length > 0,
@@ -238,6 +248,13 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       || !isSelectedRecipeSavedInRecipes
       || hasModifiedPickedRecipe
     );
+  const hasShoppingHandled = !!selectedMealHandledAt && !!selectedMealHandledListId;
+  const needsShoppingReviewAgain = hasShoppingHandled && (
+    mealTitle.trim() !== (selectedMeal?.mealTitle ?? '').trim()
+      || selectedMealRecipeId !== (selectedMeal?.recipeId ?? null)
+      || hasModifiedPickedRecipe
+      || (selectedMeal?.recipeId == null && hasRecipeDraftContent)
+  );
 
   function syncEditorSelection(day: number, mealType: MealType) {
     setSelectedDay(day);
@@ -261,6 +278,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setPickedRecipeSnapshot(null);
     setIsSelectedRecipeSavedInRecipes(false);
     setIsEditingSavedRecipeDirectly(false);
+    setSelectedListId(existing?.shoppingListId ?? lastUsedShoppingListId);
     setSelectedShoppingIngredientRowIds([]);
     setShoppingSyncError(null);
     setRecipeLoadError(null);
@@ -499,6 +517,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   function openShoppingReview() {
     if (!isRecipeLoading && shoppingReviewIngredients.length > 0 && !pendingEditorAction) {
       setShoppingSyncError(null);
+      if (!selectedListId) {
+        setSelectedListId(selectedMealHandledListId ?? lastUsedShoppingListId ?? null);
+      }
       setSelectedShoppingIngredientRowIds(shoppingReviewIngredients.map((ingredient) => ingredient.rowId));
       setIsShoppingReviewOpen(true);
     }
@@ -713,6 +734,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
 
       if (shouldPushToShopping) {
         await shopping.reload();
+        setLastUsedShoppingListId(targetShoppingListId);
+        setSelectedListId(targetShoppingListId);
       }
 
       setShoppingSyncError(null);
@@ -930,6 +953,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       selectedShoppingIngredientCount: selectedShoppingIngredientPositions.length,
       selectedListId,
       effectiveListId,
+      effectiveListName,
+      shoppingHandledAt: selectedMealHandledAt,
+      hasShoppingHandled,
+      needsShoppingReviewAgain,
       shoppingSyncError,
       recipeLoadError,
       pendingDuplicateCandidate,

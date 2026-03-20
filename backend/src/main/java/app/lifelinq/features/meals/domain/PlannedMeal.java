@@ -6,13 +6,17 @@ public final class PlannedMeal {
     private final String mealTitle;
     private final java.util.UUID recipeId;
     private final String recipeTitleSnapshot;
+    private final java.time.Instant shoppingHandledAt;
+    private final java.util.UUID shoppingListId;
 
     PlannedMeal(
             int dayOfWeek,
             MealType mealType,
             String mealTitle,
             java.util.UUID recipeId,
-            String recipeTitleSnapshot
+            String recipeTitleSnapshot,
+            java.time.Instant shoppingHandledAt,
+            java.util.UUID shoppingListId
     ) {
         if (dayOfWeek < 1 || dayOfWeek > 7) {
             throw new IllegalArgumentException("dayOfWeek must be between 1 and 7");
@@ -29,11 +33,45 @@ public final class PlannedMeal {
         if (recipeId != null && (recipeTitleSnapshot == null || recipeTitleSnapshot.isBlank())) {
             throw new IllegalArgumentException("recipeTitleSnapshot must not be blank when recipeId is set");
         }
+        if ((shoppingHandledAt == null) != (shoppingListId == null)) {
+            throw new IllegalArgumentException("shoppingHandledAt and shoppingListId must be set together");
+        }
         this.dayOfWeek = dayOfWeek;
         this.mealType = mealType;
         this.mealTitle = mealTitle.trim();
         this.recipeId = recipeId;
         this.recipeTitleSnapshot = recipeTitleSnapshot == null ? null : recipeTitleSnapshot.trim();
+        this.shoppingHandledAt = shoppingHandledAt;
+        this.shoppingListId = shoppingListId;
+    }
+
+    public static PlannedMeal rehydrate(
+            int dayOfWeek,
+            MealType mealType,
+            String mealTitle,
+            java.util.UUID recipeId,
+            String recipeTitleSnapshot,
+            java.time.Instant shoppingHandledAt,
+            java.util.UUID shoppingListId
+    ) {
+        return new PlannedMeal(
+                dayOfWeek,
+                mealType,
+                mealTitle,
+                recipeId,
+                recipeTitleSnapshot,
+                shoppingHandledAt,
+                shoppingListId
+        );
+    }
+
+    public static PlannedMeal rehydrate(
+            int dayOfWeek,
+            MealType mealType,
+            java.util.UUID recipeId,
+            String recipeTitleSnapshot
+    ) {
+        return new PlannedMeal(dayOfWeek, mealType, recipeTitleSnapshot, recipeId, recipeTitleSnapshot, null, null);
     }
 
     public static PlannedMeal rehydrate(
@@ -43,16 +81,7 @@ public final class PlannedMeal {
             java.util.UUID recipeId,
             String recipeTitleSnapshot
     ) {
-        return new PlannedMeal(dayOfWeek, mealType, mealTitle, recipeId, recipeTitleSnapshot);
-    }
-
-    public static PlannedMeal rehydrate(
-            int dayOfWeek,
-            MealType mealType,
-            java.util.UUID recipeId,
-            String recipeTitleSnapshot
-    ) {
-        return new PlannedMeal(dayOfWeek, mealType, recipeTitleSnapshot, recipeId, recipeTitleSnapshot);
+        return new PlannedMeal(dayOfWeek, mealType, mealTitle, recipeId, recipeTitleSnapshot, null, null);
     }
 
     public int getDayOfWeek() {
@@ -75,7 +104,19 @@ public final class PlannedMeal {
         return recipeTitleSnapshot;
     }
 
+    public java.time.Instant getShoppingHandledAt() {
+        return shoppingHandledAt;
+    }
+
+    public java.util.UUID getShoppingListId() {
+        return shoppingListId;
+    }
+
     public boolean hasRecipe() {
         return recipeId != null;
+    }
+
+    public boolean isShoppingHandled() {
+        return shoppingHandledAt != null && shoppingListId != null;
     }
 }

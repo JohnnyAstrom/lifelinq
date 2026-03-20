@@ -7,5 +7,7 @@ public record PlannedMealView(
         String mealType,
         UUID recipeId,
         String mealTitle,
-        String recipeTitle
+        String recipeTitle,
+        java.time.Instant shoppingHandledAt,
+        UUID shoppingListId
 ) {}

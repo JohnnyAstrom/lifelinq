@@ -98,7 +98,7 @@ class MealsControllerTest {
                 weekPlanId,
                 2025,
                 10,
-                new PlannedMealView(1, "DINNER", recipeId, "Pasta", "Pasta")
+                new PlannedMealView(1, "DINNER", recipeId, "Pasta", "Pasta", null, null)
         ));
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
@@ -144,7 +144,7 @@ class MealsControllerTest {
                 weekPlanId,
                 2025,
                 10,
-                new PlannedMealView(1, "DINNER", null, "Tacos", null)
+                new PlannedMealView(1, "DINNER", null, "Tacos", null, null, null)
         ));
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")
@@ -289,7 +289,7 @@ class MealsControllerTest {
                 weekPlanId,
                 2025,
                 10,
-                new PlannedMealView(1, "DINNER", recipeId, "Pasta", "Pasta")
+                new PlannedMealView(1, "DINNER", recipeId, "Pasta", "Pasta", null, null)
         ));
 
         mockMvc.perform(post("/meals/weeks/2025/10/days/1/meals/DINNER")

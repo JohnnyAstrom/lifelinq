@@ -33,7 +33,9 @@ final class WeekPlanMapper {
                             mealType,
                             meal.getMealTitle(),
                             meal.getRecipeId(),
-                            meal.getRecipeTitleSnapshot()
+                            meal.getRecipeTitleSnapshot(),
+                            meal.getShoppingHandledAt(),
+                            meal.getShoppingListId()
                     )
             );
         }
@@ -53,7 +55,9 @@ final class WeekPlanMapper {
                 weekPlan,
                 meal.getMealTitle(),
                 meal.getRecipeId(),
-                meal.getRecipeTitleSnapshot()
+                meal.getRecipeTitleSnapshot(),
+                meal.getShoppingHandledAt(),
+                meal.getShoppingListId()
         );
     }
 }

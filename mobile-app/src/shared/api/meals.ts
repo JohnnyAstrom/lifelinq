@@ -6,6 +6,8 @@ export type PlannedMealResponse = {
   recipeId: string | null;
   mealTitle: string;
   recipeTitle: string | null;
+  shoppingHandledAt: string | null;
+  shoppingListId: string | null;
 };
 
 export type WeekPlanResponse = {

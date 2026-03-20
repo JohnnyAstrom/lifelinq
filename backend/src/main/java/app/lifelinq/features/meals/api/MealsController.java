@@ -268,7 +268,9 @@ public class MealsController {
                         meal.mealType(),
                         meal.recipeId(),
                         meal.mealTitle(),
-                        meal.recipeTitle()
+                        meal.recipeTitle(),
+                        meal.shoppingHandledAt(),
+                        meal.shoppingListId()
                 )
         );
     }
@@ -281,7 +283,9 @@ public class MealsController {
                     meal.mealType(),
                     meal.recipeId(),
                     meal.mealTitle(),
-                    meal.recipeTitle()
+                    meal.recipeTitle(),
+                    meal.shoppingHandledAt(),
+                    meal.shoppingListId()
             ));
         }
         return new WeekPlanResponse(

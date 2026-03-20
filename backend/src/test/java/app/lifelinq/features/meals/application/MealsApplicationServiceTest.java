@@ -487,6 +487,150 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void addMealStoresShoppingHandledSnapshotWhenIngredientsAreSentToShopping() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-03-20T10:00:00Z");
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(now, ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Soup",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Tomato", null, null, 1))
+        ));
+
+        var output = service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, listId, List.of(1));
+
+        assertThat(output.meal().shoppingHandledAt()).isEqualTo(now);
+        assertThat(output.meal().shoppingListId()).isEqualTo(listId);
+
+        var weekPlan = service.getWeekPlan(groupId, userId, 2026, 12);
+        assertThat(weekPlan.meals()).hasSize(1);
+        assertThat(weekPlan.meals().get(0).shoppingHandledAt()).isEqualTo(now);
+        assertThat(weekPlan.meals().get(0).shoppingListId()).isEqualTo(listId);
+    }
+
+    @Test
+    void addMealPreservesShoppingHandledSnapshotWhenMealContentIsUnchanged() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        Instant handledAt = Instant.parse("2026-03-20T10:00:00Z");
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(handledAt, ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Soup",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Tomato", null, null, 1))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, listId, List.of(1));
+
+        MealsApplicationService preservingService = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(handledAt.plusSeconds(3600), ZoneOffset.UTC)
+        );
+        var output = preservingService.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                12,
+                1,
+                MealType.DINNER,
+                "Soup",
+                recipeId,
+                null,
+                null
+        );
+
+        assertThat(output.meal().shoppingHandledAt()).isEqualTo(handledAt);
+        assertThat(output.meal().shoppingListId()).isEqualTo(listId);
+    }
+
+    @Test
+    void addMealClearsShoppingHandledSnapshotWhenMealChangesWithoutShoppingReview() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        Instant handledAt = Instant.parse("2026-03-20T10:00:00Z");
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(handledAt, ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Soup",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Tomato", null, null, 1))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, listId, List.of(1));
+
+        MealsApplicationService clearingService = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(handledAt.plusSeconds(3600), ZoneOffset.UTC)
+        );
+        var output = clearingService.addOrReplaceMeal(
+                groupId,
+                userId,
+                2026,
+                12,
+                1,
+                MealType.DINNER,
+                "Soup with bread",
+                recipeId,
+                null,
+                null
+        );
+
+        assertThat(output.meal().shoppingHandledAt()).isNull();
+        assertThat(output.meal().shoppingListId()).isNull();
+    }
+
+    @Test
     void addMealFallsBackToRecipeNameWhenMealTitleIsOmittedForRecipeBackedMeal() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

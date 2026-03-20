@@ -86,10 +86,30 @@ public final class WeekPlan {
             MealType mealType,
             String mealTitle,
             UUID recipeId,
+            String recipeTitleSnapshot,
+            Instant shoppingHandledAt,
+            UUID shoppingListId
+    ) {
+        PlannedMeal meal = new PlannedMeal(
+                dayOfWeek,
+                mealType,
+                mealTitle,
+                recipeId,
+                recipeTitleSnapshot,
+                shoppingHandledAt,
+                shoppingListId
+        );
+        mealsBySlot.put(new DaySlot(dayOfWeek, mealType), meal);
+    }
+
+    public void addOrReplaceMeal(
+            int dayOfWeek,
+            MealType mealType,
+            String mealTitle,
+            UUID recipeId,
             String recipeTitleSnapshot
     ) {
-        PlannedMeal meal = new PlannedMeal(dayOfWeek, mealType, mealTitle, recipeId, recipeTitleSnapshot);
-        mealsBySlot.put(new DaySlot(dayOfWeek, mealType), meal);
+        addOrReplaceMeal(dayOfWeek, mealType, mealTitle, recipeId, recipeTitleSnapshot, null, null);
     }
 
     public void addOrReplaceMeal(int dayOfWeek, MealType mealType, UUID recipeId, String recipeTitleSnapshot) {
@@ -153,5 +173,15 @@ public final class WeekPlan {
             throw new IllegalArgumentException("no meal planned for dayOfWeek: " + dayOfWeek + " and mealType: " + mealType);
         }
         return meal;
+    }
+
+    public PlannedMeal getMeal(int dayOfWeek, MealType mealType) {
+        if (dayOfWeek < 1 || dayOfWeek > 7) {
+            throw new IllegalArgumentException("dayOfWeek must be between 1 and 7");
+        }
+        if (mealType == null) {
+            throw new IllegalArgumentException("mealType must not be null");
+        }
+        return mealsBySlot.get(new DaySlot(dayOfWeek, mealType));
     }
 }
