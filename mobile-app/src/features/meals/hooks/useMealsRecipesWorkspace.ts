@@ -78,9 +78,59 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   const recipeListItems = useMemo(() => {
     const nameCounts = new Map<string, number>();
+    const titleFamilyCounts = new Map<string, number>();
+
+    function normalizeTitle(value: string) {
+      return value
+        .trim()
+        .toLocaleLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function buildTitleFamilyKey(name: string) {
+      const tokens = normalizeTitle(name)
+        .split(' ')
+        .filter((token) => token.length > 1)
+        .filter((token) => !['and', 'med', 'och', 'with'].includes(token));
+      if (tokens.length < 2) {
+        return tokens[0] ?? null;
+      }
+      return `${tokens[0]} ${tokens[1]}`;
+    }
+
     for (const recipe of visibleRecipes) {
-      const normalizedName = recipe.name.trim().toLocaleLowerCase();
+      const normalizedName = normalizeTitle(recipe.name);
       nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1);
+
+      const titleFamilyKey = buildTitleFamilyKey(recipe.name);
+      if (titleFamilyKey) {
+        titleFamilyCounts.set(titleFamilyKey, (titleFamilyCounts.get(titleFamilyKey) ?? 0) + 1);
+      }
+    }
+
+    function buildIdentitySummary(recipe: RecipeResponse) {
+      const sourceName = recipe.sourceName?.trim() ?? '';
+      if (sourceName) {
+        return sourceName;
+      }
+
+      const shortNote = recipe.shortNote?.trim() ?? '';
+      if (shortNote) {
+        return shortNote.length > 56 ? `${shortNote.slice(0, 53).trimEnd()}...` : shortNote;
+      }
+
+      const ingredientNames = recipe.ingredients
+        .map((ingredient) => ingredient.name.trim())
+        .filter((name) => name.length > 0)
+        .slice(0, 2);
+
+      if (ingredientNames.length > 0) {
+        return ingredientNames.join(', ');
+      }
+
+      return null;
     }
 
     return [...visibleRecipes]
@@ -89,13 +139,19 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         if (nameComparison !== 0) {
           return nameComparison;
         }
+        const sourceComparison = (left.sourceName ?? '').localeCompare(right.sourceName ?? '');
+        if (sourceComparison !== 0) {
+          return sourceComparison;
+        }
         return right.createdAt.localeCompare(left.createdAt);
       })
       .map((recipe) => ({
         recipeId: recipe.recipeId,
         name: recipe.name,
         ingredientCount: recipe.ingredients.length,
-        duplicateNameCount: nameCounts.get(recipe.name.trim().toLocaleLowerCase()) ?? 1,
+        duplicateNameCount: nameCounts.get(normalizeTitle(recipe.name)) ?? 1,
+        similarNameCount: titleFamilyCounts.get(buildTitleFamilyKey(recipe.name) ?? '') ?? 1,
+        identitySummary: buildIdentitySummary(recipe),
         archivedAt: recipe.archivedAt,
       }));
   }, [visibleRecipes]);

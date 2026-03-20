@@ -793,6 +793,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     savedRecipeLabel: strings.savedRecipeLabel,
                     archivedRecipeLabel: strings.archivedRecipeLabel,
                     duplicateNameHint: (count) => `${count} recipes share this name`,
+                    similarNameHint: 'Similar title nearby',
                     recipeCountLabel: (count) => count === 1 ? '1 saved recipe' : `${count} saved recipes`,
                     archivedCountLabel: (count) => count === 1 ? '1 archived recipe' : `${count} archived recipes`,
                   }}

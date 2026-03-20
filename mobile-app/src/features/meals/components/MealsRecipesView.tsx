@@ -8,6 +8,8 @@ type RecipeListItem = {
   name: string;
   ingredientCount: number;
   duplicateNameCount: number;
+  similarNameCount: number;
+  identitySummary: string | null;
   archivedAt: string | null;
 };
 
@@ -26,6 +28,7 @@ type Strings = {
   savedRecipeLabel: string;
   archivedRecipeLabel: string;
   duplicateNameHint: (count: number) => string;
+  similarNameHint: string;
   recipeCountLabel: (count: number) => string;
   archivedCountLabel: (count: number) => string;
 };
@@ -59,6 +62,8 @@ export function MealsRecipesView({
   onImportRecipe,
   strings,
 }: Props) {
+  const shouldShowContentCard = isLoading || error != null || recipes.length > 0;
+
   return (
     <View style={styles.layout}>
       <AppCard style={styles.controlsCard}>
@@ -105,63 +110,63 @@ export function MealsRecipesView({
         </View>
       </AppCard>
 
-      <AppCard style={styles.contentCard}>
-        <View style={styles.workspaceBody}>
-          {isLoading || error || recipes.length === 0 ? (
-            <>
-              {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              {!isLoading && !error ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateTitle}>
-                    {listMode === 'active' ? strings.noRecipes : strings.noArchivedRecipes}
-                  </Text>
-                  {(listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint) ? (
-                    <Subtle>
-                      {listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint}
-                    </Subtle>
-                  ) : null}
-                </View>
-              ) : null}
-            </>
-          ) : (
-            <View style={styles.list}>
-              {recipes.map((recipe, index) => {
-                const ingredientLabel = recipe.ingredientCount === 1
-                  ? '1 ingredient'
-                  : `${recipe.ingredientCount} ingredients`;
-                const showMetaTop = recipe.duplicateNameCount > 1;
-                return (
-                  <Pressable
-                    key={recipe.recipeId}
-                    onPress={() => onOpenRecipe(recipe.recipeId)}
-                    style={({ pressed }) => [
-                      styles.row,
-                      index > 0 ? styles.rowBorder : null,
-                      pressed ? styles.rowPressed : null,
-                    ]}
-                  >
-                    <View style={styles.rowCopy}>
-                      {showMetaTop ? (
-                        <View style={styles.rowMetaTop}>
-                          {recipe.duplicateNameCount > 1 ? (
+      {shouldShowContentCard ? (
+        <AppCard style={styles.contentCard}>
+          <View style={styles.workspaceBody}>
+            {isLoading || error ? (
+              <>
+                {isLoading ? <Subtle>{strings.loadingRecipes}</Subtle> : null}
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+              </>
+            ) : (
+              <View style={styles.list}>
+                {recipes.map((recipe, index) => {
+                  const ingredientLabel = recipe.ingredientCount === 1
+                    ? '1 ingredient'
+                    : `${recipe.ingredientCount} ingredients`;
+                  const hasCollisionHint = recipe.duplicateNameCount > 1 || recipe.similarNameCount > 1;
+                  const metaLine = recipe.identitySummary && !hasCollisionHint
+                    ? `${ingredientLabel} · ${recipe.identitySummary}`
+                    : ingredientLabel;
+                  return (
+                    <Pressable
+                      key={recipe.recipeId}
+                      onPress={() => onOpenRecipe(recipe.recipeId)}
+                      style={({ pressed }) => [
+                        styles.row,
+                        index > 0 ? styles.rowBorder : null,
+                        pressed ? styles.rowPressed : null,
+                      ]}
+                    >
+                      <View style={styles.rowCopy}>
+                        {hasCollisionHint ? (
+                          <View style={styles.rowMetaTop}>
                             <Text style={styles.duplicateHint}>
-                              {strings.duplicateNameHint(recipe.duplicateNameCount)}
+                              {recipe.duplicateNameCount > 1
+                                ? strings.duplicateNameHint(recipe.duplicateNameCount)
+                                : strings.similarNameHint}
                             </Text>
-                          ) : null}
-                        </View>
-                      ) : null}
-                      <Text style={styles.rowTitle}>{recipe.name}</Text>
-                      <Text style={styles.rowMeta}>{ingredientLabel}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
-      </AppCard>
+                          </View>
+                        ) : null}
+                        <Text style={styles.rowTitle}>{recipe.name}</Text>
+                        {hasCollisionHint && recipe.identitySummary ? (
+                          <Text style={styles.rowIdentity} numberOfLines={1}>
+                            {recipe.identitySummary}
+                          </Text>
+                        ) : null}
+                        <Text style={styles.rowMeta} numberOfLines={1}>
+                          {metaLine}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </AppCard>
+      ) : null}
     </View>
   );
 }
@@ -212,7 +217,6 @@ const styles = StyleSheet.create({
   },
   workspaceBody: {
     gap: theme.spacing.xs,
-    minHeight: 220,
   },
   list: {
     gap: 0,
@@ -255,12 +259,9 @@ const styles = StyleSheet.create({
   rowMeta: {
     ...textStyles.subtle,
   },
-  emptyState: {
-    gap: theme.spacing.xs,
-  },
-  emptyStateTitle: {
-    ...textStyles.body,
-    fontWeight: '600',
+  rowIdentity: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   error: {
     ...textStyles.body,
