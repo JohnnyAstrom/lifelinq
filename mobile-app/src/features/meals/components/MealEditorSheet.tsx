@@ -26,7 +26,13 @@ type MealEditorSheetStrings = {
   loadingRecipe: string;
   ingredientsSummarySuffix: string;
   shoppingLabel: string;
+  shoppingAddHint: string;
+  shoppingHandledTitle: string;
+  shoppingHandledState: string;
+  shoppingHandledOnList: (listName: string) => string;
+  shoppingNeedsReviewAgain: string;
   addIngredientsToShoppingAction: string;
+  reviewShoppingAgainAction: string;
   saveMeal: string;
   savingMeal: string;
   removeMeal: string;
@@ -52,6 +58,9 @@ type Props = {
   hasIngredients: boolean;
   hasRecipeDraftContent: boolean;
   onOpenShoppingReview: () => void;
+  hasShoppingHandled: boolean;
+  needsShoppingReviewAgain: boolean;
+  shoppingListName: string | null;
   hasExistingMeal: boolean;
   hasExistingRecipe: boolean;
   isSavingMeal: boolean;
@@ -80,6 +89,9 @@ export function MealEditorSheet({
   hasIngredients,
   hasRecipeDraftContent,
   onOpenShoppingReview,
+  hasShoppingHandled,
+  needsShoppingReviewAgain,
+  shoppingListName,
   hasExistingMeal,
   hasExistingRecipe,
   isSavingMeal,
@@ -133,6 +145,18 @@ export function MealEditorSheet({
     day: 'numeric',
     month: 'short',
   });
+  const shoppingStatusText = needsShoppingReviewAgain
+    ? strings.shoppingNeedsReviewAgain
+    : hasShoppingHandled
+      ? (shoppingListName
+        ? strings.shoppingHandledOnList(shoppingListName)
+        : strings.shoppingHandledState)
+      : strings.shoppingAddHint;
+  const shoppingTitle = needsShoppingReviewAgain
+    ? strings.reviewShoppingAgainAction
+    : hasShoppingHandled
+      ? strings.shoppingHandledTitle
+      : strings.addIngredientsToShoppingAction;
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
@@ -212,29 +236,56 @@ export function MealEditorSheet({
                     {recipeMeta}
                   </Text>
                 </View>
-                <View style={styles.recipeSummaryAction}>
-                  <Text style={styles.recipeSummaryActionText}>{recipePrompt}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
               </Pressable>
-              <View style={styles.recipeSecondaryActionRow}>
-                <AppButton
-                  title={recipeSelectionActionLabel}
-                  onPress={onOpenRecipePicker}
-                  variant="ghost"
-                  disabled={isActionPending || isRecipeLoading}
-                />
-              </View>
+              <Pressable
+                onPress={onOpenRecipePicker}
+                disabled={isActionPending || isRecipeLoading}
+                style={({ pressed }) => [
+                  styles.recipeSecondaryActionRow,
+                  pressed ? styles.recipeSecondaryActionRowPressed : null,
+                  isActionPending || isRecipeLoading ? styles.recipeSummaryCardDisabled : null,
+                ]}
+              >
+                <Text style={styles.recipeSecondaryActionText}>{recipeSelectionActionLabel}</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+              </Pressable>
             </View>
             {hasIngredients ? (
               <View style={styles.shoppingActionSection}>
-                <Text style={styles.sectionLabel}>{strings.shoppingLabel}</Text>
-                <AppButton
-                  title={strings.addIngredientsToShoppingAction}
+                <Text style={styles.fieldLabel}>{strings.shoppingLabel}</Text>
+                <Pressable
                   onPress={onOpenShoppingReview}
-                  variant="ghost"
                   disabled={isActionPending}
-                />
+                  style={({ pressed }) => [
+                    styles.shoppingSummaryCard,
+                    hasShoppingHandled ? styles.shoppingSummaryCardHandled : null,
+                    needsShoppingReviewAgain ? styles.shoppingSummaryCardNeedsReview : null,
+                    pressed ? styles.shoppingSummaryCardPressed : null,
+                    isActionPending ? styles.shoppingSummaryCardDisabled : null,
+                  ]}
+                >
+                  <View style={styles.shoppingSummaryLeading}>
+                    <Ionicons
+                      name={hasShoppingHandled ? 'checkmark-circle-outline' : 'cart-outline'}
+                      size={18}
+                      color={needsShoppingReviewAgain ? theme.colors.textPrimary : theme.colors.feature.meals}
+                    />
+                  </View>
+                  <View style={styles.shoppingSummaryCopy}>
+                    <Text style={styles.shoppingSummaryTitle}>{shoppingTitle}</Text>
+                    <Text
+                      style={[
+                        styles.shoppingSummaryMeta,
+                        needsShoppingReviewAgain ? styles.shoppingSummaryMetaNeedsReview : null,
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {shoppingStatusText}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                </Pressable>
               </View>
             ) : null}
             <View style={styles.sheetFooterActions}>
@@ -363,7 +414,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: theme.spacing.sm,
   },
   recipeSummaryCardPressed: {
@@ -388,20 +439,22 @@ const styles = StyleSheet.create({
   recipeSummaryMeta: {
     ...textStyles.subtle,
   },
-  recipeSummaryAction: {
+  recipeSecondaryActionRow: {
+    marginTop: -2,
+    marginLeft: theme.spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    paddingTop: 2,
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+    minHeight: 32,
   },
-  recipeSummaryActionText: {
+  recipeSecondaryActionRowPressed: {
+    opacity: 0.72,
+  },
+  recipeSecondaryActionText: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
     fontWeight: '600',
-  },
-  recipeSecondaryActionRow: {
-    alignItems: 'flex-start',
-    marginTop: -2,
   },
   sheetScroll: {
     minHeight: 0,
@@ -416,6 +469,51 @@ const styles = StyleSheet.create({
   },
   shoppingActionSection: {
     gap: theme.spacing.xs,
+  },
+  shoppingSummaryCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  shoppingSummaryCardHandled: {
+    backgroundColor: theme.colors.surfaceSubtle,
+  },
+  shoppingSummaryCardNeedsReview: {
+    borderColor: theme.colors.feature.meals,
+    backgroundColor: theme.colors.surfaceSubtle,
+  },
+  shoppingSummaryCardPressed: {
+    opacity: 0.8,
+  },
+  shoppingSummaryCardDisabled: {
+    opacity: 0.6,
+  },
+  shoppingSummaryLeading: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shoppingSummaryCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  shoppingSummaryTitle: {
+    ...textStyles.body,
+    fontWeight: '600',
+  },
+  shoppingSummaryMeta: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  shoppingSummaryMetaNeedsReview: {
+    color: theme.colors.textPrimary,
   },
   sheetFooterActions: {
     gap: theme.spacing.sm,

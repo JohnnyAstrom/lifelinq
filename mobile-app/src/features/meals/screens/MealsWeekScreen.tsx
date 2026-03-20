@@ -281,7 +281,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     collapseIngredient: 'Collapse row',
     loadingIngredients: 'Loading ingredients...',
     shoppingLabel: 'Shopping',
+    shoppingAddHint: 'Choose a list and review the ingredients before adding them.',
+    shoppingHandledTitle: 'Shopping handled',
+    shoppingHandledState: 'Already added to shopping. You can review it again here.',
+    shoppingHandledOnList: (listName: string) => `Already added to ${listName}.`,
+    shoppingNeedsReviewAgain: 'Meal details changed. Review shopping again.',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
+    reviewShoppingAgainAction: 'Review shopping again',
     shoppingReviewTitle: 'Add ingredients to shopping',
     shoppingListLabel: 'Shopping list',
     ingredientsToAddLabel: 'Ingredients to add',
@@ -861,6 +867,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           hasIngredients={editor.hasIngredients}
           hasRecipeDraftContent={editor.hasRecipeDraftContent}
           onOpenShoppingReview={editor.openShoppingReview}
+          hasShoppingHandled={editor.hasShoppingHandled}
+          needsShoppingReviewAgain={editor.needsShoppingReviewAgain}
+          shoppingListName={editor.effectiveListName}
           hasExistingMeal={!!editor.selectedMeal?.mealTitle}
           hasExistingRecipe={editor.isSelectedRecipeSavedInRecipes}
           isSavingMeal={editor.isSavingMeal}
@@ -885,7 +894,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             loadingRecipe: strings.loadingRecipe,
             ingredientsSummarySuffix: strings.ingredientsSummarySuffix,
             shoppingLabel: strings.shoppingLabel,
+            shoppingAddHint: strings.shoppingAddHint,
+            shoppingHandledTitle: strings.shoppingHandledTitle,
+            shoppingHandledState: strings.shoppingHandledState,
+            shoppingHandledOnList: strings.shoppingHandledOnList,
+            shoppingNeedsReviewAgain: strings.shoppingNeedsReviewAgain,
             addIngredientsToShoppingAction: strings.addIngredientsToShoppingAction,
+            reviewShoppingAgainAction: strings.reviewShoppingAgainAction,
             saveMeal: strings.saveMeal,
             savingMeal: strings.savingMeal,
             removeMeal: strings.removeMeal,
