@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   GestureResponderEvent,
   LayoutChangeEvent,
+  NativeSyntheticEvent,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
   Text,
   TextInput,
   View,
+  type TextInputContentSizeChangeEventData,
   type KeyboardTypeOptions,
   type RefreshControlProps,
   type StyleProp,
@@ -366,6 +368,8 @@ type InputProps = {
   returnKeyType?: 'done' | 'next' | 'search' | 'send';
   showSoftInputOnFocus?: boolean;
   onLayout?: (event: LayoutChangeEvent) => void;
+  selection?: { start: number; end?: number };
+  onContentSizeChange?: (event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => void;
 };
 
 export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInput({
@@ -384,6 +388,8 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
   returnKeyType,
   showSoftInputOnFocus,
   onLayout,
+  selection,
+  onContentSizeChange,
 }, ref) {
   return (
       <TextInput
@@ -402,6 +408,8 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
       returnKeyType={returnKeyType}
       showSoftInputOnFocus={showSoftInputOnFocus}
       onLayout={onLayout}
+      selection={selection}
+      onContentSizeChange={onContentSizeChange}
       style={[styles.input, style]}
       placeholderTextColor={theme.colors.textSecondary}
     />

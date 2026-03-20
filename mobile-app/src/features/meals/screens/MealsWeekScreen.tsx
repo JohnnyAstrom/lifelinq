@@ -168,7 +168,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSheetSubtitle: 'Review and edit the recipe used for this meal.',
     recipeSheetNewRecipeTitle: 'New recipe',
     mealDetailSheetNewTitle: 'Meal details',
-    importDraftLabel: 'Recipe to save',
+    importDraftLabel: 'From link',
     archivedReadOnlyHint: 'This archived recipe stays readable here until you restore it.',
     recipeSheetSavedRecipeContextHint: 'This meal is using a saved recipe.',
     recipeSheetMealSpecificContextHint: 'Your changes are now creating a recipe for this meal.',
@@ -215,29 +215,27 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     savedRecipeIngredientsHint: 'These ingredients stay with this saved recipe.',
     mealDetailsIngredientsHint: undefined,
     importedIngredientsHint: undefined,
-    importReviewLabel: 'Recipe to save',
-    importReviewHint: 'Start with the ingredients.',
+    importReviewLabel: 'From link',
+    importReviewHint: 'Start where it matters most.',
     recipePickerTitle: 'Attach saved recipe',
     recipePickerHint: 'Saved recipes',
     loadingRecipes: 'Loading recipes...',
     noRecipes: 'No saved recipes yet.',
     createRecipeFromRecipes: 'Create recipe',
-    importRecipeFromRecipes: 'Save from link',
-    importRecipeTitle: 'Save a recipe you found',
-    importRecipeSubtitle: 'Paste a recipe link and review it before it goes into Recipes.',
-    importRecipeUrlLabel: 'Recipe link',
+    importRecipeFromRecipes: 'Save recipe',
+    importRecipeTitle: 'Save recipe',
+    importRecipeSubtitle: 'Paste the link. You can check it before saving.',
     importRecipeUrlPlaceholder: 'https://example.com/recipe',
-    importRecipeHelpText: 'Use a public recipe page with ingredients and cooking steps.',
-    importRecipeClipboardHint: (label: string) => `Using a link from clipboard · ${label}`,
+    importRecipeHelpText: 'Use a public recipe page with ingredients and steps.',
     importRecipeAction: 'Review recipe',
-    importingRecipeAction: 'Preparing recipe...',
+    importingRecipeAction: 'Opening recipe...',
     recipeDestinationSubtitle: undefined,
     savedRecipeContextHint: 'Reusable recipe in Recipes.',
     newSavedRecipeContextHint: 'Create a reusable recipe in Recipes.',
-    importDraftSubtitle: 'Recipe draft',
+    importDraftSubtitle: 'From a link. Check it before saving.',
     importDraftContextHint: undefined,
-    importReviewSourceSummaryTitle: 'Original page',
-    importReviewSourceSummaryHint: 'Original page details',
+    importReviewSourceSummaryTitle: 'From',
+    importReviewSourceSummaryHint: undefined,
     importReviewSourceEmpty: 'No source name came through from this import.',
     importReviewSourceUrlEmpty: 'No source link came through from this import.',
     saveRecipe: 'Save recipe',
@@ -1018,8 +1016,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       {recipesWorkspace.importDraft.isOpen ? (
         <MealRecipeImportSheet
           importUrl={recipesWorkspace.importDraft.importUrl}
-          clipboardImportUrl={recipesWorkspace.importDraft.clipboardImportUrl}
-          clipboardImportLabel={recipesWorkspace.importDraft.clipboardImportLabel}
           onChangeImportUrl={recipesWorkspace.importDraft.setImportUrl}
           onImport={recipesWorkspace.importDraft.importRecipeDraft}
           onClose={recipesWorkspace.importDraft.closeImportRecipe}
@@ -1028,10 +1024,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           strings={{
             title: strings.importRecipeTitle,
             subtitle: strings.importRecipeSubtitle,
-            urlLabel: strings.importRecipeUrlLabel,
             urlPlaceholder: strings.importRecipeUrlPlaceholder,
             helpText: strings.importRecipeHelpText,
-            clipboardHint: strings.importRecipeClipboardHint,
             importAction: strings.importRecipeAction,
             importingAction: strings.importingRecipeAction,
             close: strings.close,
@@ -1145,7 +1139,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           showHeaderIdentityBadge={false}
           strings={{
             eyebrow: recipesWorkspace.recipeDetail.isImportDraft
-              ? 'RECIPE TO SAVE'
+              ? 'RECIPE'
               : recipesWorkspace.recipeDetail.isArchivedRecipe
                 ? 'ARCHIVED RECIPE'
                 : recipesWorkspace.recipeDetail.hasExistingRecipe
@@ -1153,7 +1147,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   : 'CREATE RECIPE',
             title: strings.recipeSheetTitle,
             subtitle: recipesWorkspace.recipeDetail.isImportDraft
-              ? undefined
+              ? strings.importDraftSubtitle
               : strings.recipeDestinationSubtitle,
             newRecipeLabel: strings.recipeSheetNewRecipeTitle,
             usingRecipeLabel: strings.savedRecipeLabel,
@@ -1180,11 +1174,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ? strings.importReviewSourceSummaryHint
               : strings.recipeMetadataHint,
             recipeSourceLabel: recipesWorkspace.recipeDetail.isImportDraft
-              ? 'Source name'
+              ? 'Site'
               : strings.recipeSourceLabel,
             recipeSourcePlaceholder: strings.recipeSourcePlaceholder,
             recipeSourceUrlLabel: recipesWorkspace.recipeDetail.isImportDraft
-              ? 'Recipe page'
+              ? 'Link'
               : strings.recipeSourceUrlLabel,
             recipeSourceUrlPlaceholder: strings.recipeSourceUrlPlaceholder,
             recipeShortNoteLabel: strings.recipeShortNoteLabel,
@@ -1205,7 +1199,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             importReviewHint: undefined,
             importReviewSummary: recipesWorkspace.recipeDetail.isImportDraft
               ? (count: number) => count === 0
-                ? 'Review done. Ready to save.'
+                ? 'Looks good to save.'
                 : count === 1
                   ? '1 left to review'
                   : `${count} left to review`

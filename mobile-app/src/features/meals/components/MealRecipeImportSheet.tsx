@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppInput, Subtle } from '../../../shared/ui/components';
@@ -6,10 +7,8 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 type Strings = {
   title: string;
   subtitle: string;
-  urlLabel: string;
   urlPlaceholder: string;
   helpText: string;
-  clipboardHint?: (label: string) => string;
   importAction: string;
   importingAction: string;
   close: string;
@@ -17,8 +16,6 @@ type Strings = {
 
 type Props = {
   importUrl: string;
-  clipboardImportUrl?: string | null;
-  clipboardImportLabel?: string | null;
   onChangeImportUrl: (value: string) => void;
   onImport: () => void;
   onClose: () => void;
@@ -29,8 +26,6 @@ type Props = {
 
 export function MealRecipeImportSheet({
   importUrl,
-  clipboardImportUrl,
-  clipboardImportLabel,
   onChangeImportUrl,
   onImport,
   onClose,
@@ -38,9 +33,8 @@ export function MealRecipeImportSheet({
   error,
   strings,
 }: Props) {
-  const isUsingClipboardLink = !!clipboardImportUrl
-    && importUrl.trim().length > 0
-    && importUrl.trim() === clipboardImportUrl;
+  const [isUrlFocused, setIsUrlFocused] = useState(false);
+  const [inputHeight, setInputHeight] = useState(56);
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
@@ -51,18 +45,24 @@ export function MealRecipeImportSheet({
         </View>
 
         <View style={styles.body}>
-          <Text style={styles.fieldLabel}>{strings.urlLabel}</Text>
-          <View style={styles.captureCard}>
-            <AppInput
-              value={importUrl}
-              onChangeText={onChangeImportUrl}
-              placeholder={strings.urlPlaceholder}
-              keyboardType="url"
-            />
-            {isUsingClipboardLink && clipboardImportLabel && strings.clipboardHint ? (
-              <Subtle>{strings.clipboardHint(clipboardImportLabel)}</Subtle>
-            ) : null}
-          </View>
+          <AppInput
+            value={importUrl}
+            onChangeText={onChangeImportUrl}
+            placeholder={strings.urlPlaceholder}
+            keyboardType="url"
+            multiline
+            blurOnSubmit={false}
+            onFocus={() => setIsUrlFocused(true)}
+            onBlur={() => setIsUrlFocused(false)}
+            onContentSizeChange={(event) => {
+              const nextHeight = Math.max(48, Math.ceil(event.nativeEvent.contentSize.height) + 12);
+              setInputHeight((currentHeight) =>
+                currentHeight === nextHeight ? currentHeight : nextHeight,
+              );
+            }}
+            selection={isUrlFocused ? undefined : { start: 0, end: 0 }}
+            style={[styles.captureInput, { height: inputHeight }]}
+          />
           <Subtle>{strings.helpText}</Subtle>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -109,26 +109,18 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: theme.spacing.xs,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
   },
   body: {
     gap: theme.spacing.sm,
   },
-  captureCard: {
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.xs,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  fieldLabel: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
+  captureInput: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.textPrimary,
+    textAlignVertical: 'top',
   },
   actions: {
     gap: theme.spacing.sm,

@@ -61,15 +61,6 @@ function normalizeClipboardUrlCandidate(value: string) {
   }
 }
 
-function getClipboardUrlLabel(value: string) {
-  try {
-    const parsed = new URL(value);
-    return parsed.hostname.replace(/^www\./i, '');
-  } catch {
-    return value;
-  }
-}
-
 type Params = {
   token: string;
   enabled: boolean;
@@ -110,7 +101,6 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [importError, setImportError] = useState<string | null>(null);
   const [isImportingDraft, setIsImportingDraft] = useState(false);
   const [clipboardImportUrl, setClipboardImportUrl] = useState<string | null>(null);
-  const [clipboardImportLabel, setClipboardImportLabel] = useState<string | null>(null);
 
   const hasIngredients = useMemo(
     () => toIngredientRequests(ingredientRows).length > 0,
@@ -371,15 +361,12 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       const normalizedUrl = normalizeClipboardUrlCandidate(clipboardValue);
       if (!normalizedUrl) {
         setClipboardImportUrl(null);
-        setClipboardImportLabel(null);
         return;
       }
       setClipboardImportUrl(normalizedUrl);
-      setClipboardImportLabel(getClipboardUrlLabel(normalizedUrl));
       setImportUrl((current) => (current.trim().length === 0 ? normalizedUrl : current));
     } catch {
       setClipboardImportUrl(null);
-      setClipboardImportLabel(null);
     }
   }
 
@@ -390,7 +377,6 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setImportUrl('');
     setImportError(null);
     setClipboardImportUrl(null);
-    setClipboardImportLabel(null);
     setIsImportSheetOpen(true);
     void hydrateImportUrlFromClipboard();
   }
@@ -402,7 +388,6 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setIsImportSheetOpen(false);
     setImportError(null);
     setClipboardImportUrl(null);
-    setClipboardImportLabel(null);
   }
 
   function closeRecipeDetail() {
@@ -710,7 +695,6 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       error: importError,
       isImportingDraft,
       clipboardImportUrl,
-      clipboardImportLabel,
       setImportUrl,
       openImportRecipe,
       closeImportRecipe,
