@@ -27,7 +27,7 @@ export function WeekDayOverviewRow({
         {isToday ? 'Today' : label}
       </Text>
       <Text style={styles.weekDayOverviewMeta ?? styles.itemMeta}>
-        {total === 0 ? '0' : `${total} task${total === 1 ? '' : 's'} · ${doneCount} done`}
+        {total === 0 ? 'No tasks' : `${total} task${total === 1 ? '' : 's'}${doneCount > 0 ? ` · ${doneCount} done` : ''}`}
       </Text>
       <Text style={styles.itemHintChevron}>›</Text>
     </Pressable>

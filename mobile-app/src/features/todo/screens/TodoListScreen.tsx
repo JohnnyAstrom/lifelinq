@@ -54,6 +54,7 @@ import {
   AppChip,
   AppInput,
   AppScreen,
+  AppSegmentedControl,
   Subtle,
   TopBar,
 } from '../../../shared/ui/components';
@@ -762,54 +763,103 @@ export function TodoListScreen({ token, onDone }: Props) {
             keyboardDismissMode="on-drag"
           >
             <View style={styles.scrollSections}>
-        <AppCard style={styles.headerCard}>
-          <View style={styles.filters}>
-            <AppChip label={strings.daily} active={timeView === 'DAILY'} onPress={() => setTimeView('DAILY')} accentKey="todos" />
-            <AppChip label={strings.weekly} active={timeView === 'WEEKLY'} onPress={() => setTimeView('WEEKLY')} accentKey="todos" />
-            <AppChip label={strings.monthly} active={timeView === 'MONTHLY'} onPress={() => setTimeView('MONTHLY')} accentKey="todos" />
-          </View>
+        <AppCard style={styles.topWorkspaceCard}>
+          <AppSegmentedControl
+            options={[
+              { label: strings.daily, value: 'DAILY' },
+              { label: strings.weekly, value: 'WEEKLY' },
+              { label: strings.monthly, value: 'MONTHLY' },
+            ]}
+            value={timeView}
+            onChange={setTimeView}
+            accentKey="todos"
+            style={styles.viewSwitchControl}
+          />
+          {timeView === 'DAILY' ? (
+            <View style={styles.periodCardContent}>
+              <View style={styles.topSectionDivider} />
+              <View style={styles.periodRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => shiftSelectedDailyDate(-1)}
+                  style={({ pressed }) => [styles.periodArrowButton, pressed ? styles.periodArrowPressed : null]}
+                >
+                  <Ionicons name="chevron-back" size={18} color={theme.colors.textPrimary} />
+                </Pressable>
+                <Text style={styles.calendarMonthText}>{formatSelectedDailyDate(selectedDailyDate)}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => shiftSelectedDailyDate(1)}
+                  style={({ pressed }) => [styles.periodArrowButton, pressed ? styles.periodArrowPressed : null]}
+                >
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textPrimary} />
+                </Pressable>
+              </View>
+              <View style={styles.topSectionDivider} />
+              <View style={styles.periodProgressBlock}>
+                <ProgressBar
+                  done={dailyDoneCount}
+                  total={dailyTotalCount}
+                  ratio={dailyProgressRatio}
+                  styles={styles}
+                />
+              </View>
+            </View>
+          ) : null}
+          {timeView === 'WEEKLY' ? (
+            <View style={styles.periodCardContent}>
+              <View style={styles.topSectionDivider} />
+              <View style={styles.periodRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => shiftSelectedWeek(-1)}
+                  style={({ pressed }) => [styles.periodArrowButton, pressed ? styles.periodArrowPressed : null]}
+                >
+                  <Ionicons name="chevron-back" size={18} color={theme.colors.textPrimary} />
+                </Pressable>
+                <Text style={styles.calendarMonthText}>{formatWeekRangeLabel(selectedWeeklyStart)}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => shiftSelectedWeek(1)}
+                  style={({ pressed }) => [styles.periodArrowButton, pressed ? styles.periodArrowPressed : null]}
+                >
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textPrimary} />
+                </Pressable>
+              </View>
+              <View style={styles.topSectionDivider} />
+              <View style={styles.periodProgressBlock}>
+                <ProgressBar
+                  done={weeklyDoneCount}
+                  total={weeklyTotalCount}
+                  ratio={weeklyProgressRatio}
+                  styles={styles}
+                />
+              </View>
+            </View>
+          ) : null}
+          {timeView === 'MONTHLY' ? (
+            <View style={styles.periodCardContent}>
+              <View style={styles.topSectionDivider} />
+              <View style={styles.periodRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => shiftCalendarMonth(-1)}
+                  style={({ pressed }) => [styles.periodArrowButton, pressed ? styles.periodArrowPressed : null]}
+                >
+                  <Ionicons name="chevron-back" size={18} color={theme.colors.textPrimary} />
+                </Pressable>
+                <Text style={styles.calendarMonthText}>{formatCalendarMonth(calendarMonth)}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => shiftCalendarMonth(1)}
+                  style={({ pressed }) => [styles.periodArrowButton, pressed ? styles.periodArrowPressed : null]}
+                >
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textPrimary} />
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </AppCard>
-
-        {timeView === 'DAILY' ? (
-          <AppCard style={styles.weeklyHeaderCard}>
-            <View style={[styles.calendarMonthRow, styles.weeklyCalendarRowCompact]}>
-              <AppButton title={strings.dayBack} onPress={() => shiftSelectedDailyDate(-1)} variant="ghost" />
-              <Text style={styles.calendarMonthText}>{formatSelectedDailyDate(selectedDailyDate)}</Text>
-              <AppButton title={strings.dayNext} onPress={() => shiftSelectedDailyDate(1)} variant="ghost" />
-            </View>
-            <ProgressBar
-              done={dailyDoneCount}
-              total={dailyTotalCount}
-              ratio={dailyProgressRatio}
-              styles={styles}
-            />
-          </AppCard>
-        ) : null}
-
-        {timeView === 'MONTHLY' ? (
-          <AppCard style={styles.weeklyHeaderCard}>
-            <View style={[styles.calendarMonthRow, styles.weeklyCalendarRowCompact]}>
-              <AppButton title={strings.monthBack} onPress={() => shiftCalendarMonth(-1)} variant="ghost" />
-              <Text style={styles.calendarMonthText}>{formatCalendarMonth(calendarMonth)}</Text>
-              <AppButton title={strings.monthNext} onPress={() => shiftCalendarMonth(1)} variant="ghost" />
-            </View>
-          </AppCard>
-        ) : null}
-        {timeView === 'WEEKLY' ? (
-          <AppCard style={styles.weeklyHeaderCard}>
-            <View style={[styles.calendarMonthRow, styles.weeklyCalendarRowCompact]}>
-              <AppButton title={strings.weekBack} onPress={() => shiftSelectedWeek(-1)} variant="ghost" />
-              <Text style={styles.calendarMonthText}>{formatWeekRangeLabel(selectedWeeklyStart)}</Text>
-              <AppButton title={strings.weekNext} onPress={() => shiftSelectedWeek(1)} variant="ghost" />
-            </View>
-            <ProgressBar
-              done={weeklyDoneCount}
-              total={weeklyTotalCount}
-              ratio={weeklyProgressRatio}
-              styles={styles}
-            />
-          </AppCard>
-        ) : null}
 
         {showInitialLoad ? <Subtle>{strings.loadingTodos}</Subtle> : null}
         {todos.error ? <Text style={styles.error}>{todos.error}</Text> : null}
@@ -875,7 +925,8 @@ export function TodoListScreen({ token, onDone }: Props) {
 
               {weeklyWeekOpenItems.length + weeklyWeekDoneItems.length > 0 ? (
                 <SectionShortcutRow
-                  label={`${strings.weekGoals} (${weeklyWeekOpenItems.length + weeklyWeekDoneItems.length})`}
+                  label={strings.weekGoals}
+                  meta={`${weeklyWeekOpenItems.length + weeklyWeekDoneItems.length}`}
                   onPress={() => {
                     Keyboard.dismiss();
                     setShowWeekGoalsSheet(true);
@@ -903,7 +954,8 @@ export function TodoListScreen({ token, onDone }: Props) {
 
               {monthlyMonthOpenItems.length + monthlyMonthDoneItems.length > 0 ? (
                 <SectionShortcutRow
-                  label={`${strings.monthGoals} (${monthlyMonthOpenItems.length + monthlyMonthDoneItems.length})`}
+                  label={strings.monthGoals}
+                  meta={`${monthlyMonthOpenItems.length + monthlyMonthDoneItems.length}`}
                   onPress={() => {
                     Keyboard.dismiss();
                     setShowMonthGoalsSheet(true);
@@ -1739,15 +1791,15 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
   },
   scrollSections: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
-  headerCard: {
+  topWorkspaceCard: {
     gap: theme.spacing.xs,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
-  filters: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
+  viewSwitchControl: {
+    backgroundColor: theme.colors.surfaceSubtle,
   },
   calendarMonthRow: {
     flexDirection: 'row',
@@ -1758,16 +1810,45 @@ const styles = StyleSheet.create({
   calendarMonthText: {
     ...textStyles.h3,
     textTransform: 'capitalize',
+    flex: 1,
+    textAlign: 'center',
   },
   dailyProgressBlock: {
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   weeklyOverviewList: {
     gap: theme.spacing.xs,
   },
-  weeklyHeaderCard: {
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
+  periodCardContent: {
+    gap: 6,
+  },
+  topSectionDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  periodProgressBlock: {
+    paddingTop: 4,
+    paddingBottom: 2,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingTop: 2,
+    paddingBottom: 2,
+  },
+  periodArrowButton: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  periodArrowPressed: {
+    opacity: 0.75,
   },
   weeklyCalendarRowCompact: {
     gap: theme.spacing.xs,
@@ -1866,14 +1947,14 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.surfaceAlt,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
   },
   weekDayOverviewRowEmpty: {
-    opacity: 0.75,
+    opacity: 0.9,
   },
   weekDayOverviewText: {
     ...textStyles.body,
@@ -1890,19 +1971,26 @@ const styles = StyleSheet.create({
     color: theme.colors.subtle,
   },
   unplannedShortcutRow: {
-    borderWidth: 1,
+    borderTopWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceAlt,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.xs,
   },
+  unplannedShortcutText: {
+    ...textStyles.subtle,
+  },
+  unplannedShortcutMeta: {
+    ...textStyles.subtle,
+  },
   weeklyShortcutRow: {
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.surface,
+    marginTop: theme.spacing.sm,
   },
   monthGridHeaderRow: {
     flexDirection: 'row',
