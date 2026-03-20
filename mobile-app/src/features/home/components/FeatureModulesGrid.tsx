@@ -32,6 +32,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     gap: 16,
   },
   spacer: {

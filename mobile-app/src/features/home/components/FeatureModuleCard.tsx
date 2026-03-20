@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AppCard, Subtle } from '../../../shared/ui/components';
+import { AppCard } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import type { HomeFeatureModule } from '../utils/homeOverview';
 
@@ -29,7 +29,9 @@ export function FeatureModuleCard({
         </View>
         <View style={styles.body}>
           <Text style={textStyles.h3}>{title}</Text>
-          <Subtle>{statusText}</Subtle>
+          <Text style={styles.statusText} numberOfLines={1}>
+            {statusText}
+          </Text>
         </View>
       </AppCard>
     </Pressable>
@@ -41,6 +43,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
+    flex: 1,
     minHeight: 128,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -60,6 +63,10 @@ const styles = StyleSheet.create({
   },
   body: {
     gap: 8,
+  },
+  statusText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   pressed: {
     opacity: 0.9,
