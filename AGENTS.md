@@ -25,7 +25,7 @@ Agents must **not introduce architectural changes unless explicitly requested.**
 Before proposing or implementing changes, read:
 
 - README.md
-- docs/INVARIANTS.md
+- docs/invariants.md
 - docs/architecture/backend-structure.md
 - docs/architecture/frontend-architecture.md
 - docs/architecture/groups.md
@@ -178,6 +178,40 @@ When implementing changes:
 4. Preserve existing behavior unless the change explicitly modifies it.
 
 Prefer clarity and correctness over cleverness.
+
+---
+
+## Feature workflow discipline
+
+Agents must work with clear task mode discipline.
+
+Operational collaboration guidance lives in:
+
+- `docs/workflow/ai-collaboration.md`
+
+### Task modes
+Every requested change should be treated as one of these:
+- **read-only analysis**
+- **implementation**
+- **review/polish**
+
+Do not mix these modes unless explicitly requested.
+
+### Slice discipline
+Work on **one meaningful slice at a time**.
+
+- Do not widen a step into adjacent feature work unless explicitly requested.
+
+### Prerequisite-first rule
+If a later-visible feature depends on a missing prerequisite, solve the prerequisite cleanly first.
+
+### Prompt discipline
+Use bounded prompts for larger feature slices and short explicit prompts for small direct fixes.
+
+### Validation ownership
+Agents should validate as much as possible autonomously before handing work back.
+
+Human validation should stay short, focused, and product-relevant.
 
 ---
 
