@@ -482,7 +482,46 @@ Those are too open for reliable frontend direction.
 
 ---
 
-## 11. What This Document Is For
+## 11. UI Review and Prompt Discipline
+
+### 11.1 Screenshots are primary evidence for many UI decisions
+For UI-heavy work, screenshots should be treated as first-class review evidence.
+
+They are especially useful for judging:
+- workspace hierarchy
+- content-vs-controls balance
+- chrome weight
+- calmness
+- action placement
+- empty / no-results fit
+- whether a surface feels LifeLinq-right
+
+Do not default to heavy manual validation when the real question is visual/product fit.
+
+### 11.2 Use different prompt shapes for different UI tasks
+Not all frontend prompts should be shaped the same way.
+
+Use a broader bounded prompt when:
+- the surface direction is still unclear
+- the main issue is hierarchy, state communication, or product fit
+- Codex needs room to solve a real design problem within clear boundaries
+
+Use a short explicit prompt when:
+- the desired fix is already known
+- the issue is a small direct layout/behavior/wording fix
+- interpretive freedom would likely create unnecessary iteration
+
+### 11.3 Human review should focus on the key product signal
+When reviewing screenshots, prefer asking:
+- what should lead here?
+- what still feels wrong?
+- does this now feel more calm / content-first / trustworthy?
+
+Do not turn screenshot review into a full manual QA pass when the real decision is product/UI fit.
+
+---
+
+## 12. What This Document Is For
 
 This document exists so that LifeLinq can move from:
 - taste-based iteration only

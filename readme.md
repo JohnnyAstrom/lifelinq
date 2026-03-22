@@ -126,6 +126,14 @@ These define:
 
 ---
 
+## Workflow guidance
+
+AI-assisted product and implementation workflow guidance lives in:
+
+- `docs/workflow/ai-collaboration.md`
+
+---
+
 ## Technology stack
 
 - Backend: Spring Boot (Java)

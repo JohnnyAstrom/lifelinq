@@ -32,6 +32,18 @@ Run `npx expo run:android` when you change native configuration or add/change na
 
 Typical rebuild triggers include changes to Expo config, Android manifest/native config, Gradle/native dependencies, or libraries that require native installation/linking. Pure screen/component/hook logic changes usually only need Metro reload.
 
+## Practical iteration guidance
+
+For most JS/TS/UI work:
+- Metro reload is the expected workflow
+- human checks should stay focused on the changed surface
+- do not require unnecessary rebuild/retest loops for small frontend refinements
+
+Reserve deeper manual retesting for:
+- behavior changes that cross multiple flows
+- native/module changes
+- changes with clear regression risk outside the edited surface
+
 ## Frontend Architecture (Short Summary)
 
 Screens should be thin and focused on composition, navigation state, and render order. Data hooks handle fetch/mutate/reload, while workflow hooks handle UI state machines and use-case orchestration above data hooks.
