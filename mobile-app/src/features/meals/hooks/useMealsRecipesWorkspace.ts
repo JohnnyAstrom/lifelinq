@@ -154,6 +154,12 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     [ingredientRows]
   );
 
+  function focusMainRecipeLibrary() {
+    setListMode('active');
+    setBrowseMode('all');
+    setRecipeSearchQuery('');
+  }
+
   function toRecipeListItems(
     recipes: RecipeResponse[],
     options?: { preserveOrder?: boolean },
@@ -486,6 +492,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   function openCreateRecipe() {
+    focusMainRecipeLibrary();
     setRecipeId(null);
     setRecipeTitle('');
     setRecipeSource('');
@@ -525,6 +532,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     if (isImportingDraft || pendingDetailAction) {
       return;
     }
+    focusMainRecipeLibrary();
     setImportUrl('');
     setImportError(null);
     setClipboardImportUrl(null);
@@ -631,6 +639,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         { url: importUrl.trim() },
         { token }
       );
+      focusMainRecipeLibrary();
       applyImportedDraft(draft);
       setIsImportSheetOpen(false);
       setImportUrl('');
@@ -657,6 +666,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   async function createRecipeFromRequest(request: RecipeSaveRequest) {
     const saved = await createRecipe(request, { token });
+    focusMainRecipeLibrary();
     setActiveRecipes((current) => {
       const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
       return [...others, saved];
@@ -689,10 +699,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setPendingDetailAction('save');
     setRecipeDetailError(null);
     try {
+      const isNewLibraryIntake = !recipeId;
       const saved = recipeId
         ? await updateRecipe(recipeId, request, { token })
         : await createRecipe(request, { token });
 
+      if (isNewLibraryIntake) {
+        focusMainRecipeLibrary();
+      }
       setPendingDuplicateCandidate(null);
       setPendingDuplicateSaveRequest(null);
       if (saved.archivedAt) {

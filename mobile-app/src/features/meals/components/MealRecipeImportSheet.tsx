@@ -9,6 +9,7 @@ type Strings = {
   subtitle: string;
   urlPlaceholder: string;
   helpText: string;
+  clipboardHint?: string;
   importAction: string;
   importingAction: string;
   close: string;
@@ -21,6 +22,7 @@ type Props = {
   onClose: () => void;
   isImporting: boolean;
   error: string | null;
+  clipboardImportUrl?: string | null;
   strings: Strings;
 };
 
@@ -31,6 +33,7 @@ export function MealRecipeImportSheet({
   onClose,
   isImporting,
   error,
+  clipboardImportUrl,
   strings,
 }: Props) {
   const [isUrlFocused, setIsUrlFocused] = useState(false);
@@ -45,6 +48,11 @@ export function MealRecipeImportSheet({
         </View>
 
         <View style={styles.body}>
+          {clipboardImportUrl && strings.clipboardHint ? (
+            <View style={styles.clipboardCallout}>
+              <Text style={styles.clipboardCalloutText}>{strings.clipboardHint}</Text>
+            </View>
+          ) : null}
           <AppInput
             value={importUrl}
             onChangeText={onChangeImportUrl}
@@ -112,6 +120,20 @@ const styles = StyleSheet.create({
   },
   body: {
     gap: theme.spacing.sm,
+  },
+  clipboardCallout: {
+    alignSelf: 'flex-start',
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  clipboardCalloutText: {
+    ...textStyles.subtle,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
   },
   captureInput: {
     fontSize: 15,

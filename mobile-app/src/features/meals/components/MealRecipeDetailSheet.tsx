@@ -343,9 +343,6 @@ export function MealRecipeDetailSheet({
   const normalizedSource = recipeSource.trim();
   const normalizedSourceUrl = recipeSourceUrl?.trim() ?? '';
   const baseServings = parseBaseServings(normalizedServings);
-  const importSourceHost = isImportDraft && normalizedSourceUrl.length > 0
-    ? getHostnameLabel(normalizedSourceUrl)
-    : null;
   const hasReadableRecipeMetadata = normalizedServings.length > 0
     || normalizedSource.length > 0
     || normalizedSourceUrl.length > 0;
@@ -355,6 +352,7 @@ export function MealRecipeDetailSheet({
   const isContentReadOnly = isArchivedRecipe || isReadOnlyMode;
   const showReadableInstructionSteps = instructionSteps.length > 1;
   const isContentFirstEditor = useContentFirstEditor && !isContentReadOnly;
+  const useCompactMetadataFields = !isContentReadOnly && (isImportDraft || isContentFirstEditor);
   const isSavedRecipeEditMode = hasExistingRecipe
     && !isContentReadOnly
     && !isImportDraft
@@ -872,11 +870,10 @@ export function MealRecipeDetailSheet({
                       </View>
                     ) : null}
                     <View style={styles.metadataFields}>
-                      {isImportDraft && importSourceHost ? (
-                        <Text style={styles.sectionHint}>{importSourceHost}</Text>
-                      ) : null}
                       <View style={styles.metadataField}>
-                        <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
+                        {!useCompactMetadataFields ? (
+                          <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
+                        ) : null}
                         <View style={[
                           styles.metadataInputWrap,
                           isContentFirstEditor ? styles.secondaryMetadataInputWrap : null,
@@ -892,7 +889,9 @@ export function MealRecipeDetailSheet({
                       </View>
                       {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
                         <View style={styles.metadataField}>
-                          <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
+                          {!useCompactMetadataFields ? (
+                            <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
+                          ) : null}
                           <View style={[
                             styles.metadataInputWrap,
                             isContentFirstEditor ? styles.secondaryMetadataInputWrap : null,
@@ -1590,12 +1589,3 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
 });
-
-function getHostnameLabel(url: string) {
-  try {
-    const parsed = new URL(url);
-    return parsed.hostname.replace(/^www\./, '');
-  } catch {
-    return null;
-  }
-}

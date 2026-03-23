@@ -16,8 +16,11 @@ type RecipeListItem = {
 
 type Strings = {
   title: string;
+  intakeLabel: string;
   newRecipe: string;
+  newRecipeHint: string;
   importRecipe: string;
+  importRecipeHint: string;
   archivedAction: string;
   archivedTitle: string;
   savedRecipesLabel: string;
@@ -225,30 +228,6 @@ export function MealsRecipesView({
             </View>
             <Text style={styles.libraryHeroTitle}>{strings.title}</Text>
           </View>
-          <View style={styles.libraryActionRow}>
-            <Pressable
-              onPress={onImportRecipe}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.primaryLibraryAction,
-                pressed ? styles.actionPressed : null,
-              ]}
-            >
-              <Ionicons name="bookmark-outline" size={16} color={theme.colors.feature.meals} />
-              <Text style={styles.primaryLibraryActionText}>{strings.importRecipe}</Text>
-            </Pressable>
-            <Pressable
-              onPress={onCreateRecipe}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.secondaryLibraryAction,
-                pressed ? styles.actionPressed : null,
-              ]}
-            >
-              <Ionicons name="add" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.secondaryLibraryActionText}>{strings.newRecipe}</Text>
-            </Pressable>
-          </View>
           <View style={styles.retrievalBand}>
             <AppInput
               value={searchQuery}
@@ -256,6 +235,36 @@ export function MealsRecipesView({
               placeholder={strings.searchPlaceholder}
               style={styles.searchInput}
             />
+          </View>
+          <View style={styles.intakeSection}>
+            <Text style={styles.intakeLabel}>{strings.intakeLabel}</Text>
+            <View style={styles.libraryActionRow}>
+              <Pressable
+                onPress={onImportRecipe}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.libraryActionPill,
+                  styles.libraryActionPillPrimary,
+                  pressed ? styles.actionPressed : null,
+                ]}
+              >
+                <Ionicons name="bookmark-outline" size={15} color={theme.colors.feature.meals} />
+                <Text style={styles.libraryActionPillTitle}>{strings.importRecipe}</Text>
+                <Text style={styles.libraryActionPillHint}>{strings.importRecipeHint}</Text>
+              </Pressable>
+              <Pressable
+                onPress={onCreateRecipe}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.libraryActionPill,
+                  pressed ? styles.actionPressed : null,
+                ]}
+              >
+                <Ionicons name="add" size={15} color={theme.colors.textSecondary} />
+                <Text style={styles.libraryActionPillTitle}>{strings.newRecipe}</Text>
+                <Text style={styles.libraryActionPillHint}>{strings.newRecipeHint}</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       ) : null}
@@ -396,41 +405,44 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     flex: 1,
   },
+  intakeSection: {
+    gap: 6,
+  },
+  intakeLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   libraryActionRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexWrap: 'wrap',
     gap: theme.spacing.xs,
   },
-  primaryLibraryAction: {
+  libraryActionPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.surface,
-  },
-  secondaryLibraryAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 10,
-    borderRadius: theme.radius.pill,
-    backgroundColor: iconBackground(theme.colors.surface, 0.42),
     borderWidth: 1,
     borderColor: iconBackground(theme.colors.textPrimary, 0.08),
+    backgroundColor: iconBackground(theme.colors.surface, 0.5),
   },
-  primaryLibraryActionText: {
+  libraryActionPillPrimary: {
+    backgroundColor: theme.colors.surface,
+  },
+  libraryActionPillTitle: {
     ...textStyles.subtle,
     color: theme.colors.textPrimary,
     fontWeight: '700',
   },
-  secondaryLibraryActionText: {
+  libraryActionPillHint: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
-    fontWeight: '700',
   },
   libraryTitle: {
     ...textStyles.h2,
