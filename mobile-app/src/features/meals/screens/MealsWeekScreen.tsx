@@ -51,7 +51,7 @@ type Props = {
 };
 
 type SurfaceMode = 'week' | 'calendar';
-type WorkspaceMode = 'plan' | 'recipes';
+type WorkspaceMode = 'home' | 'plan' | 'recipes';
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -124,6 +124,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const { handleApiError } = useAuth();
   const strings = {
     title: 'Meals',
+    homeTitle: 'Meals',
+    homeSubtitle: 'Choose where you want to start.',
+    homePlanTitle: 'Plan your meals',
+    homePlanSubtitle: 'Set up the week and keep meals in view.',
+    homeRecipesTitle: 'Recipe library',
+    homeRecipesSubtitle: 'Browse, save, and return to your recipes.',
     planWorkspace: 'Plan',
     recipesWorkspace: 'Recipes',
     weeklyPlanner: 'Week',
@@ -224,6 +230,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipePickerHint: 'Saved recipes',
     loadingRecipes: 'Loading recipes...',
     noRecipes: 'No saved recipes yet.',
+    makeSoonRecipesTitle: 'Make soon',
     recentlyUsedRecipesTitle: 'Recently used',
     searchRecipesPlaceholder: 'Search recipes',
     noRecipeSearchResults: 'No recipes match this search.',
@@ -251,6 +258,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     savingMealDetails: 'Saving meal details...',
     saveToRecipes: 'Save to Recipes',
     savingToRecipes: 'Saving to Recipes...',
+    markMakeSoonAction: 'Make soon',
+    clearMakeSoonAction: 'Remove from make soon',
     archiveRecipe: 'Archive recipe',
     archivingRecipe: 'Archiving recipe...',
     restoreRecipe: 'Restore recipe',
@@ -308,7 +317,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     close: 'Close',
     addingIngredientsToShopping: 'Adding ingredients...',
   };
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('plan');
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('home');
   const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [selectedDayDetailDate, setSelectedDayDetailDate] = useState<Date | null>(null);
@@ -623,9 +632,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     actions.closeEditor();
   }
 
+  function handleMealsBack() {
+    if (workspaceMode !== 'home') {
+      setWorkspaceMode('home');
+      return;
+    }
+    onDone();
+  }
+
   useAppBackHandler({
     canGoBack: true,
-    onGoBack: onDone,
+    onGoBack: handleMealsBack,
     isOverlayOpen:
       !!selectedDayDetailDate
       || editor.isOpen
@@ -658,7 +675,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           title={strings.title}
           icon={<Ionicons name="restaurant-outline" />}
           accentKey="meals"
-          right={<BackIconButton onPress={onDone} />}
+          right={<BackIconButton onPress={handleMealsBack} />}
         />
       )}
     >
@@ -671,136 +688,149 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               <RefreshControl
                 refreshing={workspaceMode === 'plan'
                   ? (surfaceMode === 'week' ? plan.isRefreshing : monthOverview.isRefreshing)
-                  : recipesWorkspace.recipes.isRefreshing}
+                  : workspaceMode === 'recipes'
+                    ? recipesWorkspace.recipes.isRefreshing
+                    : false}
                 onRefresh={() => {
-                  void (workspaceMode === 'plan'
-                    ? (surfaceMode === 'week' ? plan.reload() : monthOverview.reload())
-                    : recipesWorkspace.recipes.reload());
+                  if (workspaceMode === 'plan') {
+                    void (surfaceMode === 'week' ? plan.reload() : monthOverview.reload());
+                    return;
+                  }
+                  if (workspaceMode === 'recipes') {
+                    void recipesWorkspace.recipes.reload();
+                  }
                 }}
               />
             )}
           >
             <View style={styles.contentInner}>
-              <View style={styles.workspaceSwitchRow}>
-                <Pressable
-                  onPress={() => setWorkspaceMode('plan')}
-                  style={({ pressed }) => [
-                    styles.workspaceSwitchTab,
-                    workspaceMode === 'plan' ? styles.workspaceSwitchTabActive : null,
-                    pressed ? styles.workspaceSwitchTabPressed : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.workspaceSwitchText,
-                      workspaceMode === 'plan' ? styles.workspaceSwitchTextActive : null,
-                    ]}
-                  >
-                    {strings.planWorkspace}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setWorkspaceMode('recipes')}
-                  style={({ pressed }) => [
-                    styles.workspaceSwitchTab,
-                    workspaceMode === 'recipes' ? styles.workspaceSwitchTabActive : null,
-                    pressed ? styles.workspaceSwitchTabPressed : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.workspaceSwitchText,
-                      workspaceMode === 'recipes' ? styles.workspaceSwitchTextActive : null,
-                    ]}
-                  >
-                    {strings.recipesWorkspace}
-                  </Text>
-                </Pressable>
-              </View>
-
-              {workspaceMode === 'plan' ? (
-                <AppCard style={styles.controlsCard}>
-                  <View style={styles.planSurfaceRow}>
-                    <AppSegmentedControl
-                      options={[
-                        { value: 'week', label: strings.weeklyPlanner },
-                        { value: 'calendar', label: strings.calendarOverview },
-                      ]}
-                      value={surfaceMode}
-                      onChange={setSurfaceMode}
-                      accentKey="meals"
-                    />
+              {workspaceMode === 'home' ? (
+                <View style={styles.homeLayout}>
+                  <View style={styles.homeHeader}>
+                    <Text style={styles.homeTitle}>{strings.homeTitle}</Text>
+                    <Text style={styles.homeSubtitle}>{strings.homeSubtitle}</Text>
                   </View>
-                  <View style={styles.periodControlsRow}>
+
+                  <View style={styles.homeDestinations}>
                     <Pressable
-                      onPress={() => shiftCurrentPeriod(-1)}
+                      onPress={() => setWorkspaceMode('plan')}
                       style={({ pressed }) => [
-                        styles.periodNavButton,
-                        pressed ? styles.periodNavButtonPressed : null,
+                        styles.homeDestination,
+                        pressed ? styles.homeDestinationPressed : null,
                       ]}
                     >
-                      <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
+                      <View style={styles.homeDestinationIcon}>
+                        <Ionicons name="calendar-outline" size={20} color={theme.colors.feature.meals} />
+                      </View>
+                      <View style={styles.homeDestinationCopy}>
+                        <Text style={styles.homeDestinationTitle}>{strings.homePlanTitle}</Text>
+                        <Text style={styles.homeDestinationSubtitle}>{strings.homePlanSubtitle}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
                     </Pressable>
-                    <View style={styles.periodSummary}>
-                      <Text style={styles.periodSummaryPrimary}>
-                        {periodSummary.primary}
-                      </Text>
-                      {periodSummary.secondary ? (
-                        <Subtle style={styles.periodSummarySecondary}>
-                          {periodSummary.secondary}
-                        </Subtle>
-                      ) : null}
-                    </View>
+
                     <Pressable
-                      onPress={() => shiftCurrentPeriod(1)}
+                      onPress={() => setWorkspaceMode('recipes')}
                       style={({ pressed }) => [
-                        styles.periodNavButton,
-                        pressed ? styles.periodNavButtonPressed : null,
+                        styles.homeDestination,
+                        pressed ? styles.homeDestinationPressed : null,
                       ]}
                     >
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.text} />
+                      <View style={styles.homeDestinationIcon}>
+                        <Ionicons name="bookmark-outline" size={20} color={theme.colors.feature.meals} />
+                      </View>
+                      <View style={styles.homeDestinationCopy}>
+                        <Text style={styles.homeDestinationTitle}>{strings.homeRecipesTitle}</Text>
+                        <Text style={styles.homeDestinationSubtitle}>{strings.homeRecipesSubtitle}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
                     </Pressable>
                   </View>
-                </AppCard>
-              ) : null}
-
-              {workspaceMode === 'plan' && showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
-              {workspaceMode === 'plan' && showInitialMonthOverviewLoading ? <Subtle>{strings.loadingMonthOverview}</Subtle> : null}
-              {workspaceMode === 'plan' && currentSurfaceError ? <Text style={styles.error}>{currentSurfaceError}</Text> : null}
-
-              {workspaceMode === 'plan' ? (
-                shouldRenderPlanViews ? (
-                  surfaceMode === 'week' ? (
-                    <MealsWeeklyView
-                      weekStart={weekStart}
-                      mealsByDay={mealsByDay}
-                      onOpenDay={openDayDetail}
-                      onOpenEditor={actions.openEditor}
-                      formatDayLabel={formatDayLabel}
-                      DAY_LABELS={DAY_LABELS}
-                      MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
-                      styles={styles}
-                      todayLabel={strings.todayLabel}
-                    />
-                  ) : (
-                    <AppCard style={styles.calendarCard}>
-                      <MealsMonthlyView
-                        monthGridCells={monthGridCells}
-                        monthMealCountByDateKey={monthOverview.mealCountByDateKey}
-                        toDateKey={toDateKey}
-                        isTodayDate={isTodayDate}
-                        styles={styles}
-                        onPressDay={(date) => {
-                          openDayDetail(new Date(date.getTime()));
-                        }}
-                        weekdayLabels={DAY_LABELS}
+                </View>
+              ) : workspaceMode === 'plan' ? (
+                <>
+                  <AppCard style={styles.controlsCard}>
+                    <View style={styles.planSurfaceRow}>
+                      <AppSegmentedControl
+                        options={[
+                          { value: 'week', label: strings.weeklyPlanner },
+                          { value: 'calendar', label: strings.calendarOverview },
+                        ]}
+                        value={surfaceMode}
+                        onChange={setSurfaceMode}
+                        accentKey="meals"
                       />
-                    </AppCard>
-                  )
-                ) : null
+                    </View>
+                    <View style={styles.periodControlsRow}>
+                      <Pressable
+                        onPress={() => shiftCurrentPeriod(-1)}
+                        style={({ pressed }) => [
+                          styles.periodNavButton,
+                          pressed ? styles.periodNavButtonPressed : null,
+                        ]}
+                      >
+                        <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
+                      </Pressable>
+                      <View style={styles.periodSummary}>
+                        <Text style={styles.periodSummaryPrimary}>
+                          {periodSummary.primary}
+                        </Text>
+                        {periodSummary.secondary ? (
+                          <Subtle style={styles.periodSummarySecondary}>
+                            {periodSummary.secondary}
+                          </Subtle>
+                        ) : null}
+                      </View>
+                      <Pressable
+                        onPress={() => shiftCurrentPeriod(1)}
+                        style={({ pressed }) => [
+                          styles.periodNavButton,
+                          pressed ? styles.periodNavButtonPressed : null,
+                        ]}
+                      >
+                        <Ionicons name="chevron-forward" size={18} color={theme.colors.text} />
+                      </Pressable>
+                    </View>
+                  </AppCard>
+
+                  {showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
+                  {showInitialMonthOverviewLoading ? <Subtle>{strings.loadingMonthOverview}</Subtle> : null}
+                  {currentSurfaceError ? <Text style={styles.error}>{currentSurfaceError}</Text> : null}
+
+                  {shouldRenderPlanViews ? (
+                    surfaceMode === 'week' ? (
+                      <MealsWeeklyView
+                        weekStart={weekStart}
+                        mealsByDay={mealsByDay}
+                        onOpenDay={openDayDetail}
+                        onOpenEditor={actions.openEditor}
+                        formatDayLabel={formatDayLabel}
+                        DAY_LABELS={DAY_LABELS}
+                        MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
+                        styles={styles}
+                        todayLabel={strings.todayLabel}
+                      />
+                    ) : (
+                      <AppCard style={styles.calendarCard}>
+                        <MealsMonthlyView
+                          monthGridCells={monthGridCells}
+                          monthMealCountByDateKey={monthOverview.mealCountByDateKey}
+                          toDateKey={toDateKey}
+                          isTodayDate={isTodayDate}
+                          styles={styles}
+                          onPressDay={(date) => {
+                            openDayDetail(new Date(date.getTime()));
+                          }}
+                          weekdayLabels={DAY_LABELS}
+                        />
+                      </AppCard>
+                    )
+                  ) : null}
+                </>
               ) : (
                 <MealsRecipesView
                   recipes={recipesWorkspace.recipes.items}
+                  makeSoonRecipes={recipesWorkspace.recipes.makeSoonItems}
                   recentRecipes={recipesWorkspace.recipes.recentItems}
                   searchQuery={recipesWorkspace.recipes.searchQuery}
                   listMode={recipesWorkspace.recipes.listMode}
@@ -820,6 +850,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     archivedTab: strings.archivedRecipesTab,
                     newRecipe: strings.createRecipeFromRecipes,
                     importRecipe: strings.importRecipeFromRecipes,
+                    makeSoonTitle: strings.makeSoonRecipesTitle,
                     recentlyUsedTitle: strings.recentlyUsedRecipesTitle,
                     searchPlaceholder: strings.searchRecipesPlaceholder,
                     loadingRecipes: strings.loadingRecipes,
@@ -1140,9 +1171,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onToggleIngredientUnit={recipesWorkspace.recipeDetail.setIngredientUnit}
           onStartEditingSavedRecipeDirectly={() => {}}
           onEnterEditMode={recipesWorkspace.recipeDetail.startEditingRecipe}
+          onToggleMakeSoon={recipesWorkspace.recipeDetail.toggleRecipeMakeSoon}
           onSave={recipesWorkspace.recipeDetail.saveRecipe}
           onClose={recipesWorkspace.recipeDetail.closeRecipeDetail}
           isSaving={recipesWorkspace.recipeDetail.isSavingRecipe}
+          isTogglingMakeSoon={recipesWorkspace.recipeDetail.isTogglingMakeSoon}
+          isMarkedMakeSoon={!!recipesWorkspace.recipeDetail.recipeMakeSoonAt}
           onArchive={recipesWorkspace.recipeDetail.canArchiveRecipe
             ? recipesWorkspace.recipeDetail.archiveCurrentRecipe
             : undefined}
@@ -1195,6 +1229,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ? undefined
               : strings.recipeNameEditHint,
             editRecipeAction: strings.editRecipeAction,
+            markMakeSoonAction: strings.markMakeSoonAction,
+            clearMakeSoonAction: strings.clearMakeSoonAction,
             recipeContentLabel: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importReviewSourceSummaryTitle
               : strings.recipeContentLabel,
@@ -1354,6 +1390,60 @@ const styles = StyleSheet.create({
   },
   contentInner: {
     gap: theme.spacing.xs,
+  },
+  homeLayout: {
+    gap: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+  },
+  homeHeader: {
+    gap: theme.spacing.xs,
+  },
+  homeTitle: {
+    ...textStyles.h1,
+    color: theme.colors.text,
+  },
+  homeSubtitle: {
+    ...textStyles.body,
+    color: theme.colors.textSecondary,
+  },
+  homeDestinations: {
+    gap: theme.spacing.md,
+  },
+  homeDestination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+  },
+  homeDestinationPressed: {
+    opacity: 0.82,
+  },
+  homeDestinationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: iconBackground(theme.colors.feature.meals),
+  },
+  homeDestinationCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  homeDestinationTitle: {
+    ...textStyles.body,
+    color: theme.colors.text,
+    fontWeight: '700',
+  },
+  homeDestinationSubtitle: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   controlsCard: {
     gap: theme.spacing.xs,
