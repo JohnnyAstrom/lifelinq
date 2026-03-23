@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppInput, AppSegmentedControl, Subtle } from '../../../shared/ui/components';
-import { textStyles, theme } from '../../../shared/ui/theme';
+import { AppInput, Subtle } from '../../../shared/ui/components';
+import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
 
 type RecipeListItem = {
   recipeId: string;
@@ -17,10 +17,15 @@ type RecipeListItem = {
 type Strings = {
   title: string;
   subtitle?: string;
-  activeTab: string;
-  archivedTab: string;
+  libraryLabel?: string;
+  browseHint?: string;
   newRecipe: string;
   importRecipe: string;
+  archivedAction: string;
+  archivedTitle: string;
+  archivedSubtitle?: string;
+  archivedBackAction: string;
+  savedRecipesLabel: string;
   makeSoonTitle: string;
   recentlyUsedTitle: string;
   searchPlaceholder: string;
@@ -31,8 +36,6 @@ type Strings = {
   noArchivedRecipesHint?: string;
   noSearchResults: string;
   noSearchResultsHint?: string;
-  savedRecipeLabel: string;
-  archivedRecipeLabel: string;
   duplicateNameHint: (count: number) => string;
   similarNameHint: string;
   recipeCountLabel: (count: number) => string;
@@ -76,21 +79,24 @@ export function MealsRecipesView({
   onImportRecipe,
   strings,
 }: Props) {
+  const supportPreviewLimit = 3;
   const hasSearchQuery = searchQuery.trim().length > 0;
-  const showMakeSoon = listMode === 'active' && !hasSearchQuery && makeSoonRecipes.length > 0;
-  const showRecentlyUsed = listMode === 'active'
+  const isArchivedView = listMode === 'archived';
+  const showMakeSoon = !isArchivedView && !hasSearchQuery && makeSoonRecipes.length > 0;
+  const showRecentlyUsed = !isArchivedView
     && !hasSearchQuery
     && !showMakeSoon
     && recentRecipes.length > 0;
   const showTopSections = showMakeSoon || showRecentlyUsed;
-  const countLabel = listMode === 'active'
+  const countLabel = !isArchivedView
     ? strings.recipeCountLabel(activeCount)
     : strings.archivedCountLabel(archivedCount);
-  const libraryTitle = strings.title;
-  const librarySubtitle = hasSearchQuery ? undefined : strings.subtitle;
-  const libraryMeta = librarySubtitle ? `${librarySubtitle} · ${countLabel}` : countLabel;
+  const libraryTitle = !isArchivedView ? strings.title : strings.archivedTitle;
+  const librarySubtitle = !isArchivedView ? strings.subtitle : strings.archivedSubtitle;
+  const libraryMeta = librarySubtitle ? `${countLabel} · ${librarySubtitle}` : countLabel;
   const supportTitle = showMakeSoon ? strings.makeSoonTitle : showRecentlyUsed ? strings.recentlyUsedTitle : null;
-  const supportItems = showMakeSoon ? makeSoonRecipes : showRecentlyUsed ? recentRecipes : [];
+  const supportItems = (showMakeSoon ? makeSoonRecipes : showRecentlyUsed ? recentRecipes : [])
+    .slice(0, supportPreviewLimit);
 
   function renderRecipeRows(
     items: RecipeListItem[],
@@ -152,64 +158,90 @@ export function MealsRecipesView({
 
   return (
     <View style={styles.layout}>
-      <View style={styles.controlsPrimaryRow}>
-        <AppSegmentedControl
-          options={[
-            { value: 'active', label: strings.activeTab },
-            { value: 'archived', label: strings.archivedTab },
-          ]}
-          value={listMode}
-          onChange={(nextValue) => {
-            if (nextValue === 'active') {
-              onShowActive();
-              return;
-            }
-            onShowArchived();
-          }}
-          accentKey="meals"
-        />
-      </View>
-
-      <View style={styles.libraryHeader}>
-        <View style={styles.libraryHeaderTop}>
-          <View style={styles.libraryHeaderCopy}>
-            <Text style={styles.libraryTitle}>{libraryTitle}</Text>
-            <Text style={styles.libraryMeta}>{libraryMeta}</Text>
+      {!isArchivedView ? (
+        <View style={styles.libraryHero}>
+          <View style={styles.libraryHeroTop}>
+            <View style={styles.libraryHeroBadge}>
+              <Ionicons name="book-outline" size={18} color={theme.colors.feature.meals} />
+            </View>
+            <View style={styles.libraryHeroCopy}>
+              {strings.libraryLabel ? (
+                <Text style={styles.libraryEyebrow}>{strings.libraryLabel}</Text>
+              ) : null}
+              <Text style={styles.libraryHeroTitle}>{strings.title}</Text>
+              <Text style={styles.libraryHeroSubtitle}>
+                {strings.subtitle ?? 'Browse, re-find, and save recipes you want to keep using.'}
+              </Text>
+            </View>
           </View>
-          <View style={styles.inlineActionsRow}>
-            <Pressable
-              onPress={onCreateRecipe}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.toolbarAction,
-                pressed ? styles.quickActionPressed : null,
-              ]}
-            >
-              <Ionicons name="add" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.toolbarActionText}>{strings.newRecipe}</Text>
-            </Pressable>
+          <View style={styles.libraryActionRow}>
             <Pressable
               onPress={onImportRecipe}
               accessibilityRole="button"
               style={({ pressed }) => [
-                styles.toolbarAction,
-                pressed ? styles.quickActionPressed : null,
+                styles.primaryLibraryAction,
+                pressed ? styles.actionPressed : null,
               ]}
             >
-              <Ionicons name="bookmark-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.toolbarActionText}>{strings.importRecipe}</Text>
+              <Ionicons name="bookmark-outline" size={16} color={theme.colors.feature.meals} />
+              <Text style={styles.primaryLibraryActionText}>{strings.importRecipe}</Text>
+            </Pressable>
+            <Pressable
+              onPress={onCreateRecipe}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.secondaryLibraryAction,
+                pressed ? styles.actionPressed : null,
+              ]}
+            >
+              <Ionicons name="add" size={16} color={theme.colors.textSecondary} />
+              <Text style={styles.secondaryLibraryActionText}>{strings.newRecipe}</Text>
             </Pressable>
           </View>
+          <View style={styles.retrievalBand}>
+            <AppInput
+              value={searchQuery}
+              onChangeText={onChangeSearchQuery}
+              placeholder={strings.searchPlaceholder}
+              style={styles.searchInput}
+            />
+            {strings.browseHint && !hasSearchQuery ? (
+              <Text style={styles.retrievalHint}>{strings.browseHint}</Text>
+            ) : null}
+          </View>
         </View>
-        <View style={styles.searchRow}>
-          <AppInput
-            value={searchQuery}
-            onChangeText={onChangeSearchQuery}
-            placeholder={strings.searchPlaceholder}
-            style={styles.searchInput}
-          />
-        </View>
-      </View>
+      ) : null}
+
+      {isArchivedView ? (
+        <>
+          <View style={styles.archivedHeader}>
+            <Pressable
+              onPress={onShowActive}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.archivedBackAction,
+                pressed ? styles.actionPressed : null,
+              ]}
+            >
+              <Ionicons name="arrow-back" size={16} color={theme.colors.textSecondary} />
+              <Text style={styles.archivedBackActionText}>{strings.archivedBackAction}</Text>
+            </Pressable>
+            <View style={styles.archivedHeaderCopy}>
+              <Text style={styles.libraryEyebrow}>{strings.archivedAction}</Text>
+              <Text style={styles.libraryTitle}>{libraryTitle}</Text>
+              <Text style={styles.libraryMeta}>{libraryMeta}</Text>
+            </View>
+          </View>
+          <View style={styles.retrievalBand}>
+            <AppInput
+              value={searchQuery}
+              onChangeText={onChangeSearchQuery}
+              placeholder={strings.searchPlaceholder}
+              style={styles.searchInput}
+            />
+          </View>
+        </>
+      ) : null}
 
       <View style={styles.workspaceBody}>
         {isLoading || error ? (
@@ -230,18 +262,18 @@ export function MealsRecipesView({
           <View style={styles.mainListSurface}>
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateTitle}>
-                {listMode === 'active' ? strings.noRecipes : strings.noArchivedRecipes}
+                {!isArchivedView ? strings.noRecipes : strings.noArchivedRecipes}
               </Text>
-              {(listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint) ? (
+              {(!isArchivedView ? strings.noRecipesHint : strings.noArchivedRecipesHint) ? (
                 <Subtle>
-                  {listMode === 'active' ? strings.noRecipesHint : strings.noArchivedRecipesHint}
+                  {!isArchivedView ? strings.noRecipesHint : strings.noArchivedRecipesHint}
                 </Subtle>
               ) : null}
             </View>
           </View>
         ) : (
           <View style={styles.sections}>
-            {showTopSections ? (
+            {showTopSections && !isArchivedView ? (
               <View style={styles.supportLayer}>
                 {supportTitle ? (
                   <Text style={styles.supportLabel}>{supportTitle}</Text>
@@ -253,10 +285,33 @@ export function MealsRecipesView({
                 </View>
               </View>
             ) : null}
-            <View style={styles.mainListSurface}>
-              <View style={styles.mainListSection}>
-                <View style={styles.list}>
-                  {renderRecipeRows(recipes, 'main')}
+            <View style={styles.mainLibrarySection}>
+              <View style={styles.mainLibraryHeader}>
+                <View style={styles.mainLibraryCopy}>
+                  {!isArchivedView ? (
+                    <Text style={styles.mainLibraryLabel}>{strings.savedRecipesLabel}</Text>
+                  ) : null}
+                  <Text style={styles.mainLibraryMeta}>{countLabel}</Text>
+                </View>
+                {!isArchivedView ? (
+                  <Pressable
+                    onPress={onShowArchived}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      styles.archivedLink,
+                      pressed ? styles.actionPressed : null,
+                    ]}
+                  >
+                    <Ionicons name="archive-outline" size={16} color={theme.colors.textSecondary} />
+                    <Text style={styles.archivedLinkText}>{strings.archivedAction}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={styles.mainListSurface}>
+                <View style={styles.mainListSection}>
+                  <View style={styles.list}>
+                    {renderRecipeRows(recipes, 'main')}
+                  </View>
                 </View>
               </View>
             </View>
@@ -271,31 +326,81 @@ const styles = StyleSheet.create({
   layout: {
     gap: theme.spacing.md,
   },
-  controlsPrimaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  searchRow: {
-    paddingTop: 4,
-  },
-  searchInput: {
-    backgroundColor: theme.colors.surfaceSubtle,
-  },
-  libraryHeader: {
+  libraryHero: {
     gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.xl,
+    backgroundColor: iconBackground(theme.colors.feature.meals, 0.12),
   },
-  libraryHeaderTop: {
+  libraryHeroTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
-  libraryHeaderCopy: {
-    gap: 4,
+  libraryHeroBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  libraryHeroCopy: {
     flex: 1,
-    minWidth: 180,
+    minWidth: 0,
+    gap: 4,
+  },
+  libraryEyebrow: {
+    ...textStyles.subtle,
+    color: theme.colors.feature.meals,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  libraryHeroTitle: {
+    ...textStyles.h1,
+    color: theme.colors.textPrimary,
+  },
+  libraryHeroSubtitle: {
+    ...textStyles.body,
+    color: theme.colors.textSecondary,
+  },
+  libraryActionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  primaryLibraryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 10,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.surface,
+  },
+  secondaryLibraryAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 10,
+    borderRadius: theme.radius.pill,
+    backgroundColor: iconBackground(theme.colors.surface, 0.42),
+    borderWidth: 1,
+    borderColor: iconBackground(theme.colors.textPrimary, 0.08),
+  },
+  primaryLibraryActionText: {
+    ...textStyles.subtle,
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+  },
+  secondaryLibraryActionText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
   },
   libraryTitle: {
     ...textStyles.h2,
@@ -306,29 +411,35 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 18,
   },
-  inlineActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-    justifyContent: 'flex-start',
-  },
-  toolbarAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 2,
-    paddingVertical: 4,
-    backgroundColor: 'transparent',
-  },
-  quickActionPressed: {
+  actionPressed: {
     opacity: 0.72,
   },
-  toolbarActionText: {
+  retrievalBand: {
+    gap: theme.spacing.xs,
+  },
+  retrievalHint: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  searchInput: {
+    backgroundColor: theme.colors.surface,
+  },
+  archivedHeader: {
+    gap: theme.spacing.xs,
+  },
+  archivedBackAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  archivedBackActionText: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
     fontWeight: '600',
+  },
+  archivedHeaderCopy: {
+    gap: 4,
   },
   workspaceBody: {
     gap: theme.spacing.sm,
@@ -342,11 +453,10 @@ const styles = StyleSheet.create({
   },
   supportLayer: {
     gap: 6,
-    paddingTop: 2,
   },
   supportSurface: {
-    backgroundColor: theme.colors.surfaceSubtle,
-    borderRadius: theme.radius.md,
+    backgroundColor: iconBackground(theme.colors.feature.meals, 0.07),
+    borderRadius: theme.radius.lg,
     paddingVertical: 2,
     paddingHorizontal: 2,
   },
@@ -358,6 +468,43 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: '600',
     paddingHorizontal: 2,
+  },
+  mainLibrarySection: {
+    gap: theme.spacing.xs,
+  },
+  mainLibraryHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  mainLibraryCopy: {
+    gap: 2,
+    flex: 1,
+    minWidth: 0,
+  },
+  mainLibraryLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  mainLibraryMeta: {
+    ...textStyles.body,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
+  },
+  archivedLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  archivedLinkText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
   emptyState: {
     gap: 4,
