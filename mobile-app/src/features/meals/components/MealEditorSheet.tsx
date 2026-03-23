@@ -21,6 +21,7 @@ type MealEditorSheetStrings = {
   openRecipe: string;
   openSavedRecipe: string;
   addRecipeDetails: string;
+  reuseRecentMeal: string;
   recipeSummaryHint: string;
   savedRecipeSummaryHint: string;
   loadingRecipe: string;
@@ -55,6 +56,8 @@ type Props = {
   isRecipeLoading: boolean;
   onOpenRecipeDetail: () => void;
   onOpenRecipePicker: () => void;
+  onOpenRecentMeals: () => void;
+  showRecipePickerAction: boolean;
   hasIngredients: boolean;
   hasRecipeDraftContent: boolean;
   onOpenShoppingReview: () => void;
@@ -86,6 +89,8 @@ export function MealEditorSheet({
   isRecipeLoading,
   onOpenRecipeDetail,
   onOpenRecipePicker,
+  onOpenRecentMeals,
+  showRecipePickerAction,
   hasIngredients,
   hasRecipeDraftContent,
   onOpenShoppingReview,
@@ -204,6 +209,18 @@ export function MealEditorSheet({
                   ))}
                 </View>
               </View>
+              <Pressable
+                onPress={onOpenRecentMeals}
+                disabled={isActionPending}
+                style={({ pressed }) => [
+                  styles.recentMealActionRow,
+                  pressed ? styles.recentMealActionRowPressed : null,
+                  isActionPending ? styles.recipeSummaryCardDisabled : null,
+                ]}
+              >
+                <Text style={styles.recentMealActionText}>{strings.reuseRecentMeal}</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+              </Pressable>
             </View>
             <View style={styles.sectionDivider} />
             <View style={styles.editorSection}>
@@ -238,18 +255,20 @@ export function MealEditorSheet({
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
               </Pressable>
-              <Pressable
-                onPress={onOpenRecipePicker}
-                disabled={isActionPending || isRecipeLoading}
-                style={({ pressed }) => [
-                  styles.recipeSecondaryActionRow,
-                  pressed ? styles.recipeSecondaryActionRowPressed : null,
-                  isActionPending || isRecipeLoading ? styles.recipeSummaryCardDisabled : null,
-                ]}
-              >
-                <Text style={styles.recipeSecondaryActionText}>{recipeSelectionActionLabel}</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-              </Pressable>
+              {showRecipePickerAction ? (
+                <Pressable
+                  onPress={onOpenRecipePicker}
+                  disabled={isActionPending || isRecipeLoading}
+                  style={({ pressed }) => [
+                    styles.recipeSecondaryActionRow,
+                    pressed ? styles.recipeSecondaryActionRowPressed : null,
+                    isActionPending || isRecipeLoading ? styles.recipeSummaryCardDisabled : null,
+                  ]}
+                >
+                  <Text style={styles.recipeSecondaryActionText}>{recipeSelectionActionLabel}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                </Pressable>
+              ) : null}
             </View>
             {hasIngredients ? (
               <View style={styles.shoppingActionSection}>
@@ -383,6 +402,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
+  },
+  recentMealActionRow: {
+    marginTop: theme.spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  recentMealActionRowPressed: {
+    opacity: 0.72,
+  },
+  recentMealActionText: {
+    ...textStyles.body,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
   },
   mealTitleInput: {
     ...textStyles.h2,

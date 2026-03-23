@@ -25,6 +25,7 @@ import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftView;
+import app.lifelinq.features.meals.contract.RecentPlannedMealView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import java.nio.charset.StandardCharsets;
@@ -495,6 +496,35 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$[0].name").value("Recent Pasta"));
 
         verify(mealsApplicationService).listRecentlyUsedRecipes(groupId, userId);
+    }
+
+    @Test
+    void listRecentPlannedMealsReturnsMealResponses() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.listRecentPlannedMeals(groupId, userId))
+                .thenReturn(List.of(new RecentPlannedMealView(
+                        2026,
+                        12,
+                        5,
+                        "DINNER",
+                        "Recent Pasta",
+                        recipeId,
+                        "Pasta Bake"
+                )));
+
+        mockMvc.perform(get("/meals/recently-planned")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].mealTitle").value("Recent Pasta"))
+                .andExpect(jsonPath("$[0].mealType").value("DINNER"))
+                .andExpect(jsonPath("$[0].recipeId").value(recipeId.toString()));
+
+        verify(mealsApplicationService).listRecentPlannedMeals(groupId, userId);
     }
 
     @Test

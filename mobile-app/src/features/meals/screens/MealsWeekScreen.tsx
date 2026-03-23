@@ -15,6 +15,7 @@ import { MealRecipeDetailSheet } from '../components/MealRecipeDetailSheet';
 import { MealRecipeImportSheet } from '../components/MealRecipeImportSheet';
 import { MealRecipePlanSheet } from '../components/MealRecipePlanSheet';
 import { MealRecipePickerSheet } from '../components/MealRecipePickerSheet';
+import { MealRecentMealsSheet } from '../components/MealRecentMealsSheet';
 import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
 import { MealsRecipesView } from '../components/MealsRecipesView';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
@@ -170,6 +171,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     openRecipe: 'Open details',
     openSavedRecipe: 'Open recipe',
     addRecipeDetails: 'Add details',
+    reuseRecentMeal: 'Reuse recent meal',
     recipeSummaryHint: 'Optional ingredients, notes, and cooking guidance.',
     savedRecipeSummaryHint: 'Reusable recipe from Recipes.',
     loadingRecipe: 'Loading details...',
@@ -317,6 +319,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     shoppingHandledState: 'Already added to shopping. You can review it again here.',
     shoppingHandledOnList: (listName: string) => `Already added to ${listName}.`,
     shoppingNeedsReviewAgain: 'Meal details changed. Review shopping again.',
+    recentMealsTitle: 'Reuse recent meal',
+    recentMealsHint: 'Pick something you have actually planned recently.',
+    loadingRecentMeals: 'Loading recent meals...',
+    noRecentMealsToReuse: 'No recent meals to reuse yet.',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
     reviewShoppingAgainAction: 'Review shopping again',
     shoppingReviewTitle: 'Add ingredients to shopping',
@@ -765,6 +771,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       || editor.isOpen
       || editor.isRecipeDetailOpen
       || editor.isRecipePickerOpen
+      || editor.isRecentMealsOpen
       || editor.isShoppingReviewOpen
       || recipesWorkspace.importDraft.isOpen
       || recipesWorkspace.recipeDetail.isOpen,
@@ -774,6 +781,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         ? editor.closeRecipeDetail
       : editor.isRecipePickerOpen
         ? editor.closeRecipePicker
+      : editor.isRecentMealsOpen
+        ? editor.closeRecentMeals
       : editor.isShoppingReviewOpen
         ? editor.closeShoppingReview
         : recipesWorkspace.importDraft.isOpen
@@ -1046,6 +1055,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           isRecipeLoading={editor.isRecipeLoading}
           onOpenRecipeDetail={editor.openRecipeDetail}
           onOpenRecipePicker={editor.openRecipePicker}
+          onOpenRecentMeals={editor.openRecentMeals}
+          showRecipePickerAction={editor.showRecipePickerAction}
           hasIngredients={editor.hasIngredients}
           hasRecipeDraftContent={editor.hasRecipeDraftContent}
           onOpenShoppingReview={editor.openShoppingReview}
@@ -1071,6 +1082,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             openRecipe: strings.openRecipe,
             openSavedRecipe: strings.openSavedRecipe,
             addRecipeDetails: strings.addRecipeDetails,
+            reuseRecentMeal: strings.reuseRecentMeal,
             recipeSummaryHint: strings.recipeSummaryHint,
             savedRecipeSummaryHint: strings.savedRecipeSummaryHint,
             loadingRecipe: strings.loadingRecipe,
@@ -1516,6 +1528,25 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             hint: undefined,
             loadingRecipes: strings.loadingRecipes,
             noRecipes: strings.noRecipes,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
+      {editor.isOpen && editor.isRecentMealsOpen ? (
+        <MealRecentMealsSheet
+          meals={editor.recentMeals ?? []}
+          isLoading={editor.isRecentMealsLoading}
+          error={editor.recentMealsError}
+          onSelectMeal={(mealId) => {
+            void editor.selectRecentMeal(mealId);
+          }}
+          onClose={editor.closeRecentMeals}
+          strings={{
+            title: strings.recentMealsTitle,
+            hint: strings.recentMealsHint,
+            loadingMeals: strings.loadingRecentMeals,
+            noMeals: strings.noRecentMealsToReuse,
             close: strings.close,
           }}
         />

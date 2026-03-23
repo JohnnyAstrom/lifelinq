@@ -15,6 +15,7 @@ import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
+import app.lifelinq.features.meals.domain.RecentPlannedMeal;
 import app.lifelinq.features.meals.domain.Recipe;
 import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import app.lifelinq.features.meals.domain.RecipeRepository;
@@ -955,6 +956,58 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void listRecentPlannedMealsReturnsDistinctReusableMealsFromHistory() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID pastaRecipeId = UUID.randomUUID();
+        UUID soupRecipeId = UUID.randomUUID();
+        UUID archivedRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-20T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(pastaRecipeId, groupId, "Pasta Bake", Instant.parse("2026-03-10T09:00:00Z"), List.of()));
+        recipes.save(new Recipe(soupRecipeId, groupId, "Tomato Soup", Instant.parse("2026-03-09T09:00:00Z"), List.of()));
+        recipes.save(new Recipe(
+                archivedRecipeId,
+                groupId,
+                "Old Curry",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-08T09:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                Instant.parse("2026-03-18T10:00:00Z"),
+                true,
+                List.of()
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 5, MealType.DINNER, "Pasta Bake", pastaRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 4, MealType.DINNER, "Pasta Bake", pastaRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 3, MealType.LUNCH, "Soup lunch", soupRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 2, MealType.DINNER, "Takeaway", null, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, "Old Curry", archivedRecipeId, null, null);
+
+        var recentMeals = service.listRecentPlannedMeals(groupId, userId);
+
+        assertThat(recentMeals).extracting(view -> view.mealTitle())
+                .containsExactly("Pasta Bake", "Soup lunch", "Takeaway", "Old Curry");
+        assertThat(recentMeals.get(0).recipeId()).isEqualTo(pastaRecipeId);
+        assertThat(recentMeals.get(1).recipeId()).isEqualTo(soupRecipeId);
+        assertThat(recentMeals.get(2).recipeId()).isNull();
+        assertThat(recentMeals.get(3).recipeId()).isNull();
+    }
+
+    @Test
     void markAndClearRecipeMakeSoonUpdatesRecipeState() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -1463,6 +1516,31 @@ class MealsApplicationServiceTest {
                             .thenComparing(Comparator.comparingInt(RecentMealRecipe::isoWeek).reversed())
                             .thenComparing(Comparator.comparingInt(RecentMealRecipe::dayOfWeek).reversed()))
                     .map(RecentMealRecipe::recipeId)
+                    .toList();
+        }
+
+        @Override
+        public List<RecentPlannedMeal> findRecentMealsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek) {
+            return byId.values().stream()
+                    .filter(plan -> plan.getGroupId().equals(groupId))
+                    .flatMap(plan -> plan.getMeals().stream()
+                            .filter(meal -> plan.getYear() < year
+                                    || (plan.getYear() == year && plan.getIsoWeek() < isoWeek)
+                                    || (plan.getYear() == year && plan.getIsoWeek() == isoWeek && meal.getDayOfWeek() <= dayOfWeek))
+                            .map(meal -> new RecentPlannedMeal(
+                                    plan.getYear(),
+                                    plan.getIsoWeek(),
+                                    meal.getDayOfWeek(),
+                                    meal.getMealType(),
+                                    meal.getMealTitle(),
+                                    meal.getRecipeId(),
+                                    meal.getRecipeTitleSnapshot()
+                            )))
+                    .sorted(Comparator
+                            .comparingInt(RecentPlannedMeal::year).reversed()
+                            .thenComparing(Comparator.comparingInt(RecentPlannedMeal::isoWeek).reversed())
+                            .thenComparing(Comparator.comparingInt(RecentPlannedMeal::dayOfWeek).reversed())
+                            .thenComparing(meal -> meal.mealType().ordinal()))
                     .toList();
         }
     }

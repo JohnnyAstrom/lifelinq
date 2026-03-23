@@ -1,5 +1,6 @@
 package app.lifelinq.features.meals.infrastructure;
 
+import app.lifelinq.features.meals.domain.RecentPlannedMeal;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.util.Optional;
@@ -82,6 +83,40 @@ public final class InMemoryWeekPlanRepository implements WeekPlanRepository {
                         .thenComparing(Comparator.comparingInt(RecentMealRecipe::isoWeek).reversed())
                         .thenComparing(Comparator.comparingInt(RecentMealRecipe::dayOfWeek).reversed()))
                 .map(RecentMealRecipe::recipeId)
+                .toList();
+    }
+
+    @Override
+    public List<RecentPlannedMeal> findRecentMealsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        return byId.values().stream()
+                .filter(plan -> plan.getGroupId().equals(groupId))
+                .filter(plan -> isPlanOnOrBefore(plan.getYear(), plan.getIsoWeek(), year, isoWeek))
+                .flatMap(plan -> plan.getMeals().stream()
+                        .filter(meal -> isMealOnOrBefore(
+                                plan.getYear(),
+                                plan.getIsoWeek(),
+                                meal.getDayOfWeek(),
+                                year,
+                                isoWeek,
+                                dayOfWeek
+                        ))
+                        .map(meal -> new RecentPlannedMeal(
+                                plan.getYear(),
+                                plan.getIsoWeek(),
+                                meal.getDayOfWeek(),
+                                meal.getMealType(),
+                                meal.getMealTitle(),
+                                meal.getRecipeId(),
+                                meal.getRecipeTitleSnapshot()
+                        )))
+                .sorted(Comparator
+                        .comparingInt(RecentPlannedMeal::year).reversed()
+                        .thenComparing(Comparator.comparingInt(RecentPlannedMeal::isoWeek).reversed())
+                        .thenComparing(Comparator.comparingInt(RecentPlannedMeal::dayOfWeek).reversed())
+                        .thenComparing(meal -> meal.mealType().ordinal()))
                 .toList();
     }
 

@@ -8,12 +8,14 @@ import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.PlannedMealView;
+import app.lifelinq.features.meals.contract.RecentPlannedMealView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import app.lifelinq.features.meals.domain.Ingredient;
 import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.PlannedMeal;
+import app.lifelinq.features.meals.domain.RecentPlannedMeal;
 import app.lifelinq.features.meals.domain.Recipe;
 import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import app.lifelinq.features.meals.domain.RecipeRepository;
@@ -36,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 public class MealsApplicationService {
     private static final int RECENTLY_USED_RECIPES_LIMIT = 3;
+    private static final int RECENTLY_USED_MEALS_LIMIT = 6;
     private static final List<String> LEADING_INGREDIENT_MODIFIERS = List.of(
             "very finely chopped",
             "finely chopped",
@@ -301,6 +304,68 @@ public class MealsApplicationService {
                 if (views.size() >= RECENTLY_USED_RECIPES_LIMIT) {
                     break;
                 }
+            }
+        }
+        return views;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecentPlannedMealView> listRecentPlannedMeals(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        LocalDate today = LocalDate.now(clock);
+        int currentYear = today.get(WeekFields.ISO.weekBasedYear());
+        int currentIsoWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
+        int currentDayOfWeek = today.getDayOfWeek().getValue();
+
+        List<RecentPlannedMeal> orderedMeals = weekPlanRepository.findRecentMealsOnOrBefore(
+                groupId,
+                currentYear,
+                currentIsoWeek,
+                currentDayOfWeek
+        );
+        if (orderedMeals.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> recipeIds = new HashSet<>();
+        for (RecentPlannedMeal meal : orderedMeals) {
+            if (meal.recipeId() != null) {
+                recipeIds.add(meal.recipeId());
+            }
+        }
+
+        Map<UUID, Recipe> recipesById = new HashMap<>();
+        if (!recipeIds.isEmpty()) {
+            for (Recipe recipe : recipeRepository.findByGroupIdAndIds(groupId, recipeIds)) {
+                if (recipe.isArchived()) {
+                    continue;
+                }
+                recipesById.put(recipe.getId(), recipe);
+            }
+        }
+
+        Set<String> seenMealKeys = new HashSet<>();
+        List<RecentPlannedMealView> views = new ArrayList<>();
+        for (RecentPlannedMeal meal : orderedMeals) {
+            UUID reusableRecipeId = meal.recipeId();
+            if (reusableRecipeId != null && !recipesById.containsKey(reusableRecipeId)) {
+                reusableRecipeId = null;
+            }
+            String dedupeKey = normalizeRecentMealKey(meal.mealTitle(), reusableRecipeId, meal.recipeTitleSnapshot());
+            if (!seenMealKeys.add(dedupeKey)) {
+                continue;
+            }
+            views.add(new RecentPlannedMealView(
+                    meal.year(),
+                    meal.isoWeek(),
+                    meal.dayOfWeek(),
+                    meal.mealType().name(),
+                    meal.mealTitle(),
+                    reusableRecipeId,
+                    meal.recipeTitleSnapshot()
+            ));
+            if (views.size() >= RECENTLY_USED_MEALS_LIMIT) {
+                break;
             }
         }
         return views;
@@ -1018,6 +1083,14 @@ public class MealsApplicationService {
         }
         String normalized = value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeRecentMealKey(String mealTitle, UUID recipeId, String recipeTitleSnapshot) {
+        String normalizedMealTitle = normalizeClause(mealTitle);
+        String normalizedRecipeTitle = normalizeClause(recipeTitleSnapshot);
+        return (normalizedMealTitle == null ? "" : normalizedMealTitle)
+                + "|"
+                + (recipeId == null ? (normalizedRecipeTitle == null ? "" : normalizedRecipeTitle) : recipeId);
     }
 
     private String normalizeRecipeIngredientName(String name) {

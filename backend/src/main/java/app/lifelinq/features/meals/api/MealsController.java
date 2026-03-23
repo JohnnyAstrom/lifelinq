@@ -7,6 +7,7 @@ import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
+import app.lifelinq.features.meals.contract.RecentPlannedMealView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftView;
 import app.lifelinq.features.meals.contract.RecipeView;
@@ -95,6 +96,27 @@ public class MealsController {
             recipes.add(toRecipeResponse(recipe));
         }
         return ResponseEntity.ok(recipes);
+    }
+
+    @GetMapping("/meals/recently-planned")
+    public ResponseEntity<?> listRecentPlannedMeals() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<RecentPlannedMealResponse> meals = new ArrayList<>();
+        for (RecentPlannedMealView meal : mealsApplicationService.listRecentPlannedMeals(context.getGroupId(), context.getUserId())) {
+            meals.add(new RecentPlannedMealResponse(
+                    meal.year(),
+                    meal.isoWeek(),
+                    meal.dayOfWeek(),
+                    meal.mealType(),
+                    meal.mealTitle(),
+                    meal.recipeId(),
+                    meal.recipeTitle()
+            ));
+        }
+        return ResponseEntity.ok(meals);
     }
 
     @GetMapping("/meals/recipes/{recipeId}")

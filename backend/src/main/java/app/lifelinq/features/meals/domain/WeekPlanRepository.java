@@ -14,4 +14,6 @@ public interface WeekPlanRepository {
     boolean existsCurrentOrFutureMealReferencingRecipe(UUID groupId, UUID recipeId, int year, int isoWeek);
 
     List<UUID> findRecentRecipeIdsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek);
+
+    List<RecentPlannedMeal> findRecentMealsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek);
 }

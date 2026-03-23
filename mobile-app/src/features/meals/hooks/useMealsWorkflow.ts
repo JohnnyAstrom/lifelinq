@@ -5,11 +5,14 @@ import { useShoppingLists } from '../../shopping/hooks/useShoppingLists';
 import {
   createRecipe,
   getRecipe,
+  listRecentPlannedMeals,
   listRecipes,
   updateRecipe,
   type IngredientRequest,
+  type RecentPlannedMealResponse,
   type RecipeResponse,
 } from '../api/mealsApi';
+import { getWeekStartDate } from '../utils/mealDates';
 import {
   MEAL_INGREDIENT_UNIT_OPTIONS,
   createEmptyIngredientRow,
@@ -61,6 +64,13 @@ type RecipeSnapshot = {
   instructions: string | null;
   ingredients: IngredientRequest[];
 };
+type RecentMealOption = {
+  id: string;
+  mealTitle: string;
+  recipeId: string | null;
+  recipeTitle: string | null;
+  contextLabel: string;
+};
 
 const MEAL_ORDER = new Map<MealType, number>([
   ['BREAKFAST', 0],
@@ -78,6 +88,26 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const { handleApiError } = useAuth();
   const plan = useWeekPlan(token, year, isoWeek);
   const shopping = useShoppingLists(token);
+
+  function toRecentMealOption(meal: RecentPlannedMealResponse): RecentMealOption {
+    const weekStart = getWeekStartDate(meal.year, meal.isoWeek);
+    const utcDate = new Date(weekStart.getTime());
+    utcDate.setUTCDate(weekStart.getUTCDate() + meal.dayOfWeek - 1);
+    const localDate = new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
+    const dayLabel = localDate.toLocaleDateString(undefined, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+    const mealLabel = meal.mealType.toLowerCase();
+    return {
+      id: `${meal.year}-${meal.isoWeek}-${meal.dayOfWeek}-${meal.mealType}-${meal.recipeId ?? meal.mealTitle}`,
+      mealTitle: meal.mealTitle,
+      recipeId: meal.recipeId,
+      recipeTitle: meal.recipeTitle,
+      contextLabel: `${dayLabel} · ${mealLabel}`,
+    };
+  }
 
   const mealsByDay = useMemo(() => {
     const map = new Map<number, MealEntry[]>();
@@ -118,15 +148,19 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [isShoppingReviewOpen, setIsShoppingReviewOpen] = useState(false);
   const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
   const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
+  const [isRecentMealsOpen, setIsRecentMealsOpen] = useState(false);
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const [isRecipeListLoading, setIsRecipeListLoading] = useState(false);
+  const [isRecentMealsLoading, setIsRecentMealsLoading] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [lastUsedShoppingListId, setLastUsedShoppingListId] = useState<string | null>(null);
   const [selectedShoppingIngredientRowIds, setSelectedShoppingIngredientRowIds] = useState<string[]>([]);
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
   const [recipeLoadError, setRecipeLoadError] = useState<string | null>(null);
   const [recipeListError, setRecipeListError] = useState<string | null>(null);
+  const [recentMealsError, setRecentMealsError] = useState<string | null>(null);
   const [availableRecipes, setAvailableRecipes] = useState<RecipeResponse[] | null>(null);
+  const [recentMeals, setRecentMeals] = useState<RecentMealOption[] | null>(null);
   const [loadedRecipeId, setLoadedRecipeId] = useState<string | null>(null);
   const [pickedRecipeSnapshot, setPickedRecipeSnapshot] = useState<RecipeSnapshot | null>(null);
   const [isSelectedRecipeSavedInRecipes, setIsSelectedRecipeSavedInRecipes] = useState(false);
@@ -182,6 +216,12 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         ingredientCount: recipe.ingredients.length,
       }));
   }, [availableRecipes]);
+  const hasAlternativeSavedRecipeOptions = useMemo(() => {
+    if (!selectedMealRecipeId) {
+      return recipePickerOptions.length > 0;
+    }
+    return recipePickerOptions.some((option) => option.recipeId !== selectedMealRecipeId);
+  }, [recipePickerOptions, selectedMealRecipeId]);
   const currentRecipeDraft = useMemo(() => ({
     name: recipeTitle.trim() || mealTitle.trim(),
     sourceName: recipeSource.trim() || null,
@@ -279,6 +319,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIngredientRows([]);
     setIsRecipeDetailOpen(false);
     setIsRecipePickerOpen(false);
+    setIsRecentMealsOpen(false);
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
@@ -290,6 +331,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setShoppingSyncError(null);
     setRecipeLoadError(null);
     setRecipeListError(null);
+    setRecentMealsError(null);
   }
 
   function toRecipeSnapshot(recipe: RecipeResponse): RecipeSnapshot {
@@ -426,6 +468,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIngredientRows([]);
     setIsRecipeDetailOpen(false);
     setIsRecipePickerOpen(false);
+    setIsRecentMealsOpen(false);
     setIsShoppingReviewOpen(false);
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
@@ -434,6 +477,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
     setRecipeLoadError(null);
+    setRecentMealsError(null);
   }
 
   function closeEditor() {
@@ -493,6 +537,30 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     }
   }
 
+  async function loadRecentMealOptions(force = false) {
+    if (!token) {
+      return;
+    }
+    if (isRecentMealsLoading) {
+      return;
+    }
+    if (!force && recentMeals) {
+      return;
+    }
+
+    setIsRecentMealsLoading(true);
+    setRecentMealsError(null);
+    try {
+      const meals = await listRecentPlannedMeals({ token });
+      setRecentMeals(meals.map(toRecentMealOption));
+    } catch (err) {
+      await handleApiError(err);
+      setRecentMealsError(formatApiError(err));
+    } finally {
+      setIsRecentMealsLoading(false);
+    }
+  }
+
   function openRecipePicker() {
     if (isRecipeLoading || pendingEditorAction) {
       return;
@@ -507,12 +575,35 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     }
   }
 
+  function openRecentMeals() {
+    if (pendingEditorAction || !selectedDay || !selectedMealType) {
+      return;
+    }
+    setIsRecentMealsOpen(true);
+    setRecentMealsError(null);
+    if (!recentMeals) {
+      void loadRecentMealOptions();
+      return;
+    }
+    if (recentMeals.length === 0) {
+      void loadRecentMealOptions(true);
+    }
+  }
+
   function closeRecipePicker() {
     if (pendingEditorAction) {
       return;
     }
     setPendingDuplicateCandidate(null);
     setIsRecipePickerOpen(false);
+  }
+
+  function closeRecentMeals() {
+    if (pendingEditorAction) {
+      return;
+    }
+    setIsRecentMealsOpen(false);
+    setRecentMealsError(null);
   }
 
   function selectExistingRecipe(recipeId: string) {
@@ -523,6 +614,50 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     applyRecipeSnapshot(selectedRecipe);
     setMealTitle((current) => (current.trim().length > 0 ? current : selectedRecipe.name));
     setIsRecipePickerOpen(false);
+  }
+
+  async function selectRecentMeal(recentMealId: string) {
+    const meal = recentMeals?.find((entry) => entry.id === recentMealId);
+    if (!meal) {
+      return;
+    }
+
+    setMealTitle(meal.mealTitle);
+    setShoppingSyncError(null);
+    setRecipeLoadError(null);
+    setRecentMealsError(null);
+    setIsRecentMealsOpen(false);
+
+    if (meal.recipeId) {
+      setSelectedMealRecipeId(meal.recipeId);
+      setRecipeTitle(meal.recipeTitle ?? meal.mealTitle);
+      setRecipeSource('');
+      setRecipeSourceUrl(null);
+      setRecipeOriginKind('MANUAL');
+      setRecipeServings('');
+      setRecipeShortNote('');
+      setRecipeInstructions('');
+      setIngredientRows([]);
+      setLoadedRecipeId(null);
+      setPickedRecipeSnapshot(null);
+      setIsSelectedRecipeSavedInRecipes(false);
+      setIsEditingSavedRecipeDirectly(false);
+      return;
+    }
+
+    setSelectedMealRecipeId(null);
+    setRecipeTitle('');
+    setRecipeSource('');
+    setRecipeSourceUrl(null);
+    setRecipeOriginKind('MANUAL');
+    setRecipeServings('');
+    setRecipeShortNote('');
+    setRecipeInstructions('');
+    setIngredientRows([]);
+    setLoadedRecipeId(null);
+    setPickedRecipeSnapshot(null);
+    setIsSelectedRecipeSavedInRecipes(false);
+    setIsEditingSavedRecipeDirectly(false);
   }
 
   function openShoppingReview() {
@@ -955,11 +1090,16 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       ingredientRows,
       isRecipeDetailOpen,
       isRecipePickerOpen,
+      isRecentMealsOpen,
       isShoppingReviewOpen,
       isRecipeLoading,
       isRecipeListLoading,
+      isRecentMealsLoading,
       recipeListError,
       recipePickerOptions,
+      showRecipePickerAction: !isSelectedRecipeSavedInRecipes || hasAlternativeSavedRecipeOptions,
+      recentMeals,
+      recentMealsError,
       hasModifiedPickedRecipe,
       isSelectedRecipeSavedInRecipes,
       canEnterSavedRecipeEditMode,
@@ -1000,6 +1140,10 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       closeRecipePicker,
       loadRecipeOptions,
       selectExistingRecipe,
+      openRecentMeals,
+      closeRecentMeals,
+      loadRecentMealOptions,
+      selectRecentMeal,
       openShoppingReview,
       closeShoppingReview,
       toggleShoppingReviewIngredient,

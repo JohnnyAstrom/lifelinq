@@ -1,6 +1,8 @@
 package app.lifelinq.features.meals.infrastructure;
 
+import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.PlannedMeal;
+import app.lifelinq.features.meals.domain.RecentPlannedMeal;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.util.List;
@@ -76,6 +78,24 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
             throw new IllegalArgumentException("groupId must not be null");
         }
         return repository.findRecentRecipeIdsOnOrBefore(groupId, year, isoWeek, dayOfWeek);
+    }
+
+    @Override
+    public List<RecentPlannedMeal> findRecentMealsOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        return repository.findRecentMealsOnOrBefore(groupId, year, isoWeek, dayOfWeek).stream()
+                .map(meal -> new RecentPlannedMeal(
+                        meal.getYear(),
+                        meal.getIsoWeek(),
+                        meal.getDayOfWeek(),
+                        MealType.valueOf(meal.getMealType()),
+                        meal.getMealTitle(),
+                        meal.getRecipeId(),
+                        meal.getRecipeTitleSnapshot()
+                ))
+                .toList();
     }
 
     private WeekPlanEntity updateEntity(WeekPlanEntity entity, WeekPlan weekPlan) {

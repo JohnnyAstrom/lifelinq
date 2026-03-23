@@ -10,6 +10,16 @@ export type PlannedMealResponse = {
   shoppingListId: string | null;
 };
 
+export type RecentPlannedMealResponse = {
+  year: number;
+  isoWeek: number;
+  dayOfWeek: number;
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  mealTitle: string;
+  recipeId: string | null;
+  recipeTitle: string | null;
+};
+
 export type WeekPlanResponse = {
   weekPlanId: string | null;
   year: number;
@@ -157,6 +167,16 @@ export async function createRecipe(
       method: 'POST',
       body: JSON.stringify(payload),
     },
+    clientOptions
+  );
+}
+
+export async function listRecentPlannedMeals(
+  clientOptions: ApiClientOptions = {}
+): Promise<RecentPlannedMealResponse[]> {
+  return fetchJson<RecentPlannedMealResponse[]>(
+    '/meals/recently-planned',
+    {},
     clientOptions
   );
 }
