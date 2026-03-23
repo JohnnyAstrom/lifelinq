@@ -633,6 +633,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   }
 
   function handleMealsBack() {
+    if (workspaceMode === 'recipes' && recipesWorkspace.recipes.listMode === 'archived') {
+      recipesWorkspace.recipes.showActiveRecipes();
+      return;
+    }
     if (workspaceMode !== 'home') {
       setWorkspaceMode('home');
       return;
@@ -830,8 +834,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ) : (
                 <MealsRecipesView
                   recipes={recipesWorkspace.recipes.items}
-                  makeSoonRecipes={recipesWorkspace.recipes.makeSoonItems}
-                  recentRecipes={recipesWorkspace.recipes.recentItems}
                   searchQuery={recipesWorkspace.recipes.searchQuery}
                   listMode={recipesWorkspace.recipes.listMode}
                   browseMode={recipesWorkspace.recipes.browseMode}
@@ -841,7 +843,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   recentCount={recipesWorkspace.recipes.recentCount}
                   isLoading={recipesWorkspace.recipes.isInitialLoading}
                   error={recipesWorkspace.recipes.error}
-                  onShowActive={recipesWorkspace.recipes.showActiveRecipes}
                   onShowArchived={recipesWorkspace.recipes.showArchivedRecipes}
                   onShowAllRecipes={recipesWorkspace.recipes.showAllBrowseRecipes}
                   onShowMakeSoonRecipes={recipesWorkspace.recipes.showMakeSoonBrowseRecipes}
@@ -860,7 +861,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     archivedAction: 'Archived recipes',
                     archivedTitle: 'Archived recipes',
                     archivedSubtitle: 'Stored out of the way until you want one back.',
-                    archivedBackAction: 'Back to library',
                     savedRecipesLabel: 'Saved recipes',
                     makeSoonTitle: strings.makeSoonRecipesTitle,
                     recentlyUsedTitle: strings.recentlyUsedRecipesTitle,

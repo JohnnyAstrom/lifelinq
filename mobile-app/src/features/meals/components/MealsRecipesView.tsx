@@ -24,7 +24,6 @@ type Strings = {
   archivedAction: string;
   archivedTitle: string;
   archivedSubtitle?: string;
-  archivedBackAction: string;
   savedRecipesLabel: string;
   makeSoonTitle: string;
   recentlyUsedTitle: string;
@@ -52,8 +51,6 @@ type Strings = {
 
 type Props = {
   recipes: RecipeListItem[];
-  makeSoonRecipes: RecipeListItem[];
-  recentRecipes: RecipeListItem[];
   searchQuery: string;
   listMode: 'active' | 'archived';
   browseMode: 'all' | 'makeSoon' | 'recent';
@@ -63,7 +60,6 @@ type Props = {
   recentCount: number;
   isLoading: boolean;
   error: string | null;
-  onShowActive: () => void;
   onShowArchived: () => void;
   onShowAllRecipes: () => void;
   onShowMakeSoonRecipes: () => void;
@@ -77,8 +73,6 @@ type Props = {
 
 export function MealsRecipesView({
   recipes,
-  makeSoonRecipes,
-  recentRecipes,
   searchQuery,
   listMode,
   browseMode,
@@ -88,7 +82,6 @@ export function MealsRecipesView({
   recentCount,
   isLoading,
   error,
-  onShowActive,
   onShowArchived,
   onShowAllRecipes,
   onShowMakeSoonRecipes,
@@ -99,19 +92,11 @@ export function MealsRecipesView({
   onImportRecipe,
   strings,
 }: Props) {
-  const supportPreviewLimit = 3;
   const hasSearchQuery = searchQuery.trim().length > 0;
   const isArchivedView = listMode === 'archived';
   const isAllBrowse = browseMode === 'all';
   const isMakeSoonBrowse = browseMode === 'makeSoon';
   const isRecentBrowse = browseMode === 'recent';
-  const showMakeSoon = !isArchivedView && isAllBrowse && !hasSearchQuery && makeSoonRecipes.length > 0;
-  const showRecentlyUsed = !isArchivedView
-    && isAllBrowse
-    && !hasSearchQuery
-    && !showMakeSoon
-    && recentRecipes.length > 0;
-  const showTopSections = showMakeSoon || showRecentlyUsed;
   const mainCountLabel = isArchivedView
     ? strings.archivedCountLabel(archivedCount)
     : isMakeSoonBrowse
@@ -125,9 +110,6 @@ export function MealsRecipesView({
   const libraryTitle = !isArchivedView ? strings.title : strings.archivedTitle;
   const librarySubtitle = !isArchivedView ? strings.subtitle : strings.archivedSubtitle;
   const libraryMeta = librarySubtitle ? `${libraryCountLabel} · ${librarySubtitle}` : libraryCountLabel;
-  const supportTitle = showMakeSoon ? strings.makeSoonTitle : showRecentlyUsed ? strings.recentlyUsedTitle : null;
-  const supportItems = (showMakeSoon ? makeSoonRecipes : showRecentlyUsed ? recentRecipes : [])
-    .slice(0, supportPreviewLimit);
   const shouldShowAlphabetSections = !isArchivedView && isAllBrowse && !hasSearchQuery;
   const mainLibraryLabel = isArchivedView
     ? strings.archivedTitle
@@ -136,9 +118,9 @@ export function MealsRecipesView({
       : isRecentBrowse
         ? strings.recentlyUsedTitle
         : strings.savedRecipesLabel;
-  const mainLibraryMeta = hasSearchQuery
-    ? strings.matchingRecipesLabel(recipes.length)
-    : mainCountLabel;
+  const mainLibraryMeta = hasSearchQuery || isArchivedView || !isAllBrowse
+    ? (hasSearchQuery ? strings.matchingRecipesLabel(recipes.length) : mainCountLabel)
+    : null;
 
   function getBrowseEmptyState() {
     if (isArchivedView) {
@@ -168,7 +150,6 @@ export function MealsRecipesView({
   function renderRecipeRows(
     items: RecipeListItem[],
     sectionKey: string,
-    variant: 'main' | 'support' = 'main',
   ) {
     return items.map((recipe, index) => {
       const ingredientLabel = recipe.ingredientCount === 1
@@ -186,15 +167,13 @@ export function MealsRecipesView({
           key={`${sectionKey}-${recipe.recipeId}`}
           onPress={() => onOpenRecipe(recipe.recipeId)}
           style={({ pressed }) => [
-            variant === 'support' ? styles.supportRow : styles.row,
-            index > 0
-              ? (variant === 'support' ? styles.supportRowBorder : styles.rowBorder)
-              : null,
+            styles.row,
+            index > 0 ? styles.rowBorder : null,
             pressed ? styles.rowPressed : null,
           ]}
         >
           <View style={styles.rowCopy}>
-            {hasCollisionHint && variant === 'main' ? (
+            {hasCollisionHint ? (
               <View style={styles.rowMetaTop}>
                 <Text style={styles.duplicateHint}>
                   {recipe.duplicateNameCount > 1
@@ -203,19 +182,17 @@ export function MealsRecipesView({
                 </Text>
               </View>
             ) : null}
-            <Text style={variant === 'support' ? styles.supportRowTitle : styles.rowTitle}>
-              {recipe.name}
-            </Text>
+            <Text style={styles.rowTitle}>{recipe.name}</Text>
             <Text
-              style={variant === 'support' ? styles.supportRowMeta : styles.rowMeta}
-              numberOfLines={variant === 'support' ? 1 : 2}
+              style={styles.rowMeta}
+              numberOfLines={2}
             >
               {metaLine}
             </Text>
           </View>
           <Ionicons
             name="chevron-forward"
-            size={variant === 'support' ? 16 : 18}
+            size={18}
             color={theme.colors.textSecondary}
           />
         </Pressable>
@@ -311,17 +288,6 @@ export function MealsRecipesView({
       {isArchivedView ? (
         <>
           <View style={styles.archivedHeader}>
-            <Pressable
-              onPress={onShowActive}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.archivedBackAction,
-                pressed ? styles.actionPressed : null,
-              ]}
-            >
-              <Ionicons name="arrow-back" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.archivedBackActionText}>{strings.archivedBackAction}</Text>
-            </Pressable>
             <View style={styles.archivedHeaderCopy}>
               <Text style={styles.libraryEyebrow}>{strings.archivedAction}</Text>
               <Text style={styles.libraryTitle}>{libraryTitle}</Text>
@@ -365,23 +331,13 @@ export function MealsRecipesView({
           </View>
         ) : (
           <View style={styles.sections}>
-            {showTopSections && !isArchivedView ? (
-              <View style={styles.supportLayer}>
-                {supportTitle ? (
-                  <Text style={styles.supportLabel}>{supportTitle}</Text>
-                ) : null}
-                <View style={styles.supportSurface}>
-                  <View style={styles.supportList}>
-                    {renderRecipeRows(supportItems, showMakeSoon ? 'soon' : 'recent', 'support')}
-                  </View>
-                </View>
-              </View>
-            ) : null}
             <View style={styles.mainLibrarySection}>
               <View style={styles.mainLibraryHeader}>
                 <View style={styles.mainLibraryCopy}>
                   <Text style={styles.mainLibraryLabel}>{mainLibraryLabel}</Text>
-                  <Text style={styles.mainLibraryMeta}>{mainLibraryMeta}</Text>
+                  {mainLibraryMeta ? (
+                    <Text style={styles.mainLibraryMeta}>{mainLibraryMeta}</Text>
+                  ) : null}
                 </View>
                 {!isArchivedView ? (
                   <Pressable
@@ -543,17 +499,6 @@ const styles = StyleSheet.create({
   archivedHeader: {
     gap: theme.spacing.xs,
   },
-  archivedBackAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-  },
-  archivedBackActionText: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
-  },
   archivedHeaderCopy: {
     gap: 4,
   },
@@ -566,24 +511,6 @@ const styles = StyleSheet.create({
   },
   sections: {
     gap: theme.spacing.md,
-  },
-  supportLayer: {
-    gap: 6,
-  },
-  supportSurface: {
-    backgroundColor: iconBackground(theme.colors.feature.meals, 0.07),
-    borderRadius: theme.radius.lg,
-    paddingVertical: 2,
-    paddingHorizontal: 2,
-  },
-  supportList: {
-    gap: 0,
-  },
-  supportLabel: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
-    paddingHorizontal: 2,
   },
   mainLibrarySection: {
     gap: theme.spacing.xs,
@@ -675,19 +602,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.sm,
   },
-  supportRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 12,
-  },
   rowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  supportRowBorder: {
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
@@ -714,16 +629,7 @@ const styles = StyleSheet.create({
     ...textStyles.body,
     fontWeight: '600',
   },
-  supportRowTitle: {
-    ...textStyles.body,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-  },
   rowMeta: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-  },
-  supportRowMeta: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
   },
