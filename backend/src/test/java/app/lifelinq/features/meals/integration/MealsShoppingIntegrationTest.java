@@ -69,6 +69,7 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                true,
                 List.of(
                         new IngredientInput("  Olive   Oil  ", new BigDecimal("2"), IngredientUnit.DL, 1),
                         new IngredientInput("Tomato", null, null, 2)
@@ -118,6 +119,7 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                true,
                 List.of(
                         new IngredientInput("Tomato", null, null, 1),
                         new IngredientInput("tomato", null, null, 2)
@@ -168,6 +170,7 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                true,
                 List.of(new IngredientInput("Tomato", new BigDecimal("2"), IngredientUnit.PCS, 1))
         );
 
@@ -212,6 +215,7 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                true,
                 List.of(
                         new IngredientInput("Tomato", null, null, 1),
                         new IngredientInput("Onion", null, null, 2),
@@ -262,6 +266,7 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                true,
                 List.of(
                         new IngredientInput("Olive oil for frying", new BigDecimal("2"), IngredientUnit.DL, 1)
                 )
@@ -311,6 +316,7 @@ class MealsShoppingIntegrationTest {
                 null,
                 null,
                 null,
+                true,
                 List.of(
                         new IngredientInput("finely chopped parsley", null, null, 1)
                 )
