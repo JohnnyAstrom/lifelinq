@@ -95,7 +95,7 @@ export function sanitizeIngredientQuantityInput(value: string) {
   return normalized;
 }
 
-function parseIngredientQuantity(value: string) {
+export function parseIngredientQuantity(value: string) {
   const normalized = value.trim();
   if (!normalized) {
     return null;
@@ -103,6 +103,34 @@ function parseIngredientQuantity(value: string) {
 
   const parsed = Number(normalized);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function formatIngredientQuantity(value: number) {
+  const rounded = Math.round(value * 1000) / 1000;
+  if (!Number.isFinite(rounded) || rounded <= 0) {
+    return '';
+  }
+
+  return rounded
+    .toFixed(3)
+    .replace(/\.?0+$/, '');
+}
+
+export function scaleIngredientRowQuantity(row: MealIngredientRow, factor: number): MealIngredientRow {
+  const parsedQuantity = parseIngredientQuantity(row.quantityText);
+  if (parsedQuantity == null || !Number.isFinite(factor) || factor <= 0) {
+    return row;
+  }
+
+  const scaledQuantityText = formatIngredientQuantity(parsedQuantity * factor);
+  if (!scaledQuantityText) {
+    return row;
+  }
+
+  return {
+    ...row,
+    quantityText: scaledQuantityText,
+  };
 }
 
 export function toIngredientRequests(rows: MealIngredientRow[]): IngredientRequest[] {

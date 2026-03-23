@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 import {
+  scaleIngredientRowQuantity,
   type MealIngredientRow,
   type MealIngredientUnit,
 } from '../utils/ingredientRows';
@@ -48,6 +50,7 @@ type Strings = MealIngredientEditorRowStrings & {
   recipeMetadataHint?: string;
   recipeServingsLabel: string;
   recipeServingsPlaceholder: string;
+  recipePortionValue?: (count: number) => string;
   recipeSourceLabel: string;
   recipeSourcePlaceholder: string;
   recipeSourceUrlLabel?: string;
@@ -107,6 +110,25 @@ function getEditableInstructionLines(value: string) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+}
+
+function parseBaseServings(value: string) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const matches = normalized.match(/\d+(?:[.,]\d+)?/g);
+  if (!matches || matches.length !== 1) {
+    return null;
+  }
+
+  const parsed = Number(matches[0].replace(',', '.'));
+  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+    return null;
+  }
+
+  return parsed;
 }
 
 type ReadOnlyFieldProps = {
@@ -309,6 +331,7 @@ export function MealRecipeDetailSheet({
   const normalizedServings = recipeServings.trim();
   const normalizedSource = recipeSource.trim();
   const normalizedSourceUrl = recipeSourceUrl?.trim() ?? '';
+  const baseServings = parseBaseServings(normalizedServings);
   const importSourceHost = isImportDraft && normalizedSourceUrl.length > 0
     ? getHostnameLabel(normalizedSourceUrl)
     : null;
@@ -345,6 +368,23 @@ export function MealRecipeDetailSheet({
     : hasExistingRecipe
       ? strings.usingRecipeLabel
       : strings.newRecipeLabel;
+  const showPortionSelector = isContentReadOnly
+    && canEnterEditMode
+    && baseServings != null
+    && hasIngredientRows
+    && !isImportDraft
+    && !isArchivedRecipe;
+  const showReadOnlyServings = normalizedServings.length > 0 && !showPortionSelector;
+  const [selectedServings, setSelectedServings] = useState<number | null>(baseServings);
+  const activeServings = showPortionSelector ? (selectedServings ?? baseServings) : null;
+  const activePortionValue = activeServings == null
+    ? ''
+    : strings.recipePortionValue
+      ? strings.recipePortionValue(activeServings)
+      : `${activeServings} servings`;
+  const ingredientRowsWithScaledPreview = showPortionSelector && activeServings != null && baseServings != null
+    ? ingredientRows.map((row) => scaleIngredientRowQuantity(row, activeServings / baseServings))
+    : ingredientRows;
   const hasHeaderMetaContent = showIdentityBadge
     || (!!strings.mealAttachmentLabel && !!strings.mealAttachmentValue)
     || !!strings.recipeContextHint
@@ -352,6 +392,10 @@ export function MealRecipeDetailSheet({
     || (showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && !!strings.saveAsNewRecipeHint)
     || (isEditingSavedRecipeDirectly && !!strings.editingSavedRecipeHint)
     || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction);
+
+  useEffect(() => {
+    setSelectedServings(baseServings);
+  }, [baseServings, recipeTitle]);
 
   function scheduleScrollToIngredientEditor() {
     const firstTimeout = setTimeout(() => {
@@ -454,6 +498,20 @@ export function MealRecipeDetailSheet({
     onAddIngredientRow();
   }
 
+  function handleDecreasePortions() {
+    if (activeServings == null) {
+      return;
+    }
+    setSelectedServings(Math.max(1, activeServings - 1));
+  }
+
+  function handleIncreasePortions() {
+    if (activeServings == null) {
+      return;
+    }
+    setSelectedServings(activeServings + 1);
+  }
+
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
@@ -552,7 +610,35 @@ export function MealRecipeDetailSheet({
                     <Text style={styles.sectionHint}>{strings.ingredientsRecipeHint}</Text>
                   ) : null}
                 </View>
-                {!isContentReadOnly ? (
+                {showPortionSelector && activeServings != null ? (
+                  <View style={styles.portionAdjuster}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Decrease portions"
+                      onPress={handleDecreasePortions}
+                      disabled={activeServings <= 1}
+                      style={({ pressed }) => [
+                        styles.portionAdjusterButton,
+                        activeServings <= 1 ? styles.portionAdjusterButtonDisabled : null,
+                        pressed && activeServings > 1 ? styles.portionAdjusterButtonPressed : null,
+                      ]}
+                    >
+                      <Text style={styles.portionAdjusterButtonText}>−</Text>
+                    </Pressable>
+                    <Text style={styles.portionAdjusterValue}>{activePortionValue}</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Increase portions"
+                      onPress={handleIncreasePortions}
+                      style={({ pressed }) => [
+                        styles.portionAdjusterButton,
+                        pressed ? styles.portionAdjusterButtonPressed : null,
+                      ]}
+                    >
+                      <Text style={styles.portionAdjusterButtonText}>+</Text>
+                    </Pressable>
+                  </View>
+                ) : !isContentReadOnly ? (
                   <AppButton
                     title={strings.addIngredient}
                     onPress={onAddIngredientRow}
@@ -578,7 +664,7 @@ export function MealRecipeDetailSheet({
 
               {!isRecipeLoading && hasIngredientRows ? (
                 <View style={styles.ingredientList}>
-                  {ingredientRows.map((row) => (
+                  {ingredientRowsWithScaledPreview.map((row) => (
                     <MealIngredientEditorRow
                       key={row.id}
                       row={row}
@@ -730,7 +816,7 @@ export function MealRecipeDetailSheet({
                 {isContentReadOnly ? (
                   hasReadableRecipeMetadata ? (
                     <View style={styles.metadataReadStack}>
-                      {normalizedServings.length > 0 ? (
+                      {showReadOnlyServings ? (
                         <View style={styles.metadataReadInlineRow}>
                           <Text style={styles.metadataReadInlineLabel}>{strings.recipeServingsLabel}</Text>
                           <Text style={styles.metadataReadInlineValue}>{normalizedServings}</Text>
@@ -1240,6 +1326,39 @@ const styles = StyleSheet.create({
   },
   ingredientList: {
     gap: theme.spacing.xs,
+  },
+  portionAdjuster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    minHeight: 36,
+  },
+  portionAdjusterButton: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radius.circle,
+    borderWidth: 1,
+    borderColor: theme.colors.feature.meals,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  portionAdjusterButtonPressed: {
+    opacity: 0.74,
+  },
+  portionAdjusterButtonDisabled: {
+    opacity: 0.42,
+  },
+  portionAdjusterButtonText: {
+    ...textStyles.body,
+    color: theme.colors.feature.meals,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  portionAdjusterValue: {
+    ...textStyles.subtle,
+    color: theme.colors.text,
+    fontWeight: '600',
   },
   reviewProgressText: {
     ...textStyles.subtle,

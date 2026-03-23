@@ -197,6 +197,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeMetadataHint: undefined,
     recipeServingsLabel: 'Servings',
     recipeServingsPlaceholder: 'e.g. 4 servings',
+    recipePortionValue: (count: number) => `${count} ${count === 1 ? 'serving' : 'servings'}`,
     recipeSourceLabel: 'Source',
     recipeSourcePlaceholder: 'Where this recipe comes from',
     recipeSourceUrlLabel: 'Source URL',
@@ -995,6 +996,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeMetadataHint: undefined,
             recipeServingsLabel: strings.recipeServingsLabel,
             recipeServingsPlaceholder: strings.recipeServingsPlaceholder,
+            recipePortionValue: strings.recipePortionValue,
             recipeSourceLabel: strings.mealDetailsSourceLabel,
             recipeSourcePlaceholder: strings.mealDetailsSourcePlaceholder,
             recipeShortNoteLabel: strings.mealDetailsNoteLabel,
@@ -1201,6 +1203,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : strings.recipeMetadataHint,
             recipeServingsLabel: strings.recipeServingsLabel,
             recipeServingsPlaceholder: strings.recipeServingsPlaceholder,
+            recipePortionValue: strings.recipePortionValue,
             recipeSourceLabel: recipesWorkspace.recipeDetail.isImportDraft
               ? 'Site'
               : strings.recipeSourceLabel,

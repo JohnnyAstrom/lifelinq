@@ -110,6 +110,7 @@ Current editor emphasis: the meal editor now uses the already chosen day/slot co
 
 - Meals reference recipes via `recipeId` only.
 - Recipe storage and ingredient modeling are implemented in V0.5c.
+- Saved recipe read mode may offer a small session-only portion adjuster when `servings` is clear enough to scale structured ingredient quantities safely. Ambiguous rows stay as originally written.
 - Planned meals now also persist a minimal `recipeTitleSnapshot` so historical views can remain readable if a recipe is later deleted.
 - API responses still prefer the live recipe name when it exists, but historical views may fall back to the stored title snapshot.
 - Ingredients are pushed to a Shopping List via command orchestration.
