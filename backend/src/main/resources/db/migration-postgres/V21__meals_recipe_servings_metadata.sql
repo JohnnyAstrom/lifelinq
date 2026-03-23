@@ -1,0 +1,2 @@
+ALTER TABLE recipes
+    ADD COLUMN servings VARCHAR(255) NULL;

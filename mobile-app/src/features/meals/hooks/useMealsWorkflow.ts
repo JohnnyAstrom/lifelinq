@@ -56,6 +56,7 @@ type RecipeSnapshot = {
   sourceUrl: string | null;
   originKind: string;
   savedInRecipes: boolean;
+  servings: string | null;
   shortNote: string | null;
   instructions: string | null;
   ingredients: IngredientRequest[];
@@ -110,6 +111,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [recipeSource, setRecipeSource] = useState('');
   const [recipeSourceUrl, setRecipeSourceUrl] = useState<string | null>(null);
   const [recipeOriginKind, setRecipeOriginKind] = useState('MANUAL');
+  const [recipeServings, setRecipeServings] = useState('');
   const [recipeShortNote, setRecipeShortNote] = useState('');
   const [recipeInstructions, setRecipeInstructions] = useState('');
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
@@ -185,10 +187,11 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     sourceName: recipeSource.trim() || null,
     sourceUrl: recipeSourceUrl,
     originKind: recipeOriginKind,
+    servings: recipeServings.trim() || null,
     shortNote: recipeShortNote.trim() || null,
     instructions: recipeInstructions.trim() || null,
     ingredients: toIngredientRequests(ingredientRows),
-  }), [ingredientRows, mealTitle, recipeInstructions, recipeOriginKind, recipeShortNote, recipeSource, recipeSourceUrl, recipeTitle]);
+  }), [ingredientRows, mealTitle, recipeInstructions, recipeOriginKind, recipeServings, recipeShortNote, recipeSource, recipeSourceUrl, recipeTitle]);
   const hasRecipeDraftContent = useMemo(() => (
     !!selectedMealRecipeId
       || currentRecipeDraft.ingredients.length > 0
@@ -217,6 +220,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return true;
     }
     if (pickedRecipeSnapshot.originKind !== currentRecipeDraft.originKind) {
+      return true;
+    }
+    if (pickedRecipeSnapshot.servings !== currentRecipeDraft.servings) {
       return true;
     }
     if (pickedRecipeSnapshot.shortNote !== currentRecipeDraft.shortNote) {
@@ -266,6 +272,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setRecipeSource('');
     setRecipeSourceUrl(null);
     setRecipeOriginKind('MANUAL');
+    setRecipeServings('');
     setRecipeShortNote('');
     setRecipeInstructions('');
     setSelectedMealRecipeId(existing?.recipeId ?? null);
@@ -293,6 +300,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       sourceUrl: recipe.sourceUrl?.trim() || null,
       originKind: recipe.originKind,
       savedInRecipes: recipe.savedInRecipes,
+      servings: recipe.servings?.trim() || null,
       shortNote: recipe.shortNote?.trim() || null,
       instructions: recipe.instructions?.trim() || null,
       ingredients: recipe.ingredients
@@ -313,6 +321,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setRecipeSource(recipe.sourceName ?? '');
     setRecipeSourceUrl(recipe.sourceUrl ?? null);
     setRecipeOriginKind(recipe.originKind);
+    setRecipeServings(recipe.servings ?? '');
     setRecipeShortNote(recipe.shortNote ?? '');
     setRecipeInstructions(recipe.instructions ?? '');
     setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
@@ -368,6 +377,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
           setRecipeSource('');
           setRecipeSourceUrl(null);
           setRecipeOriginKind('MANUAL');
+          setRecipeServings('');
           setRecipeShortNote('');
           setRecipeInstructions('');
           setIngredientRows([]);
@@ -410,6 +420,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setRecipeSource('');
     setRecipeSourceUrl(null);
     setRecipeOriginKind('MANUAL');
+    setRecipeServings('');
     setRecipeShortNote('');
     setRecipeInstructions('');
     setIngredientRows([]);
@@ -618,6 +629,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
               sourceName: currentRecipeDraft.sourceName,
               sourceUrl: currentRecipeDraft.sourceUrl,
               originKind: currentRecipeDraft.originKind,
+              servings: currentRecipeDraft.servings,
               shortNote: currentRecipeDraft.shortNote,
               instructions: currentRecipeDraft.instructions,
               savedInRecipes: true,
@@ -642,6 +654,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             sourceName: currentRecipeDraft.sourceName,
             sourceUrl: currentRecipeDraft.sourceUrl,
             originKind: currentRecipeDraft.originKind,
+            servings: currentRecipeDraft.servings,
             shortNote: currentRecipeDraft.shortNote,
             instructions: currentRecipeDraft.instructions,
             savedInRecipes: true,
@@ -663,6 +676,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             sourceName: currentRecipeDraft.sourceName,
             sourceUrl: currentRecipeDraft.sourceUrl,
             originKind: currentRecipeDraft.originKind,
+            servings: currentRecipeDraft.servings,
             shortNote: currentRecipeDraft.shortNote,
             instructions: currentRecipeDraft.instructions,
             savedInRecipes: saveInRecipes,
@@ -685,6 +699,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             sourceName: currentRecipeDraft.sourceName,
             sourceUrl: currentRecipeDraft.sourceUrl,
             originKind: currentRecipeDraft.originKind,
+            servings: currentRecipeDraft.servings,
             shortNote: currentRecipeDraft.shortNote,
             instructions: currentRecipeDraft.instructions,
             savedInRecipes: true,
@@ -705,6 +720,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
             sourceName: currentRecipeDraft.sourceName,
             sourceUrl: currentRecipeDraft.sourceUrl,
             originKind: currentRecipeDraft.originKind,
+            servings: currentRecipeDraft.servings,
             shortNote: currentRecipeDraft.shortNote,
             instructions: currentRecipeDraft.instructions,
             savedInRecipes: saveInRecipes,
@@ -775,6 +791,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setRecipeSource('');
       setRecipeSourceUrl(null);
       setRecipeOriginKind('MANUAL');
+      setRecipeServings('');
       setRecipeShortNote('');
       setRecipeInstructions('');
       setSelectedMealRecipeId(null);
@@ -883,6 +900,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setRecipeSource('');
       setRecipeSourceUrl(null);
       setRecipeOriginKind('MANUAL');
+      setRecipeServings('');
       setRecipeShortNote('');
       setRecipeInstructions('');
       setSelectedMealRecipeId(null);
@@ -907,6 +925,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
         setRecipeSource('');
         setRecipeSourceUrl(null);
         setRecipeOriginKind('MANUAL');
+        setRecipeServings('');
         setRecipeShortNote('');
         setRecipeInstructions('');
         setIngredientRows([]);
@@ -930,6 +949,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       mealTitle,
       recipeTitle,
       recipeSource,
+      recipeServings,
       recipeShortNote,
       recipeInstructions,
       ingredientRows,
@@ -970,6 +990,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       setMealTitle,
       setRecipeTitle,
       setRecipeSource,
+      setRecipeServings,
       setRecipeShortNote,
       setRecipeInstructions,
       openRecipeDetail,

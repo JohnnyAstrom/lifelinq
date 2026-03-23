@@ -38,6 +38,7 @@ type RecipeSaveRequest = {
   sourceName: string | null;
   sourceUrl: string | null;
   originKind: string;
+  servings: string | null;
   shortNote: string | null;
   instructions: string | null;
   ingredients: ReturnType<typeof toIngredientRequests>;
@@ -96,6 +97,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recipeSource, setRecipeSource] = useState('');
   const [recipeSourceUrl, setRecipeSourceUrl] = useState('');
   const [recipeOriginKind, setRecipeOriginKind] = useState('MANUAL');
+  const [recipeServings, setRecipeServings] = useState('');
   const [recipeShortNote, setRecipeShortNote] = useState('');
   const [recipeInstructions, setRecipeInstructions] = useState('');
   const [recipeArchivedAt, setRecipeArchivedAt] = useState<string | null>(null);
@@ -307,6 +309,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeSource(recipe.sourceName ?? '');
     setRecipeSourceUrl(recipe.sourceUrl ?? '');
     setRecipeOriginKind(recipe.originKind);
+    setRecipeServings(recipe.servings ?? '');
     setRecipeShortNote(recipe.shortNote ?? '');
     setRecipeInstructions(recipe.instructions ?? '');
     setRecipeArchivedAt(recipe.archivedAt);
@@ -326,6 +329,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeSource(draft.sourceName ?? '');
     setRecipeSourceUrl(draft.sourceUrl);
     setRecipeOriginKind(draft.originKind);
+    setRecipeServings(draft.servings ?? '');
     setRecipeShortNote(draft.shortNote ?? '');
     setRecipeInstructions(draft.instructions ?? '');
     setRecipeArchivedAt(null);
@@ -384,6 +388,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeSource('');
     setRecipeSourceUrl('');
     setRecipeOriginKind('MANUAL');
+    setRecipeServings('');
     setRecipeShortNote('');
     setRecipeInstructions('');
     setRecipeArchivedAt(null);
@@ -527,6 +532,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       sourceName: recipeSource.trim() || null,
       sourceUrl: recipeSourceUrl.trim() || null,
       originKind: recipeOriginKind,
+      servings: recipeServings.trim() || null,
       shortNote: recipeShortNote.trim() || null,
       instructions: recipeInstructions.trim() || null,
       ingredients: toIngredientRequests(ingredientRows),
@@ -751,6 +757,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       recipeTitle,
       recipeSource,
       recipeSourceUrl,
+      recipeServings,
       recipeShortNote,
       recipeInstructions,
       recipeArchivedAt,
@@ -777,6 +784,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setRecipeTitle,
       setRecipeSource,
       setRecipeSourceUrl,
+      setRecipeServings,
       setRecipeShortNote,
       setRecipeInstructions,
       addIngredientRow,

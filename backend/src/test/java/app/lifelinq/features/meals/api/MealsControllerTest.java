@@ -327,6 +327,7 @@ class MealsControllerTest {
                 "Family notebook",
                 "https://example.com/pasta",
                 "URL_IMPORT",
+                "4 servings",
                 "Quick favorite",
                 "Boil water\nCook pasta",
                 null,
@@ -338,6 +339,7 @@ class MealsControllerTest {
                 "Family notebook",
                 "https://example.com/pasta",
                 "URL_IMPORT",
+                "4 servings",
                 "Quick favorite",
                 "Boil water\nCook pasta",
                 Instant.parse("2026-03-17T10:00:00Z"),
@@ -358,6 +360,7 @@ class MealsControllerTest {
                                   "sourceName":"Family notebook",
                                   "sourceUrl":"https://example.com/pasta",
                                   "originKind":"URL_IMPORT",
+                                  "servings":"4 servings",
                                   "shortNote":"Quick favorite",
                                   "instructions":"Boil water\\nCook pasta",
                                   "ingredients":[]
@@ -367,6 +370,7 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.sourceName").value("Family notebook"))
                 .andExpect(jsonPath("$.sourceUrl").value("https://example.com/pasta"))
                 .andExpect(jsonPath("$.originKind").value("URL_IMPORT"))
+                .andExpect(jsonPath("$.servings").value("4 servings"))
                 .andExpect(jsonPath("$.shortNote").value("Quick favorite"))
                 .andExpect(jsonPath("$.instructions").value("Boil water\nCook pasta"))
                 .andExpect(jsonPath("$.updatedAt").value("2026-03-17T10:15:00Z"));
@@ -378,6 +382,7 @@ class MealsControllerTest {
                 "Family notebook",
                 "https://example.com/pasta",
                 "URL_IMPORT",
+                "4 servings",
                 "Quick favorite",
                 "Boil water\nCook pasta",
                 null,
@@ -578,6 +583,7 @@ class MealsControllerTest {
                 "Example Kitchen",
                 "https://example.com/pie",
                 "URL_IMPORT",
+                "8 slices",
                 "Weekend dessert",
                 "Mix ingredients\nBake",
                 List.of(
@@ -599,6 +605,7 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.sourceName").value("Example Kitchen"))
                 .andExpect(jsonPath("$.sourceUrl").value("https://example.com/pie"))
                 .andExpect(jsonPath("$.originKind").value("URL_IMPORT"))
+                .andExpect(jsonPath("$.servings").value("8 slices"))
                 .andExpect(jsonPath("$.ingredients[1].quantity").value(1))
                 .andExpect(jsonPath("$.ingredients[1].unit").value("DL"));
 

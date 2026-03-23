@@ -7,6 +7,7 @@ public final class CreateOrUpdateRecipeRequest {
     private String sourceName;
     private String sourceUrl;
     private String originKind;
+    private String servings;
     private String shortNote;
     private String instructions;
     private Boolean savedInRecipes;
@@ -30,6 +31,10 @@ public final class CreateOrUpdateRecipeRequest {
 
     public String getOriginKind() {
         return originKind;
+    }
+
+    public String getServings() {
+        return servings;
     }
 
     public String getShortNote() {

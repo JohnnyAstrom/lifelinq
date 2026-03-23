@@ -95,6 +95,7 @@ public class RecipeImportApplicationService {
         List<RecipeImportDraftIngredientView> ingredients = normalizeIngredients(parsed.ingredientLines());
         String name = normalizeRequiredName(parsed.name());
         String normalizedSourceName = normalizeOptionalText(parsed.sourceName());
+        String normalizedServings = normalizeOptionalText(parsed.servings());
         String normalizedShortNote = normalizeOptionalText(parsed.shortNote());
         String normalizedInstructions = normalizeOptionalInstructions(parsed.instructions());
 
@@ -103,6 +104,7 @@ public class RecipeImportApplicationService {
                 normalizedSourceName != null ? normalizedSourceName : deriveSourceName(normalizedUrl),
                 normalizeImportUrl(parsed.sourceUrl() == null ? normalizedUrl : parsed.sourceUrl()),
                 RecipeOriginKind.URL_IMPORT.name(),
+                normalizedServings,
                 normalizedShortNote,
                 normalizedInstructions,
                 ingredients

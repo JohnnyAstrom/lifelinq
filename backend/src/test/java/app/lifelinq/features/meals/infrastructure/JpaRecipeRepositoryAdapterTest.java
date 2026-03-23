@@ -35,6 +35,7 @@ class JpaRecipeRepositoryAdapterTest {
                 "Cookbook",
                 "https://example.com/soup",
                 RecipeOriginKind.URL_IMPORT,
+                "4 servings",
                 "Comfort food",
                 "Stir and simmer",
                 Instant.parse("2026-02-01T10:00:00Z"),
@@ -67,6 +68,7 @@ class JpaRecipeRepositoryAdapterTest {
         assertThat(loaded.get().getSourceName()).isEqualTo("Cookbook");
         assertThat(loaded.get().getSourceUrl()).isEqualTo("https://example.com/soup");
         assertThat(loaded.get().getOriginKind()).isEqualTo(RecipeOriginKind.URL_IMPORT);
+        assertThat(loaded.get().getServings()).isEqualTo("4 servings");
         assertThat(loaded.get().getShortNote()).isEqualTo("Comfort food");
         assertThat(loaded.get().getInstructions()).isEqualTo("Stir and simmer");
         assertThat(loaded.get().getUpdatedAt()).isEqualTo(Instant.parse("2026-02-02T09:00:00Z"));
@@ -231,6 +233,7 @@ class JpaRecipeRepositoryAdapterTest {
                 "Notebook",
                 "https://example.com/updated-soup",
                 RecipeOriginKind.URL_IMPORT,
+                "6 servings",
                 "Updated note",
                 "Updated instructions",
                 createdAt,
@@ -248,6 +251,7 @@ class JpaRecipeRepositoryAdapterTest {
         assertThat(loaded.get().getSourceName()).isEqualTo("Notebook");
         assertThat(loaded.get().getSourceUrl()).isEqualTo("https://example.com/updated-soup");
         assertThat(loaded.get().getOriginKind()).isEqualTo(RecipeOriginKind.URL_IMPORT);
+        assertThat(loaded.get().getServings()).isEqualTo("6 servings");
         assertThat(loaded.get().getShortNote()).isEqualTo("Updated note");
         assertThat(loaded.get().getInstructions()).isEqualTo("Updated instructions");
         assertThat(loaded.get().getUpdatedAt()).isEqualTo(Instant.parse("2026-02-03T12:00:00Z"));

@@ -74,6 +74,30 @@ class RecipeImportHtmlParserTest {
     }
 
     @Test
+    void extractsServingsFromStructuredRecipeYield() {
+        String html = """
+                <html>
+                  <head>
+                    <script type="application/ld+json">
+                      {
+                        "@context": "https://schema.org",
+                        "@type": "Recipe",
+                        "name": "Toast",
+                        "recipeYield": "4 servings",
+                        "recipeIngredient": ["bread"],
+                        "recipeInstructions": "Toast bread"
+                      }
+                    </script>
+                  </head>
+                </html>
+                """;
+
+        var parsed = parser.parse(new FetchedRecipeDocument("https://example.com/toast", html));
+
+        assertThat(parsed.servings()).isEqualTo("4 servings");
+    }
+
+    @Test
     void parsesNestedRecipeNodesAndSplitsStructuredIngredientTextLines() {
         String html = """
                 <html>

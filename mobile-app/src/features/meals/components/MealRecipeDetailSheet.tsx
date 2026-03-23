@@ -46,6 +46,8 @@ type Strings = MealIngredientEditorRowStrings & {
   recipeNamePlaceholder: string;
   recipeContentLabel: string;
   recipeMetadataHint?: string;
+  recipeServingsLabel: string;
+  recipeServingsPlaceholder: string;
   recipeSourceLabel: string;
   recipeSourcePlaceholder: string;
   recipeSourceUrlLabel?: string;
@@ -134,42 +136,6 @@ function ReadOnlyField({ label, value, emptyText, multiline = false }: ReadOnlyF
   );
 }
 
-type ReadOnlyMetadataListProps = {
-  title: string;
-  items: Array<{
-    label: string;
-    value: string;
-    emptyText: string;
-  }>;
-};
-
-function ReadOnlyMetadataList({ title, items }: ReadOnlyMetadataListProps) {
-  const visibleItems = items.filter((item) => item.label.trim().length > 0);
-
-  return (
-    <View style={styles.subSection}>
-      <Text style={styles.fieldLabel}>{title}</Text>
-      <View style={styles.metadataReadCard}>
-        {visibleItems.map((item, index) => {
-          const trimmedValue = item.value.trim();
-          const hasValue = trimmedValue.length > 0;
-          return (
-            <View
-              key={`${item.label}-${index}`}
-              style={index > 0 ? [styles.metadataReadRow, styles.metadataReadRowBorder] : styles.metadataReadRow}
-            >
-              <Text style={styles.metadataReadLabel}>{item.label}</Text>
-              <Text style={hasValue ? styles.metadataReadValue : styles.metadataReadEmpty}>
-                {hasValue ? trimmedValue : item.emptyText}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 type EditableFieldProps = {
   label: string;
   hint?: string;
@@ -221,6 +187,8 @@ type Props = {
   onChangeRecipeSource: (value: string) => void;
   recipeSourceUrl?: string;
   onChangeRecipeSourceUrl?: (value: string) => void;
+  recipeServings?: string;
+  onChangeRecipeServings?: (value: string) => void;
   recipeShortNote: string;
   onChangeRecipeShortNote: (value: string) => void;
   recipeInstructions: string;
@@ -272,6 +240,8 @@ export function MealRecipeDetailSheet({
   onChangeRecipeSource,
   recipeSourceUrl,
   onChangeRecipeSourceUrl,
+  recipeServings = '',
+  onChangeRecipeServings,
   recipeShortNote,
   onChangeRecipeShortNote,
   recipeInstructions,
@@ -336,10 +306,15 @@ export function MealRecipeDetailSheet({
     ? strings.importReviewSummary(pendingImportReviewCount)
     : null;
   const hasIngredientRows = ingredientRows.length > 0;
+  const normalizedServings = recipeServings.trim();
+  const normalizedSource = recipeSource.trim();
   const normalizedSourceUrl = recipeSourceUrl?.trim() ?? '';
   const importSourceHost = isImportDraft && normalizedSourceUrl.length > 0
     ? getHostnameLabel(normalizedSourceUrl)
     : null;
+  const hasReadableRecipeMetadata = normalizedServings.length > 0
+    || normalizedSource.length > 0
+    || normalizedSourceUrl.length > 0;
   const instructionSteps = getInstructionSteps(recipeInstructions);
   const editableInstructionLines = getEditableInstructionLines(recipeInstructions);
   const instructionLineCount = editableInstructionLines.length;
@@ -753,38 +728,56 @@ export function MealRecipeDetailSheet({
                 ]}
               >
                 {isContentReadOnly ? (
-                  <ReadOnlyMetadataList
-                    title={strings.recipeContentLabel}
-                    items={[
-                      {
-                        label: strings.recipeSourceLabel,
-                        value: recipeSource,
-                        emptyText: 'No source saved.',
-                      },
-                      ...(onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel
-                        ? [{
-                            label: strings.recipeSourceUrlLabel,
-                            value: recipeSourceUrl ?? '',
-                            emptyText: 'No source link saved.',
-                          }]
-                        : []),
-                    ]}
-                  />
-                ) : (
-                  <>
-                    <View style={styles.sectionCopy}>
-                      <Text style={styles.sectionTitle}>
-                        {isImportDraft && strings.importReviewSourceSummaryTitle
-                          ? strings.importReviewSourceSummaryTitle
-                          : strings.recipeContentLabel}
-                      </Text>
-                      {(isImportDraft ? importSourceHost : strings.recipeMetadataHint) ? (
-                        <Text style={styles.sectionHint}>
-                          {isImportDraft ? importSourceHost : strings.recipeMetadataHint}
-                        </Text>
+                  hasReadableRecipeMetadata ? (
+                    <View style={styles.metadataReadStack}>
+                      {normalizedServings.length > 0 ? (
+                        <View style={styles.metadataReadInlineRow}>
+                          <Text style={styles.metadataReadInlineLabel}>{strings.recipeServingsLabel}</Text>
+                          <Text style={styles.metadataReadInlineValue}>{normalizedServings}</Text>
+                        </View>
+                      ) : null}
+
+                      {normalizedSource.length > 0 || normalizedSourceUrl.length > 0 ? (
+                        <View style={styles.metadataReadGroup}>
+                          {normalizedSource.length > 0 ? (
+                            <View style={styles.metadataReadRow}>
+                              <Text style={styles.metadataReadLabel}>{strings.recipeSourceLabel}</Text>
+                              <Text style={styles.metadataReadValue}>{normalizedSource}</Text>
+                            </View>
+                          ) : null}
+                          {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel && normalizedSourceUrl.length > 0 ? (
+                            <View style={styles.metadataReadRow}>
+                              <Text style={styles.metadataReadLabel}>{strings.recipeSourceUrlLabel}</Text>
+                              <Text style={styles.metadataReadValue}>{normalizedSourceUrl}</Text>
+                            </View>
+                          ) : null}
+                        </View>
                       ) : null}
                     </View>
+                  ) : null
+                ) : (
+                  <>
+                    {onChangeRecipeServings ? (
+                      <View style={styles.metadataField}>
+                        <Text style={styles.fieldLabel}>{strings.recipeServingsLabel}</Text>
+                        <View style={[
+                          styles.metadataInputWrap,
+                          isContentFirstEditor ? styles.secondaryMetadataInputWrap : null,
+                        ]}>
+                          <AppInput
+                            placeholder={strings.recipeServingsPlaceholder}
+                            value={recipeServings}
+                            onChangeText={onChangeRecipeServings}
+                            editable
+                            style={styles.metadataInput}
+                          />
+                        </View>
+                      </View>
+                    ) : null}
                     <View style={styles.metadataFields}>
+                      {isImportDraft && importSourceHost ? (
+                        <Text style={styles.sectionHint}>{importSourceHost}</Text>
+                      ) : null}
                       <View style={styles.metadataField}>
                         <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
                         <View style={[
@@ -1267,20 +1260,29 @@ const styles = StyleSheet.create({
   metadataFields: {
     gap: theme.spacing.sm,
   },
-  metadataReadCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surface,
+  metadataReadStack: {
+    gap: theme.spacing.sm,
+  },
+  metadataReadInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  metadataReadInlineLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  metadataReadInlineValue: {
+    ...textStyles.body,
+    color: theme.colors.text,
+  },
+  metadataReadGroup: {
+    gap: theme.spacing.sm,
   },
   metadataReadRow: {
     gap: 4,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-  },
-  metadataReadRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
   },
   metadataReadLabel: {
     ...textStyles.subtle,
@@ -1290,10 +1292,6 @@ const styles = StyleSheet.create({
   metadataReadValue: {
     ...textStyles.body,
     color: theme.colors.text,
-  },
-  metadataReadEmpty: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
   },
   reviewMetadataFields: {
     gap: theme.spacing.md,

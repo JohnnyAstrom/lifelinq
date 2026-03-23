@@ -15,6 +15,7 @@ public final class Recipe {
     private final String sourceName;
     private final String sourceUrl;
     private final RecipeOriginKind originKind;
+    private final String servings;
     private final String shortNote;
     private final String instructions;
     private final Instant createdAt;
@@ -44,6 +45,7 @@ public final class Recipe {
                 sourceName,
                 null,
                 RecipeOriginKind.MANUAL,
+                null,
                 shortNote,
                 instructions,
                 createdAt,
@@ -74,6 +76,7 @@ public final class Recipe {
                 sourceName,
                 sourceUrl,
                 originKind,
+                null,
                 shortNote,
                 instructions,
                 createdAt,
@@ -91,6 +94,104 @@ public final class Recipe {
             String sourceName,
             String sourceUrl,
             RecipeOriginKind originKind,
+            String servings,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt,
+            List<Ingredient> ingredients
+    ) {
+        this(
+                id,
+                groupId,
+                name,
+                sourceName,
+                sourceUrl,
+                originKind,
+                servings,
+                shortNote,
+                instructions,
+                createdAt,
+                updatedAt,
+                null,
+                true,
+                ingredients
+        );
+    }
+
+    public Recipe(
+            UUID id,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant archivedAt,
+            boolean savedInRecipes,
+            List<Ingredient> ingredients
+    ) {
+        this(
+                id,
+                groupId,
+                name,
+                sourceName,
+                sourceUrl,
+                originKind,
+                null,
+                shortNote,
+                instructions,
+                createdAt,
+                updatedAt,
+                archivedAt,
+                savedInRecipes,
+                ingredients
+        );
+    }
+
+    public Recipe(
+            UUID id,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String servings,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt,
+            List<Ingredient> ingredients
+    ) {
+        this(
+                id,
+                groupId,
+                name,
+                sourceName,
+                sourceUrl,
+                originKind,
+                servings,
+                shortNote,
+                instructions,
+                createdAt,
+                updatedAt,
+                null,
+                true,
+                ingredients
+        );
+    }
+
+    public Recipe(
+            UUID id,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String servings,
             String shortNote,
             String instructions,
             Instant createdAt,
@@ -149,6 +250,7 @@ public final class Recipe {
         this.sourceName = normalizeOptionalText(sourceName);
         this.sourceUrl = normalizeOptionalText(sourceUrl);
         this.originKind = originKind == null ? RecipeOriginKind.MANUAL : originKind;
+        this.servings = normalizeOptionalText(servings);
         this.shortNote = normalizeOptionalText(shortNote);
         this.instructions = normalizeOptionalText(instructions);
         this.createdAt = createdAt;
@@ -188,6 +290,10 @@ public final class Recipe {
 
     public RecipeOriginKind getOriginKind() {
         return originKind;
+    }
+
+    public String getServings() {
+        return servings;
     }
 
     public String getShortNote() {

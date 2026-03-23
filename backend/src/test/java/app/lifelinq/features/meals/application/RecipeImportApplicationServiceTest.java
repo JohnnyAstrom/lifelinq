@@ -33,6 +33,7 @@ class RecipeImportApplicationServiceTest {
         assertThat(draft.sourceName()).isEqualTo("example.com");
         assertThat(draft.sourceUrl()).isEqualTo("https://example.com/apple-pie");
         assertThat(draft.originKind()).isEqualTo("URL_IMPORT");
+        assertThat(draft.servings()).isNull();
         assertThat(draft.shortNote()).isEqualTo("Great dessert");
         assertThat(draft.instructions()).isEqualTo("Mix\nBake");
         assertThat(draft.ingredients()).hasSize(2);
@@ -90,6 +91,25 @@ class RecipeImportApplicationServiceTest {
         assertThat(draft.ingredients().get(5).unit()).isNull();
         assertThat(draft.ingredients().get(5).name()).isEqualTo("12 slices prosciutto");
         assertThat(draft.ingredients().get(5).rawText()).isEqualTo("12 slices prosciutto");
+    }
+
+    @Test
+    void importRecipeDraftCarriesStructuredServingsWhenPresent() {
+        EnsureGroupMemberUseCase membership = (g, u) -> {};
+        RecipeImportPort port = url -> new ParsedRecipeImportData(
+                "Soup",
+                "Recipe Site",
+                url,
+                " Serves 4 ",
+                null,
+                "Cook",
+                List.of("2 potatoes")
+        );
+        RecipeImportApplicationService service = new RecipeImportApplicationService(membership, port);
+
+        var draft = service.importRecipeDraft(UUID.randomUUID(), UUID.randomUUID(), "https://example.com/soup");
+
+        assertThat(draft.servings()).isEqualTo("Serves 4");
     }
 
     @Test

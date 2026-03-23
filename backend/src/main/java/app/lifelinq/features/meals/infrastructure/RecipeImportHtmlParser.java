@@ -66,6 +66,7 @@ final class RecipeImportHtmlParser {
                 metadata.siteName(),
                 metadata.hostLabel()
         );
+        String servings = extractServings(structuredRecipe);
         String shortNote = firstNonBlank(
                 textValue(structuredRecipe.get("description")),
                 metadata.description()
@@ -79,6 +80,7 @@ final class RecipeImportHtmlParser {
                 name,
                 sourceName,
                 document.sourceUrl(),
+                servings,
                 shortNote,
                 instructions,
                 ingredients
@@ -285,6 +287,36 @@ final class RecipeImportHtmlParser {
                 nestedName(recipeNode.get("publisher")),
                 nestedName(recipeNode.get("author")),
                 nestedName(recipeNode.get("creator"))
+        );
+    }
+
+    private String extractServings(JsonNode recipeNode) {
+        return firstNonBlank(
+                nestedText(recipeNode.get("recipeYield")),
+                nestedText(recipeNode.get("yield"))
+        );
+    }
+
+    private String nestedText(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                String nested = nestedText(item);
+                if (nested != null) {
+                    return nested;
+                }
+            }
+            return null;
+        }
+        if (node.isTextual()) {
+            return normalizeInlineText(node.asText());
+        }
+        return firstNonBlank(
+                textValue(node.get("text")),
+                textValue(node.get("name")),
+                textValue(node.get("value"))
         );
     }
 

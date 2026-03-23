@@ -92,6 +92,7 @@ export type CreateOrUpdateRecipeRequest = {
   sourceName?: string | null;
   sourceUrl?: string | null;
   originKind?: string | null;
+  servings?: string | null;
   shortNote?: string | null;
   instructions?: string | null;
   savedInRecipes?: boolean | null;
@@ -114,6 +115,7 @@ export type RecipeResponse = {
   sourceName: string | null;
   sourceUrl: string | null;
   originKind: string;
+  servings: string | null;
   shortNote: string | null;
   instructions: string | null;
   createdAt: string;
@@ -138,6 +140,7 @@ export type RecipeImportDraftResponse = {
   sourceName: string | null;
   sourceUrl: string;
   originKind: string;
+  servings: string | null;
   shortNote: string | null;
   instructions: string | null;
   ingredients: RecipeImportDraftIngredientResponse[];

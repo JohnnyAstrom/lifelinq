@@ -193,8 +193,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeNameLabel: 'Recipe name',
     recipeNamePlaceholder: 'Recipe name',
     recipeNameEditHint: 'Edit the name shown at the top of this recipe.',
-    recipeContentLabel: 'Source details',
-    recipeMetadataHint: 'Keep source details here without crowding the main recipe content.',
+    recipeContentLabel: 'Source',
+    recipeMetadataHint: undefined,
+    recipeServingsLabel: 'Servings',
+    recipeServingsPlaceholder: 'e.g. 4 servings',
     recipeSourceLabel: 'Source',
     recipeSourcePlaceholder: 'Where this recipe comes from',
     recipeSourceUrlLabel: 'Source URL',
@@ -933,6 +935,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onChangeRecipeTitle={editor.setRecipeTitle}
           recipeSource={editor.recipeSource}
           onChangeRecipeSource={editor.setRecipeSource}
+          recipeServings={editor.recipeServings}
+          onChangeRecipeServings={editor.setRecipeServings}
           recipeShortNote={editor.recipeShortNote}
           onChangeRecipeShortNote={editor.setRecipeShortNote}
           recipeInstructions={editor.recipeInstructions}
@@ -989,6 +993,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : strings.mealDetailsTitleHint,
             recipeContentLabel: strings.mealDetailsContextLabel,
             recipeMetadataHint: undefined,
+            recipeServingsLabel: strings.recipeServingsLabel,
+            recipeServingsPlaceholder: strings.recipeServingsPlaceholder,
             recipeSourceLabel: strings.mealDetailsSourceLabel,
             recipeSourcePlaceholder: strings.mealDetailsSourcePlaceholder,
             recipeShortNoteLabel: strings.mealDetailsNoteLabel,
@@ -1109,6 +1115,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onChangeRecipeSource={recipesWorkspace.recipeDetail.setRecipeSource}
           recipeSourceUrl={recipesWorkspace.recipeDetail.recipeSourceUrl}
           onChangeRecipeSourceUrl={recipesWorkspace.recipeDetail.setRecipeSourceUrl}
+          recipeServings={recipesWorkspace.recipeDetail.recipeServings}
+          onChangeRecipeServings={recipesWorkspace.recipeDetail.setRecipeServings}
           recipeShortNote={recipesWorkspace.recipeDetail.recipeShortNote}
           onChangeRecipeShortNote={recipesWorkspace.recipeDetail.setRecipeShortNote}
           recipeInstructions={recipesWorkspace.recipeDetail.recipeInstructions}
@@ -1191,6 +1199,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             recipeMetadataHint: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importReviewSourceSummaryHint
               : strings.recipeMetadataHint,
+            recipeServingsLabel: strings.recipeServingsLabel,
+            recipeServingsPlaceholder: strings.recipeServingsPlaceholder,
             recipeSourceLabel: recipesWorkspace.recipeDetail.isImportDraft
               ? 'Site'
               : strings.recipeSourceLabel,

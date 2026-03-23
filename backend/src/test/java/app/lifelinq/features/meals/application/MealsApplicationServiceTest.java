@@ -16,6 +16,7 @@ import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.Recipe;
+import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
@@ -695,6 +696,7 @@ class MealsApplicationServiceTest {
                 null,
                 null,
                 null,
+                null,
                 List.of(
                         new IngredientInput("Milk", null, null, 1),
                         new IngredientInput("Water", null, null, 1)
@@ -723,6 +725,7 @@ class MealsApplicationServiceTest {
                 "Grandma's notebook",
                 "https://example.com/grandma-recipe",
                 "URL_IMPORT",
+                "4 servings",
                 "Best for weekends",
                 "Mix ingredients\nBake for 20 minutes",
                 true,
@@ -732,11 +735,62 @@ class MealsApplicationServiceTest {
         assertThat(created.sourceName()).isEqualTo("Grandma's notebook");
         assertThat(created.sourceUrl()).isEqualTo("https://example.com/grandma-recipe");
         assertThat(created.originKind()).isEqualTo("URL_IMPORT");
+        assertThat(created.servings()).isEqualTo("4 servings");
         assertThat(created.shortNote()).isEqualTo("Best for weekends");
         assertThat(created.instructions()).isEqualTo("Mix ingredients\nBake for 20 minutes");
         assertThat(created.updatedAt()).isEqualTo(Instant.parse("2026-02-01T10:00:00Z"));
         assertThat(created.archivedAt()).isNull();
         assertThat(created.savedInRecipes()).isTrue();
+    }
+
+    @Test
+    void updateRecipeCarriesServingsThroughSavedRecipeUpdates() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                new InMemoryWeekPlanRepository(),
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-02-05T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Soup",
+                "Notebook",
+                "https://example.com/soup",
+                RecipeOriginKind.URL_IMPORT,
+                "2 servings",
+                "Initial note",
+                "Cook",
+                Instant.parse("2026-02-01T10:00:00Z"),
+                Instant.parse("2026-02-01T10:00:00Z"),
+                List.of()
+        ));
+
+        var updated = service.updateRecipe(
+                groupId,
+                userId,
+                recipeId,
+                "Soup",
+                "Notebook",
+                "https://example.com/soup",
+                "URL_IMPORT",
+                "4 servings",
+                "Updated note",
+                "Cook gently",
+                true,
+                List.of()
+        );
+
+        assertThat(updated.servings()).isEqualTo("4 servings");
+        assertThat(updated.shortNote()).isEqualTo("Updated note");
+        assertThat(updated.instructions()).isEqualTo("Cook gently");
     }
 
     @Test
@@ -756,6 +810,7 @@ class MealsApplicationServiceTest {
                 groupId,
                 userId,
                 "Recipe",
+                null,
                 null,
                 null,
                 null,
