@@ -61,7 +61,6 @@ export function MealDayDetailSheet({
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>{strings.title}</Text>
           <Text style={textStyles.h2}>{title}</Text>
           {subtitle ? <Subtle>{subtitle}</Subtle> : null}
         </View>
@@ -73,7 +72,6 @@ export function MealDayDetailSheet({
             <Text style={styles.error}>{error}</Text>
           ) : (
             <View style={styles.slotList}>
-              <Text style={styles.sectionLabel}>{strings.mealsLabel}</Text>
               {MEAL_TYPES.map((mealType) => {
                 const meal = mealsByType.get(mealType) ?? null;
                 return (
@@ -124,7 +122,12 @@ export function MealDayDetailSheet({
         </View>
 
         <View style={styles.footer}>
-          <AppButton title={strings.close} onPress={onClose} variant="ghost" fullWidth />
+          <AppButton
+            title={strings.close}
+            onPress={onClose}
+            variant="secondary"
+            fullWidth
+          />
         </View>
       </View>
     </OverlaySheet>
@@ -158,23 +161,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  eyebrow: {
-    ...textStyles.subtle,
-    color: theme.colors.feature.meals,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    fontWeight: '700',
-  },
   body: {
     gap: theme.spacing.sm,
   },
   slotList: {
     gap: theme.spacing.xs,
-  },
-  sectionLabel: {
-    ...textStyles.subtle,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
   slotRow: {
     gap: theme.spacing.xs,
@@ -244,7 +235,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footer: {
-    gap: theme.spacing.xs,
     paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,

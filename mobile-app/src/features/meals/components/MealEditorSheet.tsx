@@ -9,6 +9,7 @@ type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 
 type MealEditorSheetStrings = {
   planMealTitle: string;
+  editMealTitle: string;
   mealTitleLabel: string;
   mealTitlePlaceholder: string;
   mealTypeLabel: string;
@@ -121,6 +122,7 @@ export function MealEditorSheet({
       ? `1 ${strings.ingredientsSummarySuffix}`
       : `${ingredientCount} ${strings.ingredientsSummarySuffix}`;
   const saveActionLabel = isSavingMeal ? strings.savingMeal : strings.saveMeal;
+  const sheetTitle = hasExistingMeal ? strings.editMealTitle : strings.planMealTitle;
   const removeActionLabel = isRemovingMeal ? strings.removingMeal : strings.removeMeal;
   const recipeSectionLabel = hasExistingRecipe ? strings.savedRecipeLabel : strings.recipeLabel;
   const recipeSelectionActionLabel = hasExistingRecipe
@@ -167,7 +169,7 @@ export function MealEditorSheet({
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.sheetLayout}>
         <View style={styles.sheetStickyHeader}>
-          <Text style={textStyles.h2}>{strings.planMealTitle}</Text>
+          <Text style={textStyles.h2}>{sheetTitle}</Text>
         </View>
 
         <View style={styles.sheetBody}>
@@ -249,9 +251,11 @@ export function MealEditorSheet({
                   >
                     {recipeSummary}
                   </Text>
-                  <Text style={styles.recipeSummaryMeta} numberOfLines={2}>
-                    {recipeMeta}
-                  </Text>
+                  {recipeMeta ? (
+                    <Text style={styles.recipeSummaryMeta} numberOfLines={2}>
+                      {recipeMeta}
+                    </Text>
+                  ) : null}
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
               </Pressable>
@@ -315,27 +319,23 @@ export function MealEditorSheet({
                 accentKey="meals"
                 disabled={isActionPending}
               />
-              <View style={styles.sheetFooterSecondaryActions}>
-                {hasExistingMeal ? (
+              <AppButton
+                title={strings.close}
+                onPress={onClose}
+                variant="secondary"
+                fullWidth
+                disabled={isActionPending}
+              />
+              {hasExistingMeal ? (
+                <View style={styles.sheetFooterSecondaryActions}>
                   <AppButton
                     title={removeActionLabel}
                     onPress={onRemove}
                     variant="ghost"
                     disabled={isActionPending}
                   />
-                ) : null}
-                <Pressable
-                  onPress={onClose}
-                  disabled={isActionPending}
-                  style={({ pressed }) => [
-                    styles.footerCloseLink,
-                    isActionPending ? styles.footerCloseLinkDisabled : null,
-                    pressed ? styles.footerCloseLinkPressed : null,
-                  ]}
-                >
-                  <Text style={styles.footerCloseText}>{strings.close}</Text>
-                </Pressable>
-              </View>
+                </View>
+              ) : null}
             </View>
           </ScrollView>
         </View>
@@ -409,16 +409,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceSubtle,
   },
   recentMealActionRowPressed: {
     opacity: 0.72,
   },
   recentMealActionText: {
-    ...textStyles.body,
-    color: theme.colors.textPrimary,
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
   mealTitleInput: {
@@ -563,27 +566,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: theme.spacing.sm,
-  },
-  footerCloseLink: {
-    minHeight: 36,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  footerCloseLinkPressed: {
-    opacity: 0.7,
-  },
-  footerCloseLinkDisabled: {
-    opacity: 0.5,
-  },
-  footerCloseText: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
   },
 });

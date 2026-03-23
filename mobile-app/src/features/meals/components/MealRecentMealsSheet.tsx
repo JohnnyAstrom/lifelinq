@@ -50,8 +50,6 @@ export function MealRecentMealsSheet({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {strings.hint ? <Subtle>{strings.hint}</Subtle> : null}
-
             {isLoading ? <Subtle>{strings.loadingMeals}</Subtle> : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {!isLoading && !error && meals.length === 0 ? (
@@ -84,13 +82,15 @@ export function MealRecentMealsSheet({
               </View>
             ) : null}
 
-            <AppButton
-              title={strings.close}
-              onPress={onClose}
-              variant="ghost"
-              fullWidth
-            />
           </ScrollView>
+        </View>
+        <View style={styles.footer}>
+          <AppButton
+            title={strings.close}
+            onPress={onClose}
+            variant="secondary"
+            fullWidth
+          />
         </View>
       </View>
     </OverlaySheet>
@@ -170,5 +170,8 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.danger,
     fontFamily: theme.typography.body,
+  },
+  footer: {
+    paddingTop: theme.spacing.xs,
   },
 });

@@ -20,9 +20,8 @@ type ExistingMeal = {
 };
 
 type Strings = {
-  eyebrow: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   recipeLabel: string;
   weekLabel: string;
   dayLabel: string;
@@ -92,9 +91,8 @@ export function MealRecipePlanSheet({
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>{strings.eyebrow}</Text>
           <Text style={textStyles.h2}>{strings.title}</Text>
-          <Subtle>{strings.subtitle}</Subtle>
+          {strings.subtitle ? <Subtle>{strings.subtitle}</Subtle> : null}
         </View>
 
         <View style={styles.body}>
@@ -138,9 +136,11 @@ export function MealRecipePlanSheet({
           </View>
 
           {selectedExistingMeal ? (
-            <Text style={styles.slotHint}>
-              {strings.slotOccupiedHint(selectedExistingMeal.mealTitle)}
-            </Text>
+            <View style={styles.slotHintCard}>
+              <Text style={styles.slotHint}>
+                {strings.slotOccupiedHint(selectedExistingMeal.mealTitle)}
+              </Text>
+            </View>
           ) : null}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -156,6 +156,7 @@ export function MealRecipePlanSheet({
             onPress={handleConfirm}
             fullWidth
             disabled={isSubmitting || !selectedDay}
+            accentKey="meals"
           />
           <AppButton
             title={strings.close}
@@ -193,13 +194,6 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  eyebrow: {
-    ...textStyles.subtle,
-    color: theme.colors.feature.meals,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    fontWeight: '700',
   },
   body: {
     gap: theme.spacing.md,
@@ -248,11 +242,19 @@ const styles = StyleSheet.create({
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
   },
+  slotHintCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceSubtle,
+  },
   error: {
     ...textStyles.subtle,
     color: theme.colors.danger,
   },
   footer: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
   },
 });

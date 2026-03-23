@@ -135,7 +135,7 @@ export function MealShoppingReviewSheet({
               <AppButton
                 title={strings.close}
                 onPress={onClose}
-                variant="ghost"
+                variant="secondary"
                 fullWidth
                 disabled={isSubmitting}
               />
