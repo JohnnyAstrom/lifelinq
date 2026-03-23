@@ -16,14 +16,10 @@ type RecipeListItem = {
 
 type Strings = {
   title: string;
-  subtitle?: string;
-  libraryLabel?: string;
-  browseHint?: string;
   newRecipe: string;
   importRecipe: string;
   archivedAction: string;
   archivedTitle: string;
-  archivedSubtitle?: string;
   savedRecipesLabel: string;
   makeSoonTitle: string;
   recentlyUsedTitle: string;
@@ -97,30 +93,20 @@ export function MealsRecipesView({
   const isAllBrowse = browseMode === 'all';
   const isMakeSoonBrowse = browseMode === 'makeSoon';
   const isRecentBrowse = browseMode === 'recent';
-  const mainCountLabel = isArchivedView
-    ? strings.archivedCountLabel(archivedCount)
-    : isMakeSoonBrowse
-      ? strings.recipeCountLabel(makeSoonCount)
-      : isRecentBrowse
-        ? strings.recipeCountLabel(recentCount)
-        : strings.recipeCountLabel(activeCount);
-  const libraryCountLabel = !isArchivedView
-    ? strings.recipeCountLabel(activeCount)
-    : strings.archivedCountLabel(archivedCount);
   const libraryTitle = !isArchivedView ? strings.title : strings.archivedTitle;
-  const librarySubtitle = !isArchivedView ? strings.subtitle : strings.archivedSubtitle;
-  const libraryMeta = librarySubtitle ? `${libraryCountLabel} · ${librarySubtitle}` : libraryCountLabel;
   const shouldShowAlphabetSections = !isArchivedView && isAllBrowse && !hasSearchQuery;
   const mainLibraryLabel = isArchivedView
-    ? strings.archivedTitle
+    ? null
     : isMakeSoonBrowse
       ? strings.makeSoonTitle
       : isRecentBrowse
         ? strings.recentlyUsedTitle
         : strings.savedRecipesLabel;
-  const mainLibraryMeta = hasSearchQuery || isArchivedView || !isAllBrowse
-    ? (hasSearchQuery ? strings.matchingRecipesLabel(recipes.length) : mainCountLabel)
-    : null;
+  const mainLibraryMeta = hasSearchQuery
+    ? strings.matchingRecipesLabel(recipes.length)
+    : isArchivedView
+      ? strings.archivedCountLabel(archivedCount)
+      : null;
 
   function getBrowseEmptyState() {
     if (isArchivedView) {
@@ -237,15 +223,7 @@ export function MealsRecipesView({
             <View style={styles.libraryHeroBadge}>
               <Ionicons name="book-outline" size={18} color={theme.colors.feature.meals} />
             </View>
-            <View style={styles.libraryHeroCopy}>
-              {strings.libraryLabel ? (
-                <Text style={styles.libraryEyebrow}>{strings.libraryLabel}</Text>
-              ) : null}
-              <Text style={styles.libraryHeroTitle}>{strings.title}</Text>
-              <Text style={styles.libraryHeroSubtitle}>
-                {strings.subtitle ?? 'Browse, re-find, and save recipes you want to keep using.'}
-              </Text>
-            </View>
+            <Text style={styles.libraryHeroTitle}>{strings.title}</Text>
           </View>
           <View style={styles.libraryActionRow}>
             <Pressable
@@ -278,9 +256,6 @@ export function MealsRecipesView({
               placeholder={strings.searchPlaceholder}
               style={styles.searchInput}
             />
-            {strings.browseHint && !hasSearchQuery ? (
-              <Text style={styles.retrievalHint}>{strings.browseHint}</Text>
-            ) : null}
           </View>
         </View>
       ) : null}
@@ -288,11 +263,7 @@ export function MealsRecipesView({
       {isArchivedView ? (
         <>
           <View style={styles.archivedHeader}>
-            <View style={styles.archivedHeaderCopy}>
-              <Text style={styles.libraryEyebrow}>{strings.archivedAction}</Text>
-              <Text style={styles.libraryTitle}>{libraryTitle}</Text>
-              <Text style={styles.libraryMeta}>{libraryMeta}</Text>
-            </View>
+            <Text style={styles.libraryTitle}>{libraryTitle}</Text>
           </View>
           <View style={styles.retrievalBand}>
             <AppInput
@@ -334,7 +305,9 @@ export function MealsRecipesView({
             <View style={styles.mainLibrarySection}>
               <View style={styles.mainLibraryHeader}>
                 <View style={styles.mainLibraryCopy}>
-                  <Text style={styles.mainLibraryLabel}>{mainLibraryLabel}</Text>
+                  {mainLibraryLabel ? (
+                    <Text style={styles.mainLibraryLabel}>{mainLibraryLabel}</Text>
+                  ) : null}
                   {mainLibraryMeta ? (
                     <Text style={styles.mainLibraryMeta}>{mainLibraryMeta}</Text>
                   ) : null}
@@ -407,7 +380,7 @@ const styles = StyleSheet.create({
   },
   libraryHeroTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: theme.spacing.sm,
   },
   libraryHeroBadge: {
@@ -418,25 +391,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
   },
-  libraryHeroCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  libraryEyebrow: {
-    ...textStyles.subtle,
-    color: theme.colors.feature.meals,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
   libraryHeroTitle: {
     ...textStyles.h1,
     color: theme.colors.textPrimary,
-  },
-  libraryHeroSubtitle: {
-    ...textStyles.body,
-    color: theme.colors.textSecondary,
+    flex: 1,
   },
   libraryActionRow: {
     flexDirection: 'row',
@@ -489,18 +447,11 @@ const styles = StyleSheet.create({
   retrievalBand: {
     gap: theme.spacing.xs,
   },
-  retrievalHint: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-  },
   searchInput: {
     backgroundColor: theme.colors.surface,
   },
   archivedHeader: {
-    gap: theme.spacing.xs,
-  },
-  archivedHeaderCopy: {
-    gap: 4,
+    paddingTop: theme.spacing.xs,
   },
   workspaceBody: {
     gap: theme.spacing.sm,

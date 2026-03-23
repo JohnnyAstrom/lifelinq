@@ -853,14 +853,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   onImportRecipe={recipesWorkspace.recipes.openImportRecipe}
                   strings={{
                     title: strings.recipesOverviewTitle,
-                    subtitle: 'A calm home for the recipes you keep coming back to.',
-                    libraryLabel: 'Recipe library',
-                    browseHint: 'Search when you know it, or browse what still sounds good.',
                     newRecipe: strings.createRecipeFromRecipes,
                     importRecipe: strings.importRecipeFromRecipes,
                     archivedAction: 'Archived recipes',
                     archivedTitle: 'Archived recipes',
-                    archivedSubtitle: 'Stored out of the way until you want one back.',
                     savedRecipesLabel: 'Saved recipes',
                     makeSoonTitle: strings.makeSoonRecipesTitle,
                     recentlyUsedTitle: strings.recentlyUsedRecipesTitle,
