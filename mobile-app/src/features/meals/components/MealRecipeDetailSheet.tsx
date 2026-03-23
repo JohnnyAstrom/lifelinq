@@ -43,6 +43,7 @@ type Strings = MealIngredientEditorRowStrings & {
   mealAttachmentValue?: string;
   editSavedRecipeAction?: string;
   editRecipeAction?: string;
+  planRecipeAction?: string;
   markMakeSoonAction?: string;
   clearMakeSoonAction?: string;
   editingSavedRecipeHint?: string;
@@ -233,6 +234,7 @@ type Props = {
   onChangeIngredientQuantity: (rowId: string, value: string) => void;
   onToggleIngredientUnit: (rowId: string, value: MealIngredientUnit) => void;
   onStartEditingSavedRecipeDirectly: () => void;
+  onPlanRecipe?: () => void;
   onSave?: () => void;
   onSaveToRecipes?: () => void;
   onToggleMakeSoon?: () => void;
@@ -289,6 +291,7 @@ export function MealRecipeDetailSheet({
   onChangeIngredientQuantity,
   onToggleIngredientUnit,
   onStartEditingSavedRecipeDirectly,
+  onPlanRecipe,
   onSave,
   onSaveToRecipes,
   onToggleMakeSoon,
@@ -914,6 +917,16 @@ export function MealRecipeDetailSheet({
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <View style={styles.actionsSection}>
+              {isContentReadOnly && onPlanRecipe && strings.planRecipeAction ? (
+                <AppButton
+                  title={strings.planRecipeAction}
+                  onPress={onPlanRecipe}
+                  variant="ghost"
+                  fullWidth
+                  disabled={isActionPending || isRecipeLoading}
+                />
+              ) : null}
+
               {onSave && strings.saveRecipe && !isContentReadOnly ? (
                 <AppButton
                   title={isSaving && strings.savingRecipe ? strings.savingRecipe : strings.saveRecipe}

@@ -13,6 +13,7 @@ import { MealDayDetailSheet } from '../components/MealDayDetailSheet';
 import { MealEditorSheet } from '../components/MealEditorSheet';
 import { MealRecipeDetailSheet } from '../components/MealRecipeDetailSheet';
 import { MealRecipeImportSheet } from '../components/MealRecipeImportSheet';
+import { MealRecipePlanSheet } from '../components/MealRecipePlanSheet';
 import { MealRecipePickerSheet } from '../components/MealRecipePickerSheet';
 import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
 import { MealsRecipesView } from '../components/MealsRecipesView';
@@ -53,6 +54,10 @@ type Props = {
 type SurfaceMode = 'week' | 'calendar';
 type WorkspaceMode = 'home' | 'plan' | 'recipes';
 type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
+type RecipePlanBridgeState = {
+  recipeId: string;
+  recipeTitle: string;
+};
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MEAL_TYPE_LABELS = {
@@ -168,6 +173,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSummaryHint: 'Optional ingredients, notes, and cooking guidance.',
     savedRecipeSummaryHint: 'Reusable recipe from Recipes.',
     loadingRecipe: 'Loading details...',
+    planRecipeAction: 'Plan this recipe',
+    planRecipeSheetTitle: 'Plan this recipe',
+    planRecipeSheetSubtitle: 'Choose where this recipe belongs in your meal plan.',
+    planRecipeWeekLabel: 'Week',
+    planRecipeDayLabel: 'Day',
+    planRecipeMealLabel: 'Meal',
+    planRecipeRecipeLabel: 'Recipe',
+    planRecipeReplaceHint: (mealTitle: string) => `This replaces ${mealTitle}.`,
+    confirmPlanRecipe: 'Plan recipe',
+    replacePlannedMeal: 'Replace planned meal',
+    planningRecipe: 'Planning recipe...',
     recipeSheetEyebrow: 'Recipe',
     mealDetailSheetEyebrow: 'Meal',
     recipeSheetTitle: 'Recipe',
@@ -327,6 +343,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     mealType: MealType;
     target: 'slot' | 'recipe';
   } | null>(null);
+  const [recipePlanBridge, setRecipePlanBridge] = useState<RecipePlanBridgeState | null>(null);
+  const [isPlanningRecipe, setIsPlanningRecipe] = useState(false);
+  const [recipePlanError, setRecipePlanError] = useState<string | null>(null);
   const [selectedDayPlan, setSelectedDayPlan] = useState<WeekPlanResponse | null>(null);
   const [isSelectedDayPlanLoading, setIsSelectedDayPlanLoading] = useState(false);
   const [selectedDayPlanError, setSelectedDayPlanError] = useState<string | null>(null);
@@ -358,6 +377,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     }
     void recipesWorkspace.recipes.reload();
   }, [workspaceMode]);
+  useEffect(() => {
+    if (recipesWorkspace.recipeDetail.isOpen || !recipePlanBridge) {
+      return;
+    }
+    setRecipePlanBridge(null);
+    setRecipePlanError(null);
+  }, [recipePlanBridge, recipesWorkspace.recipeDetail.isOpen]);
   const shopping = workflow.shopping;
   const mealsByDay = workflow.mealsByDay;
   const lists = shopping.lists;
@@ -443,6 +469,37 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     && !editor.isEditingSavedRecipeDirectly;
   const isMealVariationFromSavedRecipe = editor.hasModifiedPickedRecipe
     && !editor.isEditingSavedRecipeDirectly;
+  const currentWeekDayOptions = useMemo(() => (
+    Array.from({ length: 7 }, (_, index) => {
+      const utcDate = new Date(weekStart.getTime());
+      utcDate.setUTCDate(weekStart.getUTCDate() + index);
+      const localDate = new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
+      return {
+        dayOfWeek: index + 1,
+        date: localDate,
+        label: formatDayLabel(localDate, index),
+        shortLabel: localDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }),
+      };
+    })
+  ), [weekStart]);
+  const currentWeekMealEntries = useMemo(() => (
+    Array.from(mealsByDay.entries()).flatMap(([dayOfWeek, meals]) => (
+      meals.map((meal) => ({
+        dayOfWeek,
+        mealType: meal.mealType,
+        mealTitle: meal.mealTitle,
+      }))
+    ))
+  ), [mealsByDay]);
+  const defaultRecipePlanDayOfWeek = useMemo(() => {
+    const today = new Date();
+    const todayWeek = getIsoWeekParts(today);
+    if (todayWeek.year === year && todayWeek.isoWeek === isoWeek) {
+      const dayOfWeek = today.getDay();
+      return dayOfWeek === 0 ? 7 : dayOfWeek;
+    }
+    return 1;
+  }, [isoWeek, year]);
 
   const periodSummary = useMemo(() => {
     if (surfaceMode === 'week') {
@@ -620,6 +677,61 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     setSelectedDayDetailDate(null);
   }
 
+  function openRecipePlanBridge() {
+    const recipeId = recipesWorkspace.recipeDetail.recipeId;
+    if (!recipeId || !recipesWorkspace.recipeDetail.isReadMode || recipesWorkspace.recipeDetail.isArchivedRecipe) {
+      return;
+    }
+    setRecipePlanError(null);
+    setRecipePlanBridge({
+      recipeId,
+      recipeTitle: recipesWorkspace.recipeDetail.recipeTitle.trim() || strings.recipeSheetTitle,
+    });
+  }
+
+  function closeRecipePlanBridge() {
+    if (isPlanningRecipe) {
+      return;
+    }
+    setRecipePlanBridge(null);
+    setRecipePlanError(null);
+  }
+
+  async function confirmRecipePlanBridge(selection: {
+    dayOfWeek: number;
+    mealType: MealType;
+    date: Date;
+  }) {
+    if (!recipePlanBridge) {
+      return;
+    }
+
+    setIsPlanningRecipe(true);
+    setRecipePlanError(null);
+    try {
+      const saved = await plan.addMeal(selection.dayOfWeek, selection.mealType, {
+        mealTitle: recipePlanBridge.recipeTitle,
+        recipeId: recipePlanBridge.recipeId,
+        mealType: selection.mealType,
+        targetShoppingListId: null,
+        selectedIngredientPositions: null,
+      });
+      if (!saved) {
+        return;
+      }
+      recipesWorkspace.recipeDetail.closeRecipeDetail();
+      setRecipePlanBridge(null);
+      setWorkspaceMode('plan');
+      setSurfaceMode('week');
+      setAnchorDate(selection.date);
+      setSelectedDayDetailDate(selection.date);
+    } catch (err) {
+      setRecipePlanError(formatApiError(err));
+    } finally {
+      setIsPlanningRecipe(false);
+    }
+  }
+
   function shiftCurrentPeriod(direction: -1 | 1) {
     if (surfaceMode === 'week') {
       setAnchorDate(addDays(anchorDate, direction * 7));
@@ -649,13 +761,16 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     onGoBack: handleMealsBack,
     isOverlayOpen:
       !!selectedDayDetailDate
+      || !!recipePlanBridge
       || editor.isOpen
       || editor.isRecipeDetailOpen
       || editor.isRecipePickerOpen
       || editor.isShoppingReviewOpen
       || recipesWorkspace.importDraft.isOpen
       || recipesWorkspace.recipeDetail.isOpen,
-    onCloseOverlay: editor.isRecipeDetailOpen
+    onCloseOverlay: recipePlanBridge
+        ? closeRecipePlanBridge
+      : editor.isRecipeDetailOpen
         ? editor.closeRecipeDetail
       : editor.isRecipePickerOpen
         ? editor.closeRecipePicker
@@ -1187,6 +1302,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           onToggleIngredientUnit={recipesWorkspace.recipeDetail.setIngredientUnit}
           onStartEditingSavedRecipeDirectly={() => {}}
           onEnterEditMode={recipesWorkspace.recipeDetail.startEditingRecipe}
+          onPlanRecipe={recipesWorkspace.recipeDetail.isReadMode && !recipesWorkspace.recipeDetail.isArchivedRecipe
+            ? openRecipePlanBridge
+            : undefined}
           onToggleMakeSoon={recipesWorkspace.recipeDetail.toggleRecipeMakeSoon}
           onSave={recipesWorkspace.recipeDetail.saveRecipe}
           onClose={recipesWorkspace.recipeDetail.closeRecipeDetail}
@@ -1245,6 +1363,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               ? undefined
               : strings.recipeNameEditHint,
             editRecipeAction: strings.editRecipeAction,
+            planRecipeAction: recipesWorkspace.recipeDetail.isReadMode && !recipesWorkspace.recipeDetail.isArchivedRecipe
+              ? strings.planRecipeAction
+              : undefined,
             markMakeSoonAction: strings.markMakeSoonAction,
             clearMakeSoonAction: strings.clearMakeSoonAction,
             recipeContentLabel: recipesWorkspace.recipeDetail.isImportDraft
@@ -1347,6 +1468,36 @@ export function MealsWeekScreen({ token, onDone }: Props) {
               : undefined,
             deletingRecipe: strings.deletingRecipe,
             deleteRecipeHint: undefined,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
+      {recipePlanBridge ? (
+        <MealRecipePlanSheet
+          recipeTitle={recipePlanBridge.recipeTitle}
+          weekSummary={formatWeekRangeLabel(weekStart, weekEnd)}
+          days={currentWeekDayOptions}
+          mealTypeLabels={MEAL_TYPE_LABELS}
+          existingMeals={currentWeekMealEntries}
+          defaultDayOfWeek={defaultRecipePlanDayOfWeek}
+          defaultMealType="DINNER"
+          isSubmitting={isPlanningRecipe}
+          error={recipePlanError}
+          onConfirm={confirmRecipePlanBridge}
+          onClose={closeRecipePlanBridge}
+          strings={{
+            eyebrow: 'PLAN',
+            title: strings.planRecipeSheetTitle,
+            subtitle: strings.planRecipeSheetSubtitle,
+            recipeLabel: strings.planRecipeRecipeLabel,
+            weekLabel: strings.planRecipeWeekLabel,
+            dayLabel: strings.planRecipeDayLabel,
+            mealLabel: strings.planRecipeMealLabel,
+            slotOccupiedHint: strings.planRecipeReplaceHint,
+            planAction: strings.confirmPlanRecipe,
+            replaceAction: strings.replacePlannedMeal,
+            planningAction: strings.planningRecipe,
             close: strings.close,
           }}
         />
