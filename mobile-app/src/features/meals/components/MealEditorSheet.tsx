@@ -319,23 +319,34 @@ export function MealEditorSheet({
                 accentKey="meals"
                 disabled={isActionPending}
               />
-              <AppButton
-                title={strings.close}
-                onPress={onClose}
-                variant="secondary"
-                fullWidth
-                disabled={isActionPending}
-              />
-              {hasExistingMeal ? (
-                <View style={styles.sheetFooterSecondaryActions}>
-                  <AppButton
-                    title={removeActionLabel}
+              <View style={styles.sheetFooterUtilityRow}>
+                {hasExistingMeal ? (
+                  <Pressable
                     onPress={onRemove}
-                    variant="ghost"
                     disabled={isActionPending}
-                  />
-                </View>
-              ) : null}
+                    style={({ pressed }) => [
+                      styles.footerDestructiveLink,
+                      isActionPending ? styles.footerLinkDisabled : null,
+                      pressed ? styles.footerLinkPressed : null,
+                    ]}
+                  >
+                    <Text style={styles.footerDestructiveText}>{removeActionLabel}</Text>
+                  </Pressable>
+                ) : (
+                  <View />
+                )}
+                <Pressable
+                  onPress={onClose}
+                  disabled={isActionPending}
+                  style={({ pressed }) => [
+                    styles.footerCloseLink,
+                    isActionPending ? styles.footerLinkDisabled : null,
+                    pressed ? styles.footerLinkPressed : null,
+                  ]}
+                >
+                  <Text style={styles.footerCloseText}>{strings.close}</Text>
+                </Pressable>
+              </View>
             </View>
           </ScrollView>
         </View>
@@ -374,7 +385,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   editorSection: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   contextField: {
     gap: theme.spacing.xs,
@@ -410,7 +421,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
@@ -427,9 +438,9 @@ const styles = StyleSheet.create({
   mealTitleInput: {
     ...textStyles.h2,
     fontWeight: '700',
-    lineHeight: 32,
-    minHeight: 68,
-    paddingVertical: theme.spacing.sm,
+    lineHeight: 30,
+    minHeight: 60,
+    paddingVertical: theme.spacing.xs,
     backgroundColor: theme.colors.surface,
     textAlignVertical: 'top',
   },
@@ -451,7 +462,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,13 +510,13 @@ const styles = StyleSheet.create({
   sheetScroll: {
     minHeight: 0,
     maxHeight: '100%',
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   sheetScrollContent: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
     minWidth: 0,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
   },
   shoppingActionSection: {
     gap: theme.spacing.xs,
@@ -515,7 +526,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
@@ -556,15 +567,45 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   sheetFooterActions: {
-    gap: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
   },
-  sheetFooterSecondaryActions: {
+  sheetFooterUtilityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     gap: theme.spacing.sm,
+  },
+  footerCloseLink: {
+    minHeight: 32,
+    paddingVertical: 4,
+    paddingHorizontal: theme.spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerDestructiveLink: {
+    minHeight: 32,
+    paddingVertical: 4,
+    paddingHorizontal: theme.spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerLinkPressed: {
+    opacity: 0.72,
+  },
+  footerLinkDisabled: {
+    opacity: 0.5,
+  },
+  footerCloseText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  footerDestructiveText: {
+    ...textStyles.subtle,
+    color: theme.colors.danger,
+    fontWeight: '600',
   },
 });
