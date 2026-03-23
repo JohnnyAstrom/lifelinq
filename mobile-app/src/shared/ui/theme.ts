@@ -46,7 +46,7 @@ const sheetPadding = 16;
 
 export const theme = {
   colors: {
-    background: '#F5F6F8',
+    background: '#FCFAF7',
     scrim: 'rgba(0,0,0,0.4)',
     card: '#FFFFFF',
     surfaceSubtle: '#EEF0F3',
@@ -58,7 +58,7 @@ export const theme = {
     success: '#2F7A4F',
 
     // Backward-compatible aliases for existing UI code.
-    bg: '#F5F6F8',
+    bg: '#FCFAF7',
     surface: '#FFFFFF',
     surfaceAlt: '#EEF0F3',
     text: '#1F2328',
