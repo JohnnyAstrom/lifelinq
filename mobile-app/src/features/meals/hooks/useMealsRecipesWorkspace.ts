@@ -35,6 +35,7 @@ import {
 type DetailPendingAction = 'save' | 'archive' | 'delete' | 'make-soon' | null;
 type RecipeDetailMode = 'create' | 'saved' | 'import';
 type RecipeListMode = 'active' | 'archived';
+type RecipeBrowseMode = 'all' | 'makeSoon' | 'recent';
 type RecipeSaveRequest = {
   name: string;
   sourceName: string | null;
@@ -56,7 +57,32 @@ type RecipeListItem = {
   identitySummary: string | null;
   archivedAt: string | null;
   makeSoonAt: string | null;
+  searchText: string;
 };
+
+function normalizeRecipeSearchText(value: string | null | undefined) {
+  return (value ?? '')
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeRecipeTitle(value: string) {
+  return normalizeRecipeSearchText(value);
+}
+
+function buildTitleFamilyKey(name: string) {
+  const tokens = normalizeRecipeTitle(name)
+    .split(' ')
+    .filter((token) => token.length > 1)
+    .filter((token) => !['and', 'med', 'och', 'with'].includes(token));
+  if (tokens.length < 2) {
+    return tokens[0] ?? null;
+  }
+  return `${tokens[0]} ${tokens[1]}`;
+}
 
 function normalizeClipboardUrlCandidate(value: string) {
   const trimmed = value.trim();
@@ -91,6 +117,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listMode, setListMode] = useState<RecipeListMode>('active');
+  const [browseMode, setBrowseMode] = useState<RecipeBrowseMode>('all');
   const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
   const [recentlyUsedRecipes, setRecentlyUsedRecipes] = useState<RecipeResponse[] | null>(null);
 
@@ -127,32 +154,15 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     [ingredientRows]
   );
 
-  function toRecipeListItems(recipes: RecipeResponse[]): RecipeListItem[] {
+  function toRecipeListItems(
+    recipes: RecipeResponse[],
+    options?: { preserveOrder?: boolean },
+  ): RecipeListItem[] {
     const nameCounts = new Map<string, number>();
     const titleFamilyCounts = new Map<string, number>();
 
-    function normalizeTitle(value: string) {
-      return value
-        .trim()
-        .toLocaleLowerCase()
-        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-
-    function buildTitleFamilyKey(name: string) {
-      const tokens = normalizeTitle(name)
-        .split(' ')
-        .filter((token) => token.length > 1)
-        .filter((token) => !['and', 'med', 'och', 'with'].includes(token));
-      if (tokens.length < 2) {
-        return tokens[0] ?? null;
-      }
-      return `${tokens[0]} ${tokens[1]}`;
-    }
-
     for (const recipe of recipes) {
-      const normalizedName = normalizeTitle(recipe.name);
+      const normalizedName = normalizeRecipeTitle(recipe.name);
       nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1);
 
       const titleFamilyKey = buildTitleFamilyKey(recipe.name);
@@ -184,28 +194,37 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return null;
     }
 
-    return [...recipes]
-      .sort((left, right) => {
-        const nameComparison = left.name.localeCompare(right.name);
-        if (nameComparison !== 0) {
-          return nameComparison;
-        }
-        const sourceComparison = (left.sourceName ?? '').localeCompare(right.sourceName ?? '');
-        if (sourceComparison !== 0) {
-          return sourceComparison;
-        }
-        return right.createdAt.localeCompare(left.createdAt);
-      })
+    const orderedRecipes = options?.preserveOrder
+      ? [...recipes]
+      : [...recipes].sort((left, right) => {
+          const nameComparison = left.name.localeCompare(right.name);
+          if (nameComparison !== 0) {
+            return nameComparison;
+          }
+          const sourceComparison = (left.sourceName ?? '').localeCompare(right.sourceName ?? '');
+          if (sourceComparison !== 0) {
+            return sourceComparison;
+          }
+          return right.createdAt.localeCompare(left.createdAt);
+        });
+
+    return orderedRecipes
       .map((recipe) => ({
         recipeId: recipe.recipeId,
         name: recipe.name,
         sourceName: recipe.sourceName ?? null,
         ingredientCount: recipe.ingredients.length,
-        duplicateNameCount: nameCounts.get(normalizeTitle(recipe.name)) ?? 1,
+        duplicateNameCount: nameCounts.get(normalizeRecipeTitle(recipe.name)) ?? 1,
         similarNameCount: titleFamilyCounts.get(buildTitleFamilyKey(recipe.name) ?? '') ?? 1,
         identitySummary: buildIdentitySummary(recipe),
         archivedAt: recipe.archivedAt,
         makeSoonAt: recipe.makeSoonAt,
+        searchText: normalizeRecipeSearchText([
+          recipe.name,
+          recipe.sourceName,
+          recipe.shortNote,
+          ...recipe.ingredients.map((ingredient) => ingredient.name),
+        ].filter(Boolean).join(' ')),
       }));
   }
 
@@ -228,7 +247,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return toRecipeListItems(
         (recentlyUsedRecipes ?? [])
           .filter((recipe) => !makeSoonRecipeIds.has(recipe.recipeId))
-          .slice(0, 3)
+          ,
+        { preserveOrder: true }
       );
     },
     [activeRecipes, recentlyUsedRecipes]
@@ -237,27 +257,82 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     () => toRecipeListItems(
       (activeRecipes ?? [])
         .filter((recipe) => recipe.makeSoonAt != null)
-        .sort((left, right) => (right.makeSoonAt ?? '').localeCompare(left.makeSoonAt ?? ''))
-        .slice(0, 3)
+        .sort((left, right) => (right.makeSoonAt ?? '').localeCompare(left.makeSoonAt ?? '')),
+      { preserveOrder: true }
     ),
     [activeRecipes]
   );
   const visibleRecipeListItems = useMemo(
-    () => listMode === 'active' ? activeRecipeListItems : archivedRecipeListItems,
-    [activeRecipeListItems, archivedRecipeListItems, listMode]
+    () => {
+      if (listMode === 'archived') {
+        return archivedRecipeListItems;
+      }
+      if (browseMode === 'makeSoon') {
+        return makeSoonRecipeItems;
+      }
+      if (browseMode === 'recent') {
+        return recentlyUsedRecipeItems;
+      }
+      return activeRecipeListItems;
+    },
+    [
+      activeRecipeListItems,
+      archivedRecipeListItems,
+      browseMode,
+      listMode,
+      makeSoonRecipeItems,
+      recentlyUsedRecipeItems,
+    ]
   );
 
   const filteredRecipeListItems = useMemo(() => {
-    const normalizedQuery = recipeSearchQuery.trim().toLocaleLowerCase();
+    const normalizedQuery = normalizeRecipeSearchText(recipeSearchQuery);
     if (normalizedQuery.length === 0) {
       return visibleRecipeListItems;
     }
 
-    return visibleRecipeListItems.filter((recipe) => {
-      const titleMatch = recipe.name.toLocaleLowerCase().includes(normalizedQuery);
-      const sourceMatch = (recipe.sourceName ?? '').toLocaleLowerCase().includes(normalizedQuery);
-      return titleMatch || sourceMatch;
-    });
+    function getMatchScore(recipe: RecipeListItem) {
+      const title = normalizeRecipeTitle(recipe.name);
+      const source = normalizeRecipeSearchText(recipe.sourceName);
+      const summary = normalizeRecipeSearchText(recipe.identitySummary);
+      if (title === normalizedQuery) {
+        return 0;
+      }
+      if (title.startsWith(normalizedQuery)) {
+        return 1;
+      }
+      if (title.split(' ').some((token) => token.startsWith(normalizedQuery))) {
+        return 2;
+      }
+      if (source.startsWith(normalizedQuery)) {
+        return 3;
+      }
+      if (source.includes(normalizedQuery)) {
+        return 4;
+      }
+      if (summary.includes(normalizedQuery)) {
+        return 5;
+      }
+      if (recipe.searchText.includes(normalizedQuery)) {
+        return 6;
+      }
+      return null;
+    }
+
+    return visibleRecipeListItems
+      .map((recipe) => ({ recipe, score: getMatchScore(recipe) }))
+      .filter((entry): entry is { recipe: RecipeListItem; score: number } => entry.score != null)
+      .sort((left, right) => {
+        if (left.score !== right.score) {
+          return left.score - right.score;
+        }
+        const nameComparison = left.recipe.name.localeCompare(right.recipe.name);
+        if (nameComparison !== 0) {
+          return nameComparison;
+        }
+        return (left.recipe.sourceName ?? '').localeCompare(right.recipe.sourceName ?? '');
+      })
+      .map((entry) => entry.recipe);
   }, [visibleRecipeListItems, recipeSearchQuery]);
 
   async function loadRecipes(options?: { refreshing?: boolean }) {
@@ -490,6 +565,18 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   function showArchivedRecipes() {
     setListMode('archived');
+  }
+
+  function showAllBrowseRecipes() {
+    setBrowseMode('all');
+  }
+
+  function showMakeSoonBrowseRecipes() {
+    setBrowseMode('makeSoon');
+  }
+
+  function showRecentBrowseRecipes() {
+    setBrowseMode('recent');
   }
 
   function addIngredientRow() {
@@ -782,8 +869,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       makeSoonItems: makeSoonRecipeItems,
       searchQuery: recipeSearchQuery,
       listMode,
+      browseMode,
       activeCount: activeRecipes?.length ?? 0,
       archivedCount: archivedRecipes?.length ?? 0,
+      makeSoonCount: makeSoonRecipeItems.length,
+      recentCount: recentlyUsedRecipeItems.length,
       isInitialLoading: !hasLoaded && isListLoading,
       isRefreshing,
       error,
@@ -791,6 +881,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       reload: () => loadRecipes({ refreshing: true }),
       showActiveRecipes,
       showArchivedRecipes,
+      showAllBrowseRecipes,
+      showMakeSoonBrowseRecipes,
+      showRecentBrowseRecipes,
       setSearchQuery: setRecipeSearchQuery,
       openRecipe,
       openCreateRecipe,

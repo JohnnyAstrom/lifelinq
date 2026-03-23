@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppInput, Subtle } from '../../../shared/ui/components';
+import { AppChip, AppInput, Subtle } from '../../../shared/ui/components';
 import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
 
 type RecipeListItem = {
@@ -28,10 +28,17 @@ type Strings = {
   savedRecipesLabel: string;
   makeSoonTitle: string;
   recentlyUsedTitle: string;
+  browseAllLabel: string;
+  browseMakeSoonLabel: string;
+  browseRecentLabel: string;
   searchPlaceholder: string;
   loadingRecipes: string;
   noRecipes: string;
   noRecipesHint?: string;
+  noMakeSoonRecipes: string;
+  noMakeSoonRecipesHint?: string;
+  noRecentRecipes: string;
+  noRecentRecipesHint?: string;
   noArchivedRecipes: string;
   noArchivedRecipesHint?: string;
   noSearchResults: string;
@@ -40,6 +47,7 @@ type Strings = {
   similarNameHint: string;
   recipeCountLabel: (count: number) => string;
   archivedCountLabel: (count: number) => string;
+  matchingRecipesLabel: (count: number) => string;
 };
 
 type Props = {
@@ -48,12 +56,18 @@ type Props = {
   recentRecipes: RecipeListItem[];
   searchQuery: string;
   listMode: 'active' | 'archived';
+  browseMode: 'all' | 'makeSoon' | 'recent';
   activeCount: number;
   archivedCount: number;
+  makeSoonCount: number;
+  recentCount: number;
   isLoading: boolean;
   error: string | null;
   onShowActive: () => void;
   onShowArchived: () => void;
+  onShowAllRecipes: () => void;
+  onShowMakeSoonRecipes: () => void;
+  onShowRecentRecipes: () => void;
   onChangeSearchQuery: (value: string) => void;
   onOpenRecipe: (recipeId: string) => void;
   onCreateRecipe: () => void;
@@ -67,12 +81,18 @@ export function MealsRecipesView({
   recentRecipes,
   searchQuery,
   listMode,
+  browseMode,
   activeCount,
   archivedCount,
+  makeSoonCount,
+  recentCount,
   isLoading,
   error,
   onShowActive,
   onShowArchived,
+  onShowAllRecipes,
+  onShowMakeSoonRecipes,
+  onShowRecentRecipes,
   onChangeSearchQuery,
   onOpenRecipe,
   onCreateRecipe,
@@ -82,21 +102,68 @@ export function MealsRecipesView({
   const supportPreviewLimit = 3;
   const hasSearchQuery = searchQuery.trim().length > 0;
   const isArchivedView = listMode === 'archived';
-  const showMakeSoon = !isArchivedView && !hasSearchQuery && makeSoonRecipes.length > 0;
+  const isAllBrowse = browseMode === 'all';
+  const isMakeSoonBrowse = browseMode === 'makeSoon';
+  const isRecentBrowse = browseMode === 'recent';
+  const showMakeSoon = !isArchivedView && isAllBrowse && !hasSearchQuery && makeSoonRecipes.length > 0;
   const showRecentlyUsed = !isArchivedView
+    && isAllBrowse
     && !hasSearchQuery
     && !showMakeSoon
     && recentRecipes.length > 0;
   const showTopSections = showMakeSoon || showRecentlyUsed;
-  const countLabel = !isArchivedView
+  const mainCountLabel = isArchivedView
+    ? strings.archivedCountLabel(archivedCount)
+    : isMakeSoonBrowse
+      ? strings.recipeCountLabel(makeSoonCount)
+      : isRecentBrowse
+        ? strings.recipeCountLabel(recentCount)
+        : strings.recipeCountLabel(activeCount);
+  const libraryCountLabel = !isArchivedView
     ? strings.recipeCountLabel(activeCount)
     : strings.archivedCountLabel(archivedCount);
   const libraryTitle = !isArchivedView ? strings.title : strings.archivedTitle;
   const librarySubtitle = !isArchivedView ? strings.subtitle : strings.archivedSubtitle;
-  const libraryMeta = librarySubtitle ? `${countLabel} · ${librarySubtitle}` : countLabel;
+  const libraryMeta = librarySubtitle ? `${libraryCountLabel} · ${librarySubtitle}` : libraryCountLabel;
   const supportTitle = showMakeSoon ? strings.makeSoonTitle : showRecentlyUsed ? strings.recentlyUsedTitle : null;
   const supportItems = (showMakeSoon ? makeSoonRecipes : showRecentlyUsed ? recentRecipes : [])
     .slice(0, supportPreviewLimit);
+  const shouldShowAlphabetSections = !isArchivedView && isAllBrowse && !hasSearchQuery;
+  const mainLibraryLabel = isArchivedView
+    ? strings.archivedTitle
+    : isMakeSoonBrowse
+      ? strings.makeSoonTitle
+      : isRecentBrowse
+        ? strings.recentlyUsedTitle
+        : strings.savedRecipesLabel;
+  const mainLibraryMeta = hasSearchQuery
+    ? strings.matchingRecipesLabel(recipes.length)
+    : mainCountLabel;
+
+  function getBrowseEmptyState() {
+    if (isArchivedView) {
+      return {
+        title: strings.noArchivedRecipes,
+        hint: strings.noArchivedRecipesHint,
+      };
+    }
+    if (isMakeSoonBrowse) {
+      return {
+        title: strings.noMakeSoonRecipes,
+        hint: strings.noMakeSoonRecipesHint,
+      };
+    }
+    if (isRecentBrowse) {
+      return {
+        title: strings.noRecentRecipes,
+        hint: strings.noRecentRecipesHint,
+      };
+    }
+    return {
+      title: strings.noRecipes,
+      hint: strings.noRecipesHint,
+    };
+  }
 
   function renderRecipeRows(
     items: RecipeListItem[],
@@ -141,7 +208,7 @@ export function MealsRecipesView({
             </Text>
             <Text
               style={variant === 'support' ? styles.supportRowMeta : styles.rowMeta}
-              numberOfLines={1}
+              numberOfLines={variant === 'support' ? 1 : 2}
             >
               {metaLine}
             </Text>
@@ -154,6 +221,35 @@ export function MealsRecipesView({
         </Pressable>
       );
     });
+  }
+
+  function renderAlphabetSections(items: RecipeListItem[]) {
+    const sections = new Map<string, RecipeListItem[]>();
+
+    for (const recipe of items) {
+      const letter = recipe.name.trim().charAt(0).toLocaleUpperCase();
+      const sectionKey = /[\p{L}\p{N}]/u.test(letter) ? letter : '#';
+      const existing = sections.get(sectionKey);
+      if (existing) {
+        existing.push(recipe);
+      } else {
+        sections.set(sectionKey, [recipe]);
+      }
+    }
+
+    return Array.from(sections.entries()).map(([sectionKey, sectionItems], index) => (
+      <View
+        key={`section-${sectionKey}`}
+        style={index > 0 ? styles.alphabetSectionBorder : null}
+      >
+        <View style={styles.alphabetSectionHeader}>
+          <Text style={styles.alphabetSectionLabel}>{sectionKey}</Text>
+        </View>
+        <View style={styles.list}>
+          {renderRecipeRows(sectionItems, `section-${sectionKey}`)}
+        </View>
+      </View>
+    ));
   }
 
   return (
@@ -261,13 +357,9 @@ export function MealsRecipesView({
         ) : recipes.length === 0 ? (
           <View style={styles.mainListSurface}>
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateTitle}>
-                {!isArchivedView ? strings.noRecipes : strings.noArchivedRecipes}
-              </Text>
-              {(!isArchivedView ? strings.noRecipesHint : strings.noArchivedRecipesHint) ? (
-                <Subtle>
-                  {!isArchivedView ? strings.noRecipesHint : strings.noArchivedRecipesHint}
-                </Subtle>
+              <Text style={styles.emptyStateTitle}>{getBrowseEmptyState().title}</Text>
+              {getBrowseEmptyState().hint ? (
+                <Subtle>{getBrowseEmptyState().hint}</Subtle>
               ) : null}
             </View>
           </View>
@@ -288,10 +380,8 @@ export function MealsRecipesView({
             <View style={styles.mainLibrarySection}>
               <View style={styles.mainLibraryHeader}>
                 <View style={styles.mainLibraryCopy}>
-                  {!isArchivedView ? (
-                    <Text style={styles.mainLibraryLabel}>{strings.savedRecipesLabel}</Text>
-                  ) : null}
-                  <Text style={styles.mainLibraryMeta}>{countLabel}</Text>
+                  <Text style={styles.mainLibraryLabel}>{mainLibraryLabel}</Text>
+                  <Text style={styles.mainLibraryMeta}>{mainLibraryMeta}</Text>
                 </View>
                 {!isArchivedView ? (
                   <Pressable
@@ -307,11 +397,37 @@ export function MealsRecipesView({
                   </Pressable>
                 ) : null}
               </View>
+              {!isArchivedView ? (
+                <View style={styles.browseAidRow}>
+                  <AppChip
+                    label={strings.browseAllLabel}
+                    active={isAllBrowse}
+                    onPress={onShowAllRecipes}
+                    accentKey="meals"
+                  />
+                  <AppChip
+                    label={strings.browseMakeSoonLabel}
+                    active={isMakeSoonBrowse}
+                    onPress={onShowMakeSoonRecipes}
+                    accentKey="meals"
+                  />
+                  <AppChip
+                    label={strings.browseRecentLabel}
+                    active={isRecentBrowse}
+                    onPress={onShowRecentRecipes}
+                    accentKey="meals"
+                  />
+                </View>
+              ) : null}
               <View style={styles.mainListSurface}>
                 <View style={styles.mainListSection}>
-                  <View style={styles.list}>
-                    {renderRecipeRows(recipes, 'main')}
-                  </View>
+                  {shouldShowAlphabetSections
+                    ? renderAlphabetSections(recipes)
+                    : (
+                      <View style={styles.list}>
+                        {renderRecipeRows(recipes, 'main')}
+                      </View>
+                    )}
                 </View>
               </View>
             </View>
@@ -495,6 +611,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontWeight: '600',
   },
+  browseAidRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
   archivedLink: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -528,6 +650,22 @@ const styles = StyleSheet.create({
   },
   mainListSection: {
     gap: 0,
+  },
+  alphabetSectionHeader: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+  },
+  alphabetSectionLabel: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  alphabetSectionBorder: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   row: {
     flexDirection: 'row',

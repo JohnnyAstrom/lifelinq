@@ -834,12 +834,18 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   recentRecipes={recipesWorkspace.recipes.recentItems}
                   searchQuery={recipesWorkspace.recipes.searchQuery}
                   listMode={recipesWorkspace.recipes.listMode}
+                  browseMode={recipesWorkspace.recipes.browseMode}
                   activeCount={recipesWorkspace.recipes.activeCount}
                   archivedCount={recipesWorkspace.recipes.archivedCount}
+                  makeSoonCount={recipesWorkspace.recipes.makeSoonCount}
+                  recentCount={recipesWorkspace.recipes.recentCount}
                   isLoading={recipesWorkspace.recipes.isInitialLoading}
                   error={recipesWorkspace.recipes.error}
                   onShowActive={recipesWorkspace.recipes.showActiveRecipes}
                   onShowArchived={recipesWorkspace.recipes.showArchivedRecipes}
+                  onShowAllRecipes={recipesWorkspace.recipes.showAllBrowseRecipes}
+                  onShowMakeSoonRecipes={recipesWorkspace.recipes.showMakeSoonBrowseRecipes}
+                  onShowRecentRecipes={recipesWorkspace.recipes.showRecentBrowseRecipes}
                   onChangeSearchQuery={recipesWorkspace.recipes.setSearchQuery}
                   onOpenRecipe={recipesWorkspace.recipes.openRecipe}
                   onCreateRecipe={recipesWorkspace.recipes.openCreateRecipe}
@@ -858,10 +864,17 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     savedRecipesLabel: 'Saved recipes',
                     makeSoonTitle: strings.makeSoonRecipesTitle,
                     recentlyUsedTitle: strings.recentlyUsedRecipesTitle,
+                    browseAllLabel: 'All',
+                    browseMakeSoonLabel: 'Make soon',
+                    browseRecentLabel: 'Recent',
                     searchPlaceholder: strings.searchRecipesPlaceholder,
                     loadingRecipes: strings.loadingRecipes,
                     noRecipes: strings.noRecipes,
                     noRecipesHint: 'Save a recipe from a link or create your own to start the library.',
+                    noMakeSoonRecipes: 'Nothing marked for make soon yet.',
+                    noMakeSoonRecipesHint: 'Use make soon on saved recipes you want to come back to quickly.',
+                    noRecentRecipes: 'No recent recipes yet.',
+                    noRecentRecipesHint: 'Recipes you actually plan will show up here for quick re-finding.',
                     noArchivedRecipes: 'No archived recipes yet.',
                     noArchivedRecipesHint: 'Archived recipes stay here until you restore them.',
                     noSearchResults: strings.noRecipeSearchResults,
@@ -870,6 +883,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     similarNameHint: 'Similar title nearby',
                     recipeCountLabel: (count) => count === 1 ? '1 saved recipe' : `${count} saved recipes`,
                     archivedCountLabel: (count) => count === 1 ? '1 archived recipe' : `${count} archived recipes`,
+                    matchingRecipesLabel: (count) => count === 1 ? '1 matching recipe' : `${count} matching recipes`,
                   }}
                 />
               )}
