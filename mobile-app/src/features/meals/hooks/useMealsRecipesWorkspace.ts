@@ -4,6 +4,7 @@ import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import {
   archiveRecipe,
+  clearRecipeMakeSoon,
   createRecipe,
   createRecipeImportDraft,
   deleteRecipe,
@@ -11,6 +12,7 @@ import {
   listArchivedRecipes,
   listRecentlyUsedRecipes,
   listRecipes,
+  markRecipeMakeSoon,
   restoreRecipe,
   updateRecipe,
   type RecipeImportDraftResponse,
@@ -30,7 +32,7 @@ import {
   type RecipeDuplicateCandidate,
 } from '../utils/recipeDuplicateGuard';
 
-type DetailPendingAction = 'save' | 'archive' | 'delete' | null;
+type DetailPendingAction = 'save' | 'archive' | 'delete' | 'make-soon' | null;
 type RecipeDetailMode = 'create' | 'saved' | 'import';
 type RecipeListMode = 'active' | 'archived';
 type RecipeSaveRequest = {
@@ -53,6 +55,7 @@ type RecipeListItem = {
   similarNameCount: number;
   identitySummary: string | null;
   archivedAt: string | null;
+  makeSoonAt: string | null;
 };
 
 function normalizeClipboardUrlCandidate(value: string) {
@@ -98,6 +101,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recipeSourceUrl, setRecipeSourceUrl] = useState('');
   const [recipeOriginKind, setRecipeOriginKind] = useState('MANUAL');
   const [recipeServings, setRecipeServings] = useState('');
+  const [recipeMakeSoonAt, setRecipeMakeSoonAt] = useState<string | null>(null);
   const [recipeShortNote, setRecipeShortNote] = useState('');
   const [recipeInstructions, setRecipeInstructions] = useState('');
   const [recipeArchivedAt, setRecipeArchivedAt] = useState<string | null>(null);
@@ -201,6 +205,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         similarNameCount: titleFamilyCounts.get(buildTitleFamilyKey(recipe.name) ?? '') ?? 1,
         identitySummary: buildIdentitySummary(recipe),
         archivedAt: recipe.archivedAt,
+        makeSoonAt: recipe.makeSoonAt,
       }));
   }
 
@@ -213,8 +218,29 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     [archivedRecipes]
   );
   const recentlyUsedRecipeItems = useMemo(
-    () => toRecipeListItems(recentlyUsedRecipes ?? []),
-    [recentlyUsedRecipes]
+    () => {
+      const makeSoonRecipeIds = new Set(
+        (activeRecipes ?? [])
+          .filter((recipe) => recipe.makeSoonAt != null)
+          .map((recipe) => recipe.recipeId)
+      );
+
+      return toRecipeListItems(
+        (recentlyUsedRecipes ?? [])
+          .filter((recipe) => !makeSoonRecipeIds.has(recipe.recipeId))
+          .slice(0, 3)
+      );
+    },
+    [activeRecipes, recentlyUsedRecipes]
+  );
+  const makeSoonRecipeItems = useMemo(
+    () => toRecipeListItems(
+      (activeRecipes ?? [])
+        .filter((recipe) => recipe.makeSoonAt != null)
+        .sort((left, right) => (right.makeSoonAt ?? '').localeCompare(left.makeSoonAt ?? ''))
+        .slice(0, 3)
+    ),
+    [activeRecipes]
   );
   const visibleRecipeListItems = useMemo(
     () => listMode === 'active' ? activeRecipeListItems : archivedRecipeListItems,
@@ -310,6 +336,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeSourceUrl(recipe.sourceUrl ?? '');
     setRecipeOriginKind(recipe.originKind);
     setRecipeServings(recipe.servings ?? '');
+    setRecipeMakeSoonAt(recipe.makeSoonAt);
     setRecipeShortNote(recipe.shortNote ?? '');
     setRecipeInstructions(recipe.instructions ?? '');
     setRecipeArchivedAt(recipe.archivedAt);
@@ -330,6 +357,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeSourceUrl(draft.sourceUrl);
     setRecipeOriginKind(draft.originKind);
     setRecipeServings(draft.servings ?? '');
+    setRecipeMakeSoonAt(null);
     setRecipeShortNote(draft.shortNote ?? '');
     setRecipeInstructions(draft.instructions ?? '');
     setRecipeArchivedAt(null);
@@ -389,6 +417,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeSourceUrl('');
     setRecipeOriginKind('MANUAL');
     setRecipeServings('');
+    setRecipeMakeSoonAt(null);
     setRecipeShortNote('');
     setRecipeInstructions('');
     setRecipeArchivedAt(null);
@@ -601,6 +630,32 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
+  async function toggleRecipeMakeSoon() {
+    if (!recipeId || pendingDetailAction || isRecipeLoading || detailMode !== 'saved' || !!recipeArchivedAt) {
+      return;
+    }
+
+    setPendingDetailAction('make-soon');
+    setRecipeDetailError(null);
+    try {
+      const saved = recipeMakeSoonAt
+        ? await clearRecipeMakeSoon(recipeId, { token })
+        : await markRecipeMakeSoon(recipeId, { token });
+      setActiveRecipes((current) => {
+        const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
+        return [...others, saved];
+      });
+      setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
+      setHasLoaded(true);
+      applyRecipe(saved);
+    } catch (err) {
+      await handleApiError(err);
+      setRecipeDetailError(formatApiError(err));
+    } finally {
+      setPendingDetailAction(null);
+    }
+  }
+
   async function saveDuplicateRecipeAnyway() {
     if (!pendingDuplicateSaveRequest || pendingDetailAction || isRecipeLoading) {
       return;
@@ -724,6 +779,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     recipes: {
       items: filteredRecipeListItems,
       recentItems: recentlyUsedRecipeItems,
+      makeSoonItems: makeSoonRecipeItems,
       searchQuery: recipeSearchQuery,
       listMode,
       activeCount: activeRecipes?.length ?? 0,
@@ -758,6 +814,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       recipeSource,
       recipeSourceUrl,
       recipeServings,
+      recipeMakeSoonAt,
       recipeShortNote,
       recipeInstructions,
       recipeArchivedAt,
@@ -779,6 +836,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       isSavingRecipe: pendingDetailAction === 'save',
       isArchivingRecipe: pendingDetailAction === 'archive',
       isDeletingRecipe: pendingDetailAction === 'delete',
+      isTogglingMakeSoon: pendingDetailAction === 'make-soon',
       isActionPending: pendingDetailAction !== null,
       pendingDuplicateCandidate,
       setRecipeTitle,
@@ -793,6 +851,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setIngredientQuantity,
       setIngredientUnit,
       startEditingRecipe,
+      toggleRecipeMakeSoon,
       saveRecipe,
       saveDuplicateRecipeAnyway,
       openDuplicateRecipe,

@@ -153,6 +153,7 @@ public class MealsApplicationService {
                 normalizeOptionalRecipeUrl(sourceUrl),
                 normalizeOriginKind(originKind),
                 normalizeOptionalRecipeText(servings),
+                null,
                 normalizeOptionalRecipeText(shortNote),
                 normalizeOptionalInstructions(instructions),
                 now,
@@ -162,6 +163,56 @@ public class MealsApplicationService {
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(recipe), false);
+    }
+
+    @Transactional
+    public RecipeView markRecipeMakeSoon(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        Recipe existing = loadRecipe(groupId, recipeId);
+        Instant now = clock.instant();
+        Recipe updated = new Recipe(
+                existing.getId(),
+                existing.getGroupId(),
+                existing.getName(),
+                existing.getSourceName(),
+                existing.getSourceUrl(),
+                existing.getOriginKind(),
+                existing.getServings(),
+                now,
+                existing.getShortNote(),
+                existing.getInstructions(),
+                existing.getCreatedAt(),
+                now,
+                existing.getArchivedAt(),
+                existing.isSavedInRecipes(),
+                existing.getIngredients()
+        );
+        return toView(recipeRepository.save(updated), true);
+    }
+
+    @Transactional
+    public RecipeView clearRecipeMakeSoon(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        Recipe existing = loadRecipe(groupId, recipeId);
+        Instant now = clock.instant();
+        Recipe updated = new Recipe(
+                existing.getId(),
+                existing.getGroupId(),
+                existing.getName(),
+                existing.getSourceName(),
+                existing.getSourceUrl(),
+                existing.getOriginKind(),
+                existing.getServings(),
+                null,
+                existing.getShortNote(),
+                existing.getInstructions(),
+                existing.getCreatedAt(),
+                now,
+                existing.getArchivedAt(),
+                existing.isSavedInRecipes(),
+                existing.getIngredients()
+        );
+        return toView(recipeRepository.save(updated), true);
     }
 
     @Transactional(readOnly = true)
@@ -280,6 +331,7 @@ public class MealsApplicationService {
                 sourceUrl == null ? existing.getSourceUrl() : normalizeOptionalRecipeUrl(sourceUrl),
                 originKind == null ? existing.getOriginKind() : normalizeOriginKind(originKind),
                 normalizeOptionalRecipeText(servings),
+                existing.getMakeSoonAt(),
                 normalizeOptionalRecipeText(shortNote),
                 normalizeOptionalInstructions(instructions),
                 existing.getCreatedAt(),
@@ -307,6 +359,7 @@ public class MealsApplicationService {
                 existing.getSourceUrl(),
                 existing.getOriginKind(),
                 existing.getServings(),
+                existing.getMakeSoonAt(),
                 existing.getShortNote(),
                 existing.getInstructions(),
                 existing.getCreatedAt(),
@@ -334,6 +387,7 @@ public class MealsApplicationService {
                 existing.getSourceUrl(),
                 existing.getOriginKind(),
                 existing.getServings(),
+                existing.getMakeSoonAt(),
                 existing.getShortNote(),
                 existing.getInstructions(),
                 existing.getCreatedAt(),
@@ -656,6 +710,7 @@ public class MealsApplicationService {
                 recipe.getSourceUrl(),
                 recipe.getOriginKind().name(),
                 recipe.getServings(),
+                recipe.getMakeSoonAt(),
                 recipe.getShortNote(),
                 recipe.getInstructions(),
                 recipe.getCreatedAt(),

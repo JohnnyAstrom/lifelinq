@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppInput, Subtle } from '../../../shared/ui/components';
-import { textStyles, theme } from '../../../shared/ui/theme';
+import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
 import {
   scaleIngredientRowQuantity,
   type MealIngredientRow,
@@ -43,6 +43,8 @@ type Strings = MealIngredientEditorRowStrings & {
   mealAttachmentValue?: string;
   editSavedRecipeAction?: string;
   editRecipeAction?: string;
+  markMakeSoonAction?: string;
+  clearMakeSoonAction?: string;
   editingSavedRecipeHint?: string;
   recipeNameLabel: string;
   recipeNamePlaceholder: string;
@@ -233,6 +235,7 @@ type Props = {
   onStartEditingSavedRecipeDirectly: () => void;
   onSave?: () => void;
   onSaveToRecipes?: () => void;
+  onToggleMakeSoon?: () => void;
   onArchive?: () => void;
   onRestore?: () => void;
   onDelete?: () => void;
@@ -241,6 +244,8 @@ type Props = {
   isSavingToRecipes?: boolean;
   isArchiving?: boolean;
   isDeleting?: boolean;
+  isTogglingMakeSoon?: boolean;
+  isMarkedMakeSoon?: boolean;
   canDelete?: boolean;
   deleteBlockedHint?: string | null;
   error?: string | null;
@@ -286,6 +291,7 @@ export function MealRecipeDetailSheet({
   onStartEditingSavedRecipeDirectly,
   onSave,
   onSaveToRecipes,
+  onToggleMakeSoon,
   onArchive,
   onRestore,
   onDelete,
@@ -294,6 +300,8 @@ export function MealRecipeDetailSheet({
   isSavingToRecipes = false,
   isArchiving = false,
   isDeleting = false,
+  isTogglingMakeSoon = false,
+  isMarkedMakeSoon = false,
   canDelete = false,
   deleteBlockedHint = null,
   error = null,
@@ -926,6 +934,38 @@ export function MealRecipeDetailSheet({
                 />
               ) : null}
 
+              {isContentReadOnly && onToggleMakeSoon && (strings.markMakeSoonAction || strings.clearMakeSoonAction) ? (
+                <Pressable
+                  onPress={onToggleMakeSoon}
+                  accessibilityRole="button"
+                  disabled={isActionPending || isRecipeLoading}
+                  style={({ pressed }) => [
+                    styles.intentAction,
+                    isMarkedMakeSoon ? styles.intentActionActive : null,
+                    (pressed && !isActionPending && !isRecipeLoading) ? styles.intentActionPressed : null,
+                    (isActionPending || isRecipeLoading) ? styles.intentActionDisabled : null,
+                  ]}
+                >
+                  <View style={[
+                    styles.intentActionIconWrap,
+                    isMarkedMakeSoon ? styles.intentActionIconWrapActive : null,
+                  ]}>
+                    <Text style={[
+                      styles.intentActionIcon,
+                      isMarkedMakeSoon ? styles.intentActionIconActive : null,
+                    ]}>
+                      {isMarkedMakeSoon ? '−' : '+'}
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.intentActionText,
+                    isMarkedMakeSoon ? styles.intentActionTextActive : null,
+                  ]}>
+                    {isMarkedMakeSoon ? strings.clearMakeSoonAction ?? '' : strings.markMakeSoonAction ?? ''}
+                  </Text>
+                </Pressable>
+              ) : null}
+
               {canEnterEditMode && onEnterEditMode && strings.editRecipeAction ? (
                 <AppButton
                   title={strings.editRecipeAction}
@@ -1466,6 +1506,56 @@ const styles = StyleSheet.create({
   },
   actionsSection: {
     gap: theme.spacing.sm,
+  },
+  intentAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    minHeight: 44,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.surface,
+  },
+  intentActionActive: {
+    borderColor: theme.colors.feature.meals,
+    backgroundColor: iconBackground(theme.colors.feature.meals),
+  },
+  intentActionPressed: {
+    opacity: 0.78,
+  },
+  intentActionDisabled: {
+    opacity: 0.58,
+  },
+  intentActionIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surfaceSubtle,
+  },
+  intentActionIconWrapActive: {
+    backgroundColor: theme.colors.feature.meals,
+  },
+  intentActionIcon: {
+    ...textStyles.body,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  intentActionIconActive: {
+    color: theme.colors.surface,
+  },
+  intentActionText: {
+    ...textStyles.body,
+    color: theme.colors.text,
+    fontWeight: '600',
+  },
+  intentActionTextActive: {
+    color: theme.colors.feature.meals,
   },
   secondaryActionsRow: {
     flexDirection: 'row',

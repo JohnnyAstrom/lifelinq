@@ -955,6 +955,51 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void markAndClearRecipeMakeSoonUpdatesRecipeState() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsShoppingPort shopping = mock(MealsShoppingPort.class);
+        Instant markedAt = Instant.parse("2026-03-20T10:00:00Z");
+        MealsApplicationService markService = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.fixed(markedAt, ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Pasta",
+                Instant.parse("2026-03-18T09:00:00Z"),
+                List.of()
+        ));
+
+        var marked = markService.markRecipeMakeSoon(groupId, userId, recipeId);
+
+        assertThat(marked.makeSoonAt()).isEqualTo(markedAt);
+
+        Instant clearedAt = Instant.parse("2026-03-21T08:00:00Z");
+        MealsApplicationService clearService = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                shopping,
+                Clock.fixed(clearedAt, ZoneOffset.UTC)
+        );
+
+        var cleared = clearService.clearRecipeMakeSoon(groupId, userId, recipeId);
+
+        assertThat(cleared.makeSoonAt()).isNull();
+        assertThat(cleared.updatedAt()).isEqualTo(clearedAt);
+    }
+
+    @Test
     void restoreRecipeReturnsRecipeToActiveList() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

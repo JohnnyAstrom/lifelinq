@@ -498,6 +498,80 @@ class MealsControllerTest {
     }
 
     @Test
+    void markRecipeMakeSoonReturnsUpdatedRecipeResponse() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.markRecipeMakeSoon(groupId, userId, recipeId))
+                .thenReturn(new RecipeView(
+                        recipeId,
+                        groupId,
+                        "Soon Pasta",
+                        "Notebook",
+                        null,
+                        "MANUAL",
+                        "4 servings",
+                        Instant.parse("2026-03-21T09:00:00Z"),
+                        "Quick dinner",
+                        "Cook",
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-21T09:00:00Z"),
+                        null,
+                        true,
+                        false,
+                        "Recipe must be archived before you can delete it.",
+                        List.of()
+                ));
+
+        mockMvc.perform(post("/meals/recipes/" + recipeId + "/make-soon")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.makeSoonAt").value("2026-03-21T09:00:00Z"));
+
+        verify(mealsApplicationService).markRecipeMakeSoon(groupId, userId, recipeId);
+    }
+
+    @Test
+    void clearRecipeMakeSoonReturnsUpdatedRecipeResponse() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.clearRecipeMakeSoon(groupId, userId, recipeId))
+                .thenReturn(new RecipeView(
+                        recipeId,
+                        groupId,
+                        "Soon Pasta",
+                        "Notebook",
+                        null,
+                        "MANUAL",
+                        "4 servings",
+                        null,
+                        "Quick dinner",
+                        "Cook",
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-22T09:00:00Z"),
+                        null,
+                        true,
+                        false,
+                        "Recipe must be archived before you can delete it.",
+                        List.of()
+                ));
+
+        mockMvc.perform(delete("/meals/recipes/" + recipeId + "/make-soon")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.makeSoonAt").value(org.hamcrest.Matchers.nullValue()));
+
+        verify(mealsApplicationService).clearRecipeMakeSoon(groupId, userId, recipeId);
+    }
+
+    @Test
     void restoreRecipeReturnsActiveRecipeResponse() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

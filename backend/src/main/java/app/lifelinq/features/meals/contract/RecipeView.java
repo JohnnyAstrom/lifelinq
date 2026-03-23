@@ -12,6 +12,7 @@ public record RecipeView(
         String sourceUrl,
         String originKind,
         String servings,
+        Instant makeSoonAt,
         String shortNote,
         String instructions,
         Instant createdAt,
@@ -22,6 +23,45 @@ public record RecipeView(
         String deleteBlockedReason,
         List<IngredientView> ingredients
 ) {
+    public RecipeView(
+            UUID recipeId,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            String originKind,
+            String servings,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant archivedAt,
+            Boolean savedInRecipes,
+            Boolean deleteEligible,
+            String deleteBlockedReason,
+            List<IngredientView> ingredients
+    ) {
+        this(
+                recipeId,
+                groupId,
+                name,
+                sourceName,
+                sourceUrl,
+                originKind,
+                servings,
+                null,
+                shortNote,
+                instructions,
+                createdAt,
+                updatedAt,
+                archivedAt,
+                savedInRecipes,
+                deleteEligible,
+                deleteBlockedReason,
+                ingredients
+        );
+    }
+
     public RecipeView(
             UUID recipeId,
             UUID groupId,
@@ -46,6 +86,7 @@ public record RecipeView(
                 sourceName,
                 sourceUrl,
                 originKind,
+                null,
                 null,
                 shortNote,
                 instructions,

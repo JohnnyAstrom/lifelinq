@@ -147,6 +147,34 @@ public class MealsController {
         return ResponseEntity.ok(toRecipeResponse(recipe));
     }
 
+    @PostMapping("/meals/recipes/{recipeId}/make-soon")
+    public ResponseEntity<?> markRecipeMakeSoon(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeView recipe = mealsApplicationService.markRecipeMakeSoon(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(toRecipeResponse(recipe));
+    }
+
+    @DeleteMapping("/meals/recipes/{recipeId}/make-soon")
+    public ResponseEntity<?> clearRecipeMakeSoon(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeView recipe = mealsApplicationService.clearRecipeMakeSoon(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(toRecipeResponse(recipe));
+    }
+
     @PostMapping("/meals/recipes/{recipeId}/restore")
     public ResponseEntity<?> restoreRecipe(@PathVariable UUID recipeId) {
         RequestContext context = ApiScoping.getContext();
@@ -332,6 +360,7 @@ public class MealsController {
                 view.sourceUrl(),
                 view.originKind(),
                 view.servings(),
+                view.makeSoonAt(),
                 view.shortNote(),
                 view.instructions(),
                 view.createdAt(),

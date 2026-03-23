@@ -62,6 +62,7 @@ public class JpaRecipeRepositoryAdapter implements RecipeRepository {
                 recipe.getSourceUrl(),
                 recipe.getOriginKind(),
                 recipe.getServings(),
+                recipe.getMakeSoonAt(),
                 recipe.getShortNote(),
                 recipe.getInstructions(),
                 recipe.getUpdatedAt(),

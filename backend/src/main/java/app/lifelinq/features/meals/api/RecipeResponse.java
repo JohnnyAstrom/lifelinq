@@ -12,6 +12,7 @@ public record RecipeResponse(
         String sourceUrl,
         String originKind,
         String servings,
+        Instant makeSoonAt,
         String shortNote,
         String instructions,
         Instant createdAt,

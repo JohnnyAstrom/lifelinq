@@ -16,6 +16,7 @@ public final class Recipe {
     private final String sourceUrl;
     private final RecipeOriginKind originKind;
     private final String servings;
+    private final Instant makeSoonAt;
     private final String shortNote;
     private final String instructions;
     private final Instant createdAt;
@@ -25,7 +26,7 @@ public final class Recipe {
     private final List<Ingredient> ingredients;
 
     public Recipe(UUID id, UUID groupId, String name, Instant createdAt, List<Ingredient> ingredients) {
-        this(id, groupId, name, null, null, RecipeOriginKind.MANUAL, null, null, createdAt, createdAt, null, true, ingredients);
+        this(id, groupId, name, null, null, RecipeOriginKind.MANUAL, null, null, null, createdAt, createdAt, null, true, ingredients);
     }
 
     public Recipe(
@@ -46,6 +47,7 @@ public final class Recipe {
                 null,
                 RecipeOriginKind.MANUAL,
                 null,
+                null,
                 shortNote,
                 instructions,
                 createdAt,
@@ -76,6 +78,7 @@ public final class Recipe {
                 sourceName,
                 sourceUrl,
                 originKind,
+                null,
                 null,
                 shortNote,
                 instructions,
@@ -95,6 +98,7 @@ public final class Recipe {
             String sourceUrl,
             RecipeOriginKind originKind,
             String servings,
+            Instant makeSoonAt,
             String shortNote,
             String instructions,
             Instant createdAt,
@@ -109,6 +113,7 @@ public final class Recipe {
                 sourceUrl,
                 originKind,
                 servings,
+                makeSoonAt,
                 shortNote,
                 instructions,
                 createdAt,
@@ -141,6 +146,7 @@ public final class Recipe {
                 sourceName,
                 sourceUrl,
                 originKind,
+                null,
                 null,
                 shortNote,
                 instructions,
@@ -174,6 +180,7 @@ public final class Recipe {
                 sourceUrl,
                 originKind,
                 servings,
+                null,
                 shortNote,
                 instructions,
                 createdAt,
@@ -200,6 +207,42 @@ public final class Recipe {
             boolean savedInRecipes,
             List<Ingredient> ingredients
     ) {
+        this(
+                id,
+                groupId,
+                name,
+                sourceName,
+                sourceUrl,
+                originKind,
+                servings,
+                null,
+                shortNote,
+                instructions,
+                createdAt,
+                updatedAt,
+                archivedAt,
+                savedInRecipes,
+                ingredients
+        );
+    }
+
+    public Recipe(
+            UUID id,
+            UUID groupId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            RecipeOriginKind originKind,
+            String servings,
+            Instant makeSoonAt,
+            String shortNote,
+            String instructions,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant archivedAt,
+            boolean savedInRecipes,
+            List<Ingredient> ingredients
+    ) {
         if (id == null) {
             throw new IllegalArgumentException("id must not be null");
         }
@@ -217,6 +260,12 @@ public final class Recipe {
         }
         if (updatedAt.isBefore(createdAt)) {
             throw new IllegalArgumentException("updatedAt must not be before createdAt");
+        }
+        if (makeSoonAt != null && makeSoonAt.isBefore(createdAt)) {
+            throw new IllegalArgumentException("makeSoonAt must not be before createdAt");
+        }
+        if (makeSoonAt != null && makeSoonAt.isAfter(updatedAt)) {
+            throw new IllegalArgumentException("makeSoonAt must not be after updatedAt");
         }
         if (archivedAt != null && archivedAt.isBefore(createdAt)) {
             throw new IllegalArgumentException("archivedAt must not be before createdAt");
@@ -251,6 +300,7 @@ public final class Recipe {
         this.sourceUrl = normalizeOptionalText(sourceUrl);
         this.originKind = originKind == null ? RecipeOriginKind.MANUAL : originKind;
         this.servings = normalizeOptionalText(servings);
+        this.makeSoonAt = makeSoonAt;
         this.shortNote = normalizeOptionalText(shortNote);
         this.instructions = normalizeOptionalText(instructions);
         this.createdAt = createdAt;
@@ -294,6 +344,10 @@ public final class Recipe {
 
     public String getServings() {
         return servings;
+    }
+
+    public Instant getMakeSoonAt() {
+        return makeSoonAt;
     }
 
     public String getShortNote() {

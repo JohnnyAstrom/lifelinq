@@ -1,6 +1,7 @@
 export {
   addOrReplaceMeal,
   archiveRecipe,
+  clearRecipeMakeSoon,
   createRecipeImportDraft,
   createRecipe,
   deleteRecipe,
@@ -9,6 +10,7 @@ export {
   listArchivedRecipes,
   listRecentlyUsedRecipes,
   listRecipes,
+  markRecipeMakeSoon,
   removeMeal,
   restoreRecipe,
   updateRecipe,

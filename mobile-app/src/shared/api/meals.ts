@@ -116,6 +116,7 @@ export type RecipeResponse = {
   sourceUrl: string | null;
   originKind: string;
   servings: string | null;
+  makeSoonAt: string | null;
   shortNote: string | null;
   instructions: string | null;
   createdAt: string;
@@ -224,6 +225,32 @@ export async function archiveRecipe(
     `/meals/recipes/${recipeId}/archive`,
     {
       method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function markRecipeMakeSoon(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse> {
+  return fetchJson<RecipeResponse>(
+    `/meals/recipes/${recipeId}/make-soon`,
+    {
+      method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function clearRecipeMakeSoon(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeResponse> {
+  return fetchJson<RecipeResponse>(
+    `/meals/recipes/${recipeId}/make-soon`,
+    {
+      method: 'DELETE',
     },
     clientOptions
   );

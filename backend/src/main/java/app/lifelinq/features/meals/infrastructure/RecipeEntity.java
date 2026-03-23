@@ -47,6 +47,9 @@ public class RecipeEntity {
     @Column(name = "servings", length = 255)
     private String servings;
 
+    @Column(name = "make_soon_at")
+    private Instant makeSoonAt;
+
     @Column(name = "short_note", length = 1000)
     private String shortNote;
 
@@ -80,6 +83,7 @@ public class RecipeEntity {
             String sourceUrl,
             RecipeOriginKind originKind,
             String servings,
+            Instant makeSoonAt,
             String shortNote,
             String instructions,
             Instant createdAt,
@@ -94,6 +98,7 @@ public class RecipeEntity {
         this.sourceUrl = sourceUrl;
         this.originKind = originKind;
         this.servings = servings;
+        this.makeSoonAt = makeSoonAt;
         this.shortNote = shortNote;
         this.instructions = instructions;
         this.createdAt = createdAt;
@@ -130,6 +135,10 @@ public class RecipeEntity {
         return servings;
     }
 
+    Instant getMakeSoonAt() {
+        return makeSoonAt;
+    }
+
     String getShortNote() {
         return shortNote;
     }
@@ -164,6 +173,7 @@ public class RecipeEntity {
             String sourceUrl,
             RecipeOriginKind originKind,
             String servings,
+            Instant makeSoonAt,
             String shortNote,
             String instructions,
             Instant updatedAt,
@@ -175,6 +185,7 @@ public class RecipeEntity {
         this.sourceUrl = sourceUrl;
         this.originKind = originKind;
         this.servings = servings;
+        this.makeSoonAt = makeSoonAt;
         this.shortNote = shortNote;
         this.instructions = instructions;
         this.updatedAt = updatedAt;
