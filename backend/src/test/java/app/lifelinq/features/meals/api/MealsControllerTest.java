@@ -30,7 +30,11 @@ import app.lifelinq.features.meals.contract.RecipeImportDraftView;
 import app.lifelinq.features.meals.contract.RecipeDetailView;
 import app.lifelinq.features.meals.contract.RecipeDraftView;
 import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
+import app.lifelinq.features.meals.contract.IngredientCoverageView;
 import app.lifelinq.features.meals.contract.MealChoiceCandidateView;
+import app.lifelinq.features.meals.contract.MealIngredientNeedView;
+import app.lifelinq.features.meals.contract.MealReadinessView;
+import app.lifelinq.features.meals.contract.MealShoppingProjectionView;
 import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
 import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
 import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
@@ -42,6 +46,9 @@ import app.lifelinq.features.meals.contract.RecentMealOccurrenceView;
 import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
+import app.lifelinq.features.meals.contract.ShoppingDeltaView;
+import app.lifelinq.features.meals.contract.ShoppingLinkReferenceView;
+import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -258,6 +265,95 @@ class MealsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void getMealShoppingImpactReturnsProjectionFromProgram3Foundation() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getMealShoppingProjection(
+                groupId,
+                userId,
+                2026,
+                13,
+                2,
+                app.lifelinq.features.meals.domain.MealType.DINNER
+        )).thenReturn(new MealShoppingProjectionView(
+                2026,
+                13,
+                2,
+                "DINNER",
+                "Creamy Pasta",
+                recipeId,
+                "Creamy Pasta",
+                true,
+                new ShoppingLinkReferenceView(listId, "Main list", Instant.parse("2026-03-24T10:00:00Z"), "linked"),
+                new MealReadinessView("partially_ready", 2, 0, 0, 0, 1, 1),
+                new ShoppingDeltaView(0, 0, 0, 0, List.of()),
+                List.of(new IngredientCoverageView(
+                        new MealIngredientNeedView(UUID.randomUUID(), 1, "Pasta", "pasta", null, null, null),
+                        "covered",
+                        "to_buy",
+                        1,
+                        null,
+                        null,
+                        null
+                ))
+        ));
+
+        mockMvc.perform(get("/meals/weeks/2026/13/days/2/meals/DINNER/shopping-impact")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mealTitle").value("Creamy Pasta"))
+                .andExpect(jsonPath("$.shoppingLink.status").value("linked"))
+                .andExpect(jsonPath("$.readiness.state").value("partially_ready"));
+
+        verify(mealsApplicationService).getMealShoppingProjection(
+                groupId,
+                userId,
+                2026,
+                13,
+                2,
+                app.lifelinq.features.meals.domain.MealType.DINNER
+        );
+    }
+
+    @Test
+    void getWeekShoppingImpactReturnsAggregatedProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getWeekShoppingProjection(
+                groupId,
+                userId,
+                2026,
+                13
+        )).thenReturn(new WeekShoppingProjectionView(
+                UUID.randomUUID(),
+                2026,
+                13,
+                1,
+                0,
+                0,
+                1,
+                new ShoppingDeltaView(1, 0, 1, 0, List.of()),
+                List.of()
+        ));
+
+        mockMvc.perform(get("/meals/weeks/2026/13/shopping-impact")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mealsNeedingShoppingCount").value(1))
+                .andExpect(jsonPath("$.delta.unresolvedIngredientCount").value(1));
+
+        verify(mealsApplicationService).getWeekShoppingProjection(groupId, userId, 2026, 13);
     }
 
     @Test

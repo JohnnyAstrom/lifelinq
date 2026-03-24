@@ -7,9 +7,14 @@ import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
+import app.lifelinq.features.meals.contract.IngredientCoverageView;
 import app.lifelinq.features.meals.contract.MealChoiceCandidateView;
+import app.lifelinq.features.meals.contract.MealIngredientNeedView;
+import app.lifelinq.features.meals.contract.MealReadinessView;
+import app.lifelinq.features.meals.contract.MealShoppingProjectionView;
 import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
+import app.lifelinq.features.meals.contract.MealsShoppingListSnapshot;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
@@ -25,18 +30,28 @@ import app.lifelinq.features.meals.contract.RecipeProvenanceView;
 import app.lifelinq.features.meals.contract.RecipeSourceView;
 import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
 import app.lifelinq.features.meals.contract.RecipeView;
+import app.lifelinq.features.meals.contract.ShoppingDeltaView;
+import app.lifelinq.features.meals.contract.ShoppingLinkReferenceView;
+import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignal;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalTargetKind;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalType;
 import app.lifelinq.features.meals.domain.Ingredient;
+import app.lifelinq.features.meals.domain.IngredientCoverage;
+import app.lifelinq.features.meals.domain.IngredientCoverageState;
 import app.lifelinq.features.meals.domain.IngredientUnit;
+import app.lifelinq.features.meals.domain.KitchenReadinessEngine;
 import app.lifelinq.features.meals.domain.MealChoiceSupportEngine;
 import app.lifelinq.features.meals.domain.MealIdentity;
 import app.lifelinq.features.meals.domain.MealIdentityKind;
+import app.lifelinq.features.meals.domain.MealIngredientNeed;
 import app.lifelinq.features.meals.domain.MealMemoryRepository;
 import app.lifelinq.features.meals.domain.MealOccurrence;
+import app.lifelinq.features.meals.domain.MealReadinessSignal;
+import app.lifelinq.features.meals.domain.MealReadinessState;
+import app.lifelinq.features.meals.domain.MealShoppingProjection;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.MealUsageAggregate;
 import app.lifelinq.features.meals.domain.PlanningChoiceSupport;
@@ -59,7 +74,12 @@ import app.lifelinq.features.meals.domain.RecipeSource;
 import app.lifelinq.features.meals.domain.RecipeUsageHistory;
 import app.lifelinq.features.meals.domain.ReuseCandidate;
 import app.lifelinq.features.meals.domain.ReuseCandidateFamily;
+import app.lifelinq.features.meals.domain.ShoppingCoverageState;
+import app.lifelinq.features.meals.domain.ShoppingDelta;
+import app.lifelinq.features.meals.domain.ShoppingLinkReference;
+import app.lifelinq.features.meals.domain.ShoppingLinkStatus;
 import app.lifelinq.features.meals.domain.WeekPlan;
+import app.lifelinq.features.meals.domain.WeekShoppingProjection;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -148,6 +168,7 @@ public class MealsApplicationService {
     private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
     private final MealChoiceSupportEngine mealChoiceSupportEngine;
+    private final KitchenReadinessEngine kitchenReadinessEngine;
 
     public MealsApplicationService(
             WeekPlanRepository weekPlanRepository,
@@ -205,6 +226,7 @@ public class MealsApplicationService {
         this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
         this.mealChoiceSupportEngine = new MealChoiceSupportEngine();
+        this.kitchenReadinessEngine = new KitchenReadinessEngine();
     }
 
     public MealsApplicationService(
@@ -1076,6 +1098,63 @@ public class MealsApplicationService {
                 .orElseGet(() -> new WeekPlanView(null, year, isoWeek, null, List.of()));
     }
 
+    @Transactional(readOnly = true)
+    public MealShoppingProjectionView getMealShoppingProjection(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek,
+            int dayOfWeek,
+            MealType mealType
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        validateIsoWeek(year, isoWeek);
+        WeekPlan weekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
+                .orElseThrow(() -> new MealNotFoundException("Meal not found"));
+        PlannedMeal meal = weekPlan.getMeal(dayOfWeek, mealType);
+        if (meal == null) {
+            throw new MealNotFoundException("Meal not found");
+        }
+        return toMealShoppingProjectionView(buildMealShoppingProjection(groupId, actorUserId, year, isoWeek, meal));
+    }
+
+    @Transactional(readOnly = true)
+    public WeekShoppingProjectionView getWeekShoppingProjection(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        validateIsoWeek(year, isoWeek);
+        WeekPlan weekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
+                .orElse(null);
+        if (weekPlan == null) {
+            return toWeekShoppingProjectionView(new WeekShoppingProjection(
+                    null,
+                    year,
+                    isoWeek,
+                    0,
+                    0,
+                    0,
+                    0,
+                    new ShoppingDelta(List.of()),
+                    List.of()
+            ));
+        }
+
+        List<MealShoppingProjection> meals = new ArrayList<>();
+        for (PlannedMeal meal : weekPlan.getMeals()) {
+            meals.add(buildMealShoppingProjection(groupId, actorUserId, year, isoWeek, meal));
+        }
+        return toWeekShoppingProjectionView(kitchenReadinessEngine.buildWeekProjection(
+                weekPlan.getId(),
+                year,
+                isoWeek,
+                meals
+        ));
+    }
+
     private WeekPlanView toView(WeekPlan weekPlan) {
         Set<UUID> recipeIds = new HashSet<>();
         for (PlannedMeal meal : weekPlan.getMeals()) {
@@ -1110,6 +1189,87 @@ public class MealsApplicationService {
                 weekPlan.getCreatedAt(),
                 meals
         );
+    }
+
+    private MealShoppingProjection buildMealShoppingProjection(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek,
+            PlannedMeal meal
+    ) {
+        Map<UUID, MealsShoppingListSnapshot> shoppingListsById = loadShoppingListSnapshots(
+                groupId,
+                actorUserId,
+                meal.getShoppingListId() == null ? Set.of() : Set.of(meal.getShoppingListId())
+        );
+        MealsShoppingListSnapshot linkedShoppingList = meal.getShoppingListId() == null
+                ? null
+                : shoppingListsById.get(meal.getShoppingListId());
+        Recipe recipe = meal.getRecipeId() == null ? null : loadRecipe(groupId, meal.getRecipeId());
+        return kitchenReadinessEngine.buildMealProjection(
+                year,
+                isoWeek,
+                meal,
+                buildShoppingLinkReference(meal, linkedShoppingList),
+                projectMealIngredientNeeds(recipe),
+                linkedShoppingList
+        );
+    }
+
+    private Map<UUID, MealsShoppingListSnapshot> loadShoppingListSnapshots(
+            UUID groupId,
+            UUID actorUserId,
+            Set<UUID> shoppingListIds
+    ) {
+        if (shoppingListIds == null || shoppingListIds.isEmpty()) {
+            return Map.of();
+        }
+        return mealsShoppingPort.listShoppingListSnapshots(groupId, actorUserId, shoppingListIds);
+    }
+
+    private ShoppingLinkReference buildShoppingLinkReference(
+            PlannedMeal meal,
+            MealsShoppingListSnapshot shoppingListSnapshot
+    ) {
+        if (meal.getShoppingListId() == null) {
+            return new ShoppingLinkReference(null, null, null, ShoppingLinkStatus.NOT_LINKED);
+        }
+        if (shoppingListSnapshot == null) {
+            return new ShoppingLinkReference(
+                    meal.getShoppingListId(),
+                    null,
+                    meal.getShoppingHandledAt(),
+                    ShoppingLinkStatus.MISSING_LIST
+            );
+        }
+        return new ShoppingLinkReference(
+                shoppingListSnapshot.listId(),
+                shoppingListSnapshot.listName(),
+                meal.getShoppingHandledAt(),
+                ShoppingLinkStatus.LINKED
+        );
+    }
+
+    private List<MealIngredientNeed> projectMealIngredientNeeds(Recipe recipe) {
+        if (recipe == null) {
+            return List.of();
+        }
+        List<MealIngredientNeed> needs = new ArrayList<>();
+        for (Ingredient ingredient : recipe.getIngredients()) {
+            ShoppingIngredientProjection projection = projectIngredientForShopping(ingredient);
+            needs.add(new MealIngredientNeed(
+                    ingredient.getId(),
+                    ingredient.getPosition(),
+                    ingredient.getName(),
+                    projection.name(),
+                    ingredient.getRawText(),
+                    projection.quantity(),
+                    projection.unitName()
+            ));
+        }
+        needs.sort((a, b) -> Integer.compare(a.position(), b.position()));
+        return List.copyOf(needs);
     }
 
     private Recipe loadRecipe(UUID groupId, UUID recipeId) {
@@ -1295,6 +1455,100 @@ public class MealsApplicationService {
                 support.familiarCandidates().stream().map(this::toMealChoiceCandidateView).toList(),
                 support.fallbackCandidates().stream().map(this::toMealChoiceCandidateView).toList(),
                 support.makeSoonCandidates().stream().map(this::toMealChoiceCandidateView).toList()
+        );
+    }
+
+    private MealShoppingProjectionView toMealShoppingProjectionView(MealShoppingProjection projection) {
+        return new MealShoppingProjectionView(
+                projection.year(),
+                projection.isoWeek(),
+                projection.dayOfWeek(),
+                projection.mealType().name(),
+                projection.mealTitle(),
+                projection.recipeId(),
+                projection.recipeTitle(),
+                projection.recipeBacked(),
+                toShoppingLinkReferenceView(projection.shoppingLink()),
+                toMealReadinessView(projection.readiness()),
+                toShoppingDeltaView(projection.delta()),
+                projection.ingredientCoverage().stream().map(this::toIngredientCoverageView).toList()
+        );
+    }
+
+    private WeekShoppingProjectionView toWeekShoppingProjectionView(WeekShoppingProjection projection) {
+        return new WeekShoppingProjectionView(
+                projection.weekPlanId(),
+                projection.year(),
+                projection.isoWeek(),
+                projection.mealsNeedingShoppingCount(),
+                projection.partiallyReadyMealCount(),
+                projection.readyFromShoppingViewMealCount(),
+                projection.readinessUnclearMealCount(),
+                toShoppingDeltaView(projection.delta()),
+                projection.meals().stream().map(this::toMealShoppingProjectionView).toList()
+        );
+    }
+
+    private ShoppingLinkReferenceView toShoppingLinkReferenceView(ShoppingLinkReference reference) {
+        return new ShoppingLinkReferenceView(
+                reference.shoppingListId(),
+                reference.shoppingListName(),
+                reference.shoppingHandledAt(),
+                toShoppingLinkStatusValue(reference.status())
+        );
+    }
+
+    private MealReadinessView toMealReadinessView(MealReadinessSignal signal) {
+        return new MealReadinessView(
+                toMealReadinessStateValue(signal.state()),
+                signal.coveredIngredientCount(),
+                signal.partiallyCoveredIngredientCount(),
+                signal.missingIngredientCount(),
+                signal.unknownIngredientCount(),
+                signal.boughtIngredientCount(),
+                signal.toBuyIngredientCount()
+        );
+    }
+
+    private ShoppingDeltaView toShoppingDeltaView(ShoppingDelta delta) {
+        int partialCount = 0;
+        int missingCount = 0;
+        int unknownCount = 0;
+        for (IngredientCoverage coverage : delta.unresolvedIngredients()) {
+            switch (coverage.state()) {
+                case PARTIALLY_COVERED -> partialCount++;
+                case MISSING -> missingCount++;
+                case UNKNOWN -> unknownCount++;
+                case COVERED -> { }
+            }
+        }
+        return new ShoppingDeltaView(
+                delta.unresolvedIngredients().size(),
+                partialCount,
+                missingCount,
+                unknownCount,
+                delta.unresolvedIngredients().stream().map(this::toIngredientCoverageView).toList()
+        );
+    }
+
+    private IngredientCoverageView toIngredientCoverageView(IngredientCoverage coverage) {
+        MealIngredientNeed need = coverage.need();
+        return new IngredientCoverageView(
+                new MealIngredientNeedView(
+                        need.ingredientId(),
+                        need.position(),
+                        need.ingredientName(),
+                        need.normalizedShoppingName(),
+                        need.rawText(),
+                        need.quantity(),
+                        need.unitName()
+                ),
+                toIngredientCoverageStateValue(coverage.state()),
+                toShoppingCoverageStateValue(coverage.shoppingState()),
+                coverage.matchingItemCount(),
+                coverage.coveredQuantity(),
+                coverage.uncoveredQuantity(),
+                coverage.uncertaintyReason()
         );
     }
 
@@ -1791,6 +2045,42 @@ public class MealsApplicationService {
         return switch (matchType) {
             case EXACT_SOURCE_URL -> "exact_source_url";
             case SAME_NAME_AND_SOURCE -> "same_name_and_source";
+        };
+    }
+
+    private String toIngredientCoverageStateValue(IngredientCoverageState state) {
+        return switch (state) {
+            case COVERED -> "covered";
+            case PARTIALLY_COVERED -> "partially_covered";
+            case MISSING -> "missing";
+            case UNKNOWN -> "unknown";
+        };
+    }
+
+    private String toShoppingCoverageStateValue(ShoppingCoverageState state) {
+        return switch (state) {
+            case NONE -> "none";
+            case TO_BUY -> "to_buy";
+            case BOUGHT -> "bought";
+            case MIXED -> "mixed";
+            case UNKNOWN -> "unknown";
+        };
+    }
+
+    private String toMealReadinessStateValue(MealReadinessState state) {
+        return switch (state) {
+            case NEEDS_SHOPPING -> "needs_shopping";
+            case PARTIALLY_READY -> "partially_ready";
+            case READY_FROM_SHOPPING_VIEW -> "ready_from_shopping_view";
+            case READINESS_UNCLEAR -> "readiness_unclear";
+        };
+    }
+
+    private String toShoppingLinkStatusValue(ShoppingLinkStatus status) {
+        return switch (status) {
+            case NOT_LINKED -> "not_linked";
+            case LINKED -> "linked";
+            case MISSING_LIST -> "missing_list";
         };
     }
 

@@ -16,10 +16,12 @@ import app.lifelinq.features.meals.contract.RecipeImportDraftView;
 import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
+import app.lifelinq.features.meals.contract.MealShoppingProjectionView;
 import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
 import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
 import app.lifelinq.features.meals.contract.RecentMealOccurrenceView;
 import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
+import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import java.util.ArrayList;
 import java.util.List;
@@ -740,6 +742,46 @@ public class MealsController {
                 isoWeek
         );
         return ResponseEntity.ok(toWeekPlanResponse(view));
+    }
+
+    @GetMapping("/meals/weeks/{year}/{isoWeek}/shopping-impact")
+    public ResponseEntity<?> getWeekShoppingProjection(
+            @PathVariable int year,
+            @PathVariable int isoWeek
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        WeekShoppingProjectionView view = mealsApplicationService.getWeekShoppingProjection(
+                context.getGroupId(),
+                context.getUserId(),
+                year,
+                isoWeek
+        );
+        return ResponseEntity.ok(view);
+    }
+
+    @GetMapping("/meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}/shopping-impact")
+    public ResponseEntity<?> getMealShoppingProjection(
+            @PathVariable int year,
+            @PathVariable int isoWeek,
+            @PathVariable int dayOfWeek,
+            @PathVariable String mealType
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        MealShoppingProjectionView view = mealsApplicationService.getMealShoppingProjection(
+                context.getGroupId(),
+                context.getUserId(),
+                year,
+                isoWeek,
+                dayOfWeek,
+                app.lifelinq.features.meals.domain.MealType.valueOf(mealType)
+        );
+        return ResponseEntity.ok(view);
     }
 
     private AddMealResponse toAddMealResponse(AddMealOutput output) {

@@ -1,6 +1,8 @@
 package app.lifelinq.features.meals.contract;
 
 import java.math.BigDecimal;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public interface MealsShoppingPort {
@@ -13,5 +15,11 @@ public interface MealsShoppingPort {
             String unitName,
             String sourceKind,
             String sourceLabel
+    );
+
+    Map<UUID, MealsShoppingListSnapshot> listShoppingListSnapshots(
+            UUID groupId,
+            UUID actorUserId,
+            Set<UUID> listIds
     );
 }

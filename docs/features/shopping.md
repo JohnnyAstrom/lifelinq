@@ -374,6 +374,8 @@ That means:
 - Shopping can accept externally produced items
 - Shopping should not become meal-owned
 - meal-derived items should remain Shopping items once added
+- Shopping may also provide bounded list/item snapshots back to Meals when Meals is deriving operational coverage or readiness
+- those snapshots are bridge contracts, not shared repositories or shared aggregates
 
 Provenance should stay generic, for example:
 
