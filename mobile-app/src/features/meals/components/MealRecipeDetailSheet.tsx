@@ -44,9 +44,6 @@ type Strings = MealIngredientEditorRowStrings & {
   editSavedRecipeAction?: string;
   editRecipeAction?: string;
   planRecipeAction?: string;
-  memorySummaryLabel?: string;
-  memorySummaryTitle?: string;
-  memorySummaryHint?: string;
   markMakeSoonAction?: string;
   clearMakeSoonAction?: string;
   editingSavedRecipeHint?: string;
@@ -400,7 +397,6 @@ export function MealRecipeDetailSheet({
   const hasHeaderMetaContent = showIdentityBadge
     || (!!strings.mealAttachmentLabel && !!strings.mealAttachmentValue)
     || !!strings.recipeContextHint
-    || !!strings.memorySummaryTitle
     || (isArchivedRecipe && !!strings.archivedReadOnlyHint)
     || (showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && !!strings.saveAsNewRecipeHint)
     || (isEditingSavedRecipeDirectly && !!strings.editingSavedRecipeHint)
@@ -561,17 +557,6 @@ export function MealRecipeDetailSheet({
               ) : null}
               {strings.recipeContextHint ? (
                 <Text style={styles.contextHint}>{strings.recipeContextHint}</Text>
-              ) : null}
-              {strings.memorySummaryTitle ? (
-                <View style={styles.memorySummaryCard}>
-                  {strings.memorySummaryLabel ? (
-                    <Text style={styles.memorySummaryLabel}>{strings.memorySummaryLabel}</Text>
-                  ) : null}
-                  <Text style={styles.memorySummaryTitle}>{strings.memorySummaryTitle}</Text>
-                  {strings.memorySummaryHint ? (
-                    <Text style={styles.memorySummaryHint}>{strings.memorySummaryHint}</Text>
-                  ) : null}
-                </View>
               ) : null}
               {isArchivedRecipe && strings.archivedReadOnlyHint ? (
                 <Subtle>{strings.archivedReadOnlyHint}</Subtle>
@@ -1370,31 +1355,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   contextHint: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-  },
-  memorySummaryCard: {
-    gap: 2,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceSubtle,
-  },
-  memorySummaryLabel: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    fontWeight: '600',
-  },
-  memorySummaryTitle: {
-    ...textStyles.body,
-    color: theme.colors.text,
-    fontWeight: '700',
-  },
-  memorySummaryHint: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
   },

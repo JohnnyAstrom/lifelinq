@@ -140,13 +140,18 @@ function formatRecipeMemorySupport(memory: {
     return null;
   }
 
+  const hasStrongHistorySignal = memory.recentUses > 0
+    || memory.familiar
+    || memory.frequent
+    || memory.preferenceFit
+    || memory.totalUses >= 2;
+
   if (memory.totalUses === 0) {
-    return {
-      title: memory.makeSoon ? 'Marked to make soon' : 'Not planned yet',
-      hint: memory.makeSoon
-        ? 'Saved for a near-term meal.'
-        : 'This recipe has not been part of your plan yet.',
-    };
+    return memory.makeSoon ? 'Marked make soon' : null;
+  }
+
+  if (!hasStrongHistorySignal && !memory.makeSoon) {
+    return null;
   }
 
   const lastUsedDate = new Date(`${memory.lastUsedDate}T00:00:00`);
@@ -154,30 +159,20 @@ function formatRecipeMemorySupport(memory: {
     day: 'numeric',
     month: 'short',
   });
-  const useSummary = memory.totalUses === 1
-    ? 'Used once'
-    : `Used ${memory.totalUses} times`;
-  const weekSummary = memory.distinctWeeks === 1
-    ? 'in 1 week'
-    : `across ${memory.distinctWeeks} weeks`;
-  const supportNote = memory.preferenceFit
-    ? 'Fits what your household likes.'
-    : memory.makeSoon
-      ? 'Also marked to make soon.'
-      : undefined;
+  const lead = memory.familiar
+    ? 'Familiar in your plan'
+    : memory.recentUses > 0
+      ? 'Used recently'
+      : memory.frequent
+        ? 'Comes up often'
+        : 'Used before';
+  const trailing = memory.makeSoon
+    ? 'Marked make soon'
+    : memory.preferenceFit
+      ? 'Fits your household'
+      : `Last planned ${lastUsedLabel}`;
 
-  return {
-    title: memory.familiar
-      ? 'A familiar household recipe'
-      : memory.recentUses > 0
-        ? 'Used recently'
-        : memory.frequent
-          ? 'Comes up often'
-          : 'Part of your meal memory',
-    hint: supportNote
-      ? `${useSummary} ${weekSummary} · Last planned ${lastUsedLabel}. ${supportNote}`
-      : `${useSummary} ${weekSummary} · Last planned ${lastUsedLabel}.`,
-  };
+  return `${lead} · ${trailing}`;
 }
 
 export function MealsWeekScreen({ token, onDone }: Props) {
@@ -234,7 +229,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     planRecipeSheetTitle: 'Plan this recipe',
     planRecipeSheetSubtitle: undefined,
     planRecipeWeekLabel: 'Week',
-    planRecipeMemoryLabel: 'Household memory',
     planRecipeDayLabel: 'Day',
     planRecipeMealLabel: 'Meal',
     planRecipeRecipeLabel: 'Recipe',
@@ -254,7 +248,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recipeSheetMealSpecificContextHint: 'Your changes are now creating a recipe for this meal.',
     recipeSheetEditingSavedRecipeContextHint: 'You are editing the saved recipe used by this meal.',
     recipeSheetNewRecipeContextHint: 'You are adding recipe details for this meal.',
-    recipeMemoryLabel: 'Household memory',
     recipeMealAttachmentLabel: 'Used for',
     mealDetailSheetHint: undefined,
     mealUsingSavedRecipeHint: 'This meal is using a saved recipe.',
@@ -378,7 +371,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     shoppingHandledState: 'Already in shopping.',
     shoppingHandledOnList: (listName: string) => `Already added to ${listName}.`,
     shoppingNeedsReviewAgain: 'Review shopping again after these changes.',
-    recentMealsTitle: 'Choose something familiar',
+    recentMealsTitle: 'Choose from your meals',
     recentMealsHint: undefined,
     loadingRecentMeals: 'Loading your meals...',
     noRecentMealsToReuse: 'Nothing familiar for this slot yet.',
@@ -1452,19 +1445,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             planRecipeAction: recipesWorkspace.recipeDetail.isReadMode && !recipesWorkspace.recipeDetail.isArchivedRecipe
               ? strings.planRecipeAction
               : undefined,
-            memorySummaryLabel: recipesWorkspace.recipeDetail.isReadMode
-              && !recipesWorkspace.recipeDetail.isArchivedRecipe
-              && recipeMemorySupport
-              ? strings.recipeMemoryLabel
-              : undefined,
-            memorySummaryTitle: recipesWorkspace.recipeDetail.isReadMode
-              && !recipesWorkspace.recipeDetail.isArchivedRecipe
-              ? recipeMemorySupport?.title
-              : undefined,
-            memorySummaryHint: recipesWorkspace.recipeDetail.isReadMode
-              && !recipesWorkspace.recipeDetail.isArchivedRecipe
-              ? recipeMemorySupport?.hint
-              : undefined,
             markMakeSoonAction: strings.markMakeSoonAction,
             clearMakeSoonAction: strings.clearMakeSoonAction,
             recipeContentLabel: recipesWorkspace.recipeDetail.isImportDraft
@@ -1580,8 +1560,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         <MealRecipePlanSheet
           recipeTitle={recipePlanBridge.recipeTitle}
           weekSummary={formatWeekRangeLabel(weekStart, weekEnd)}
-          memorySummaryTitle={recipeMemorySupport?.title}
-          memorySummaryHint={recipeMemorySupport?.hint}
+          memorySummary={recipeMemorySupport ?? undefined}
           days={currentWeekDayOptions}
           mealTypeLabels={MEAL_TYPE_LABELS}
           existingMeals={currentWeekMealEntries}
@@ -1595,7 +1574,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             title: strings.planRecipeSheetTitle,
             subtitle: strings.planRecipeSheetSubtitle,
             recipeLabel: strings.planRecipeRecipeLabel,
-            memoryLabel: strings.planRecipeMemoryLabel,
             weekLabel: strings.planRecipeWeekLabel,
             dayLabel: strings.planRecipeDayLabel,
             mealLabel: strings.planRecipeMealLabel,
