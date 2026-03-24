@@ -43,14 +43,18 @@ export function HomeScreen({
   });
 
   return (
-    <AppScreen contentStyle={styles.content}>
-      <PlaceHeader
-        title={overview.place.title}
-        subtitle={overview.place.subtitle}
-        canSwitch={overview.place.canSwitch}
-        onPressPlace={onOpenSwitchSheet}
-        onPressSettings={onSettings}
-      />
+    <AppScreen
+      header={(
+        <PlaceHeader
+          title={overview.place.title}
+          subtitle={overview.place.subtitle}
+          canSwitch={overview.place.canSwitch}
+          onPressPlace={onOpenSwitchSheet}
+          onPressSettings={onSettings}
+        />
+      )}
+      contentStyle={styles.content}
+    >
       <TodaySummaryCard {...overview.today} />
       <View style={styles.modulesSection}>
         <FeatureModulesGrid modules={overview.modules} />

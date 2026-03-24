@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
+const HOME_HEADER_ACCENT = '#D2C2B2';
+
 type Props = {
   title: string;
   subtitle?: string;
@@ -25,40 +27,54 @@ export function PlaceHeader({ title, subtitle, canSwitch, onPressPlace, onPressS
   );
 
   return (
-    <View style={styles.container}>
-      {canSwitch ? (
+    <View>
+      <View style={styles.accent} />
+      <View style={styles.container}>
+        {canSwitch ? (
+          <Pressable
+            onPress={onPressPlace}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.titlePressable, pressed ? styles.pressed : null]}
+          >
+            {titleBlock}
+          </Pressable>
+        ) : (
+          <View style={styles.titlePressable}>{titleBlock}</View>
+        )}
         <Pressable
-          onPress={onPressPlace}
+          onPress={onPressSettings}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.titlePressable, pressed ? styles.pressed : null]}
+          accessibilityLabel="Settings"
+          style={({ pressed }) => [styles.settingsButton, pressed ? styles.pressed : null]}
         >
-          {titleBlock}
+          <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
         </Pressable>
-      ) : (
-        <View style={styles.titlePressable}>{titleBlock}</View>
-      )}
-      <Pressable
-        onPress={onPressSettings}
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        style={({ pressed }) => [styles.settingsButton, pressed ? styles.pressed : null]}
-      >
-        <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
-      </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: theme.colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  accent: {
+    height: 2,
+    backgroundColor: HOME_HEADER_ACCENT,
   },
   titlePressable: {
     flex: 1,
     gap: 8,
+    minWidth: 0,
   },
   titleRow: {
     flexDirection: 'row',
@@ -66,7 +82,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    ...textStyles.h1,
+    ...textStyles.h2,
     flexShrink: 1,
   },
   settingsButton: {
