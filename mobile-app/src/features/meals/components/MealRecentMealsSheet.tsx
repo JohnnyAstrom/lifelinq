@@ -7,8 +7,13 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 type RecentMealOption = {
   id: string;
   mealTitle: string;
-  recipeTitle: string | null;
   contextLabel: string;
+};
+
+type RecentMealSection = {
+  id: string;
+  title: string;
+  meals: RecentMealOption[];
 };
 
 type Strings = {
@@ -20,7 +25,7 @@ type Strings = {
 };
 
 type Props = {
-  meals: RecentMealOption[];
+  sections: RecentMealSection[];
   isLoading: boolean;
   error: string | null;
   onSelectMeal: (mealId: string) => void;
@@ -29,7 +34,7 @@ type Props = {
 };
 
 export function MealRecentMealsSheet({
-  meals,
+  sections,
   isLoading,
   error,
   onSelectMeal,
@@ -52,33 +57,35 @@ export function MealRecentMealsSheet({
           >
             {isLoading ? <Subtle>{strings.loadingMeals}</Subtle> : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            {!isLoading && !error && meals.length === 0 ? (
+            {!isLoading && !error && sections.length === 0 ? (
               <Subtle>{strings.noMeals}</Subtle>
             ) : null}
 
-            {!isLoading && meals.length > 0 ? (
-              <View style={styles.mealList}>
-                {meals.map((meal) => {
-                  const metaLine = meal.recipeTitle && meal.recipeTitle.trim().length > 0 && meal.recipeTitle !== meal.mealTitle
-                    ? `${meal.recipeTitle} · ${meal.contextLabel}`
-                    : meal.contextLabel;
-                  return (
-                    <Pressable
-                      key={meal.id}
-                      onPress={() => onSelectMeal(meal.id)}
-                      style={({ pressed }) => [
-                        styles.mealRow,
-                        pressed ? styles.mealRowPressed : null,
-                      ]}
-                    >
-                      <View style={styles.mealRowCopy}>
-                        <Text style={styles.mealTitle}>{meal.mealTitle}</Text>
-                        <Text style={styles.mealMeta}>{metaLine}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-                    </Pressable>
-                  );
-                })}
+            {!isLoading && sections.length > 0 ? (
+              <View style={styles.sectionList}>
+                {sections.map((section) => (
+                  <View key={section.id} style={styles.section}>
+                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                    <View style={styles.mealList}>
+                      {section.meals.map((meal) => (
+                        <Pressable
+                          key={meal.id}
+                          onPress={() => onSelectMeal(meal.id)}
+                          style={({ pressed }) => [
+                            styles.mealRow,
+                            pressed ? styles.mealRowPressed : null,
+                          ]}
+                        >
+                          <View style={styles.mealRowCopy}>
+                            <Text style={styles.mealTitle}>{meal.mealTitle}</Text>
+                            <Text style={styles.mealMeta}>{meal.contextLabel}</Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ))}
               </View>
             ) : null}
 
@@ -139,6 +146,19 @@ const styles = StyleSheet.create({
   },
   mealList: {
     gap: theme.spacing.xs,
+  },
+  sectionList: {
+    gap: theme.spacing.md,
+  },
+  section: {
+    gap: theme.spacing.xs,
+  },
+  sectionTitle: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   mealRow: {
     flexDirection: 'row',

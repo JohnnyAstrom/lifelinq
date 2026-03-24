@@ -172,7 +172,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     openRecipe: 'Open details',
     openSavedRecipe: 'Open recipe',
     addRecipeDetails: 'Add details',
-    reuseRecentMeal: 'Reuse recent meal',
+    reuseRecentMeal: 'Choose from your meals',
     recipeSummaryHint: 'Add ingredients, notes, or steps.',
     savedRecipeSummaryHint: 'Saved in Recipe library.',
     loadingRecipe: 'Loading details...',
@@ -322,10 +322,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     shoppingHandledState: 'Already in shopping.',
     shoppingHandledOnList: (listName: string) => `Already added to ${listName}.`,
     shoppingNeedsReviewAgain: 'Review shopping again after these changes.',
-    recentMealsTitle: 'Reuse recent meal',
+    recentMealsTitle: 'Choose something familiar',
     recentMealsHint: undefined,
-    loadingRecentMeals: 'Loading recent meals...',
-    noRecentMealsToReuse: 'No recent meals to reuse yet.',
+    loadingRecentMeals: 'Loading your meals...',
+    noRecentMealsToReuse: 'Nothing familiar for this slot yet.',
+    recentMealChoicesRecent: 'Recent',
+    recentMealChoicesFamiliar: 'Familiar',
+    recentMealChoicesMakeSoon: 'Make soon',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
     reviewShoppingAgainAction: 'Review shopping again',
     shoppingReviewTitle: 'Add ingredients to shopping',
@@ -1549,9 +1552,16 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
       {editor.isOpen && editor.isRecentMealsOpen ? (
         <MealRecentMealsSheet
-          meals={editor.recentMeals ?? []}
-          isLoading={editor.isRecentMealsLoading}
-          error={editor.recentMealsError}
+          sections={(editor.mealChoiceSections ?? []).map((section) => ({
+            ...section,
+            title: section.id === 'recent'
+              ? strings.recentMealChoicesRecent
+              : section.id === 'familiar'
+                ? strings.recentMealChoicesFamiliar
+                : strings.recentMealChoicesMakeSoon,
+          }))}
+          isLoading={editor.isMealChoicesLoading}
+          error={editor.mealChoicesError}
           onSelectMeal={(mealId) => {
             void editor.selectRecentMeal(mealId);
           }}
