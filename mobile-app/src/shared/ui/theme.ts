@@ -49,7 +49,7 @@ export const theme = {
     background: '#FCFAF7',
     scrim: 'rgba(0,0,0,0.4)',
     card: '#FFFFFF',
-    surfaceSubtle: '#EEF0F3',
+    surfaceSubtle: '#F2ECE5',
     border: '#E3E6EA',
     textPrimary: '#1F2328',
     textSecondary: '#6B7280',
@@ -60,7 +60,7 @@ export const theme = {
     // Backward-compatible aliases for existing UI code.
     bg: '#FCFAF7',
     surface: '#FFFFFF',
-    surfaceAlt: '#EEF0F3',
+    surfaceAlt: '#F7F3EE',
     text: '#1F2328',
     subtle: '#6B7280',
     borderStrong: '#E3E6EA',
