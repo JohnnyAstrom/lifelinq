@@ -23,7 +23,6 @@ type Strings = {
   title: string;
   subtitle?: string;
   recipeLabel: string;
-  memoryLabel?: string;
   weekLabel: string;
   dayLabel: string;
   mealLabel: string;
@@ -37,8 +36,7 @@ type Strings = {
 type Props = {
   recipeTitle: string;
   weekSummary: string;
-  memorySummaryTitle?: string;
-  memorySummaryHint?: string;
+  memorySummary?: string;
   days: DayOption[];
   mealTypeLabels: Record<MealType, string>;
   existingMeals: ExistingMeal[];
@@ -56,8 +54,7 @@ const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER'];
 export function MealRecipePlanSheet({
   recipeTitle,
   weekSummary,
-  memorySummaryTitle,
-  memorySummaryHint,
+  memorySummary,
   days,
   mealTypeLabels,
   existingMeals,
@@ -107,16 +104,8 @@ export function MealRecipePlanSheet({
             <Text style={styles.weekSummary}>
               {strings.weekLabel} {weekSummary}
             </Text>
-            {memorySummaryTitle ? (
-              <View style={styles.memorySummaryBlock}>
-                {strings.memoryLabel ? (
-                  <Text style={styles.memorySummaryLabel}>{strings.memoryLabel}</Text>
-                ) : null}
-                <Text style={styles.memorySummaryTitle}>{memorySummaryTitle}</Text>
-                {memorySummaryHint ? (
-                  <Text style={styles.memorySummaryHint}>{memorySummaryHint}</Text>
-                ) : null}
-              </View>
+            {memorySummary ? (
+              <Text style={styles.memorySummaryText}>{memorySummary}</Text>
             ) : null}
           </View>
 
@@ -233,28 +222,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
   },
-  memorySummaryBlock: {
-    gap: 2,
-    paddingTop: theme.spacing.sm,
-    marginTop: theme.spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  memorySummaryLabel: {
+  memorySummaryText: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    fontWeight: '600',
-  },
-  memorySummaryTitle: {
-    ...textStyles.body,
-    color: theme.colors.textPrimary,
-    fontWeight: '600',
-  },
-  memorySummaryHint: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
+    marginTop: 2,
   },
   weekSummary: {
     ...textStyles.subtle,

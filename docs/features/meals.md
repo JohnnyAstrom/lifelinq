@@ -233,6 +233,8 @@ Program 2 step-2 note: the first visible Program 2 payoff now lives inside `Meal
 
 Program 2 step-3 note: Program 2 now also reaches the recipe-led planning path instead of living only in the slot-support sheet. Saved recipe read mode can carry a small household-memory summary built from recipe usage history, and the same summary follows into `Plan this recipe` so recipe-led planning keeps a little context about whether the recipe is familiar, recently used, or mainly saved for later. This remains intentionally secondary to the recipe itself: the recipe detail destination stays content-first, and the plan bridge still behaves like a narrow slot-selection step rather than turning into a broader recommendation surface.
 
+Program 2 step-4 note: the final stabilization pass tightens when that household-memory layer should actually show itself. Weak memory states no longer automatically create a visible support block just because a projection exists, recipe-led memory now stays focused on active read-mode planning contexts rather than archived/edit states, and slot choice support avoids showing stale candidates from a previous slot while a new slot-context query is loading. The visible Program 2 path therefore stays assistive where it helps and quiet where it does not.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  

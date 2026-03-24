@@ -230,6 +230,12 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     }
     return `${year}-${isoWeek}-${selectedDay}-${selectedMealType}`;
   }, [isoWeek, selectedDay, selectedMealType, year]);
+  const visibleMealChoiceSections = useMemo(
+    () => mealChoicesContextKey === currentMealChoicesContextKey
+      ? (mealChoiceSections ?? [])
+      : [],
+    [currentMealChoicesContextKey, mealChoiceSections, mealChoicesContextKey]
+  );
   const selectedMealHandledListId = selectedMeal?.shoppingListId ?? null;
   const selectedMealHandledAt = selectedMeal?.shoppingHandledAt ?? null;
   const effectiveListId =
@@ -387,6 +393,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setRecipeLoadError(null);
     setRecipeListError(null);
     setMealChoicesError(null);
+    setMealChoiceSections(null);
+    setMealChoicesContextKey(null);
   }
 
   function toRecipeSnapshot(recipe: RecipeResponse): RecipeSnapshot {
@@ -533,6 +541,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setSelectedShoppingIngredientRowIds([]);
     setRecipeLoadError(null);
     setMealChoicesError(null);
+    setMealChoiceSections(null);
+    setMealChoicesContextKey(null);
   }
 
   function closeEditor() {
@@ -1160,7 +1170,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       recipeListError,
       recipePickerOptions,
       showRecipePickerAction: !isSelectedRecipeSavedInRecipes || hasAlternativeSavedRecipeOptions,
-      mealChoiceSections,
+      mealChoiceSections: visibleMealChoiceSections,
       mealChoicesError,
       hasModifiedPickedRecipe,
       isSelectedRecipeSavedInRecipes,

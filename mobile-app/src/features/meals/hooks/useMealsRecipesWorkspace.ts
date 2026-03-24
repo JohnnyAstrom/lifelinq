@@ -532,7 +532,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   useEffect(() => {
     let cancelled = false;
 
-    if (!token || !recipeId || detailMode !== 'saved') {
+    if (!token || !recipeId || detailMode !== 'saved' || recipeLifecycleState !== 'active' || !isRecipeReadMode) {
       setRecipeMemory(null);
       setIsRecipeMemoryLoading(false);
       return () => {
@@ -564,7 +564,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     return () => {
       cancelled = true;
     };
-  }, [detailMode, handleApiError, recipeId, token]);
+  }, [detailMode, handleApiError, isRecipeReadMode, recipeId, recipeLifecycleState, token]);
 
   async function openCreateRecipe() {
     if (pendingDetailAction || isRecipeLoading) {

@@ -41,6 +41,8 @@ export function MealRecentMealsSheet({
   onClose,
   strings,
 }: Props) {
+  const showSectionTitles = sections.length > 1;
+
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
@@ -65,7 +67,9 @@ export function MealRecentMealsSheet({
               <View style={styles.sectionList}>
                 {sections.map((section) => (
                   <View key={section.id} style={styles.section}>
-                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                    {showSectionTitles ? (
+                      <Text style={styles.sectionTitle}>{section.title}</Text>
+                    ) : null}
                     <View style={styles.mealList}>
                       {section.meals.map((meal) => (
                         <Pressable
