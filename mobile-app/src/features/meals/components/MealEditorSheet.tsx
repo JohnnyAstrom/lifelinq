@@ -27,14 +27,6 @@ type MealEditorSheetStrings = {
   savedRecipeSummaryHint: string;
   loadingRecipe: string;
   ingredientsSummarySuffix: string;
-  shoppingLabel: string;
-  shoppingAddHint: string;
-  shoppingHandledTitle: string;
-  shoppingHandledState: string;
-  shoppingHandledOnList: (listName: string) => string;
-  shoppingNeedsReviewAgain: string;
-  addIngredientsToShoppingAction: string;
-  reviewShoppingAgainAction: string;
   saveMeal: string;
   savingMeal: string;
   removeMeal: string;
@@ -61,10 +53,6 @@ type Props = {
   showRecipePickerAction: boolean;
   hasIngredients: boolean;
   hasRecipeDraftContent: boolean;
-  onOpenShoppingReview: () => void;
-  hasShoppingHandled: boolean;
-  needsShoppingReviewAgain: boolean;
-  shoppingListName: string | null;
   hasExistingMeal: boolean;
   hasExistingRecipe: boolean;
   isSavingMeal: boolean;
@@ -94,10 +82,6 @@ export function MealEditorSheet({
   showRecipePickerAction,
   hasIngredients,
   hasRecipeDraftContent,
-  onOpenShoppingReview,
-  hasShoppingHandled,
-  needsShoppingReviewAgain,
-  shoppingListName,
   hasExistingMeal,
   hasExistingRecipe,
   isSavingMeal,
@@ -152,19 +136,6 @@ export function MealEditorSheet({
     day: 'numeric',
     month: 'short',
   });
-  const shoppingStatusText = needsShoppingReviewAgain
-    ? strings.shoppingNeedsReviewAgain
-    : hasShoppingHandled
-      ? (shoppingListName
-        ? strings.shoppingHandledOnList(shoppingListName)
-        : strings.shoppingHandledState)
-      : strings.shoppingAddHint;
-  const shoppingTitle = needsShoppingReviewAgain
-    ? strings.reviewShoppingAgainAction
-    : hasShoppingHandled
-      ? strings.shoppingHandledTitle
-      : strings.addIngredientsToShoppingAction;
-
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.sheetLayout}>
@@ -274,43 +245,6 @@ export function MealEditorSheet({
                 </Pressable>
               ) : null}
             </View>
-            {hasIngredients ? (
-              <View style={styles.shoppingActionSection}>
-                <Text style={styles.fieldLabel}>{strings.shoppingLabel}</Text>
-                <Pressable
-                  onPress={onOpenShoppingReview}
-                  disabled={isActionPending}
-                  style={({ pressed }) => [
-                    styles.shoppingSummaryCard,
-                    hasShoppingHandled ? styles.shoppingSummaryCardHandled : null,
-                    needsShoppingReviewAgain ? styles.shoppingSummaryCardNeedsReview : null,
-                    pressed ? styles.shoppingSummaryCardPressed : null,
-                    isActionPending ? styles.shoppingSummaryCardDisabled : null,
-                  ]}
-                >
-                  <View style={styles.shoppingSummaryLeading}>
-                    <Ionicons
-                      name={hasShoppingHandled ? 'checkmark-circle-outline' : 'cart-outline'}
-                      size={18}
-                      color={needsShoppingReviewAgain ? theme.colors.textPrimary : theme.colors.feature.meals}
-                    />
-                  </View>
-                  <View style={styles.shoppingSummaryCopy}>
-                    <Text style={styles.shoppingSummaryTitle}>{shoppingTitle}</Text>
-                    <Text
-                      style={[
-                        styles.shoppingSummaryMeta,
-                        needsShoppingReviewAgain ? styles.shoppingSummaryMetaNeedsReview : null,
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {shoppingStatusText}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={theme.colors.textSecondary} />
-                </Pressable>
-              </View>
-            ) : null}
             <View style={styles.sheetFooterActions}>
               <AppButton
                 title={saveActionLabel}
@@ -517,54 +451,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingTop: theme.spacing.xs,
     paddingBottom: theme.spacing.xs,
-  },
-  shoppingActionSection: {
-    gap: theme.spacing.xs,
-  },
-  shoppingSummaryCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  shoppingSummaryCardHandled: {
-    backgroundColor: theme.colors.surfaceSubtle,
-  },
-  shoppingSummaryCardNeedsReview: {
-    borderColor: theme.colors.feature.meals,
-    backgroundColor: theme.colors.surfaceSubtle,
-  },
-  shoppingSummaryCardPressed: {
-    opacity: 0.8,
-  },
-  shoppingSummaryCardDisabled: {
-    opacity: 0.6,
-  },
-  shoppingSummaryLeading: {
-    width: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shoppingSummaryCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  shoppingSummaryTitle: {
-    ...textStyles.body,
-    fontWeight: '600',
-  },
-  shoppingSummaryMeta: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-  },
-  shoppingSummaryMetaNeedsReview: {
-    color: theme.colors.textPrimary,
   },
   sheetFooterActions: {
     gap: theme.spacing.xs,

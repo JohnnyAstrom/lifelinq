@@ -15,8 +15,7 @@ type MealEntry = {
 type Props = {
   weekStart: Date;
   mealsByDay: Map<number, MealEntry[]>;
-  onOpenDay: (date: Date) => void;
-  onOpenEditor: (day: number, mealType: MealType) => void;
+  onOpenDay: (date: Date, focusedMealType?: MealType | null) => void;
   formatDayLabel: (date: Date, dayIndex: number) => string;
   DAY_LABELS: string[];
   MEAL_TYPE_LABELS: Record<MealType, string>;
@@ -35,7 +34,6 @@ export function MealsWeeklyView({
   weekStart,
   mealsByDay,
   onOpenDay,
-  onOpenEditor,
   formatDayLabel,
   DAY_LABELS,
   MEAL_TYPE_LABELS,
@@ -87,7 +85,7 @@ export function MealsWeeklyView({
                       key={`${meal.dayOfWeek}-${meal.mealType}`}
                       mealType={meal.mealType}
                       mealTitle={meal.mealTitle}
-                      onPress={() => onOpenEditor(day, meal.mealType)}
+                      onPress={() => onOpenDay(localDate, meal.mealType)}
                       mealTypeLabels={MEAL_TYPE_LABELS}
                       styles={styles}
                     />

@@ -365,12 +365,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     importedIngredientReviewed: 'Checked',
     collapseIngredient: 'Collapse row',
     loadingIngredients: 'Loading ingredients...',
-    shoppingLabel: 'Shopping',
-    shoppingAddHint: 'Review ingredients before adding them.',
-    shoppingHandledTitle: 'Shopping handled',
-    shoppingHandledState: 'Already in shopping.',
-    shoppingHandledOnList: (listName: string) => `Already added to ${listName}.`,
-    shoppingNeedsReviewAgain: 'Review shopping again after these changes.',
     recentMealsTitle: 'Choose from your meals',
     recentMealsHint: undefined,
     loadingRecentMeals: 'Loading your meals...',
@@ -379,7 +373,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recentMealChoicesFamiliar: 'Familiar',
     recentMealChoicesMakeSoon: 'Make soon',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
-    reviewShoppingAgainAction: 'Review shopping again',
+    reviewShoppingAgainAction: 'Review shopping',
     shoppingReviewTitle: 'Add ingredients to shopping',
     shoppingListLabel: 'Shopping list',
     ingredientsToAddLabel: 'Ingredients to add',
@@ -398,11 +392,12 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [selectedDayDetailDate, setSelectedDayDetailDate] = useState<Date | null>(null);
-  const [pendingDayEditorOpen, setPendingDayEditorOpen] = useState<{
+  const [selectedDayDetailMealType, setSelectedDayDetailMealType] = useState<MealType | null>(null);
+  const [pendingDayActionOpen, setPendingDayActionOpen] = useState<{
     date: Date;
     dayOfWeek: number;
     mealType: MealType;
-    target: 'slot' | 'recipe';
+    target: 'edit' | 'shopping';
   } | null>(null);
   const [recipePlanBridge, setRecipePlanBridge] = useState<RecipePlanBridgeState | null>(null);
   const [isPlanningRecipe, setIsPlanningRecipe] = useState(false);
@@ -673,12 +668,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         mealTitle: meal.mealTitle,
         recipeId: meal.recipeId,
         recipeTitle: meal.recipeTitle,
+        shoppingListName: meal.shoppingListId
+          ? (shopping.lists.find((list) => list.id === meal.shoppingListId)?.name ?? null)
+          : null,
       }))
       .sort((a, b) => {
         const order = { BREAKFAST: 0, LUNCH: 1, DINNER: 2 } as const;
         return order[a.mealType] - order[b.mealType];
       });
-  }, [effectiveSelectedDayPlan, selectedDayDetail]);
+  }, [effectiveSelectedDayPlan, selectedDayDetail, shopping.lists]);
   const dayDetailError = selectedDayDetail
     ? (isSelectedDayInAnchorWeek ? plan.error : selectedDayPlanError)
     : null;
@@ -688,23 +686,25 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     && (isSelectedDayInAnchorWeek ? plan.isInitialLoading : isSelectedDayPlanLoading);
 
   useEffect(() => {
-    if (!pendingDayEditorOpen) {
+    if (!pendingDayActionOpen) {
       return;
     }
-    const { year: pendingYear, isoWeek: pendingIsoWeek } = getIsoWeekParts(pendingDayEditorOpen.date);
+    const { year: pendingYear, isoWeek: pendingIsoWeek } = getIsoWeekParts(pendingDayActionOpen.date);
     if (plan.data?.year !== pendingYear || plan.data?.isoWeek !== pendingIsoWeek) {
       return;
     }
-    actions.openEditor(pendingDayEditorOpen.dayOfWeek, pendingDayEditorOpen.mealType);
-    if (pendingDayEditorOpen.target === 'recipe') {
-      editor.openRecipeDetail();
+    if (pendingDayActionOpen.target === 'edit') {
+      actions.openEditor(pendingDayActionOpen.dayOfWeek, pendingDayActionOpen.mealType);
+    } else {
+      actions.openShoppingReviewForMeal(pendingDayActionOpen.dayOfWeek, pendingDayActionOpen.mealType);
     }
-    setPendingDayEditorOpen(null);
-  }, [actions.openEditor, editor.openRecipeDetail, pendingDayEditorOpen, plan.data]);
+    setPendingDayActionOpen(null);
+  }, [actions, pendingDayActionOpen, plan.data]);
 
-  function openDayDetail(date: Date) {
+  function openDayDetail(date: Date, focusedMealType: MealType | null = null) {
     const nextDate = new Date(date.getTime());
     setSelectedDayDetailDate(nextDate);
+    setSelectedDayDetailMealType(focusedMealType);
   }
 
   function closeDayDetail() {
@@ -712,34 +712,47 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       return;
     }
     setSelectedDayDetailDate(null);
+    setSelectedDayDetailMealType(null);
   }
 
   function openMealFromDayDetail(mealType: MealType) {
     if (!selectedDayDetail) {
       return;
     }
-    setPendingDayEditorOpen({
+    setPendingDayActionOpen({
       date: selectedDayDetail.date,
       dayOfWeek: selectedDayDetail.dayOfWeek,
       mealType,
-      target: 'slot',
+      target: 'edit',
     });
     setAnchorDate(selectedDayDetail.date);
-    setSelectedDayDetailDate(null);
+    setSelectedDayDetailMealType(mealType);
   }
 
   function openRecipeFromDayDetail(mealType: MealType) {
     if (!selectedDayDetail) {
       return;
     }
-    setPendingDayEditorOpen({
+    const meal = selectedDayMeals.find((entry) => entry.mealType === mealType);
+    if (!meal?.recipeId) {
+      return;
+    }
+    setSelectedDayDetailMealType(mealType);
+    void recipesWorkspace.recipes.openRecipe(meal.recipeId);
+  }
+
+  function openShoppingFromDayDetail(mealType: MealType) {
+    if (!selectedDayDetail) {
+      return;
+    }
+    setPendingDayActionOpen({
       date: selectedDayDetail.date,
       dayOfWeek: selectedDayDetail.dayOfWeek,
       mealType,
-      target: 'recipe',
+      target: 'shopping',
     });
     setAnchorDate(selectedDayDetail.date);
-    setSelectedDayDetailDate(null);
+    setSelectedDayDetailMealType(mealType);
   }
 
   function openRecipePlanBridge() {
@@ -859,7 +872,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       contentStyle={styles.screenContent}
       header={(
         <TopBar
-          title={strings.title}
+          title={workspaceMode === 'home' ? strings.homeTitle : strings.title}
+          subtitle={workspaceMode === 'home' ? strings.homeSubtitle : undefined}
           icon={<Ionicons name="restaurant-outline" />}
           accentKey="meals"
           right={<BackIconButton onPress={handleMealsBack} />}
@@ -893,11 +907,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             <View style={styles.contentInner}>
               {workspaceMode === 'home' ? (
                 <View style={styles.homeLayout}>
-                  <View style={styles.homeHeader}>
-                    <Text style={styles.homeTitle}>{strings.homeTitle}</Text>
-                    <Text style={styles.homeSubtitle}>{strings.homeSubtitle}</Text>
-                  </View>
-
                   <View style={styles.homeDestinations}>
                     <Pressable
                       onPress={() => setWorkspaceMode('plan')}
@@ -990,7 +999,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                         weekStart={weekStart}
                         mealsByDay={mealsByDay}
                         onOpenDay={openDayDetail}
-                        onOpenEditor={actions.openEditor}
                         formatDayLabel={formatDayLabel}
                         DAY_LABELS={DAY_LABELS}
                         MEAL_TYPE_LABELS={MEAL_TYPE_LABELS}
@@ -1080,23 +1088,39 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           subtitle={selectedDayDetail.subtitle}
           meals={selectedDayMeals}
           mealTypeLabels={MEAL_TYPE_LABELS}
+          focusedMealType={selectedDayDetailMealType}
           isLoading={isDayDetailLoading}
           error={dayDetailError}
           onOpenMeal={openMealFromDayDetail}
           onOpenRecipe={openRecipeFromDayDetail}
+          onOpenShopping={openShoppingFromDayDetail}
           onClose={closeDayDetail}
           strings={{
             title: strings.title,
             close: strings.close,
             loadingDay: strings.loadingDay,
-            emptyDay: undefined,
+            emptyDayTitle: 'Nothing planned yet',
+            emptyDayHint: 'Start with the meal you want to add for this day.',
             addMeal: strings.planMealSlot,
             editMeal: strings.editMealSlot,
-            mealsLabel: strings.mealsLabel,
-            mealHint: undefined,
-            mealActionHint: undefined,
-            recipeLabel: strings.recipeLinkLabel,
+            planMealForSlot: (mealLabel: string) => `${strings.planMealSlot} ${mealLabel.toLowerCase()}`,
+            emptySlotTitle: (mealLabel: string) => `Nothing planned for ${mealLabel.toLowerCase()}`,
+            titleOnlyMealHint: undefined,
+            recipeBackedMealHint: (mealTitle: string, recipeTitle: string) => {
+              const trimmedMealTitle = mealTitle.trim().toLocaleLowerCase();
+              const trimmedRecipeTitle = recipeTitle.trim();
+              if (trimmedRecipeTitle.length === 0) {
+                return null;
+              }
+              if (trimmedRecipeTitle.toLocaleLowerCase() === trimmedMealTitle) {
+                return null;
+              }
+              return trimmedRecipeTitle;
+            },
             openRecipe: strings.openRecipeFromDay,
+            openShopping: strings.addIngredientsToShoppingAction,
+            reviewShopping: strings.reviewShoppingAgainAction,
+            addedToShopping: (listName?: string | null) => listName ? `Added to ${listName}` : 'Added to shopping',
           }}
         />
       ) : null}
@@ -1121,10 +1145,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           showRecipePickerAction={editor.showRecipePickerAction}
           hasIngredients={editor.hasIngredients}
           hasRecipeDraftContent={editor.hasRecipeDraftContent}
-          onOpenShoppingReview={editor.openShoppingReview}
-          hasShoppingHandled={editor.hasShoppingHandled}
-          needsShoppingReviewAgain={editor.needsShoppingReviewAgain}
-          shoppingListName={editor.effectiveListName}
           hasExistingMeal={!!editor.selectedMeal?.mealTitle}
           hasExistingRecipe={editor.isSelectedRecipeSavedInRecipes}
           isSavingMeal={editor.isSavingMeal}
@@ -1150,14 +1170,6 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             savedRecipeSummaryHint: strings.savedRecipeSummaryHint,
             loadingRecipe: strings.loadingRecipe,
             ingredientsSummarySuffix: strings.ingredientsSummarySuffix,
-            shoppingLabel: strings.shoppingLabel,
-            shoppingAddHint: strings.shoppingAddHint,
-            shoppingHandledTitle: strings.shoppingHandledTitle,
-            shoppingHandledState: strings.shoppingHandledState,
-            shoppingHandledOnList: strings.shoppingHandledOnList,
-            shoppingNeedsReviewAgain: strings.shoppingNeedsReviewAgain,
-            addIngredientsToShoppingAction: strings.addIngredientsToShoppingAction,
-            reviewShoppingAgainAction: strings.reviewShoppingAgainAction,
             saveMeal: strings.saveMeal,
             savingMeal: strings.savingMeal,
             removeMeal: strings.removeMeal,
@@ -1167,7 +1179,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         />
       ) : null}
 
-      {editor.isOpen && editor.isRecipeDetailOpen ? (
+      {editor.isRecipeDetailOpen ? (
         <MealRecipeDetailSheet
           recipeTitle={editor.recipeTitle}
           onChangeRecipeTitle={editor.setRecipeTitle}
@@ -1630,7 +1642,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         />
       ) : null}
 
-      {editor.isOpen && editor.isShoppingReviewOpen ? (
+      {editor.isShoppingReviewOpen ? (
         <MealShoppingReviewSheet
           ingredients={editor.shoppingReviewIngredients}
           selectedIngredientRowIds={editor.selectedShoppingIngredientRowIds}
@@ -1646,6 +1658,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             title: strings.shoppingReviewTitle,
             ingredientsLabel: strings.ingredientsToAddLabel,
             ingredientsHint: strings.ingredientsToAddHint,
+            emptyIngredientsHint: 'No ingredients saved for this meal yet.',
             selectedListLabel: strings.shoppingListLabel,
             noShoppingLists: strings.noShoppingLists,
             shoppingSyncFailed: strings.shoppingSyncFailed,
@@ -1669,18 +1682,6 @@ const styles = StyleSheet.create({
   },
   homeLayout: {
     gap: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-  },
-  homeHeader: {
-    gap: theme.spacing.xs,
-  },
-  homeTitle: {
-    ...textStyles.h1,
-    color: theme.colors.text,
-  },
-  homeSubtitle: {
-    ...textStyles.body,
-    color: theme.colors.textSecondary,
   },
   homeDestinations: {
     gap: theme.spacing.md,

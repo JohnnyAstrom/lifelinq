@@ -19,6 +19,7 @@ type Strings = {
   title: string;
   ingredientsLabel: string;
   ingredientsHint: string;
+  emptyIngredientsHint?: string;
   selectedListLabel: string;
   noShoppingLists: string;
   shoppingSyncFailed: string;
@@ -92,32 +93,36 @@ export function MealShoppingReviewSheet({
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{strings.ingredientsLabel}</Text>
               <Subtle>{strings.ingredientsHint}</Subtle>
-              <View style={styles.ingredientList}>
-                {ingredients.map((ingredient) => (
-                  <Pressable
-                    key={ingredient.rowId}
-                    onPress={() => onToggleIngredient(ingredient.rowId)}
-                    style={({ pressed }) => [
-                      styles.ingredientRow,
-                      !selectedIds.has(ingredient.rowId) ? styles.ingredientRowUnselected : null,
-                      pressed ? styles.ingredientRowPressed : null,
-                    ]}
-                  >
-                    <View style={[
-                      styles.checkbox,
-                      selectedIds.has(ingredient.rowId) ? styles.checkboxSelected : null,
-                    ]}>
-                      {selectedIds.has(ingredient.rowId) ? (
-                        <Ionicons name="checkmark" size={14} color="#fff" />
+              {ingredients.length === 0 ? (
+                <Subtle>{strings.emptyIngredientsHint ?? 'No ingredients saved for this meal yet.'}</Subtle>
+              ) : (
+                <View style={styles.ingredientList}>
+                  {ingredients.map((ingredient) => (
+                    <Pressable
+                      key={ingredient.rowId}
+                      onPress={() => onToggleIngredient(ingredient.rowId)}
+                      style={({ pressed }) => [
+                        styles.ingredientRow,
+                        !selectedIds.has(ingredient.rowId) ? styles.ingredientRowUnselected : null,
+                        pressed ? styles.ingredientRowPressed : null,
+                      ]}
+                    >
+                      <View style={[
+                        styles.checkbox,
+                        selectedIds.has(ingredient.rowId) ? styles.checkboxSelected : null,
+                      ]}>
+                        {selectedIds.has(ingredient.rowId) ? (
+                          <Ionicons name="checkmark" size={14} color="#fff" />
+                        ) : null}
+                      </View>
+                      <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                      {ingredient.amount ? (
+                        <Text style={styles.ingredientAmount}>{ingredient.amount}</Text>
                       ) : null}
-                    </View>
-                    <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                    {ingredient.amount ? (
-                      <Text style={styles.ingredientAmount}>{ingredient.amount}</Text>
-                    ) : null}
-                  </Pressable>
-                ))}
-              </View>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
 
             {shoppingSyncError ? (

@@ -125,7 +125,7 @@ export function MealDayDetailSheet({
                     <Text
                       style={
                         meal
-                          ? (isRecipeBacked ? styles.slotValue : styles.slotValueLight)
+                          ? styles.slotValue
                           : styles.slotEmptyValue
                       }
                     >
@@ -260,17 +260,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   slotRowFocused: {
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: theme.colors.surfaceSubtle,
     borderColor: theme.colors.border,
   },
   slotRowQuiet: {
-    gap: 6,
-    paddingVertical: 12,
+    gap: 4,
+    paddingVertical: 10,
   },
   slotRowEmpty: {
     backgroundColor: theme.colors.surfaceAlt,
-    gap: 6,
-    paddingVertical: 12,
+    gap: 4,
+    paddingVertical: 10,
   },
   slotHeader: {
     flexDirection: 'row',
@@ -292,16 +292,9 @@ const styles = StyleSheet.create({
   slotValue: {
     ...textStyles.body,
     color: theme.colors.text,
-    fontSize: 19,
-    lineHeight: 26,
-    fontWeight: '700',
-  },
-  slotValueLight: {
-    ...textStyles.body,
-    color: theme.colors.text,
     fontSize: 18,
     lineHeight: 25,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   slotEmptyValue: {
     ...textStyles.subtle,
