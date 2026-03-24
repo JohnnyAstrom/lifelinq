@@ -89,62 +89,125 @@ Work iteratively:
 
 ---
 
+## Program-based delivery model
+
+When an area is mature enough that many small UI-led slices would become inefficient, work should shift from feature-by-feature iteration to capability-program delivery.
+
+A capability program should usually be executed in this order:
+
+1. read-only program definition
+   - product purpose
+   - program boundaries
+   - domain model
+   - key data concepts
+   - API/contract map
+   - delivery recommendation
+
+2. backend/data/API foundation
+   - durable domain entities
+   - lifecycle/state semantics
+   - scenario-based contracts
+   - derived read models/projections
+
+3. larger frontend/product slice
+   - one or two meaningful user-facing slices built on the new foundation
+
+4. stabilization pass
+   - edge cases
+   - contract cleanup
+   - frontend/domain seam reduction
+   - final bounded coherence pass
+
+This model should be preferred over many tiny feature steps when the product area already has enough maturity to support larger capability work.
+
+---
+
 ## Task modes
 
-### Read-only analysis
+### Program definition
 Use this when:
-- the right next step is not yet clear
-- there are competing directions
-- a prerequisite may be missing
-- the user is asking what should come next
+- a larger capability area needs to be defined before implementation
+- domain model / API shape / program boundary are not yet locked
+- working feature-by-feature would create fragmented execution
 
 Rules:
 - no implementation
 - no code changes
-- focus on diagnosis, ranking, and next-step recommendation
+- focus on product purpose, boundaries, domain model, API shape, and execution order
 
-### Implementation
+### Backend/data/API foundation
 Use this when:
-- the direction is already chosen
-- the slice is clear enough to build
-- the goal is a bounded product move
+- a capability direction is already chosen
+- the next correct step is to build durable model/contract support before frontend work
+- later frontend slices depend on stable backend semantics
 
 Rules:
-- stay within the agreed slice
-- do not widen into adjacent roadmap work
+- prioritize domain model, lifecycle/state semantics, scenario-based contracts, and read models
+- do not widen into multiple adjacent product programs
+- do not redesign frontend flows yet unless minimally necessary for compatibility
+
+### Frontend/product slice
+Use this when:
+- a foundation already exists
+- the goal is to build one or two meaningful user-facing slices on top of it
+- the user-facing product move is clear enough to implement
+
+Rules:
+- stay inside the agreed program slice
+- build on the existing foundation instead of reopening model questions
 - preserve unchanged behavior unless the step explicitly changes it
 
-### Review / polish
+### Stabilization pass
 Use this when:
-- the main direction is already correct
-- the remaining issues are refinement, clarity, or fit
-- the goal is maturity, not new product scope
+- the main capability slice is already in place
+- the remaining work is seam cleanup, edge cases, contract friction, or final coherence
+- the goal is to close a capability program cleanly
 
 Rules:
-- do not turn polish into a new feature
-- do not reopen adjacent roadmap questions unless a real problem is uncovered
+- do not turn stabilization into new feature work
+- focus on meaningful skavers, not low-value polish
+- prefer one bounded cleanup pass over many tiny polish loops
+
+### Small direct fix
+Use this when:
+- the solution is already known
+- the change is small and concrete
+- ambiguity would create wasted iteration
+
+Rules:
+- keep the instruction short
+- keep the goal explicit
+- avoid broad interpretive prompts
 
 ---
 
 ## Step sizing and slice discipline
 
-Work on **one meaningful slice at a time**.
+Work on one meaningful bounded delivery at a time.
 
-A good slice:
-- produces a clear user-visible improvement
+A good delivery:
+- produces a clear product improvement
 - is narrow enough to reason about
 - is large enough to matter
 - does not silently absorb the next roadmap step
 
+For mature areas, a “slice” does not need to be tiny.
+It may instead be:
+- a backend/data/API foundation slice
+- a larger frontend/product slice
+- a stabilization pass
+
 When direction is already clear, prefer:
-- fewer, more meaningful implementation steps
+- fewer, more meaningful bounded deliveries
 over
 - many tiny half-steps
 
-But for small direct fixes:
+For small direct fixes:
 - keep the instruction short
 - keep the goal explicit
 - avoid broad interpretive prompts
+
+Do not stay in small polish loops once the area is mature enough for capability-program work.
 
 ---
 
@@ -165,29 +228,57 @@ When a prerequisite question exists, prefer a focused read-only analysis first.
 
 ## Prompt patterns
 
-### Read-only analysis prompt
+### Program definition prompt
 Use when:
-- the next product step is unclear
-- a feature area needs diagnosis first
-- a prerequisite may exist or be missing
+- a larger capability area needs to be defined before implementation
+- domain model, API shape, and program boundaries are not yet locked
 
 Should include:
 - Goal
 - Context
 - Important boundaries
-- specific analysis questions
+- domain/API/data questions
 - explicit output format
+- delivery recommendation
 
-### Bounded implementation prompt
+### Backend/data/API foundation prompt
 Use when:
-- the next step is already chosen
-- the change should be built now
+- the capability direction is chosen
+- the next correct step is to build durable model/contract support before frontend work
+
+Should include:
+- Goal
+- Context
+- Important boundaries
+- explicit domain/API scope
+- lifecycle/state expectations
+- read model / projection expectations
+- output and verification structure
+
+### Frontend/product slice prompt
+Use when:
+- the foundation is already defined
+- the next step is a meaningful user-facing slice on top of it
 
 Should include:
 - Goal
 - Context
 - Important boundaries
 - explicit implementation scope
+- what should remain unchanged
+- output and verification structure
+
+### Stabilization pass prompt
+Use when:
+- the main capability slice is already in place
+- the remaining task is bounded cleanup of seams, edge cases, and friction
+
+Should include:
+- Goal
+- Context
+- Important boundaries
+- specific stabilization targets
+- what should not expand into new feature scope
 - output and verification structure
 
 ### Small direct fix prompt
@@ -206,15 +297,6 @@ Use this especially for:
 - layout corrections
 - exact behavior fixes
 - wording changes where the desired output is already known
-
-### Prerequisite analysis prompt
-Use when:
-- a later feature depends on unclear underlying support
-
-Goal:
-- determine whether the prerequisite already exists
-- locate where data/structure is missing or dropped
-- recommend the best first move
 
 ---
 
@@ -281,18 +363,22 @@ Use medium for:
 - standard product judgments
 - screenshot/UI review
 - bounded read-only analysis
-- implementation prompts with clear scope
+- small or medium implementation prompts
 - parity/polish
 - sequential next-step decisions
+- stabilization passes when the scope is already clear
 
-### High is for larger decisions
+### High is for larger decisions and program-level work
 Use high when:
 - multiple major directions compete
-- a new product phase must be defined
-- a larger architecture/product framing question is open
+- a new capability program must be defined
+- a backend/data/API foundation needs to be planned
 - scope ordering is risky if analyzed too narrowly
+- a larger implementation prompt could go wrong without stronger upfront reasoning
+- a capability slice is large enough that weak framing would create rework
 
 Do not overuse high.
+But for program-definition work and foundation work, high is often the correct default.
 
 ---
 
@@ -310,7 +396,13 @@ At review time, explicitly decide between:
 - polish later
 - reopen the direction
 
-Do not keep iterating on a step out of habit once the main value is already there.
+For capability programs, a program is good enough to leave when:
+- the foundation exists
+- at least one meaningful frontend/product slice is using that foundation
+- the main seams have been reduced in a stabilization pass
+- the area is coherent enough that it does not require continued small-duttande
+
+Do not keep iterating on a step or program out of habit once the main value is already there.
 
 ---
 
@@ -323,3 +415,8 @@ Avoid:
 - turning polish into unbounded redesign
 - solving visible features by hacking around missing prerequisites
 - making every workflow detail live inside one giant top-level file
+- staying in small polish loops after the area is mature enough for capability-program work
+- using frontend discovery as a substitute for missing domain/API definition
+- mixing multiple capability programs into one vague implementation step
+- treating platform/foundation work as optional when later frontend depends on it
+- building many half-finished frontend entry points before the shared model is clear
