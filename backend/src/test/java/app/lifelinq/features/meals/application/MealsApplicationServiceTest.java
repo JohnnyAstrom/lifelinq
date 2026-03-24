@@ -15,7 +15,13 @@ import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.ParsedRecipeImportData;
 import app.lifelinq.features.meals.contract.RecipeImportPort;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignal;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalTargetKind;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalType;
 import app.lifelinq.features.meals.domain.IngredientUnit;
+import app.lifelinq.features.meals.domain.MealMemoryRepository;
+import app.lifelinq.features.meals.domain.MealOccurrence;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.RecentPlannedMeal;
 import app.lifelinq.features.meals.domain.Recipe;
@@ -27,6 +33,7 @@ import app.lifelinq.features.meals.infrastructure.InMemoryRecipeDraftRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -152,6 +159,251 @@ class MealsApplicationServiceTest {
         assertThat(assessment.matchingRecipe()).isNotNull();
         assertThatThrownBy(() -> service.acceptRecipeDraft(groupId, userId, draft.draftId(), false))
                 .isInstanceOf(RecipeDuplicateAttentionRequiredException.class);
+    }
+
+    @Test
+    void program2FoundationExposesRecentIdentityAndRecipeUsageMemoryFromWeekPlans() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryHouseholdPreferenceSignalRepository preferences = new InMemoryHouseholdPreferenceSignalRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                null,
+                weekPlans,
+                preferences,
+                null,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Taco Soup",
+                null,
+                null,
+                RecipeOriginKind.MANUAL,
+                "4 servings",
+                Instant.parse("2026-03-24T09:00:00Z"),
+                "Weeknight soup",
+                "Cook gently",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                Instant.parse("2026-03-24T09:00:00Z"),
+                null,
+                true,
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Beans", null, null, 1))
+        ));
+        service.addOrReplaceMeal(groupId, userId, 2026, 10, 2, MealType.DINNER, recipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 3, MealType.DINNER, recipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 11, 1, MealType.DINNER, "Tacos", null, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, "Tacos", null, null, null);
+
+        var occurrences = service.listRecentMealOccurrences(groupId, userId, 10);
+        var identitySummaries = service.listMealIdentitySummaries(groupId, userId, 10);
+        var recipeUsage = service.getRecipeUsageSummary(groupId, userId, recipeId);
+
+        assertThat(occurrences).extracting(occurrence -> occurrence.mealIdentityKind())
+                .contains("recipe", "title_only");
+        assertThat(identitySummaries).anySatisfy(summary -> {
+            assertThat(summary.title()).isEqualTo("Tacos");
+            assertThat(summary.familiar()).isTrue();
+        });
+        assertThat(identitySummaries).anySatisfy(summary -> {
+            assertThat(summary.recipeId()).isEqualTo(recipeId);
+            assertThat(summary.makeSoon()).isTrue();
+        });
+        assertThat(recipeUsage.recipeId()).isEqualTo(recipeId);
+        assertThat(recipeUsage.totalUses()).isEqualTo(2);
+        assertThat(recipeUsage.familiar()).isTrue();
+        assertThat(recipeUsage.makeSoon()).isTrue();
+    }
+
+    @Test
+    void program2FoundationStoresHouseholdPreferenceSignalsSeparatelyFromHistory() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryHouseholdPreferenceSignalRepository preferences = new InMemoryHouseholdPreferenceSignalRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                null,
+                weekPlans,
+                preferences,
+                null,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Friday Pasta",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Pasta", null, null, 1))
+        ));
+
+        var recipeSignal = service.writeHouseholdPreferenceSignal(
+                groupId,
+                userId,
+                "recipe",
+                "prefer",
+                recipeId,
+                null
+        );
+        var mealSignal = service.writeHouseholdPreferenceSignal(
+                groupId,
+                userId,
+                "meal_identity",
+                "fallback",
+                null,
+                "title:tacos"
+        );
+
+        assertThat(recipeSignal.targetKind()).isEqualTo("recipe");
+        assertThat(recipeSignal.signalType()).isEqualTo("prefer");
+        assertThat(mealSignal.mealIdentityKey()).isEqualTo("title:tacos");
+
+        var preferencesView = service.listHouseholdPreferenceSummaries(groupId, userId);
+        assertThat(preferencesView).hasSize(2);
+
+        service.clearHouseholdPreferenceSignal(groupId, userId, "recipe", "prefer", recipeId, null);
+
+        assertThat(service.listHouseholdPreferenceSummaries(groupId, userId)).hasSize(1);
+        assertThat(service.listHouseholdPreferenceSummaries(groupId, userId).get(0).signalType()).isEqualTo("fallback");
+    }
+
+    @Test
+    void program2FoundationBuildsPlanningChoiceSupportFromHistoryPreferencesAndMakeSoon() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryHouseholdPreferenceSignalRepository preferences = new InMemoryHouseholdPreferenceSignalRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                null,
+                weekPlans,
+                preferences,
+                null,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Pasta Bake",
+                null,
+                null,
+                RecipeOriginKind.MANUAL,
+                null,
+                Instant.parse("2026-03-20T09:00:00Z"),
+                null,
+                "Bake",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                Instant.parse("2026-03-20T09:00:00Z"),
+                null,
+                true,
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Pasta", null, null, 1))
+        ));
+        service.addOrReplaceMeal(groupId, userId, 2026, 10, 1, MealType.DINNER, recipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 11, 3, MealType.DINNER, recipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, "Tacos", null, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 2, MealType.DINNER, "Tacos", null, null, null);
+        service.writeHouseholdPreferenceSignal(groupId, userId, "meal_identity", "fallback", null, "title:tacos");
+
+        var support = service.getSlotPlanningChoiceSupport(groupId, userId, 2026, 13, 2, MealType.DINNER);
+
+        assertThat(support.scenario()).isEqualTo("slot");
+        assertThat(support.recentCandidates()).isNotEmpty();
+        assertThat(support.familiarCandidates()).anySatisfy(candidate -> {
+            assertThat(candidate.title()).isEqualTo("Tacos");
+            assertThat(candidate.fallback()).isTrue();
+        });
+        assertThat(support.makeSoonCandidates()).anySatisfy(candidate -> {
+            assertThat(candidate.recipeId()).isEqualTo(recipeId);
+            assertThat(candidate.makeSoon()).isTrue();
+        });
+    }
+
+    @Test
+    void listRecentlyUsedRecipeLibraryItemsReturnsActiveSavedRecipesInRecentOrder() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID firstRecipeId = UUID.randomUUID();
+        UUID secondRecipeId = UUID.randomUUID();
+        UUID archivedRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                firstRecipeId,
+                groupId,
+                "Recent Pasta",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Pasta", null, null, 1))
+        ));
+        recipes.save(new Recipe(
+                secondRecipeId,
+                groupId,
+                "Soup",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Onion", null, null, 1))
+        ));
+        recipes.save(new Recipe(
+                archivedRecipeId,
+                groupId,
+                "Archived Pie",
+                null,
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-03-01T09:00:00Z"),
+                Instant.parse("2026-03-10T10:00:00Z"),
+                Instant.parse("2026-03-10T10:00:00Z"),
+                true,
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Apple", null, null, 1))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, firstRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 2, MealType.DINNER, archivedRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 3, MealType.DINNER, secondRecipeId, null, null);
+
+        var recentItems = service.listRecentlyUsedRecipeLibraryItems(groupId, userId);
+
+        assertThat(recentItems).extracting(item -> item.recipeId())
+                .containsExactly(secondRecipeId, firstRecipeId);
+        assertThat(recentItems).allSatisfy(item -> assertThat(item.lifecycle().state()).isEqualTo("active"));
     }
 
     @Test
@@ -1585,7 +1837,7 @@ class MealsApplicationServiceTest {
         verify(shopping, never()).addShoppingItem(groupId, userId, listId, "onion", null, null, "meal-plan", "Soup");
     }
 
-    private static final class InMemoryWeekPlanRepository implements WeekPlanRepository {
+    private static final class InMemoryWeekPlanRepository implements WeekPlanRepository, MealMemoryRepository {
         private final Map<UUID, WeekPlan> byId = new HashMap<>();
 
         @Override
@@ -1659,9 +1911,87 @@ class MealsApplicationServiceTest {
                             .thenComparing(meal -> meal.mealType().ordinal()))
                     .toList();
         }
+
+        @Override
+        public List<MealOccurrence> findHistoricalOccurrencesOnOrBefore(UUID groupId, int year, int isoWeek, int dayOfWeek) {
+            return byId.values().stream()
+                    .filter(plan -> plan.getGroupId().equals(groupId))
+                    .flatMap(plan -> plan.getMeals().stream()
+                            .filter(meal -> plan.getYear() < year
+                                    || (plan.getYear() == year && plan.getIsoWeek() < isoWeek)
+                                    || (plan.getYear() == year && plan.getIsoWeek() == isoWeek && meal.getDayOfWeek() <= dayOfWeek))
+                            .map(meal -> new MealOccurrence(
+                                    plan.getId(),
+                                    plan.getYear(),
+                                    plan.getIsoWeek(),
+                                    meal.getDayOfWeek(),
+                                    meal.getMealType(),
+                                    LocalDate.of(plan.getYear(), 1, 4)
+                                            .with(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear(), plan.getIsoWeek())
+                                            .with(java.time.temporal.WeekFields.ISO.dayOfWeek(), meal.getDayOfWeek()),
+                                    meal.getMealTitle(),
+                                    meal.getRecipeId(),
+                                    meal.getRecipeTitleSnapshot()
+                            )))
+                    .sorted(Comparator
+                            .comparing(MealOccurrence::plannedDate).reversed()
+                            .thenComparing(meal -> meal.mealType().ordinal()))
+                    .toList();
+        }
     }
 
     private record RecentMealRecipe(int year, int isoWeek, int dayOfWeek, UUID recipeId) {
+    }
+
+    private static final class InMemoryHouseholdPreferenceSignalRepository implements HouseholdPreferenceSignalRepository {
+        private final Map<UUID, HouseholdPreferenceSignal> byId = new HashMap<>();
+
+        @Override
+        public HouseholdPreferenceSignal save(HouseholdPreferenceSignal signal) {
+            byId.put(signal.getId(), signal);
+            return signal;
+        }
+
+        @Override
+        public List<HouseholdPreferenceSignal> findByGroupId(UUID groupId) {
+            return byId.values().stream()
+                    .filter(signal -> signal.getGroupId().equals(groupId))
+                    .sorted(Comparator.comparing(HouseholdPreferenceSignal::getCreatedAt))
+                    .toList();
+        }
+
+        @Override
+        public Optional<HouseholdPreferenceSignal> findByRecipeTarget(
+                UUID groupId,
+                UUID recipeId,
+                HouseholdPreferenceSignalType signalType
+        ) {
+            return byId.values().stream()
+                    .filter(signal -> signal.getGroupId().equals(groupId))
+                    .filter(signal -> signal.getTargetKind() == HouseholdPreferenceSignalTargetKind.RECIPE)
+                    .filter(signal -> recipeId.equals(signal.getRecipeId()))
+                    .filter(signal -> signal.getSignalType() == signalType)
+                    .findFirst();
+        }
+
+        @Override
+        public Optional<HouseholdPreferenceSignal> findByMealIdentityTarget(
+                UUID groupId,
+                String mealIdentityKey,
+                HouseholdPreferenceSignalType signalType
+        ) {
+            return byId.values().stream()
+                    .filter(signal -> signal.getGroupId().equals(groupId))
+                    .filter(signal -> signal.getTargetKind() == HouseholdPreferenceSignalTargetKind.MEAL_IDENTITY)
+                    .filter(signal -> mealIdentityKey.equals(signal.getMealIdentityKey()))
+                    .filter(signal -> signal.getSignalType() == signalType)
+                    .findFirst();
+        }
+
+        @Override
+        public void delete(HouseholdPreferenceSignal signal) {
+            byId.remove(signal.getId());
+        }
     }
 
     private static final class InMemoryRecipeRepository implements RecipeRepository {

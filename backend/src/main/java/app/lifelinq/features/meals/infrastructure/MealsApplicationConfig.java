@@ -5,6 +5,8 @@ import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.RecipeImportPort;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
+import app.lifelinq.features.meals.domain.MealMemoryRepository;
 import app.lifelinq.features.meals.domain.RecipeDraftRepository;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
@@ -20,6 +22,8 @@ public class MealsApplicationConfig {
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
             RecipeDraftRepository recipeDraftRepository,
+            MealMemoryRepository mealMemoryRepository,
+            HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
             RecipeImportPort recipeImportPort,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
@@ -29,6 +33,8 @@ public class MealsApplicationConfig {
                 weekPlanRepository,
                 recipeRepository,
                 recipeDraftRepository,
+                mealMemoryRepository,
+                householdPreferenceSignalRepository,
                 recipeImportPort,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,

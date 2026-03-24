@@ -223,6 +223,12 @@ Program 1 foundation note: Meals now also exposes scenario-based recipe-content 
 
 Program 1 step-2 note: the live Recipe Library intake family now uses those draft-first contracts as its primary path. `Create recipe` starts a manual draft, `Save recipe` from URL starts an imported draft, review updates the draft itself, duplicate attention comes from the draft assessment contract, and saving into the library accepts the draft rather than creating recipes directly from a legacy frontend-only review model. Legacy endpoints remain available for compatibility and older flows, but they are no longer the main intake path for the Recipes workspace.
 
+Program 1 step-3 note: saved recipes in the Recipes workspace now also read from the platform-backed projections as their primary path. Recipe Library active/archived lists are driven by `RecipeLibraryItemView`, saved recipe detail/read mode is driven by `RecipeDetailView`, and saved-recipe edit / make-soon / archive / restore flows now return back into that same platform detail model instead of relying on older saved-recipe CRUD response shapes. Legacy recipe CRUD endpoints still remain for compatibility and adjacent flows that have not been consolidated yet, but they no longer define the primary saved-recipe experience inside `Meals > Recipes`.
+
+Program 1 step-4 note: the final stabilization pass tightens the active platform path further. `Recently used` in the Recipes workspace now also comes from platform library-item projections instead of a legacy recipe CRUD shape, archive keeps the user in the archived saved-recipe detail state instead of abruptly dropping them out of the recipe destination, and duplicate/open-existing continuity now restores the right library context before opening the matched saved recipe. The active Program 1 path is therefore now draft-based for intake and platform-projection-based for saved recipe browse/detail/lifecycle, while older recipe CRUD endpoints remain only as compatibility support for adjacent non-Program-1 flows.
+
+Program 2 foundation note: Meals now also has a backend-first household memory and meal-choice support foundation underneath the existing planning surfaces. Real planned-meal history remains sourced from durable `WeekPlan` / `PlannedMeal` data, but the platform now projects that history into explicit `MealOccurrence`, `MealIdentity`, `MealUsageAggregate`, and `RecipeUsageHistory` semantics so later frontend slices do not have to infer recency/frequency/familiarity from raw plan rows. The same foundation also introduces a lightweight household preference signal model for recipe-level or meal-identity-level memory (`prefer`, `fallback`, `deprioritize`) and exposes scenario-shaped support contracts rather than a generic recommendation feed: recent household memory summaries, recipe-usage summaries, preference-signal writes, and grouped planning choice support for slot, tonight, and week-start contexts. Candidate groups stay intentionally assistive rather than predictive-heavy: they are derived from real household history plus make-soon/preference interaction and expose calm support semantics such as `recent`, `familiar`, `fallback`, `slotFit`, `preferenceFit`, and `makeSoon` without turning those into user-managed statuses.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  
@@ -244,6 +250,22 @@ Endpoint: `POST /meals/recipe-drafts/{draftId}/accept`
 Purpose: Accept one recipe draft into the library as a saved recipe. Duplicate attention may block acceptance unless the caller explicitly allows creating another copy.  
 Response: `RecipeDetailView`.  
 
-Endpoint: `GET /meals/recipe-library/items` and `GET /meals/recipe-details/{recipeId}`  
-Purpose: Return library/list and detail projections built on the new recipe-content platform rather than the older recipe CRUD response shape.  
+Endpoint: `GET /meals/recipe-library/items?state=active|archived` and `GET /meals/recipe-details/{recipeId}`  
+Purpose: Return library/list and detail projections built on the new recipe-content platform rather than the older recipe CRUD response shape. The library projection now supports the visible saved-recipe lifecycle split (`active` vs `archived`) without forcing the frontend to infer it from older recipe CRUD fields.  
 Response: `RecipeLibraryItemView` / `RecipeDetailView`.
+
+Endpoint: `GET /meals/recipe-library/recent-items`  
+Purpose: Return the Recipes-workspace `Recently used` list as platform library-item projections rather than a legacy full recipe response.  
+Response: `RecipeLibraryItemView[]`.
+
+Endpoint: `PUT /meals/recipe-details/{recipeId}`  
+Purpose: Update one saved recipe through the platform-backed detail contract so saved-recipe edit flows can stay on the same detail/lifecycle model they read from.  
+Response: `RecipeDetailView`.
+
+Endpoint: `POST /meals/recipe-details/{recipeId}/archive` / `POST /meals/recipe-details/{recipeId}/restore`  
+Purpose: Transition one saved recipe between the visible lifecycle states (`active`, `archived`) and return the updated platform detail projection for read-mode continuity.  
+Response: `RecipeDetailView`.
+
+Endpoint: `POST /meals/recipe-details/{recipeId}/make-soon` / `DELETE /meals/recipe-details/{recipeId}/make-soon`  
+Purpose: Update the saved recipe's lightweight make-soon marker while keeping the Recipes workspace on the same platform detail contract.  
+Response: `RecipeDetailView`.

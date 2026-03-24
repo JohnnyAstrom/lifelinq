@@ -27,12 +27,19 @@ import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftView;
+import app.lifelinq.features.meals.contract.RecipeDetailView;
 import app.lifelinq.features.meals.contract.RecipeDraftView;
+import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
+import app.lifelinq.features.meals.contract.MealChoiceCandidateView;
+import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
+import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
 import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
 import app.lifelinq.features.meals.contract.RecipeLifecycleView;
 import app.lifelinq.features.meals.contract.RecipeProvenanceView;
 import app.lifelinq.features.meals.contract.RecipeSourceView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
+import app.lifelinq.features.meals.contract.RecentMealOccurrenceView;
+import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import java.nio.charset.StandardCharsets;
@@ -508,7 +515,7 @@ class MealsControllerTest {
         userRepository.withUser(userId, groupId);
         String token = createToken(userId, Instant.now().plusSeconds(60));
 
-        when(mealsApplicationService.listRecipeLibraryItems(groupId, userId))
+        when(mealsApplicationService.listRecipeLibraryItems(groupId, userId, "active"))
                 .thenReturn(List.of(new RecipeLibraryItemView(
                         recipeId,
                         "Pasta",
@@ -526,7 +533,162 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$[0].lifecycle.state").value("active"))
                 .andExpect(jsonPath("$[0].ingredientCount").value(3));
 
-        verify(mealsApplicationService).listRecipeLibraryItems(groupId, userId);
+        verify(mealsApplicationService).listRecipeLibraryItems(groupId, userId, "active");
+    }
+
+    @Test
+    void listRecentRecipeLibraryItemsReturnsPlatformProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.listRecentlyUsedRecipeLibraryItems(groupId, userId))
+                .thenReturn(List.of(new RecipeLibraryItemView(
+                        recipeId,
+                        "Recent Pasta",
+                        new RecipeSourceView("Notebook", null),
+                        new RecipeLifecycleView("active", false, "Recipe must be archived before you can delete it."),
+                        Instant.parse("2026-03-24T09:00:00Z"),
+                        Instant.parse("2026-03-24T10:00:00Z"),
+                        3
+                )));
+
+        mockMvc.perform(get("/meals/recipe-library/recent-items")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Recent Pasta"))
+                .andExpect(jsonPath("$[0].lifecycle.state").value("active"));
+
+        verify(mealsApplicationService).listRecentlyUsedRecipeLibraryItems(groupId, userId);
+    }
+
+    @Test
+    void listArchivedRecipeLibraryItemsUsesArchivedPlatformState() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.listRecipeLibraryItems(groupId, userId, "archived"))
+                .thenReturn(List.of(new RecipeLibraryItemView(
+                        recipeId,
+                        "Archived Pasta",
+                        new RecipeSourceView("Notebook", null),
+                        new RecipeLifecycleView("archived", true, null),
+                        null,
+                        Instant.parse("2026-03-24T10:00:00Z"),
+                        2
+                )));
+
+        mockMvc.perform(get("/meals/recipe-library/items?state=archived")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Archived Pasta"))
+                .andExpect(jsonPath("$[0].lifecycle.state").value("archived"));
+
+        verify(mealsApplicationService).listRecipeLibraryItems(groupId, userId, "archived");
+    }
+
+    @Test
+    void getRecipeDetailReturnsPlatformProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getRecipeDetail(groupId, userId, recipeId))
+                .thenReturn(new RecipeDetailView(
+                        recipeId,
+                        groupId,
+                        "Pasta",
+                        new RecipeSourceView("Notebook", "https://example.com/pasta"),
+                        new RecipeProvenanceView("manual", null),
+                        new RecipeLifecycleView("active", false, "Recipe must be archived before you can delete it."),
+                        "4 servings",
+                        null,
+                        "Quick favorite",
+                        "Cook",
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-24T10:00:00Z"),
+                        true,
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/meals/recipe-details/" + recipeId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recipeId").value(recipeId.toString()))
+                .andExpect(jsonPath("$.source.sourceName").value("Notebook"))
+                .andExpect(jsonPath("$.provenance.originKind").value("manual"))
+                .andExpect(jsonPath("$.lifecycle.state").value("active"));
+
+        verify(mealsApplicationService).getRecipeDetail(groupId, userId, recipeId);
+    }
+
+    @Test
+    void updateRecipeDetailReturnsPlatformProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getRecipeDetail(groupId, userId, recipeId))
+                .thenReturn(new RecipeDetailView(
+                        recipeId,
+                        groupId,
+                        "Pasta",
+                        new RecipeSourceView("Notebook", "https://example.com/pasta"),
+                        new RecipeProvenanceView("manual", null),
+                        new RecipeLifecycleView("active", false, "Recipe must be archived before you can delete it."),
+                        "4 servings",
+                        null,
+                        "Quick favorite",
+                        "Cook",
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-24T10:00:00Z"),
+                        true,
+                        List.of()
+                ));
+
+        mockMvc.perform(put("/meals/recipe-details/" + recipeId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"Pasta",
+                                  "sourceName":"Notebook",
+                                  "sourceUrl":"https://example.com/pasta",
+                                  "originKind":"MANUAL",
+                                  "servings":"4 servings",
+                                  "shortNote":"Quick favorite",
+                                  "instructions":"Cook",
+                                  "ingredients":[]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lifecycle.state").value("active"))
+                .andExpect(jsonPath("$.source.sourceUrl").value("https://example.com/pasta"));
+
+        verify(mealsApplicationService).updateRecipe(
+                groupId,
+                userId,
+                recipeId,
+                "Pasta",
+                "Notebook",
+                "https://example.com/pasta",
+                "MANUAL",
+                "4 servings",
+                "Quick favorite",
+                "Cook",
+                null,
+                List.of()
+        );
+        verify(mealsApplicationService).getRecipeDetail(groupId, userId, recipeId);
     }
 
     @Test
@@ -583,6 +745,42 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.archivedAt").value("2026-03-18T10:00:00Z"));
 
         verify(mealsApplicationService).archiveRecipe(groupId, userId, recipeId);
+    }
+
+    @Test
+    void archiveRecipeDetailReturnsArchivedPlatformProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getRecipeDetail(groupId, userId, recipeId))
+                .thenReturn(new RecipeDetailView(
+                        recipeId,
+                        groupId,
+                        "Soup",
+                        new RecipeSourceView("Notebook", null),
+                        new RecipeProvenanceView("manual", null),
+                        new RecipeLifecycleView("archived", true, null),
+                        null,
+                        null,
+                        null,
+                        null,
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-18T10:00:00Z"),
+                        true,
+                        List.of()
+                ));
+
+        mockMvc.perform(post("/meals/recipe-details/" + recipeId + "/archive")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lifecycle.state").value("archived"))
+                .andExpect(jsonPath("$.lifecycle.deleteEligible").value(true));
+
+        verify(mealsApplicationService).archiveRecipe(groupId, userId, recipeId);
+        verify(mealsApplicationService).getRecipeDetail(groupId, userId, recipeId);
     }
 
     @Test
@@ -686,6 +884,151 @@ class MealsControllerTest {
     }
 
     @Test
+    void listRecentMealOccurrencesReturnsProgram2Projection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID weekPlanId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.listRecentMealOccurrences(groupId, userId, 5))
+                .thenReturn(List.of(new RecentMealOccurrenceView(
+                        weekPlanId,
+                        2026,
+                        12,
+                        5,
+                        "DINNER",
+                        java.time.LocalDate.parse("2026-03-20"),
+                        "Tacos",
+                        "title:tacos",
+                        "title_only",
+                        null,
+                        null
+                )));
+
+        mockMvc.perform(get("/meals/household-memory/recent-occurrences?limit=5")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].mealTitle").value("Tacos"))
+                .andExpect(jsonPath("$[0].mealIdentityKind").value("title_only"));
+
+        verify(mealsApplicationService).listRecentMealOccurrences(groupId, userId, 5);
+    }
+
+    @Test
+    void writeHouseholdPreferenceSignalReturnsProgram2PreferenceSummary() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID signalId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.writeHouseholdPreferenceSignal(
+                groupId,
+                userId,
+                "recipe",
+                "prefer",
+                recipeId,
+                null
+        )).thenReturn(new HouseholdPreferenceSummaryView(
+                signalId,
+                "recipe",
+                recipeId,
+                null,
+                "prefer",
+                Instant.parse("2026-03-24T10:00:00Z"),
+                Instant.parse("2026-03-24T10:00:00Z")
+        ));
+
+        mockMvc.perform(post("/meals/household-memory/preferences")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetKind":"recipe",
+                                  "signalType":"prefer",
+                                  "recipeId":"%s"
+                                }
+                                """.formatted(recipeId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targetKind").value("recipe"))
+                .andExpect(jsonPath("$.signalType").value("prefer"));
+
+        verify(mealsApplicationService).writeHouseholdPreferenceSignal(
+                groupId,
+                userId,
+                "recipe",
+                "prefer",
+                recipeId,
+                null
+        );
+    }
+
+    @Test
+    void getSlotPlanningChoiceSupportReturnsGroupedCandidates() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getSlotPlanningChoiceSupport(
+                groupId,
+                userId,
+                2026,
+                13,
+                2,
+                app.lifelinq.features.meals.domain.MealType.DINNER
+        )).thenReturn(new PlanningChoiceSupportView(
+                "slot",
+                java.time.LocalDate.parse("2026-03-24"),
+                2026,
+                13,
+                2,
+                "DINNER",
+                null,
+                List.of(new MealChoiceCandidateView(
+                        "recent",
+                        "title:tacos",
+                        "title_only",
+                        "Tacos",
+                        null,
+                        java.time.LocalDate.parse("2026-03-23"),
+                        2,
+                        true,
+                        false,
+                        true,
+                        false,
+                        true,
+                        false,
+                        false,
+                        false,
+                        "planned recently"
+                )),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        mockMvc.perform(get("/meals/choice-support/slot?year=2026&isoWeek=13&dayOfWeek=2&mealType=DINNER")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.scenario").value("slot"))
+                .andExpect(jsonPath("$.recentCandidates[0].title").value("Tacos"))
+                .andExpect(jsonPath("$.recentCandidates[0].slotFit").value(true));
+
+        verify(mealsApplicationService).getSlotPlanningChoiceSupport(
+                groupId,
+                userId,
+                2026,
+                13,
+                2,
+                app.lifelinq.features.meals.domain.MealType.DINNER
+        );
+    }
+
+    @Test
     void markRecipeMakeSoonReturnsUpdatedRecipeResponse() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -720,6 +1063,42 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.makeSoonAt").value("2026-03-21T09:00:00Z"));
 
         verify(mealsApplicationService).markRecipeMakeSoon(groupId, userId, recipeId);
+    }
+
+    @Test
+    void markRecipeDetailMakeSoonReturnsPlatformProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getRecipeDetail(groupId, userId, recipeId))
+                .thenReturn(new RecipeDetailView(
+                        recipeId,
+                        groupId,
+                        "Soon Pasta",
+                        new RecipeSourceView("Notebook", null),
+                        new RecipeProvenanceView("manual", null),
+                        new RecipeLifecycleView("active", false, "Recipe must be archived before you can delete it."),
+                        "4 servings",
+                        Instant.parse("2026-03-21T09:00:00Z"),
+                        "Quick dinner",
+                        "Cook",
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-21T09:00:00Z"),
+                        true,
+                        List.of()
+                ));
+
+        mockMvc.perform(post("/meals/recipe-details/" + recipeId + "/make-soon")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.makeSoonAt").value("2026-03-21T09:00:00Z"))
+                .andExpect(jsonPath("$.lifecycle.state").value("active"));
+
+        verify(mealsApplicationService).markRecipeMakeSoon(groupId, userId, recipeId);
+        verify(mealsApplicationService).getRecipeDetail(groupId, userId, recipeId);
     }
 
     @Test
@@ -793,6 +1172,42 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.archivedAt").value(org.hamcrest.Matchers.nullValue()));
 
         verify(mealsApplicationService).restoreRecipe(groupId, userId, recipeId);
+    }
+
+    @Test
+    void restoreRecipeDetailReturnsActivePlatformProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getRecipeDetail(groupId, userId, recipeId))
+                .thenReturn(new RecipeDetailView(
+                        recipeId,
+                        groupId,
+                        "Restored Soup",
+                        new RecipeSourceView("Notebook", null),
+                        new RecipeProvenanceView("manual", null),
+                        new RecipeLifecycleView("active", false, "Recipe must be archived before you can delete it."),
+                        null,
+                        null,
+                        null,
+                        null,
+                        Instant.parse("2026-03-10T09:00:00Z"),
+                        Instant.parse("2026-03-20T10:00:00Z"),
+                        true,
+                        List.of()
+                ));
+
+        mockMvc.perform(post("/meals/recipe-details/" + recipeId + "/restore")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Restored Soup"))
+                .andExpect(jsonPath("$.lifecycle.state").value("active"));
+
+        verify(mealsApplicationService).restoreRecipe(groupId, userId, recipeId);
+        verify(mealsApplicationService).getRecipeDetail(groupId, userId, recipeId);
     }
 
     @Test

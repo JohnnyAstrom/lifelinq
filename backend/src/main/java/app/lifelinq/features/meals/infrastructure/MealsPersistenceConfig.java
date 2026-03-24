@@ -1,5 +1,7 @@
 package app.lifelinq.features.meals.infrastructure;
 
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
+import app.lifelinq.features.meals.domain.MealMemoryRepository;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.RecipeDraftRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
@@ -50,5 +52,17 @@ public class MealsPersistenceConfig {
             RecipeDraftMapper mapper
     ) {
         return new JpaRecipeDraftRepositoryAdapter(repository, ingredientRepository, mapper);
+    }
+
+    @Bean
+    public MealMemoryRepository mealMemoryRepository(MealMemoryJpaRepository repository) {
+        return new JpaMealMemoryRepositoryAdapter(repository);
+    }
+
+    @Bean
+    public HouseholdPreferenceSignalRepository householdPreferenceSignalRepository(
+            HouseholdPreferenceSignalJpaRepository repository
+    ) {
+        return new JpaHouseholdPreferenceSignalRepositoryAdapter(repository);
     }
 }

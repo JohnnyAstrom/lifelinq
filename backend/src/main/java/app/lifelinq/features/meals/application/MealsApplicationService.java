@@ -6,9 +6,14 @@ import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
+import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
+import app.lifelinq.features.meals.contract.MealChoiceCandidateView;
+import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.PlannedMealView;
+import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
+import app.lifelinq.features.meals.contract.RecentMealOccurrenceView;
 import app.lifelinq.features.meals.contract.RecipeDetailView;
 import app.lifelinq.features.meals.contract.RecipeDraftView;
 import app.lifelinq.features.meals.contract.RecipeDuplicateAssessmentView;
@@ -18,11 +23,25 @@ import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
 import app.lifelinq.features.meals.contract.RecipeLifecycleView;
 import app.lifelinq.features.meals.contract.RecipeProvenanceView;
 import app.lifelinq.features.meals.contract.RecipeSourceView;
+import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignal;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalTargetKind;
+import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalType;
 import app.lifelinq.features.meals.domain.Ingredient;
 import app.lifelinq.features.meals.domain.IngredientUnit;
+import app.lifelinq.features.meals.domain.MealChoiceSupportEngine;
+import app.lifelinq.features.meals.domain.MealIdentity;
+import app.lifelinq.features.meals.domain.MealIdentityKind;
+import app.lifelinq.features.meals.domain.MealMemoryRepository;
+import app.lifelinq.features.meals.domain.MealOccurrence;
 import app.lifelinq.features.meals.domain.MealType;
+import app.lifelinq.features.meals.domain.MealUsageAggregate;
+import app.lifelinq.features.meals.domain.PlanningChoiceSupport;
+import app.lifelinq.features.meals.domain.PlanningContext;
+import app.lifelinq.features.meals.domain.PlanningScenario;
 import app.lifelinq.features.meals.domain.PlannedMeal;
 import app.lifelinq.features.meals.domain.RecentPlannedMeal;
 import app.lifelinq.features.meals.domain.Recipe;
@@ -37,11 +56,15 @@ import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import app.lifelinq.features.meals.domain.RecipeProvenance;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.RecipeSource;
+import app.lifelinq.features.meals.domain.RecipeUsageHistory;
+import app.lifelinq.features.meals.domain.ReuseCandidate;
+import app.lifelinq.features.meals.domain.ReuseCandidateFamily;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -118,10 +141,13 @@ public class MealsApplicationService {
     private final WeekPlanRepository weekPlanRepository;
     private final RecipeRepository recipeRepository;
     private final RecipeDraftRepository recipeDraftRepository;
+    private final MealMemoryRepository mealMemoryRepository;
+    private final HouseholdPreferenceSignalRepository householdPreferenceSignalRepository;
     private final RecipeImportPort recipeImportPort;
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
+    private final MealChoiceSupportEngine mealChoiceSupportEngine;
 
     public MealsApplicationService(
             WeekPlanRepository weekPlanRepository,
@@ -135,6 +161,8 @@ public class MealsApplicationService {
                 recipeRepository,
                 null,
                 null,
+                null,
+                null,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -145,6 +173,8 @@ public class MealsApplicationService {
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
             RecipeDraftRepository recipeDraftRepository,
+            MealMemoryRepository mealMemoryRepository,
+            HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
             RecipeImportPort recipeImportPort,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
@@ -168,10 +198,35 @@ public class MealsApplicationService {
         this.weekPlanRepository = weekPlanRepository;
         this.recipeRepository = recipeRepository;
         this.recipeDraftRepository = recipeDraftRepository;
+        this.mealMemoryRepository = mealMemoryRepository;
+        this.householdPreferenceSignalRepository = householdPreferenceSignalRepository;
         this.recipeImportPort = recipeImportPort;
         this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
+        this.mealChoiceSupportEngine = new MealChoiceSupportEngine();
+    }
+
+    public MealsApplicationService(
+            WeekPlanRepository weekPlanRepository,
+            RecipeRepository recipeRepository,
+            RecipeDraftRepository recipeDraftRepository,
+            RecipeImportPort recipeImportPort,
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
+            MealsShoppingPort mealsShoppingPort,
+            Clock clock
+    ) {
+        this(
+                weekPlanRepository,
+                recipeRepository,
+                recipeDraftRepository,
+                null,
+                null,
+                recipeImportPort,
+                ensureGroupMemberUseCase,
+                mealsShoppingPort,
+                clock
+        );
     }
 
     @Transactional
@@ -371,9 +426,14 @@ public class MealsApplicationService {
 
     @Transactional(readOnly = true)
     public List<RecipeLibraryItemView> listRecipeLibraryItems(UUID groupId, UUID actorUserId) {
+        return listRecipeLibraryItems(groupId, actorUserId, "active");
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeLibraryItemView> listRecipeLibraryItems(UUID groupId, UUID actorUserId, String state) {
         ensureMealAccess(groupId, actorUserId);
         List<RecipeLibraryItemView> views = new ArrayList<>();
-        for (Recipe recipe : recipeRepository.findActiveByGroupId(groupId)) {
+        for (Recipe recipe : findRecipesForLibraryState(groupId, state)) {
             views.add(toLibraryItemView(recipe));
         }
         views.sort((a, b) -> {
@@ -383,6 +443,16 @@ public class MealsApplicationService {
             }
             return a.recipeId().compareTo(b.recipeId());
         });
+        return views;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeLibraryItemView> listRecentlyUsedRecipeLibraryItems(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        List<RecipeLibraryItemView> views = new ArrayList<>();
+        for (Recipe recipe : findRecentlyUsedSavedRecipes(groupId)) {
+            views.add(toLibraryItemView(recipe));
+        }
         return views;
     }
 
@@ -485,50 +555,9 @@ public class MealsApplicationService {
     @Transactional(readOnly = true)
     public List<RecipeView> listRecentlyUsedRecipes(UUID groupId, UUID actorUserId) {
         ensureMealAccess(groupId, actorUserId);
-        LocalDate today = LocalDate.now(clock);
-        int currentYear = today.get(WeekFields.ISO.weekBasedYear());
-        int currentIsoWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
-        int currentDayOfWeek = today.getDayOfWeek().getValue();
-
-        List<UUID> orderedRecipeIds = weekPlanRepository.findRecentRecipeIdsOnOrBefore(
-                groupId,
-                currentYear,
-                currentIsoWeek,
-                currentDayOfWeek
-        );
-        if (orderedRecipeIds.isEmpty()) {
-            return List.of();
-        }
-
-        Set<UUID> seenRecipeIds = new HashSet<>();
-        List<UUID> recentRecipeIds = new ArrayList<>();
-        for (UUID recipeId : orderedRecipeIds) {
-            if (!seenRecipeIds.add(recipeId)) {
-                continue;
-            }
-            recentRecipeIds.add(recipeId);
-        }
-        if (recentRecipeIds.isEmpty()) {
-            return List.of();
-        }
-
-        Map<UUID, Recipe> recipesById = new HashMap<>();
-        for (Recipe recipe : recipeRepository.findByGroupIdAndIds(groupId, new HashSet<>(recentRecipeIds))) {
-            if (recipe.isArchived() || !recipe.isSavedInRecipes()) {
-                continue;
-            }
-            recipesById.put(recipe.getId(), recipe);
-        }
-
         List<RecipeView> views = new ArrayList<>();
-        for (UUID recipeId : recentRecipeIds) {
-            Recipe recipe = recipesById.get(recipeId);
-            if (recipe != null) {
-                views.add(toView(recipe, false));
-                if (views.size() >= RECENTLY_USED_RECIPES_LIMIT) {
-                    break;
-                }
-            }
+        for (Recipe recipe : findRecentlyUsedSavedRecipes(groupId)) {
+            views.add(toView(recipe, false));
         }
         return views;
     }
@@ -593,6 +622,215 @@ public class MealsApplicationService {
             }
         }
         return views;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecentMealOccurrenceView> listRecentMealOccurrences(UUID groupId, UUID actorUserId, int limit) {
+        ensureMealAccess(groupId, actorUserId);
+        int resolvedLimit = normalizePositiveLimit(limit, 12);
+        LocalDate today = LocalDate.now(clock);
+        List<MealOccurrence> occurrences = loadHistoricalOccurrences(groupId, today);
+        Map<UUID, Recipe> recipesById = recipesById(groupId);
+
+        Set<String> seenIdentityKeys = new HashSet<>();
+        List<RecentMealOccurrenceView> views = new ArrayList<>();
+        for (MealOccurrence occurrence : occurrences) {
+            MealIdentity identity = resolveMealIdentity(occurrence, recipesById);
+            if (!seenIdentityKeys.add(identity.key())) {
+                continue;
+            }
+            views.add(toRecentMealOccurrenceView(occurrence, identity));
+            if (views.size() >= resolvedLimit) {
+                break;
+            }
+        }
+        return views;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MealIdentitySummaryView> listMealIdentitySummaries(UUID groupId, UUID actorUserId, int limit) {
+        ensureMealAccess(groupId, actorUserId);
+        int resolvedLimit = normalizePositiveLimit(limit, 12);
+        LocalDate today = LocalDate.now(clock);
+        List<MealUsageAggregate> aggregates = summarizeMealUsage(groupId, today);
+        return aggregates.stream()
+                .limit(resolvedLimit)
+                .map(this::toMealIdentitySummaryView)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeUsageSummaryView> listRecipeUsageSummaries(UUID groupId, UUID actorUserId, int limit) {
+        ensureMealAccess(groupId, actorUserId);
+        int resolvedLimit = normalizePositiveLimit(limit, 12);
+        LocalDate today = LocalDate.now(clock);
+        List<RecipeUsageHistory> histories = summarizeRecipeUsage(groupId, today);
+        return histories.stream()
+                .limit(resolvedLimit)
+                .map(this::toRecipeUsageSummaryView)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public RecipeUsageSummaryView getRecipeUsageSummary(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        if (recipeId == null) {
+            throw new IllegalArgumentException("recipeId must not be null");
+        }
+        loadRecipe(groupId, recipeId);
+        LocalDate today = LocalDate.now(clock);
+        for (RecipeUsageHistory history : summarizeRecipeUsage(groupId, today)) {
+            if (history.recipeId().equals(recipeId)) {
+                return toRecipeUsageSummaryView(history);
+            }
+        }
+        Recipe recipe = loadRecipe(groupId, recipeId);
+        return new RecipeUsageSummaryView(
+                recipe.getId(),
+                recipe.getName(),
+                LocalDate.ofInstant(recipe.getCreatedAt(), ZoneOffset.UTC),
+                0,
+                0,
+                0,
+                false,
+                false,
+                recipe.getMakeSoonAt() != null,
+                false,
+                false
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<HouseholdPreferenceSummaryView> listHouseholdPreferenceSummaries(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        requireHouseholdPreferenceSignalRepository();
+        return householdPreferenceSignalRepository.findByGroupId(groupId).stream()
+                .sorted(java.util.Comparator.comparing(HouseholdPreferenceSignal::getCreatedAt))
+                .map(this::toHouseholdPreferenceSummaryView)
+                .toList();
+    }
+
+    @Transactional
+    public HouseholdPreferenceSummaryView writeHouseholdPreferenceSignal(
+            UUID groupId,
+            UUID actorUserId,
+            String targetKind,
+            String signalType,
+            UUID recipeId,
+            String mealIdentityKey
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        requireHouseholdPreferenceSignalRepository();
+        HouseholdPreferenceSignalTargetKind resolvedTargetKind = parsePreferenceTargetKind(targetKind);
+        HouseholdPreferenceSignalType resolvedSignalType = parsePreferenceSignalType(signalType);
+        HouseholdPreferenceSignal existing = findExistingPreferenceSignal(
+                groupId,
+                resolvedTargetKind,
+                resolvedSignalType,
+                recipeId,
+                mealIdentityKey
+        ).orElse(null);
+        if (existing != null) {
+            return toHouseholdPreferenceSummaryView(existing);
+        }
+        Instant now = clock.instant();
+        HouseholdPreferenceSignal signal = new HouseholdPreferenceSignal(
+                UUID.randomUUID(),
+                groupId,
+                resolvedTargetKind,
+                resolvedTargetKind == HouseholdPreferenceSignalTargetKind.RECIPE ? recipeId : null,
+                resolvedTargetKind == HouseholdPreferenceSignalTargetKind.MEAL_IDENTITY ? normalizeMealIdentityKey(mealIdentityKey) : null,
+                resolvedSignalType,
+                now,
+                now
+        );
+        return toHouseholdPreferenceSummaryView(householdPreferenceSignalRepository.save(signal));
+    }
+
+    @Transactional
+    public void clearHouseholdPreferenceSignal(
+            UUID groupId,
+            UUID actorUserId,
+            String targetKind,
+            String signalType,
+            UUID recipeId,
+            String mealIdentityKey
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        requireHouseholdPreferenceSignalRepository();
+        findExistingPreferenceSignal(
+                groupId,
+                parsePreferenceTargetKind(targetKind),
+                parsePreferenceSignalType(signalType),
+                recipeId,
+                mealIdentityKey
+        ).ifPresent(householdPreferenceSignalRepository::delete);
+    }
+
+    @Transactional(readOnly = true)
+    public PlanningChoiceSupportView getSlotPlanningChoiceSupport(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek,
+            int dayOfWeek,
+            MealType mealType
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        validateIsoWeek(year, isoWeek);
+        if (dayOfWeek < 1 || dayOfWeek > 7) {
+            throw new IllegalArgumentException("dayOfWeek must be between 1 and 7");
+        }
+        if (mealType == null) {
+            throw new IllegalArgumentException("mealType must not be null");
+        }
+        PlanningContext context = new PlanningContext(
+                PlanningScenario.SLOT,
+                localDateForIsoWeek(year, isoWeek, dayOfWeek),
+                year,
+                isoWeek,
+                dayOfWeek,
+                mealType,
+                null
+        );
+        return toPlanningChoiceSupportView(loadPlanningChoiceSupport(groupId, context));
+    }
+
+    @Transactional(readOnly = true)
+    public PlanningChoiceSupportView getTonightPlanningChoiceSupport(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        LocalDate today = LocalDate.now(clock);
+        PlanningContext context = new PlanningContext(
+                PlanningScenario.TONIGHT,
+                today,
+                today.get(WeekFields.ISO.weekBasedYear()),
+                today.get(WeekFields.ISO.weekOfWeekBasedYear()),
+                today.getDayOfWeek().getValue(),
+                MealType.DINNER,
+                null
+        );
+        return toPlanningChoiceSupportView(loadPlanningChoiceSupport(groupId, context));
+    }
+
+    @Transactional(readOnly = true)
+    public PlanningChoiceSupportView getWeekStartPlanningChoiceSupport(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        validateIsoWeek(year, isoWeek);
+        PlanningContext context = new PlanningContext(
+                PlanningScenario.WEEK_START,
+                localDateForIsoWeek(year, isoWeek, 1),
+                year,
+                isoWeek,
+                1,
+                null,
+                null
+        );
+        return toPlanningChoiceSupportView(loadPlanningChoiceSupport(groupId, context));
     }
 
     @Transactional
@@ -903,6 +1141,245 @@ public class MealsApplicationService {
         }
     }
 
+    private void requireMealMemoryRepository() {
+        if (mealMemoryRepository == null) {
+            throw new IllegalStateException("Meal memory platform is not configured");
+        }
+    }
+
+    private void requireHouseholdPreferenceSignalRepository() {
+        if (householdPreferenceSignalRepository == null) {
+            throw new IllegalStateException("Household preference platform is not configured");
+        }
+    }
+
+    private List<MealOccurrence> loadHistoricalOccurrences(UUID groupId, LocalDate referenceDate) {
+        requireMealMemoryRepository();
+        int year = referenceDate.get(WeekFields.ISO.weekBasedYear());
+        int isoWeek = referenceDate.get(WeekFields.ISO.weekOfWeekBasedYear());
+        int dayOfWeek = referenceDate.getDayOfWeek().getValue();
+        return mealMemoryRepository.findHistoricalOccurrencesOnOrBefore(groupId, year, isoWeek, dayOfWeek);
+    }
+
+    private List<HouseholdPreferenceSignal> loadPreferenceSignals(UUID groupId) {
+        requireHouseholdPreferenceSignalRepository();
+        return householdPreferenceSignalRepository.findByGroupId(groupId);
+    }
+
+    private Map<UUID, Recipe> recipesById(UUID groupId) {
+        Map<UUID, Recipe> recipesById = new HashMap<>();
+        for (Recipe recipe : recipeRepository.findByGroupId(groupId)) {
+            recipesById.put(recipe.getId(), recipe);
+        }
+        return recipesById;
+    }
+
+    private List<MealUsageAggregate> summarizeMealUsage(UUID groupId, LocalDate referenceDate) {
+        return mealChoiceSupportEngine.summarizeMealUsage(
+                loadHistoricalOccurrences(groupId, referenceDate),
+                recipesById(groupId).values(),
+                loadPreferenceSignals(groupId),
+                referenceDate
+        );
+    }
+
+    private List<RecipeUsageHistory> summarizeRecipeUsage(UUID groupId, LocalDate referenceDate) {
+        return mealChoiceSupportEngine.summarizeRecipeUsage(
+                loadHistoricalOccurrences(groupId, referenceDate),
+                recipesById(groupId).values(),
+                loadPreferenceSignals(groupId),
+                referenceDate
+        );
+    }
+
+    private PlanningChoiceSupport loadPlanningChoiceSupport(UUID groupId, PlanningContext context) {
+        return mealChoiceSupportEngine.buildPlanningChoiceSupport(
+                context,
+                loadHistoricalOccurrences(groupId, context.referenceDate()),
+                recipesById(groupId).values(),
+                loadPreferenceSignals(groupId)
+        );
+    }
+
+    private MealIdentity resolveMealIdentity(MealOccurrence occurrence, Map<UUID, Recipe> recipesById) {
+        if (occurrence.recipeId() != null) {
+            Recipe recipe = recipesById.get(occurrence.recipeId());
+            String title = recipe != null
+                    ? recipe.getName()
+                    : occurrence.recipeTitleSnapshot() == null ? occurrence.mealTitle() : occurrence.recipeTitleSnapshot();
+            return MealIdentity.forRecipe(occurrence.recipeId(), title);
+        }
+        return MealIdentity.forTitle(occurrence.mealTitle());
+    }
+
+    private RecentMealOccurrenceView toRecentMealOccurrenceView(MealOccurrence occurrence, MealIdentity identity) {
+        return new RecentMealOccurrenceView(
+                occurrence.weekPlanId(),
+                occurrence.year(),
+                occurrence.isoWeek(),
+                occurrence.dayOfWeek(),
+                occurrence.mealType().name(),
+                occurrence.plannedDate(),
+                occurrence.mealTitle(),
+                identity.key(),
+                toMealIdentityKindValue(identity.kind()),
+                occurrence.recipeId(),
+                identity.kind() == MealIdentityKind.RECIPE ? identity.title() : occurrence.recipeTitleSnapshot()
+        );
+    }
+
+    private MealIdentitySummaryView toMealIdentitySummaryView(MealUsageAggregate aggregate) {
+        Set<String> usedMealTypes = new HashSet<>();
+        for (MealType mealType : aggregate.usedMealTypes()) {
+            usedMealTypes.add(mealType.name());
+        }
+        return new MealIdentitySummaryView(
+                aggregate.identity().key(),
+                toMealIdentityKindValue(aggregate.identity().kind()),
+                aggregate.identity().title(),
+                aggregate.identity().recipeId(),
+                aggregate.lastPlannedDate(),
+                aggregate.totalOccurrences(),
+                aggregate.recentOccurrences(),
+                aggregate.distinctWeeks(),
+                Set.copyOf(usedMealTypes),
+                aggregate.recent(),
+                aggregate.frequent(),
+                aggregate.familiar(),
+                aggregate.fallback(),
+                aggregate.preferenceFit(),
+                aggregate.deprioritized(),
+                aggregate.makeSoon()
+        );
+    }
+
+    private RecipeUsageSummaryView toRecipeUsageSummaryView(RecipeUsageHistory history) {
+        return new RecipeUsageSummaryView(
+                history.recipeId(),
+                history.recipeTitle(),
+                history.lastUsedDate(),
+                history.totalUses(),
+                history.recentUses(),
+                history.distinctWeeks(),
+                history.frequent(),
+                history.familiar(),
+                history.makeSoon(),
+                history.preferenceFit(),
+                history.deprioritized()
+        );
+    }
+
+    private HouseholdPreferenceSummaryView toHouseholdPreferenceSummaryView(HouseholdPreferenceSignal signal) {
+        return new HouseholdPreferenceSummaryView(
+                signal.getId(),
+                toPreferenceTargetKindValue(signal.getTargetKind()),
+                signal.getRecipeId(),
+                signal.getMealIdentityKey(),
+                toPreferenceSignalTypeValue(signal.getSignalType()),
+                signal.getCreatedAt(),
+                signal.getUpdatedAt()
+        );
+    }
+
+    private PlanningChoiceSupportView toPlanningChoiceSupportView(PlanningChoiceSupport support) {
+        PlanningContext context = support.context();
+        return new PlanningChoiceSupportView(
+                context.scenario().name().toLowerCase(Locale.ROOT),
+                context.referenceDate(),
+                context.year(),
+                context.isoWeek(),
+                context.dayOfWeek(),
+                context.mealType() == null ? null : context.mealType().name(),
+                context.recipeId(),
+                support.recentCandidates().stream().map(this::toMealChoiceCandidateView).toList(),
+                support.familiarCandidates().stream().map(this::toMealChoiceCandidateView).toList(),
+                support.fallbackCandidates().stream().map(this::toMealChoiceCandidateView).toList(),
+                support.makeSoonCandidates().stream().map(this::toMealChoiceCandidateView).toList()
+        );
+    }
+
+    private MealChoiceCandidateView toMealChoiceCandidateView(ReuseCandidate candidate) {
+        return new MealChoiceCandidateView(
+                candidate.family().name().toLowerCase(Locale.ROOT),
+                candidate.identity().key(),
+                toMealIdentityKindValue(candidate.identity().kind()),
+                candidate.identity().title(),
+                candidate.identity().recipeId(),
+                candidate.lastPlannedDate(),
+                candidate.totalOccurrences(),
+                candidate.recent(),
+                candidate.frequent(),
+                candidate.familiar(),
+                candidate.fallback(),
+                candidate.slotFit(),
+                candidate.preferenceFit(),
+                candidate.deprioritized(),
+                candidate.makeSoon(),
+                candidate.surfacedBecause()
+        );
+    }
+
+    private int normalizePositiveLimit(int value, int fallback) {
+        return value <= 0 ? fallback : value;
+    }
+
+    private HouseholdPreferenceSignalTargetKind parsePreferenceTargetKind(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("targetKind must not be null");
+        }
+        try {
+            return HouseholdPreferenceSignalTargetKind.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unknown household preference targetKind: " + value);
+        }
+    }
+
+    private HouseholdPreferenceSignalType parsePreferenceSignalType(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("signalType must not be null");
+        }
+        try {
+            return HouseholdPreferenceSignalType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unknown household preference signalType: " + value);
+        }
+    }
+
+    private java.util.Optional<HouseholdPreferenceSignal> findExistingPreferenceSignal(
+            UUID groupId,
+            HouseholdPreferenceSignalTargetKind targetKind,
+            HouseholdPreferenceSignalType signalType,
+            UUID recipeId,
+            String mealIdentityKey
+    ) {
+        return switch (targetKind) {
+            case RECIPE -> {
+                if (recipeId == null) {
+                    throw new IllegalArgumentException("recipeId must not be null for recipe preference signals");
+                }
+                loadRecipe(groupId, recipeId);
+                yield householdPreferenceSignalRepository.findByRecipeTarget(groupId, recipeId, signalType);
+            }
+            case MEAL_IDENTITY -> {
+                String normalizedIdentityKey = normalizeMealIdentityKey(mealIdentityKey);
+                yield householdPreferenceSignalRepository.findByMealIdentityTarget(groupId, normalizedIdentityKey, signalType);
+            }
+        };
+    }
+
+    private String normalizeMealIdentityKey(String mealIdentityKey) {
+        if (mealIdentityKey == null || mealIdentityKey.isBlank()) {
+            throw new IllegalArgumentException("mealIdentityKey must not be blank");
+        }
+        return mealIdentityKey.trim();
+    }
+
+    private LocalDate localDateForIsoWeek(int year, int isoWeek, int dayOfWeek) {
+        return LocalDate.of(year, 1, 4)
+                .with(WeekFields.ISO.weekOfWeekBasedYear(), isoWeek)
+                .with(WeekFields.ISO.dayOfWeek(), dayOfWeek);
+    }
+
     private RecipeDuplicateAssessment assessDuplicateAttention(UUID groupId, RecipeDraft draft) {
         String normalizedDraftSourceUrl = normalizeComparableUrl(draft.getSource().sourceUrl());
         if (normalizedDraftSourceUrl != null) {
@@ -1209,12 +1686,88 @@ public class MealsApplicationService {
         );
     }
 
+    private List<Recipe> findRecentlyUsedSavedRecipes(UUID groupId) {
+        LocalDate today = LocalDate.now(clock);
+        int currentYear = today.get(WeekFields.ISO.weekBasedYear());
+        int currentIsoWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
+        int currentDayOfWeek = today.getDayOfWeek().getValue();
+
+        List<UUID> orderedRecipeIds = weekPlanRepository.findRecentRecipeIdsOnOrBefore(
+                groupId,
+                currentYear,
+                currentIsoWeek,
+                currentDayOfWeek
+        );
+        if (orderedRecipeIds.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> seenRecipeIds = new HashSet<>();
+        List<UUID> recentRecipeIds = new ArrayList<>();
+        for (UUID recipeId : orderedRecipeIds) {
+            if (!seenRecipeIds.add(recipeId)) {
+                continue;
+            }
+            recentRecipeIds.add(recipeId);
+        }
+        if (recentRecipeIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Recipe> recipesById = new HashMap<>();
+        for (Recipe recipe : recipeRepository.findByGroupIdAndIds(groupId, new HashSet<>(recentRecipeIds))) {
+            if (recipe.isArchived() || !recipe.isSavedInRecipes()) {
+                continue;
+            }
+            recipesById.put(recipe.getId(), recipe);
+        }
+
+        List<Recipe> recipes = new ArrayList<>();
+        for (UUID recipeId : recentRecipeIds) {
+            Recipe recipe = recipesById.get(recipeId);
+            if (recipe != null) {
+                recipes.add(recipe);
+                if (recipes.size() >= RECENTLY_USED_RECIPES_LIMIT) {
+                    break;
+                }
+            }
+        }
+        return recipes;
+    }
+
+    private List<Recipe> findRecipesForLibraryState(UUID groupId, String state) {
+        String normalizedState = state == null ? "active" : state.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedState) {
+            case "active" -> recipeRepository.findActiveByGroupId(groupId);
+            case "archived" -> recipeRepository.findArchivedByGroupId(groupId);
+            default -> throw new IllegalArgumentException("Unknown recipe library state: " + state);
+        };
+    }
+
     private String toDraftStateValue(RecipeDraftState state) {
         return switch (state) {
             case DRAFT_OPEN -> "draft_open";
             case DRAFT_NEEDS_REVIEW -> "draft_needs_review";
             case DRAFT_READY -> "draft_ready";
         };
+    }
+
+    private String toMealIdentityKindValue(MealIdentityKind kind) {
+        return switch (kind) {
+            case RECIPE -> "recipe";
+            case TITLE_ONLY -> "title_only";
+        };
+    }
+
+    private String toPreferenceTargetKindValue(HouseholdPreferenceSignalTargetKind targetKind) {
+        return switch (targetKind) {
+            case RECIPE -> "recipe";
+            case MEAL_IDENTITY -> "meal_identity";
+        };
+    }
+
+    private String toPreferenceSignalTypeValue(HouseholdPreferenceSignalType signalType) {
+        return signalType.name().toLowerCase(Locale.ROOT);
     }
 
     private String toOriginValue(RecipeOriginKind originKind) {

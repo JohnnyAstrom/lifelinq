@@ -15,6 +15,11 @@ import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftView;
 import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
 import app.lifelinq.features.meals.contract.RecipeView;
+import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
+import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
+import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
+import app.lifelinq.features.meals.contract.RecentMealOccurrenceView;
+import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -162,12 +168,28 @@ public class MealsController {
     }
 
     @GetMapping("/meals/recipe-library/items")
-    public ResponseEntity<?> listRecipeLibraryItems() {
+    public ResponseEntity<?> listRecipeLibraryItems(
+            @RequestParam(name = "state", required = false, defaultValue = "active") String state
+    ) {
         RequestContext context = ApiScoping.getContext();
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
         List<RecipeLibraryItemView> items = mealsApplicationService.listRecipeLibraryItems(
+                context.getGroupId(),
+                context.getUserId(),
+                state
+        );
+        return ResponseEntity.ok(items);
+    }
+
+    @GetMapping("/meals/recipe-library/recent-items")
+    public ResponseEntity<?> listRecentRecipeLibraryItems() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<RecipeLibraryItemView> items = mealsApplicationService.listRecentlyUsedRecipeLibraryItems(
                 context.getGroupId(),
                 context.getUserId()
         );
@@ -180,6 +202,113 @@ public class MealsController {
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
             return ApiScoping.missingContext();
         }
+        RecipeDetailView recipe = mealsApplicationService.getRecipeDetail(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(recipe);
+    }
+
+    @PutMapping("/meals/recipe-details/{recipeId}")
+    public ResponseEntity<?> updateRecipeDetail(
+            @PathVariable UUID recipeId,
+            @RequestBody CreateOrUpdateRecipeRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        mealsApplicationService.updateRecipe(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId,
+                request.getName(),
+                request.getSourceName(),
+                request.getSourceUrl(),
+                request.getOriginKind(),
+                request.getServings(),
+                request.getShortNote(),
+                request.getInstructions(),
+                request.getSavedInRecipes(),
+                toIngredientInputs(request.getIngredients())
+        );
+        RecipeDetailView recipe = mealsApplicationService.getRecipeDetail(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(recipe);
+    }
+
+    @PostMapping("/meals/recipe-details/{recipeId}/archive")
+    public ResponseEntity<?> archiveRecipeDetail(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        mealsApplicationService.archiveRecipe(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        RecipeDetailView recipe = mealsApplicationService.getRecipeDetail(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(recipe);
+    }
+
+    @PostMapping("/meals/recipe-details/{recipeId}/restore")
+    public ResponseEntity<?> restoreRecipeDetail(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        mealsApplicationService.restoreRecipe(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        RecipeDetailView recipe = mealsApplicationService.getRecipeDetail(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(recipe);
+    }
+
+    @PostMapping("/meals/recipe-details/{recipeId}/make-soon")
+    public ResponseEntity<?> markRecipeDetailMakeSoon(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        mealsApplicationService.markRecipeMakeSoon(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        RecipeDetailView recipe = mealsApplicationService.getRecipeDetail(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(recipe);
+    }
+
+    @DeleteMapping("/meals/recipe-details/{recipeId}/make-soon")
+    public ResponseEntity<?> clearRecipeDetailMakeSoon(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        mealsApplicationService.clearRecipeMakeSoon(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
         RecipeDetailView recipe = mealsApplicationService.getRecipeDetail(
                 context.getGroupId(),
                 context.getUserId(),
@@ -246,6 +375,168 @@ public class MealsController {
             ));
         }
         return ResponseEntity.ok(meals);
+    }
+
+    @GetMapping("/meals/household-memory/recent-occurrences")
+    public ResponseEntity<?> listRecentMealOccurrences(
+            @RequestParam(name = "limit", required = false, defaultValue = "12") int limit
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<RecentMealOccurrenceView> views = mealsApplicationService.listRecentMealOccurrences(
+                context.getGroupId(),
+                context.getUserId(),
+                limit
+        );
+        return ResponseEntity.ok(views);
+    }
+
+    @GetMapping("/meals/household-memory/meal-identities")
+    public ResponseEntity<?> listMealIdentitySummaries(
+            @RequestParam(name = "limit", required = false, defaultValue = "12") int limit
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<MealIdentitySummaryView> views = mealsApplicationService.listMealIdentitySummaries(
+                context.getGroupId(),
+                context.getUserId(),
+                limit
+        );
+        return ResponseEntity.ok(views);
+    }
+
+    @GetMapping("/meals/household-memory/recipe-usage")
+    public ResponseEntity<?> listRecipeUsageSummaries(
+            @RequestParam(name = "limit", required = false, defaultValue = "12") int limit
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<RecipeUsageSummaryView> views = mealsApplicationService.listRecipeUsageSummaries(
+                context.getGroupId(),
+                context.getUserId(),
+                limit
+        );
+        return ResponseEntity.ok(views);
+    }
+
+    @GetMapping("/meals/choice-support/recipes/{recipeId}/memory")
+    public ResponseEntity<?> getRecipeUsageSummary(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeUsageSummaryView view = mealsApplicationService.getRecipeUsageSummary(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(view);
+    }
+
+    @GetMapping("/meals/household-memory/preferences")
+    public ResponseEntity<?> listHouseholdPreferenceSummaries() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<HouseholdPreferenceSummaryView> views = mealsApplicationService.listHouseholdPreferenceSummaries(
+                context.getGroupId(),
+                context.getUserId()
+        );
+        return ResponseEntity.ok(views);
+    }
+
+    @PostMapping("/meals/household-memory/preferences")
+    public ResponseEntity<?> writeHouseholdPreferenceSignal(@RequestBody WriteHouseholdPreferenceSignalRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        HouseholdPreferenceSummaryView view = mealsApplicationService.writeHouseholdPreferenceSignal(
+                context.getGroupId(),
+                context.getUserId(),
+                request.getTargetKind(),
+                request.getSignalType(),
+                request.getRecipeId(),
+                request.getMealIdentityKey()
+        );
+        return ResponseEntity.ok(view);
+    }
+
+    @PostMapping("/meals/household-memory/preferences/clear")
+    public ResponseEntity<?> clearHouseholdPreferenceSignal(@RequestBody WriteHouseholdPreferenceSignalRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        mealsApplicationService.clearHouseholdPreferenceSignal(
+                context.getGroupId(),
+                context.getUserId(),
+                request.getTargetKind(),
+                request.getSignalType(),
+                request.getRecipeId(),
+                request.getMealIdentityKey()
+        );
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/meals/choice-support/slot")
+    public ResponseEntity<?> getSlotPlanningChoiceSupport(
+            @RequestParam int year,
+            @RequestParam int isoWeek,
+            @RequestParam int dayOfWeek,
+            @RequestParam String mealType
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        PlanningChoiceSupportView view = mealsApplicationService.getSlotPlanningChoiceSupport(
+                context.getGroupId(),
+                context.getUserId(),
+                year,
+                isoWeek,
+                dayOfWeek,
+                app.lifelinq.features.meals.domain.MealType.valueOf(mealType)
+        );
+        return ResponseEntity.ok(view);
+    }
+
+    @GetMapping("/meals/choice-support/tonight")
+    public ResponseEntity<?> getTonightPlanningChoiceSupport() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        PlanningChoiceSupportView view = mealsApplicationService.getTonightPlanningChoiceSupport(
+                context.getGroupId(),
+                context.getUserId()
+        );
+        return ResponseEntity.ok(view);
+    }
+
+    @GetMapping("/meals/choice-support/week-start")
+    public ResponseEntity<?> getWeekStartPlanningChoiceSupport(
+            @RequestParam int year,
+            @RequestParam int isoWeek
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        PlanningChoiceSupportView view = mealsApplicationService.getWeekStartPlanningChoiceSupport(
+                context.getGroupId(),
+                context.getUserId(),
+                year,
+                isoWeek
+        );
+        return ResponseEntity.ok(view);
     }
 
     @GetMapping("/meals/recipes/{recipeId}")

@@ -76,4 +76,16 @@ public class MealsJpaTestApplication {
     ) {
         return new JpaRecipeDraftRepositoryAdapter(repository, ingredientRepository, mapper);
     }
+
+    @Bean
+    public JpaMealMemoryRepositoryAdapter mealMemoryRepository(MealMemoryJpaRepository repository) {
+        return new JpaMealMemoryRepositoryAdapter(repository);
+    }
+
+    @Bean
+    public JpaHouseholdPreferenceSignalRepositoryAdapter householdPreferenceSignalRepository(
+            HouseholdPreferenceSignalJpaRepository repository
+    ) {
+        return new JpaHouseholdPreferenceSignalRepositoryAdapter(repository);
+    }
 }
