@@ -3,19 +3,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import {
+  acceptRecipeDraft,
   archiveRecipe,
   clearRecipeMakeSoon,
-  createRecipe,
-  createRecipeImportDraft,
+  createManualRecipeDraft,
+  createRecipeDraftFromUrl,
   deleteRecipe,
+  getRecipeDraftDuplicateAssessment,
   getRecipe,
   listArchivedRecipes,
   listRecentlyUsedRecipes,
   listRecipes,
   markRecipeMakeSoon,
   restoreRecipe,
+  updateRecipeDraft,
   updateRecipe,
-  type RecipeImportDraftResponse,
+  type RecipeDetailResponse,
+  type RecipeDraftResponse,
+  type RecipeDuplicateAssessmentResponse,
   type RecipeResponse,
 } from '../api/mealsApi';
 import {
@@ -27,26 +32,12 @@ import {
   type MealIngredientRow,
   type MealIngredientUnit,
 } from '../utils/ingredientRows';
-import {
-  findLikelyRecipeDuplicate,
-  type RecipeDuplicateCandidate,
-} from '../utils/recipeDuplicateGuard';
+import type { RecipeDuplicateCandidate } from '../utils/recipeDuplicateGuard';
 
 type DetailPendingAction = 'save' | 'archive' | 'delete' | 'make-soon' | null;
 type RecipeDetailMode = 'create' | 'saved' | 'import';
 type RecipeListMode = 'active' | 'archived';
 type RecipeBrowseMode = 'all' | 'makeSoon' | 'recent';
-type RecipeSaveRequest = {
-  name: string;
-  sourceName: string | null;
-  sourceUrl: string | null;
-  originKind: string;
-  servings: string | null;
-  shortNote: string | null;
-  instructions: string | null;
-  ingredients: ReturnType<typeof toIngredientRequests>;
-};
-
 type RecipeListItem = {
   recipeId: string;
   name: string;
@@ -103,6 +94,25 @@ function normalizeClipboardUrlCandidate(value: string) {
   }
 }
 
+function toDuplicateCandidate(
+  assessment: RecipeDuplicateAssessmentResponse
+): RecipeDuplicateCandidate | null {
+  if (!assessment.attentionRequired || !assessment.matchingRecipe) {
+    return null;
+  }
+
+  return {
+    recipeId: assessment.matchingRecipe.recipeId,
+    name: assessment.matchingRecipe.name,
+    sourceName: assessment.matchingRecipe.source.sourceName ?? null,
+    sourceUrl: assessment.matchingRecipe.source.sourceUrl ?? null,
+    archivedAt: assessment.matchingRecipe.lifecycle.state === 'archived'
+      ? 'archived'
+      : null,
+    matchType: assessment.matchType === 'exact_source_url' ? 'source-url' : 'name-and-source',
+  };
+}
+
 type Params = {
   token: string;
   enabled: boolean;
@@ -122,6 +132,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recentlyUsedRecipes, setRecentlyUsedRecipes] = useState<RecipeResponse[] | null>(null);
 
   const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
+  const [recipeDraftId, setRecipeDraftId] = useState<string | null>(null);
+  const [recipeDraftState, setRecipeDraftState] = useState<string | null>(null);
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [recipeTitle, setRecipeTitle] = useState('');
   const [recipeSource, setRecipeSource] = useState('');
@@ -141,7 +153,6 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [detailMode, setDetailMode] = useState<RecipeDetailMode>('create');
   const [isRecipeReadMode, setIsRecipeReadMode] = useState(false);
   const [pendingDuplicateCandidate, setPendingDuplicateCandidate] = useState<RecipeDuplicateCandidate | null>(null);
-  const [pendingDuplicateSaveRequest, setPendingDuplicateSaveRequest] = useState<RecipeSaveRequest | null>(null);
 
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
@@ -411,6 +422,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   function applyRecipe(recipe: RecipeResponse) {
+    setRecipeDraftId(null);
+    setRecipeDraftState(null);
     setRecipeId(recipe.recipeId);
     setRecipeTitle(recipe.name);
     setRecipeSource(recipe.sourceName ?? '');
@@ -431,12 +444,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setIsRecipeDetailOpen(true);
   }
 
-  function applyImportedDraft(draft: RecipeImportDraftResponse) {
+  function applyRecipeDraft(draft: RecipeDraftResponse, mode: RecipeDetailMode) {
+    setRecipeDraftId(draft.draftId);
+    setRecipeDraftState(draft.state);
     setRecipeId(null);
-    setRecipeTitle(draft.name);
-    setRecipeSource(draft.sourceName ?? '');
-    setRecipeSourceUrl(draft.sourceUrl);
-    setRecipeOriginKind(draft.originKind);
+    setRecipeTitle(draft.name ?? '');
+    setRecipeSource(draft.source.sourceName ?? '');
+    setRecipeSourceUrl(draft.source.sourceUrl ?? '');
+    setRecipeOriginKind(draft.provenance.originKind?.toUpperCase() ?? 'MANUAL');
     setRecipeServings(draft.servings ?? '');
     setRecipeMakeSoonAt(null);
     setRecipeShortNote(draft.shortNote ?? '');
@@ -444,12 +459,50 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeArchivedAt(null);
     setRecipeDeleteEligible(false);
     setRecipeDeleteBlockedReason(null);
-    setIngredientRows(ingredientRowsFromImportDraft(draft.ingredients));
+    setIngredientRows(ingredientRowsFromResponse(draft.ingredients));
     setRecipeDetailError(null);
     setIsRecipeLoading(false);
-    setDetailMode('import');
+    setDetailMode(mode);
     setIsRecipeReadMode(false);
     setIsRecipeDetailOpen(true);
+  }
+
+  function applyRecipeDetail(detail: RecipeDetailResponse) {
+    setRecipeDraftId(null);
+    setRecipeDraftState(null);
+    setRecipeId(detail.recipeId);
+    setRecipeTitle(detail.name);
+    setRecipeSource(detail.source.sourceName ?? '');
+    setRecipeSourceUrl(detail.source.sourceUrl ?? '');
+    setRecipeOriginKind(detail.provenance.originKind?.toUpperCase() ?? 'MANUAL');
+    setRecipeServings(detail.servings ?? '');
+    setRecipeMakeSoonAt(detail.makeSoonAt);
+    setRecipeShortNote(detail.shortNote ?? '');
+    setRecipeInstructions(detail.instructions ?? '');
+    setRecipeArchivedAt(detail.lifecycle.state === 'archived' ? detail.updatedAt : null);
+    setRecipeDeleteEligible(detail.lifecycle.deleteEligible);
+    setRecipeDeleteBlockedReason(detail.lifecycle.deleteBlockedReason);
+    setIngredientRows(ingredientRowsFromResponse(detail.ingredients));
+    setRecipeDetailError(null);
+    setIsRecipeLoading(false);
+    setDetailMode('saved');
+    setIsRecipeReadMode(true);
+    setIsRecipeDetailOpen(true);
+  }
+
+  async function refreshRecipeCollections() {
+    if (!token) {
+      return;
+    }
+    const [nextActiveRecipes, nextArchivedRecipes, nextRecentlyUsedRecipes] = await Promise.all([
+      listRecipes({ token }),
+      listArchivedRecipes({ token }),
+      listRecentlyUsedRecipes({ token }),
+    ]);
+    setActiveRecipes(nextActiveRecipes);
+    setArchivedRecipes(nextArchivedRecipes);
+    setRecentlyUsedRecipes(nextRecentlyUsedRecipes);
+    setHasLoaded(true);
   }
 
   async function openRecipe(recipeIdToOpen: string) {
@@ -491,26 +544,25 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
-  function openCreateRecipe() {
+  async function openCreateRecipe() {
+    if (pendingDetailAction || isRecipeLoading) {
+      return;
+    }
     focusMainRecipeLibrary();
-    setRecipeId(null);
-    setRecipeTitle('');
-    setRecipeSource('');
-    setRecipeSourceUrl('');
-    setRecipeOriginKind('MANUAL');
-    setRecipeServings('');
-    setRecipeMakeSoonAt(null);
-    setRecipeShortNote('');
-    setRecipeInstructions('');
-    setRecipeArchivedAt(null);
-    setRecipeDeleteEligible(false);
-    setRecipeDeleteBlockedReason(null);
-    setIngredientRows([createEmptyIngredientRow()]);
     setRecipeDetailError(null);
-    setIsRecipeLoading(false);
-    setDetailMode('create');
-    setIsRecipeReadMode(false);
+    setIsRecipeLoading(true);
     setIsRecipeDetailOpen(true);
+    try {
+      const draft = await createManualRecipeDraft({ token });
+      applyRecipeDraft(draft, 'create');
+      if (draft.ingredients.length === 0) {
+        setIngredientRows([createEmptyIngredientRow()]);
+      }
+    } catch (err) {
+      await handleApiError(err);
+      setRecipeDetailError(formatApiError(err));
+      setIsRecipeLoading(false);
+    }
   }
 
   async function hydrateImportUrlFromClipboard() {
@@ -555,8 +607,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsRecipeDetailOpen(false);
     setRecipeDetailError(null);
+    setRecipeDraftId(null);
+    setRecipeDraftState(null);
     setPendingDuplicateCandidate(null);
-    setPendingDuplicateSaveRequest(null);
   }
 
   function startEditingRecipe() {
@@ -635,12 +688,12 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setIsImportingDraft(true);
     setImportError(null);
     try {
-      const draft = await createRecipeImportDraft(
+      const draft = await createRecipeDraftFromUrl(
         { url: importUrl.trim() },
         { token }
       );
       focusMainRecipeLibrary();
-      applyImportedDraft(draft);
+      applyRecipeDraft(draft, 'import');
       setIsImportSheetOpen(false);
       setImportUrl('');
     } catch (err) {
@@ -651,7 +704,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
-  function buildRecipeSaveRequest(): RecipeSaveRequest {
+  function buildRecipeSaveRequest() {
     return {
       name: recipeTitle.trim(),
       sourceName: recipeSource.trim() || null,
@@ -664,67 +717,81 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     };
   }
 
-  async function createRecipeFromRequest(request: RecipeSaveRequest) {
-    const saved = await createRecipe(request, { token });
-    focusMainRecipeLibrary();
-    setActiveRecipes((current) => {
-      const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
-      return [...others, saved];
-    });
-    setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
-    setHasLoaded(true);
-    applyRecipe(saved);
-  }
-
   async function saveRecipe() {
     if (pendingDetailAction || isRecipeLoading || !recipeTitle.trim()) {
       return;
     }
-
-    const request = buildRecipeSaveRequest();
-    if (!recipeId) {
-      const duplicateCandidate = findLikelyRecipeDuplicate({
-        recipes: [...(activeRecipes ?? []), ...(archivedRecipes ?? [])],
-        name: request.name,
-        sourceName: request.sourceName,
-        sourceUrl: request.sourceUrl,
-      });
-      if (duplicateCandidate) {
-        setPendingDuplicateCandidate(duplicateCandidate);
-        setPendingDuplicateSaveRequest(request);
-        return;
-      }
+    if (!recipeId && !recipeDraftId) {
+      setRecipeDetailError('We could not start this recipe draft. Close and try again.');
+      return;
     }
 
+    const request = buildRecipeSaveRequest();
     setPendingDetailAction('save');
     setRecipeDetailError(null);
     try {
-      const isNewLibraryIntake = !recipeId;
-      const saved = recipeId
-        ? await updateRecipe(recipeId, request, { token })
-        : await createRecipe(request, { token });
-
-      if (isNewLibraryIntake) {
+      if (!recipeId && recipeDraftId) {
+        const updatedDraft = await updateRecipeDraft(
+          recipeDraftId,
+          {
+            name: request.name,
+            sourceName: request.sourceName,
+            sourceUrl: request.sourceUrl,
+            servings: request.servings,
+            shortNote: request.shortNote,
+            instructions: request.instructions,
+            markReady: true,
+            ingredients: request.ingredients,
+          },
+          { token }
+        );
+        setRecipeDraftState(updatedDraft.state);
+        const duplicateAssessment = await getRecipeDraftDuplicateAssessment(recipeDraftId, { token });
+        const duplicateCandidate = toDuplicateCandidate(duplicateAssessment);
+        if (duplicateCandidate) {
+          setPendingDuplicateCandidate(duplicateCandidate);
+          return;
+        }
+        const savedDetail = await acceptRecipeDraft(recipeDraftId, { allowDuplicate: false }, { token });
         focusMainRecipeLibrary();
-      }
-      setPendingDuplicateCandidate(null);
-      setPendingDuplicateSaveRequest(null);
-      if (saved.archivedAt) {
-        setArchivedRecipes((current) => {
-          const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
-          return [...others, saved];
-        });
+        setPendingDuplicateCandidate(null);
+        await refreshRecipeCollections();
+        applyRecipeDetail(savedDetail);
       } else {
-        setActiveRecipes((current) => {
-          const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
-          return [...others, saved];
-        });
-        setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
+        const saved = await updateRecipe(recipeId!, request, { token });
+        setPendingDuplicateCandidate(null);
+        if (saved.archivedAt) {
+          setArchivedRecipes((current) => {
+            const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
+            return [...others, saved];
+          });
+        } else {
+          setActiveRecipes((current) => {
+            const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
+            return [...others, saved];
+          });
+          setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
+        }
+        setHasLoaded(true);
+        applyRecipe(saved);
       }
-      setHasLoaded(true);
-      applyRecipe(saved);
     } catch (err) {
       await handleApiError(err);
+      if (!recipeId && recipeDraftId && err instanceof ApiError && err.status === 409) {
+        try {
+          const payload = JSON.parse(err.body) as { code?: string };
+          if (payload.code === 'RECIPE_DUPLICATE_ATTENTION_REQUIRED') {
+            const duplicateAssessment = await getRecipeDraftDuplicateAssessment(recipeDraftId, { token });
+            const duplicateCandidate = toDuplicateCandidate(duplicateAssessment);
+            if (duplicateCandidate) {
+              setPendingDuplicateCandidate(duplicateCandidate);
+              return;
+            }
+          }
+        } catch {
+          // fall through to generic error handling
+        }
+      }
       setRecipeDetailError(formatApiError(err));
     } finally {
       setPendingDetailAction(null);
@@ -758,16 +825,18 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   async function saveDuplicateRecipeAnyway() {
-    if (!pendingDuplicateSaveRequest || pendingDetailAction || isRecipeLoading) {
+    if (!recipeDraftId || !pendingDuplicateCandidate || pendingDetailAction || isRecipeLoading) {
       return;
     }
 
     setPendingDetailAction('save');
     setRecipeDetailError(null);
     try {
-      await createRecipeFromRequest(pendingDuplicateSaveRequest);
+      const savedDetail = await acceptRecipeDraft(recipeDraftId, { allowDuplicate: true }, { token });
+      focusMainRecipeLibrary();
+      await refreshRecipeCollections();
+      applyRecipeDetail(savedDetail);
       setPendingDuplicateCandidate(null);
-      setPendingDuplicateSaveRequest(null);
     } catch (err) {
       await handleApiError(err);
       setRecipeDetailError(formatApiError(err));
@@ -782,13 +851,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     const duplicateRecipeId = pendingDuplicateCandidate.recipeId;
     setPendingDuplicateCandidate(null);
-    setPendingDuplicateSaveRequest(null);
     await openRecipe(duplicateRecipeId);
   }
 
   function dismissDuplicateRecipeWarning() {
     setPendingDuplicateCandidate(null);
-    setPendingDuplicateSaveRequest(null);
   }
 
   async function archiveCurrentRecipe() {

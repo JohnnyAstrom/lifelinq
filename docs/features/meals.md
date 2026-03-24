@@ -221,6 +221,8 @@ Errors: 400 invalid input, 401 missing context, 403 not a group member, 422 impo
 
 Program 1 foundation note: Meals now also exposes scenario-based recipe-content platform contracts underneath the existing recipe endpoints. These platform contracts are intentionally draft-first rather than CRUD-first: manual create and save-from-link both create a persisted `RecipeDraft`, duplicate assessment is a separate explicit query, and accepting a draft creates the final saved `Recipe` in the library. New platform projections also separate human-facing source summary from machine-facing provenance and expose lifecycle/identity summaries directly so frontend flows do not have to infer them.
 
+Program 1 step-2 note: the live Recipe Library intake family now uses those draft-first contracts as its primary path. `Create recipe` starts a manual draft, `Save recipe` from URL starts an imported draft, review updates the draft itself, duplicate attention comes from the draft assessment contract, and saving into the library accepts the draft rather than creating recipes directly from a legacy frontend-only review model. Legacy endpoints remain available for compatibility and older flows, but they are no longer the main intake path for the Recipes workspace.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  

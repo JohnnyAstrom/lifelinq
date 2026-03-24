@@ -157,6 +157,68 @@ export type RecipeImportDraftResponse = {
   ingredients: RecipeImportDraftIngredientResponse[];
 };
 
+export type RecipeSourceSummaryResponse = {
+  sourceName: string | null;
+  sourceUrl: string | null;
+};
+
+export type RecipeProvenanceResponse = {
+  originKind: string | null;
+  referenceUrl: string | null;
+};
+
+export type RecipeLifecycleResponse = {
+  state: string;
+  deleteEligible: boolean;
+  deleteBlockedReason: string | null;
+};
+
+export type RecipeDraftResponse = {
+  draftId: string;
+  groupId: string;
+  state: string;
+  name: string | null;
+  source: RecipeSourceSummaryResponse;
+  provenance: RecipeProvenanceResponse;
+  servings: string | null;
+  shortNote: string | null;
+  instructions: string | null;
+  createdAt: string;
+  updatedAt: string;
+  ingredients: IngredientResponse[];
+};
+
+export type RecipeIdentitySummaryResponse = {
+  recipeId: string;
+  name: string;
+  source: RecipeSourceSummaryResponse;
+  lifecycle: RecipeLifecycleResponse;
+};
+
+export type RecipeDuplicateAssessmentResponse = {
+  attentionRequired: boolean;
+  matchType: string | null;
+  reason: string | null;
+  matchingRecipe: RecipeIdentitySummaryResponse | null;
+};
+
+export type RecipeDetailResponse = {
+  recipeId: string;
+  groupId: string;
+  name: string;
+  source: RecipeSourceSummaryResponse;
+  provenance: RecipeProvenanceResponse;
+  lifecycle: RecipeLifecycleResponse;
+  servings: string | null;
+  makeSoonAt: string | null;
+  shortNote: string | null;
+  instructions: string | null;
+  createdAt: string;
+  updatedAt: string;
+  savedInRecipes: boolean;
+  ingredients: IngredientResponse[];
+};
+
 export async function createRecipe(
   payload: CreateOrUpdateRecipeRequest,
   clientOptions: ApiClientOptions = {}
@@ -308,6 +370,95 @@ export async function createRecipeImportDraft(
 ): Promise<RecipeImportDraftResponse> {
   return fetchJson<RecipeImportDraftResponse>(
     '/meals/recipes/import-drafts',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function createManualRecipeDraft(
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDraftResponse> {
+  return fetchJson<RecipeDraftResponse>(
+    '/meals/recipe-drafts/manual',
+    {
+      method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function createRecipeDraftFromUrl(
+  payload: { url: string },
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDraftResponse> {
+  return fetchJson<RecipeDraftResponse>(
+    '/meals/recipe-drafts/from-url',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export type UpdateRecipeDraftRequest = {
+  name?: string | null;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
+  servings?: string | null;
+  shortNote?: string | null;
+  instructions?: string | null;
+  markReady?: boolean | null;
+  ingredients?: IngredientRequest[] | null;
+};
+
+export async function getRecipeDraft(
+  draftId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDraftResponse> {
+  return fetchJson<RecipeDraftResponse>(
+    `/meals/recipe-drafts/${draftId}`,
+    {},
+    clientOptions
+  );
+}
+
+export async function updateRecipeDraft(
+  draftId: string,
+  payload: UpdateRecipeDraftRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDraftResponse> {
+  return fetchJson<RecipeDraftResponse>(
+    `/meals/recipe-drafts/${draftId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function getRecipeDraftDuplicateAssessment(
+  draftId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDuplicateAssessmentResponse> {
+  return fetchJson<RecipeDuplicateAssessmentResponse>(
+    `/meals/recipe-drafts/${draftId}/duplicate-assessment`,
+    {},
+    clientOptions
+  );
+}
+
+export async function acceptRecipeDraft(
+  draftId: string,
+  payload: { allowDuplicate?: boolean | null } = {},
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDetailResponse> {
+  return fetchJson<RecipeDetailResponse>(
+    `/meals/recipe-drafts/${draftId}/accept`,
     {
       method: 'POST',
       body: JSON.stringify(payload),
