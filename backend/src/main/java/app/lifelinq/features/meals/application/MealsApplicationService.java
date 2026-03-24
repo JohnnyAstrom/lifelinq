@@ -9,6 +9,15 @@ import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
+import app.lifelinq.features.meals.contract.RecipeDetailView;
+import app.lifelinq.features.meals.contract.RecipeDraftView;
+import app.lifelinq.features.meals.contract.RecipeDuplicateAssessmentView;
+import app.lifelinq.features.meals.contract.RecipeIdentitySummaryView;
+import app.lifelinq.features.meals.contract.RecipeImportPort;
+import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
+import app.lifelinq.features.meals.contract.RecipeLifecycleView;
+import app.lifelinq.features.meals.contract.RecipeProvenanceView;
+import app.lifelinq.features.meals.contract.RecipeSourceView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import app.lifelinq.features.meals.domain.Ingredient;
@@ -17,8 +26,17 @@ import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.PlannedMeal;
 import app.lifelinq.features.meals.domain.RecentPlannedMeal;
 import app.lifelinq.features.meals.domain.Recipe;
+import app.lifelinq.features.meals.domain.RecipeDraft;
+import app.lifelinq.features.meals.domain.RecipeDraftRepository;
+import app.lifelinq.features.meals.domain.RecipeDraftState;
+import app.lifelinq.features.meals.domain.RecipeDuplicateAssessment;
+import app.lifelinq.features.meals.domain.RecipeDuplicateMatchType;
+import app.lifelinq.features.meals.domain.RecipeInstructions;
+import app.lifelinq.features.meals.domain.RecipeLifecycle;
 import app.lifelinq.features.meals.domain.RecipeOriginKind;
+import app.lifelinq.features.meals.domain.RecipeProvenance;
 import app.lifelinq.features.meals.domain.RecipeRepository;
+import app.lifelinq.features.meals.domain.RecipeSource;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.time.Clock;
@@ -99,6 +117,8 @@ public class MealsApplicationService {
 
     private final WeekPlanRepository weekPlanRepository;
     private final RecipeRepository recipeRepository;
+    private final RecipeDraftRepository recipeDraftRepository;
+    private final RecipeImportPort recipeImportPort;
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
@@ -106,6 +126,26 @@ public class MealsApplicationService {
     public MealsApplicationService(
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
+            MealsShoppingPort mealsShoppingPort,
+            Clock clock
+    ) {
+        this(
+                weekPlanRepository,
+                recipeRepository,
+                null,
+                null,
+                ensureGroupMemberUseCase,
+                mealsShoppingPort,
+                clock
+        );
+    }
+
+    public MealsApplicationService(
+            WeekPlanRepository weekPlanRepository,
+            RecipeRepository recipeRepository,
+            RecipeDraftRepository recipeDraftRepository,
+            RecipeImportPort recipeImportPort,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -127,6 +167,8 @@ public class MealsApplicationService {
         }
         this.weekPlanRepository = weekPlanRepository;
         this.recipeRepository = recipeRepository;
+        this.recipeDraftRepository = recipeDraftRepository;
+        this.recipeImportPort = recipeImportPort;
         this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
@@ -166,6 +208,188 @@ public class MealsApplicationService {
                 toDomainIngredients(ingredients)
         );
         return toView(recipeRepository.save(recipe), false);
+    }
+
+    @Transactional
+    public RecipeDraftView createManualRecipeDraft(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        requireRecipeDraftRepository();
+        Instant now = clock.instant();
+        RecipeDraft draft = new RecipeDraft(
+                UUID.randomUUID(),
+                groupId,
+                null,
+                new RecipeSource(null, null),
+                new RecipeProvenance(RecipeOriginKind.MANUAL, null),
+                null,
+                null,
+                new RecipeInstructions(null),
+                RecipeDraftState.DRAFT_OPEN,
+                now,
+                now,
+                List.of()
+        );
+        return toDraftView(recipeDraftRepository.save(draft));
+    }
+
+    @Transactional
+    public RecipeDraftView createRecipeDraftFromUrl(UUID groupId, UUID actorUserId, String sourceUrl) {
+        ensureMealAccess(groupId, actorUserId);
+        requireRecipeDraftRepository();
+        requireRecipeImportPort();
+        Instant now = clock.instant();
+        RecipeImportDraftSupport.RecipeDraftSeed seed = RecipeImportDraftSupport.importFromUrl(
+                recipeImportPort,
+                sourceUrl
+        );
+        RecipeDraft draft = new RecipeDraft(
+                UUID.randomUUID(),
+                groupId,
+                seed.name(),
+                seed.source(),
+                seed.provenance(),
+                seed.servings(),
+                seed.shortNote(),
+                seed.instructions(),
+                seed.state(),
+                now,
+                now,
+                seed.ingredients()
+        );
+        return toDraftView(recipeDraftRepository.save(draft));
+    }
+
+    @Transactional(readOnly = true)
+    public RecipeDraftView getRecipeDraft(UUID groupId, UUID actorUserId, UUID draftId) {
+        ensureMealAccess(groupId, actorUserId);
+        return toDraftView(loadRecipeDraft(groupId, draftId));
+    }
+
+    @Transactional
+    public RecipeDraftView updateRecipeDraft(
+            UUID groupId,
+            UUID actorUserId,
+            UUID draftId,
+            String name,
+            String sourceName,
+            String sourceUrl,
+            String servings,
+            String shortNote,
+            String instructions,
+            Boolean markReady,
+            List<IngredientInput> ingredients
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        RecipeDraft existing = loadRecipeDraft(groupId, draftId);
+        Instant now = clock.instant();
+        String resolvedName = name == null ? existing.getName() : normalizeOptionalRecipeText(name);
+        RecipeSource resolvedSource = new RecipeSource(
+                sourceName == null ? existing.getSource().sourceName() : normalizeOptionalRecipeText(sourceName),
+                sourceUrl == null ? existing.getSource().sourceUrl() : normalizeOptionalRecipeUrl(sourceUrl)
+        );
+        List<Ingredient> resolvedIngredients = ingredients == null
+                ? existing.getIngredients()
+                : toDomainIngredients(ingredients);
+        RecipeInstructions resolvedInstructions = instructions == null
+                ? existing.getInstructions()
+                : new RecipeInstructions(instructions);
+        RecipeProvenance resolvedProvenance = new RecipeProvenance(
+                existing.getProvenance().originKind(),
+                resolvedSource.sourceUrl()
+        );
+        RecipeDraftState resolvedState = determineDraftState(
+                resolvedProvenance,
+                resolvedName,
+                resolvedIngredients,
+                Boolean.TRUE.equals(markReady)
+        );
+        RecipeDraft updated = new RecipeDraft(
+                existing.getId(),
+                existing.getGroupId(),
+                resolvedName,
+                resolvedSource,
+                resolvedProvenance,
+                servings == null ? existing.getServings() : normalizeOptionalRecipeText(servings),
+                shortNote == null ? existing.getShortNote() : normalizeOptionalRecipeText(shortNote),
+                resolvedInstructions,
+                resolvedState,
+                existing.getCreatedAt(),
+                now,
+                resolvedIngredients
+        );
+        return toDraftView(recipeDraftRepository.save(updated));
+    }
+
+    @Transactional(readOnly = true)
+    public RecipeDuplicateAssessmentView getRecipeDraftDuplicateAssessment(
+            UUID groupId,
+            UUID actorUserId,
+            UUID draftId
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        RecipeDraft draft = loadRecipeDraft(groupId, draftId);
+        return toDuplicateAssessmentView(groupId, assessDuplicateAttention(groupId, draft));
+    }
+
+    @Transactional
+    public RecipeDetailView acceptRecipeDraft(
+            UUID groupId,
+            UUID actorUserId,
+            UUID draftId,
+            boolean allowDuplicate
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        RecipeDraft draft = loadRecipeDraft(groupId, draftId);
+        if (!hasDraftCoreContent(draft.getName(), draft.getIngredients())) {
+            throw new IllegalArgumentException("Recipe draft is not ready to save.");
+        }
+        RecipeDuplicateAssessment duplicateAssessment = assessDuplicateAttention(groupId, draft);
+        if (duplicateAssessment.attentionRequired() && !allowDuplicate) {
+            throw new RecipeDuplicateAttentionRequiredException(duplicateAssessment.reason());
+        }
+        Instant now = clock.instant();
+        Recipe savedRecipe = recipeRepository.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                draft.getName(),
+                draft.getSource().sourceName(),
+                draft.getSource().sourceUrl(),
+                draft.getProvenance().originKind(),
+                draft.getServings(),
+                null,
+                draft.getShortNote(),
+                draft.getInstructions().body(),
+                now,
+                now,
+                null,
+                true,
+                draft.getIngredients()
+        ));
+        recipeDraftRepository.delete(draft);
+        return toDetailView(savedRecipe);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeLibraryItemView> listRecipeLibraryItems(UUID groupId, UUID actorUserId) {
+        ensureMealAccess(groupId, actorUserId);
+        List<RecipeLibraryItemView> views = new ArrayList<>();
+        for (Recipe recipe : recipeRepository.findActiveByGroupId(groupId)) {
+            views.add(toLibraryItemView(recipe));
+        }
+        views.sort((a, b) -> {
+            int nameCompare = a.name().compareToIgnoreCase(b.name());
+            if (nameCompare != 0) {
+                return nameCompare;
+            }
+            return a.recipeId().compareTo(b.recipeId());
+        });
+        return views;
+    }
+
+    @Transactional(readOnly = true)
+    public RecipeDetailView getRecipeDetail(UUID groupId, UUID actorUserId, UUID recipeId) {
+        ensureMealAccess(groupId, actorUserId);
+        return toDetailView(loadRecipe(groupId, recipeId));
     }
 
     @Transactional
@@ -658,6 +882,82 @@ public class MealsApplicationService {
                 .orElseThrow(() -> new RecipeNotFoundException(recipeId));
     }
 
+    private RecipeDraft loadRecipeDraft(UUID groupId, UUID draftId) {
+        requireRecipeDraftRepository();
+        if (draftId == null) {
+            throw new IllegalArgumentException("draftId must not be null");
+        }
+        return recipeDraftRepository.findByIdAndGroupId(draftId, groupId)
+                .orElseThrow(() -> new RecipeDraftNotFoundException(draftId));
+    }
+
+    private void requireRecipeDraftRepository() {
+        if (recipeDraftRepository == null) {
+            throw new IllegalStateException("Recipe draft platform is not configured");
+        }
+    }
+
+    private void requireRecipeImportPort() {
+        if (recipeImportPort == null) {
+            throw new IllegalStateException("Recipe import platform is not configured");
+        }
+    }
+
+    private RecipeDuplicateAssessment assessDuplicateAttention(UUID groupId, RecipeDraft draft) {
+        String normalizedDraftSourceUrl = normalizeComparableUrl(draft.getSource().sourceUrl());
+        if (normalizedDraftSourceUrl != null) {
+            for (Recipe recipe : recipeRepository.findByGroupId(groupId)) {
+                if (normalizedDraftSourceUrl.equals(normalizeComparableUrl(recipe.getSource().sourceUrl()))) {
+                    return new RecipeDuplicateAssessment(
+                            true,
+                            RecipeDuplicateMatchType.EXACT_SOURCE_URL,
+                            recipe.getId(),
+                            "This recipe link is already saved in your library."
+                    );
+                }
+            }
+        }
+
+        String normalizedDraftName = normalizeComparableText(draft.getName());
+        String normalizedDraftSourceName = normalizeComparableText(draft.getSource().sourceName());
+        if (normalizedDraftName != null && normalizedDraftSourceName != null) {
+            for (Recipe recipe : recipeRepository.findByGroupId(groupId)) {
+                if (normalizedDraftName.equals(normalizeComparableText(recipe.getName()))
+                        && normalizedDraftSourceName.equals(normalizeComparableText(recipe.getSource().sourceName()))) {
+                    return new RecipeDuplicateAssessment(
+                            true,
+                            RecipeDuplicateMatchType.SAME_NAME_AND_SOURCE,
+                            recipe.getId(),
+                            "A recipe with the same name and source is already in your library."
+                    );
+                }
+            }
+        }
+
+        return RecipeDuplicateAssessment.clear();
+    }
+
+    private RecipeDraftState determineDraftState(
+            RecipeProvenance provenance,
+            String name,
+            List<Ingredient> ingredients,
+            boolean markReady
+    ) {
+        if (!hasDraftCoreContent(name, ingredients)) {
+            return RecipeDraftState.DRAFT_OPEN;
+        }
+        if (provenance.originKind() == RecipeOriginKind.URL_IMPORT && !markReady) {
+            return RecipeDraftState.DRAFT_NEEDS_REVIEW;
+        }
+        return RecipeDraftState.DRAFT_READY;
+    }
+
+    private boolean hasDraftCoreContent(String name, List<Ingredient> ingredients) {
+        return normalizeOptionalRecipeText(name) != null
+                && ingredients != null
+                && !ingredients.isEmpty();
+    }
+
     private String normalizeMealTitle(String mealTitle, Recipe recipe) {
         if (mealTitle != null) {
             String normalized = mealTitle.trim();
@@ -786,6 +1086,159 @@ public class MealsApplicationService {
                 deleteEligibility.blockedReason(),
                 ingredients
         );
+    }
+
+    private RecipeDraftView toDraftView(RecipeDraft draft) {
+        List<IngredientView> ingredients = new ArrayList<>();
+        for (Ingredient ingredient : draft.getIngredients()) {
+            ingredients.add(new IngredientView(
+                    ingredient.getId(),
+                    ingredient.getName(),
+                    ingredient.getRawText(),
+                    ingredient.getQuantity(),
+                    toViewUnit(ingredient.getUnit()),
+                    ingredient.getPosition()
+            ));
+        }
+        return new RecipeDraftView(
+                draft.getId(),
+                draft.getGroupId(),
+                toDraftStateValue(draft.getState()),
+                draft.getName(),
+                toSourceView(draft.getSource()),
+                toProvenanceView(draft.getProvenance()),
+                draft.getServings(),
+                draft.getShortNote(),
+                draft.getInstructions().body(),
+                draft.getCreatedAt(),
+                draft.getUpdatedAt(),
+                ingredients
+        );
+    }
+
+    private RecipeDetailView toDetailView(Recipe recipe) {
+        List<IngredientView> ingredients = new ArrayList<>();
+        for (Ingredient ingredient : recipe.getIngredients()) {
+            ingredients.add(new IngredientView(
+                    ingredient.getId(),
+                    ingredient.getName(),
+                    ingredient.getRawText(),
+                    ingredient.getQuantity(),
+                    toViewUnit(ingredient.getUnit()),
+                    ingredient.getPosition()
+            ));
+        }
+        return new RecipeDetailView(
+                recipe.getId(),
+                recipe.getGroupId(),
+                recipe.getName(),
+                toSourceView(recipe.getSource()),
+                toProvenanceView(recipe.getProvenance()),
+                toLifecycleView(recipe),
+                recipe.getServings(),
+                recipe.getMakeSoonAt(),
+                recipe.getShortNote(),
+                recipe.getRecipeInstructions().body(),
+                recipe.getCreatedAt(),
+                recipe.getUpdatedAt(),
+                recipe.isSavedInRecipes(),
+                ingredients
+        );
+    }
+
+    private RecipeLibraryItemView toLibraryItemView(Recipe recipe) {
+        return new RecipeLibraryItemView(
+                recipe.getId(),
+                recipe.getName(),
+                toSourceView(recipe.getSource()),
+                toLifecycleView(recipe),
+                recipe.getMakeSoonAt(),
+                recipe.getUpdatedAt(),
+                recipe.getIngredients().size()
+        );
+    }
+
+    private RecipeDuplicateAssessmentView toDuplicateAssessmentView(
+            UUID groupId,
+            RecipeDuplicateAssessment assessment
+    ) {
+        RecipeIdentitySummaryView matchingRecipe = null;
+        if (assessment.matchingRecipeId() != null) {
+            Recipe recipe = recipeRepository.findByIdAndGroupId(assessment.matchingRecipeId(), groupId).orElse(null);
+            if (recipe != null) {
+                matchingRecipe = toIdentitySummaryView(recipe);
+            }
+        }
+        return new RecipeDuplicateAssessmentView(
+                assessment.attentionRequired(),
+                toMatchTypeValue(assessment.matchType()),
+                assessment.reason(),
+                matchingRecipe
+        );
+    }
+
+    private RecipeIdentitySummaryView toIdentitySummaryView(Recipe recipe) {
+        return new RecipeIdentitySummaryView(
+                recipe.getId(),
+                recipe.getName(),
+                toSourceView(recipe.getSource()),
+                toLifecycleView(recipe)
+        );
+    }
+
+    private RecipeSourceView toSourceView(RecipeSource source) {
+        return new RecipeSourceView(
+                source == null ? null : source.sourceName(),
+                source == null ? null : source.sourceUrl()
+        );
+    }
+
+    private RecipeProvenanceView toProvenanceView(RecipeProvenance provenance) {
+        return new RecipeProvenanceView(
+                provenance == null ? null : toOriginValue(provenance.originKind()),
+                provenance == null ? null : provenance.referenceUrl()
+        );
+    }
+
+    private RecipeLifecycleView toLifecycleView(Recipe recipe) {
+        DeleteEligibility deleteEligibility = getDeleteEligibility(recipe.getGroupId(), recipe);
+        return new RecipeLifecycleView(
+                toLifecycleValue(recipe.getLifecycle()),
+                deleteEligibility.eligible(),
+                deleteEligibility.blockedReason()
+        );
+    }
+
+    private String toDraftStateValue(RecipeDraftState state) {
+        return switch (state) {
+            case DRAFT_OPEN -> "draft_open";
+            case DRAFT_NEEDS_REVIEW -> "draft_needs_review";
+            case DRAFT_READY -> "draft_ready";
+        };
+    }
+
+    private String toOriginValue(RecipeOriginKind originKind) {
+        if (originKind == null) {
+            return null;
+        }
+        return originKind.name().toLowerCase(Locale.ROOT);
+    }
+
+    private String toLifecycleValue(RecipeLifecycle lifecycle) {
+        return switch (lifecycle) {
+            case ACTIVE -> "active";
+            case ARCHIVED -> "archived";
+        };
+    }
+
+    private String toMatchTypeValue(RecipeDuplicateMatchType matchType) {
+        if (matchType == null) {
+            return null;
+        }
+        return switch (matchType) {
+            case EXACT_SOURCE_URL -> "exact_source_url";
+            case SAME_NAME_AND_SOURCE -> "same_name_and_source";
+        };
     }
 
     private DeleteEligibility getDeleteEligibility(UUID groupId, Recipe recipe) {
@@ -1082,6 +1535,18 @@ public class MealsApplicationService {
             return null;
         }
         String normalized = value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeComparableText(String value) {
+        return normalizeClause(value);
+    }
+
+    private String normalizeComparableUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
         return normalized.isEmpty() ? null : normalized;
     }
 

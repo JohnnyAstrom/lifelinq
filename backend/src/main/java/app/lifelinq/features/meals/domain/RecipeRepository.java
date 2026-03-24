@@ -16,5 +16,7 @@ public interface RecipeRepository {
 
     List<Recipe> findArchivedByGroupId(UUID groupId);
 
+    List<Recipe> findByGroupId(UUID groupId);
+
     List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds);
 }

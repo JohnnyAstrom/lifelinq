@@ -4,6 +4,8 @@ import app.lifelinq.config.ApiErrorResponse;
 import app.lifelinq.features.meals.application.MealsAccessDeniedException;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.RecipeDeleteBlockedException;
+import app.lifelinq.features.meals.application.RecipeDraftNotFoundException;
+import app.lifelinq.features.meals.application.RecipeDuplicateAttentionRequiredException;
 import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
@@ -43,6 +45,12 @@ public final class MealsExceptionHandler {
                 .body(new ApiErrorResponse("RECIPE_NOT_FOUND", ex.getMessage()));
     }
 
+    @ExceptionHandler(RecipeDraftNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleRecipeDraftNotFound(RecipeDraftNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse("RECIPE_DRAFT_NOT_FOUND", ex.getMessage()));
+    }
+
     @ExceptionHandler(MealsShoppingListNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleShoppingListNotFound(MealsShoppingListNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -65,6 +73,14 @@ public final class MealsExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRecipeDeleteBlocked(RecipeDeleteBlockedException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiErrorResponse("RECIPE_DELETE_BLOCKED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RecipeDuplicateAttentionRequiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleRecipeDuplicateAttentionRequired(
+            RecipeDuplicateAttentionRequiredException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("RECIPE_DUPLICATE_ATTENTION_REQUIRED", ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

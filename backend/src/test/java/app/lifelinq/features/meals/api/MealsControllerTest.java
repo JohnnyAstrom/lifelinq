@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,7 @@ import app.lifelinq.test.FakeActiveGroupUserRepository;
 import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeDeleteBlockedException;
+import app.lifelinq.features.meals.application.RecipeDuplicateAttentionRequiredException;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
@@ -25,6 +27,11 @@ import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftView;
+import app.lifelinq.features.meals.contract.RecipeDraftView;
+import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
+import app.lifelinq.features.meals.contract.RecipeLifecycleView;
+import app.lifelinq.features.meals.contract.RecipeProvenanceView;
+import app.lifelinq.features.meals.contract.RecipeSourceView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
@@ -389,6 +396,157 @@ class MealsControllerTest {
                 null,
                 List.of()
         );
+    }
+
+    @Test
+    void createManualRecipeDraftReturnsDraftProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID draftId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.createManualRecipeDraft(groupId, userId))
+                .thenReturn(new RecipeDraftView(
+                        draftId,
+                        groupId,
+                        "draft_open",
+                        null,
+                        new RecipeSourceView(null, null),
+                        new RecipeProvenanceView("manual", null),
+                        null,
+                        null,
+                        null,
+                        Instant.parse("2026-03-24T10:00:00Z"),
+                        Instant.parse("2026-03-24T10:00:00Z"),
+                        List.of()
+                ));
+
+        mockMvc.perform(post("/meals/recipe-drafts/manual")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.draftId").value(draftId.toString()))
+                .andExpect(jsonPath("$.state").value("draft_open"))
+                .andExpect(jsonPath("$.provenance.originKind").value("manual"));
+
+        verify(mealsApplicationService).createManualRecipeDraft(groupId, userId);
+    }
+
+    @Test
+    void updateRecipeDraftPassesScenarioPayload() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID draftId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.updateRecipeDraft(
+                groupId,
+                userId,
+                draftId,
+                "Pasta",
+                "Notebook",
+                "https://example.com/pasta",
+                "4 servings",
+                "Quick favorite",
+                "Cook",
+                true,
+                List.of()
+        )).thenReturn(new RecipeDraftView(
+                draftId,
+                groupId,
+                "draft_ready",
+                "Pasta",
+                new RecipeSourceView("Notebook", "https://example.com/pasta"),
+                new RecipeProvenanceView("manual", "https://example.com/pasta"),
+                "4 servings",
+                "Quick favorite",
+                "Cook",
+                Instant.parse("2026-03-24T10:00:00Z"),
+                Instant.parse("2026-03-24T10:05:00Z"),
+                List.of()
+        ));
+
+        mockMvc.perform(put("/meals/recipe-drafts/" + draftId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"Pasta",
+                                  "sourceName":"Notebook",
+                                  "sourceUrl":"https://example.com/pasta",
+                                  "servings":"4 servings",
+                                  "shortNote":"Quick favorite",
+                                  "instructions":"Cook",
+                                  "markReady":true,
+                                  "ingredients":[]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state").value("draft_ready"));
+
+        verify(mealsApplicationService).updateRecipeDraft(
+                groupId,
+                userId,
+                draftId,
+                "Pasta",
+                "Notebook",
+                "https://example.com/pasta",
+                "4 servings",
+                "Quick favorite",
+                "Cook",
+                true,
+                List.of()
+        );
+    }
+
+    @Test
+    void listRecipeLibraryItemsReturnsProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.listRecipeLibraryItems(groupId, userId))
+                .thenReturn(List.of(new RecipeLibraryItemView(
+                        recipeId,
+                        "Pasta",
+                        new RecipeSourceView("Notebook", "https://example.com/pasta"),
+                        new RecipeLifecycleView("active", false, "Recipe must be archived before you can delete it."),
+                        Instant.parse("2026-03-24T09:00:00Z"),
+                        Instant.parse("2026-03-24T10:00:00Z"),
+                        3
+                )));
+
+        mockMvc.perform(get("/meals/recipe-library/items")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].recipeId").value(recipeId.toString()))
+                .andExpect(jsonPath("$[0].lifecycle.state").value("active"))
+                .andExpect(jsonPath("$[0].ingredientCount").value(3));
+
+        verify(mealsApplicationService).listRecipeLibraryItems(groupId, userId);
+    }
+
+    @Test
+    void acceptRecipeDraftReturns409WhenDuplicateAttentionIsRequired() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID draftId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        Mockito.doThrow(new RecipeDuplicateAttentionRequiredException("This recipe link is already saved in your library."))
+                .when(mealsApplicationService)
+                .acceptRecipeDraft(groupId, userId, draftId, false);
+
+        mockMvc.perform(post("/meals/recipe-drafts/" + draftId + "/accept")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RECIPE_DUPLICATE_ATTENTION_REQUIRED"));
     }
 
     @Test

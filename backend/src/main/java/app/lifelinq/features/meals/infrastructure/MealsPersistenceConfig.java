@@ -1,6 +1,7 @@
 package app.lifelinq.features.meals.infrastructure;
 
 import app.lifelinq.features.meals.domain.RecipeRepository;
+import app.lifelinq.features.meals.domain.RecipeDraftRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,11 @@ public class MealsPersistenceConfig {
     }
 
     @Bean
+    public RecipeDraftMapper recipeDraftMapper() {
+        return new RecipeDraftMapper();
+    }
+
+    @Bean
     public WeekPlanRepository weekPlanRepository(
             WeekPlanJpaRepository repository,
             WeekPlanMapper mapper
@@ -35,5 +41,14 @@ public class MealsPersistenceConfig {
             RecipeMapper mapper
     ) {
         return new JpaRecipeRepositoryAdapter(repository, ingredientRepository, mapper);
+    }
+
+    @Bean
+    public RecipeDraftRepository recipeDraftRepository(
+            RecipeDraftJpaRepository repository,
+            RecipeDraftIngredientJpaRepository ingredientRepository,
+            RecipeDraftMapper mapper
+    ) {
+        return new JpaRecipeDraftRepositoryAdapter(repository, ingredientRepository, mapper);
     }
 }

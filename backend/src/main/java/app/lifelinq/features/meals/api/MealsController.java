@@ -5,11 +5,15 @@ import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
+import app.lifelinq.features.meals.contract.RecipeDetailView;
+import app.lifelinq.features.meals.contract.RecipeDraftView;
+import app.lifelinq.features.meals.contract.RecipeDuplicateAssessmentView;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftView;
+import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import java.util.ArrayList;
@@ -57,6 +61,131 @@ public class MealsController {
                 toIngredientInputs(request.getIngredients())
         );
         return ResponseEntity.ok(toRecipeResponse(recipe));
+    }
+
+    @PostMapping("/meals/recipe-drafts/manual")
+    public ResponseEntity<?> createManualRecipeDraft() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDraftView draft = mealsApplicationService.createManualRecipeDraft(
+                context.getGroupId(),
+                context.getUserId()
+        );
+        return ResponseEntity.ok(draft);
+    }
+
+    @PostMapping("/meals/recipe-drafts/from-url")
+    public ResponseEntity<?> createRecipeDraftFromUrl(@RequestBody CreateRecipeDraftFromUrlRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDraftView draft = mealsApplicationService.createRecipeDraftFromUrl(
+                context.getGroupId(),
+                context.getUserId(),
+                request.getUrl()
+        );
+        return ResponseEntity.ok(draft);
+    }
+
+    @GetMapping("/meals/recipe-drafts/{draftId}")
+    public ResponseEntity<?> getRecipeDraft(@PathVariable UUID draftId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDraftView draft = mealsApplicationService.getRecipeDraft(
+                context.getGroupId(),
+                context.getUserId(),
+                draftId
+        );
+        return ResponseEntity.ok(draft);
+    }
+
+    @PutMapping("/meals/recipe-drafts/{draftId}")
+    public ResponseEntity<?> updateRecipeDraft(
+            @PathVariable UUID draftId,
+            @RequestBody UpdateRecipeDraftRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDraftView draft = mealsApplicationService.updateRecipeDraft(
+                context.getGroupId(),
+                context.getUserId(),
+                draftId,
+                request.getName(),
+                request.getSourceName(),
+                request.getSourceUrl(),
+                request.getServings(),
+                request.getShortNote(),
+                request.getInstructions(),
+                request.getMarkReady(),
+                toIngredientInputs(request.getIngredients())
+        );
+        return ResponseEntity.ok(draft);
+    }
+
+    @GetMapping("/meals/recipe-drafts/{draftId}/duplicate-assessment")
+    public ResponseEntity<?> getRecipeDraftDuplicateAssessment(@PathVariable UUID draftId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDuplicateAssessmentView assessment = mealsApplicationService.getRecipeDraftDuplicateAssessment(
+                context.getGroupId(),
+                context.getUserId(),
+                draftId
+        );
+        return ResponseEntity.ok(assessment);
+    }
+
+    @PostMapping("/meals/recipe-drafts/{draftId}/accept")
+    public ResponseEntity<?> acceptRecipeDraft(
+            @PathVariable UUID draftId,
+            @RequestBody(required = false) AcceptRecipeDraftRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDetailView recipe = mealsApplicationService.acceptRecipeDraft(
+                context.getGroupId(),
+                context.getUserId(),
+                draftId,
+                request != null && Boolean.TRUE.equals(request.getAllowDuplicate())
+        );
+        return ResponseEntity.ok(recipe);
+    }
+
+    @GetMapping("/meals/recipe-library/items")
+    public ResponseEntity<?> listRecipeLibraryItems() {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        List<RecipeLibraryItemView> items = mealsApplicationService.listRecipeLibraryItems(
+                context.getGroupId(),
+                context.getUserId()
+        );
+        return ResponseEntity.ok(items);
+    }
+
+    @GetMapping("/meals/recipe-details/{recipeId}")
+    public ResponseEntity<?> getRecipeDetail(@PathVariable UUID recipeId) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDetailView recipe = mealsApplicationService.getRecipeDetail(
+                context.getGroupId(),
+                context.getUserId(),
+                recipeId
+        );
+        return ResponseEntity.ok(recipe);
     }
 
     @GetMapping("/meals/recipes")

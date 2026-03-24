@@ -338,8 +338,16 @@ public final class Recipe {
         return sourceUrl;
     }
 
+    public RecipeSource getSource() {
+        return new RecipeSource(sourceName, sourceUrl);
+    }
+
     public RecipeOriginKind getOriginKind() {
         return originKind;
+    }
+
+    public RecipeProvenance getProvenance() {
+        return new RecipeProvenance(originKind, sourceUrl);
     }
 
     public String getServings() {
@@ -356,6 +364,10 @@ public final class Recipe {
 
     public String getInstructions() {
         return instructions;
+    }
+
+    public RecipeInstructions getRecipeInstructions() {
+        return new RecipeInstructions(instructions);
     }
 
     public Instant getCreatedAt() {
@@ -376,6 +388,10 @@ public final class Recipe {
 
     public boolean isArchived() {
         return archivedAt != null;
+    }
+
+    public RecipeLifecycle getLifecycle() {
+        return isArchived() ? RecipeLifecycle.ARCHIVED : RecipeLifecycle.ACTIVE;
     }
 
     public List<Ingredient> getIngredients() {

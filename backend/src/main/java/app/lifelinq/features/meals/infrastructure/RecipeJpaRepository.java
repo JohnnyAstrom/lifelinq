@@ -21,6 +21,9 @@ public interface RecipeJpaRepository extends JpaRepository<RecipeEntity, UUID> {
     List<RecipeEntity> findByGroupIdAndArchivedAtIsNotNullAndSavedInRecipesTrue(UUID groupId);
 
     @EntityGraph(attributePaths = "ingredients")
+    List<RecipeEntity> findByGroupId(UUID groupId);
+
+    @EntityGraph(attributePaths = "ingredients")
     List<RecipeEntity> findByGroupIdAndIdIn(UUID groupId, Collection<UUID> ids);
 
     @Modifying

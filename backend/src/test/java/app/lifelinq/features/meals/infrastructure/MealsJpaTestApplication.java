@@ -62,4 +62,18 @@ public class MealsJpaTestApplication {
     ) {
         return new JpaRecipeRepositoryAdapter(repository, ingredientRepository, mapper);
     }
+
+    @Bean
+    public RecipeDraftMapper recipeDraftMapper() {
+        return new RecipeDraftMapper();
+    }
+
+    @Bean
+    public JpaRecipeDraftRepositoryAdapter recipeDraftRepository(
+            RecipeDraftJpaRepository repository,
+            RecipeDraftIngredientJpaRepository ingredientRepository,
+            RecipeDraftMapper mapper
+    ) {
+        return new JpaRecipeDraftRepositoryAdapter(repository, ingredientRepository, mapper);
+    }
 }

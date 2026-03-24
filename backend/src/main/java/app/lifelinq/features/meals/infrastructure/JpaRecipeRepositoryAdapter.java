@@ -112,6 +112,18 @@ public class JpaRecipeRepositoryAdapter implements RecipeRepository {
     }
 
     @Override
+    public List<Recipe> findByGroupId(UUID groupId) {
+        if (groupId == null) {
+            throw new IllegalArgumentException("groupId must not be null");
+        }
+        List<Recipe> result = new ArrayList<>();
+        for (RecipeEntity entity : repository.findByGroupId(groupId)) {
+            result.add(mapper.toDomain(entity));
+        }
+        return result;
+    }
+
+    @Override
     public List<Recipe> findByGroupIdAndIds(UUID groupId, Set<UUID> recipeIds) {
         if (groupId == null) {
             throw new IllegalArgumentException("groupId must not be null");

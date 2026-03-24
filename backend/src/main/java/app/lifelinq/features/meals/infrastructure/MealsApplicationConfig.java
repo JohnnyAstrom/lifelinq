@@ -3,8 +3,9 @@ package app.lifelinq.features.meals.infrastructure;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
-import app.lifelinq.features.meals.contract.RecipeImportPort;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
+import app.lifelinq.features.meals.contract.RecipeImportPort;
+import app.lifelinq.features.meals.domain.RecipeDraftRepository;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.time.Clock;
@@ -18,6 +19,8 @@ public class MealsApplicationConfig {
     public MealsApplicationService mealsApplicationService(
             WeekPlanRepository weekPlanRepository,
             RecipeRepository recipeRepository,
+            RecipeDraftRepository recipeDraftRepository,
+            RecipeImportPort recipeImportPort,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -25,6 +28,8 @@ public class MealsApplicationConfig {
         return new MealsApplicationService(
                 weekPlanRepository,
                 recipeRepository,
+                recipeDraftRepository,
+                recipeImportPort,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock

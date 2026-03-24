@@ -13,6 +13,8 @@ import static org.mockito.Mockito.verify;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
+import app.lifelinq.features.meals.contract.ParsedRecipeImportData;
+import app.lifelinq.features.meals.contract.RecipeImportPort;
 import app.lifelinq.features.meals.domain.IngredientUnit;
 import app.lifelinq.features.meals.domain.MealType;
 import app.lifelinq.features.meals.domain.RecentPlannedMeal;
@@ -21,6 +23,7 @@ import app.lifelinq.features.meals.domain.RecipeOriginKind;
 import app.lifelinq.features.meals.domain.RecipeRepository;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
+import app.lifelinq.features.meals.infrastructure.InMemoryRecipeDraftRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -37,6 +40,119 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 class MealsApplicationServiceTest {
+
+    @Test
+    void manualDraftCanBeRefinedAndAcceptedIntoLibrary() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                drafts,
+                null,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        var created = service.createManualRecipeDraft(groupId, userId);
+        assertThat(created.state()).isEqualTo("draft_open");
+
+        var updated = service.updateRecipeDraft(
+                groupId,
+                userId,
+                created.draftId(),
+                "Weeknight Pasta",
+                "Family notebook",
+                null,
+                "4 servings",
+                "Easy fallback",
+                "Boil pasta\nMix sauce",
+                false,
+                List.of(new IngredientInput("Pasta", null, null, null, 1))
+        );
+
+        assertThat(updated.state()).isEqualTo("draft_ready");
+        assertThat(updated.source().sourceName()).isEqualTo("Family notebook");
+
+        var assessment = service.getRecipeDraftDuplicateAssessment(groupId, userId, created.draftId());
+        assertThat(assessment.attentionRequired()).isFalse();
+
+        var saved = service.acceptRecipeDraft(groupId, userId, created.draftId(), false);
+        assertThat(saved.name()).isEqualTo("Weeknight Pasta");
+        assertThat(saved.lifecycle().state()).isEqualTo("active");
+        assertThat(saved.provenance().originKind()).isEqualTo("manual");
+        assertThat(recipes.findActiveByGroupId(groupId)).hasSize(1);
+        assertThatThrownBy(() -> service.getRecipeDraft(groupId, userId, created.draftId()))
+                .isInstanceOf(RecipeDraftNotFoundException.class);
+    }
+
+    @Test
+    void importedDraftStartsInNeedsReviewAndRequiresDuplicateAttentionForSameSourceUrl() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
+        RecipeImportPort importPort = url -> new ParsedRecipeImportData(
+                "Apple Pie",
+                "Example Kitchen",
+                url,
+                "8 slices",
+                "Weekend dessert",
+                "Mix and bake",
+                List.of("2 apples", "1 dl sugar")
+        );
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                drafts,
+                importPort,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                UUID.randomUUID(),
+                groupId,
+                "Apple Pie",
+                "Example Kitchen",
+                "https://example.com/pie",
+                RecipeOriginKind.URL_IMPORT,
+                "8 slices",
+                null,
+                "Weekend dessert",
+                "Mix and bake",
+                Instant.parse("2026-03-10T10:00:00Z"),
+                Instant.parse("2026-03-10T10:00:00Z"),
+                null,
+                true,
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(),
+                        "Apples",
+                        null,
+                        null,
+                        1
+                ))
+        ));
+
+        var draft = service.createRecipeDraftFromUrl(groupId, userId, "https://example.com/pie");
+        assertThat(draft.state()).isEqualTo("draft_needs_review");
+        assertThat(draft.provenance().originKind()).isEqualTo("url_import");
+
+        var assessment = service.getRecipeDraftDuplicateAssessment(groupId, userId, draft.draftId());
+        assertThat(assessment.attentionRequired()).isTrue();
+        assertThat(assessment.matchType()).isEqualTo("exact_source_url");
+        assertThat(assessment.matchingRecipe()).isNotNull();
+        assertThatThrownBy(() -> service.acceptRecipeDraft(groupId, userId, draft.draftId(), false))
+                .isInstanceOf(RecipeDuplicateAttentionRequiredException.class);
+    }
 
     @Test
     void addMealPushesIngredientsInPositionOrderWithLockedNormalization() {
@@ -1587,6 +1703,17 @@ class MealsApplicationServiceTest {
             List<Recipe> result = new ArrayList<>();
             for (Recipe recipe : recipes.values()) {
                 if (recipe.getGroupId().equals(groupId) && recipe.isArchived()) {
+                    result.add(recipe);
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public List<Recipe> findByGroupId(UUID groupId) {
+            List<Recipe> result = new ArrayList<>();
+            for (Recipe recipe : recipes.values()) {
+                if (recipe.getGroupId().equals(groupId)) {
                     result.add(recipe);
                 }
             }

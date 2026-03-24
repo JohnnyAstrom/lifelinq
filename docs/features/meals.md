@@ -51,6 +51,10 @@ Current editor emphasis: the meal editor now uses the already chosen day/slot co
   - Inherits group scope from `WeekPlan` (no groupId on `PlannedMeal`).
 - `Recipe`
   - `id`, `groupId`, `name`, `sourceName`, `sourceUrl`, `originKind`, `servings`, `shortNote`, `instructions`, `createdAt`, `updatedAt`, `archivedAt`, `ingredients`
+- `RecipeDraft`
+  - persisted pre-save recipe content used by both manual creation and link intake
+  - carries `state` (`draft_open`, `draft_needs_review`, `draft_ready`), `source`, `provenance`, `servings`, `shortNote`, `instructions`, and ordered `ingredients`
+  - is accepted into the library as a new saved `Recipe`; it is not itself a library item
 - `Ingredient`
   - `id`, `name`, `rawText` (optional preserved source line), `quantity` (BigDecimal, nullable), `unit` (recipe ingredient unit, nullable), `position`
 
@@ -214,3 +218,30 @@ Request body: `url`.
 Response: `name`, `sourceName`, `sourceUrl`, `originKind` (`URL_IMPORT`), optional `servings`, `shortNote`, `instructions`, `ingredients[]` (`name`, optional `rawText`, `quantity`, `unit`, `position`).  
 Status: 200 OK.  
 Errors: 400 invalid input, 401 missing context, 403 not a group member, 422 import failed because no usable recipe draft could be produced.
+
+Program 1 foundation note: Meals now also exposes scenario-based recipe-content platform contracts underneath the existing recipe endpoints. These platform contracts are intentionally draft-first rather than CRUD-first: manual create and save-from-link both create a persisted `RecipeDraft`, duplicate assessment is a separate explicit query, and accepting a draft creates the final saved `Recipe` in the library. New platform projections also separate human-facing source summary from machine-facing provenance and expose lifecycle/identity summaries directly so frontend flows do not have to infer them.
+
+Endpoint: `POST /meals/recipe-drafts/manual`  
+Purpose: Start a persisted manual recipe draft.  
+Response: `RecipeDraftView`.  
+
+Endpoint: `POST /meals/recipe-drafts/from-url`  
+Purpose: Start a persisted imported recipe draft from a URL.  
+Request body: `url`.  
+Response: `RecipeDraftView`.  
+
+Endpoint: `GET /meals/recipe-drafts/{draftId}` / `PUT /meals/recipe-drafts/{draftId}`  
+Purpose: Load or refine one persisted recipe draft. Draft update remains content-oriented and may move the draft between `draft_open`, `draft_needs_review`, and `draft_ready`.  
+Response: `RecipeDraftView`.  
+
+Endpoint: `GET /meals/recipe-drafts/{draftId}/duplicate-assessment`  
+Purpose: Return duplicate-attention guidance for a recipe draft without silently resolving identity.  
+Response: `RecipeDuplicateAssessmentView`, including an optional matched recipe identity summary.  
+
+Endpoint: `POST /meals/recipe-drafts/{draftId}/accept`  
+Purpose: Accept one recipe draft into the library as a saved recipe. Duplicate attention may block acceptance unless the caller explicitly allows creating another copy.  
+Response: `RecipeDetailView`.  
+
+Endpoint: `GET /meals/recipe-library/items` and `GET /meals/recipe-details/{recipeId}`  
+Purpose: Return library/list and detail projections built on the new recipe-content platform rather than the older recipe CRUD response shape.  
+Response: `RecipeLibraryItemView` / `RecipeDetailView`.
