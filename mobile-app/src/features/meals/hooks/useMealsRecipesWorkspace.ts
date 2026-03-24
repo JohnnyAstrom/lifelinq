@@ -4,24 +4,25 @@ import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
 import {
   acceptRecipeDraft,
-  archiveRecipe,
-  clearRecipeMakeSoon,
+  archiveRecipeDetail,
+  clearRecipeDetailMakeSoon,
   createManualRecipeDraft,
   createRecipeDraftFromUrl,
   deleteRecipe,
+  getRecipeChoiceSupportMemory,
   getRecipeDraftDuplicateAssessment,
-  getRecipe,
-  listArchivedRecipes,
-  listRecentlyUsedRecipes,
-  listRecipes,
-  markRecipeMakeSoon,
-  restoreRecipe,
+  getRecipeDetail,
+  listRecipeLibraryItems,
+  listRecentRecipeLibraryItems,
+  markRecipeDetailMakeSoon,
+  restoreRecipeDetail,
   updateRecipeDraft,
-  updateRecipe,
+  updateRecipeDetail,
   type RecipeDetailResponse,
   type RecipeDraftResponse,
   type RecipeDuplicateAssessmentResponse,
-  type RecipeResponse,
+  type RecipeLibraryItemResponse,
+  type RecipeUsageSummaryResponse,
 } from '../api/mealsApi';
 import {
   createEmptyIngredientRow,
@@ -47,6 +48,7 @@ type RecipeListItem = {
   similarNameCount: number;
   identitySummary: string | null;
   archivedAt: string | null;
+  lifecycleState: 'active' | 'archived';
   makeSoonAt: string | null;
   searchText: string;
 };
@@ -62,6 +64,29 @@ function normalizeRecipeSearchText(value: string | null | undefined) {
 
 function normalizeRecipeTitle(value: string) {
   return normalizeRecipeSearchText(value);
+}
+
+function summarizeRecipeSource(
+  sourceName: string | null | undefined,
+  sourceUrl: string | null | undefined
+) {
+  const normalizedSourceName = sourceName?.trim() ?? '';
+  if (normalizedSourceName.length > 0) {
+    return normalizedSourceName;
+  }
+
+  const normalizedSourceUrl = sourceUrl?.trim() ?? '';
+  if (normalizedSourceUrl.length === 0) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(normalizedSourceUrl);
+    const hostname = parsed.hostname.replace(/^www\./i, '');
+    return hostname.length > 0 ? hostname : normalizedSourceUrl;
+  } catch {
+    return normalizedSourceUrl;
+  }
 }
 
 function buildTitleFamilyKey(name: string) {
@@ -120,8 +145,8 @@ type Params = {
 
 export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const { handleApiError } = useAuth();
-  const [activeRecipes, setActiveRecipes] = useState<RecipeResponse[] | null>(null);
-  const [archivedRecipes, setArchivedRecipes] = useState<RecipeResponse[] | null>(null);
+  const [activeRecipes, setActiveRecipes] = useState<RecipeLibraryItemResponse[] | null>(null);
+  const [archivedRecipes, setArchivedRecipes] = useState<RecipeLibraryItemResponse[] | null>(null);
   const [isListLoading, setIsListLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -129,7 +154,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [listMode, setListMode] = useState<RecipeListMode>('active');
   const [browseMode, setBrowseMode] = useState<RecipeBrowseMode>('all');
   const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
-  const [recentlyUsedRecipes, setRecentlyUsedRecipes] = useState<RecipeResponse[] | null>(null);
+  const [recentlyUsedRecipes, setRecentlyUsedRecipes] = useState<RecipeLibraryItemResponse[] | null>(null);
 
   const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
   const [recipeDraftId, setRecipeDraftId] = useState<string | null>(null);
@@ -143,7 +168,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [recipeMakeSoonAt, setRecipeMakeSoonAt] = useState<string | null>(null);
   const [recipeShortNote, setRecipeShortNote] = useState('');
   const [recipeInstructions, setRecipeInstructions] = useState('');
-  const [recipeArchivedAt, setRecipeArchivedAt] = useState<string | null>(null);
+  const [recipeLifecycleState, setRecipeLifecycleState] = useState<'active' | 'archived' | null>(null);
   const [recipeDeleteEligible, setRecipeDeleteEligible] = useState(false);
   const [recipeDeleteBlockedReason, setRecipeDeleteBlockedReason] = useState<string | null>(null);
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
@@ -153,6 +178,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [detailMode, setDetailMode] = useState<RecipeDetailMode>('create');
   const [isRecipeReadMode, setIsRecipeReadMode] = useState(false);
   const [pendingDuplicateCandidate, setPendingDuplicateCandidate] = useState<RecipeDuplicateCandidate | null>(null);
+  const [recipeMemory, setRecipeMemory] = useState<RecipeUsageSummaryResponse | null>(null);
+  const [isRecipeMemoryLoading, setIsRecipeMemoryLoading] = useState(false);
 
   const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
@@ -172,7 +199,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   function toRecipeListItems(
-    recipes: RecipeResponse[],
+    recipes: RecipeLibraryItemResponse[],
     options?: { preserveOrder?: boolean },
   ): RecipeListItem[] {
     const nameCounts = new Map<string, number>();
@@ -188,27 +215,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       }
     }
 
-    function buildIdentitySummary(recipe: RecipeResponse) {
-      const sourceName = recipe.sourceName?.trim() ?? '';
-      if (sourceName) {
-        return sourceName;
-      }
-
-      const shortNote = recipe.shortNote?.trim() ?? '';
-      if (shortNote) {
-        return shortNote.length > 56 ? `${shortNote.slice(0, 53).trimEnd()}...` : shortNote;
-      }
-
-      const ingredientNames = recipe.ingredients
-        .map((ingredient) => ingredient.name.trim())
-        .filter((name) => name.length > 0)
-        .slice(0, 2);
-
-      if (ingredientNames.length > 0) {
-        return ingredientNames.join(', ');
-      }
-
-      return null;
+    function buildIdentitySummary(recipe: RecipeLibraryItemResponse) {
+      return summarizeRecipeSource(recipe.source.sourceName, recipe.source.sourceUrl);
     }
 
     const orderedRecipes = options?.preserveOrder
@@ -218,29 +226,30 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
           if (nameComparison !== 0) {
             return nameComparison;
           }
-          const sourceComparison = (left.sourceName ?? '').localeCompare(right.sourceName ?? '');
+          const sourceComparison = (left.source.sourceName ?? '').localeCompare(right.source.sourceName ?? '');
           if (sourceComparison !== 0) {
             return sourceComparison;
           }
-          return right.createdAt.localeCompare(left.createdAt);
+          return right.updatedAt.localeCompare(left.updatedAt);
         });
 
     return orderedRecipes
       .map((recipe) => ({
         recipeId: recipe.recipeId,
         name: recipe.name,
-        sourceName: recipe.sourceName ?? null,
-        ingredientCount: recipe.ingredients.length,
+        sourceName: recipe.source.sourceName ?? null,
+        ingredientCount: recipe.ingredientCount,
         duplicateNameCount: nameCounts.get(normalizeRecipeTitle(recipe.name)) ?? 1,
         similarNameCount: titleFamilyCounts.get(buildTitleFamilyKey(recipe.name) ?? '') ?? 1,
         identitySummary: buildIdentitySummary(recipe),
-        archivedAt: recipe.archivedAt,
+        archivedAt: recipe.lifecycle.state === 'archived' ? recipe.updatedAt : null,
+        lifecycleState: recipe.lifecycle.state === 'archived' ? 'archived' : 'active',
         makeSoonAt: recipe.makeSoonAt,
         searchText: normalizeRecipeSearchText([
           recipe.name,
-          recipe.sourceName,
-          recipe.shortNote,
-          ...recipe.ingredients.map((ingredient) => ingredient.name),
+          recipe.source.sourceName,
+          recipe.source.sourceUrl,
+          buildIdentitySummary(recipe),
         ].filter(Boolean).join(' ')),
       }));
   }
@@ -365,9 +374,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setError(null);
     try {
       const [nextActiveRecipes, nextArchivedRecipes, nextRecentlyUsedRecipes] = await Promise.all([
-        listRecipes({ token }),
-        listArchivedRecipes({ token }),
-        listRecentlyUsedRecipes({ token }),
+        listRecipeLibraryItems('active', { token }),
+        listRecipeLibraryItems('archived', { token }),
+        listRecentRecipeLibraryItems({ token }),
       ]);
       setActiveRecipes(nextActiveRecipes);
       setArchivedRecipes(nextArchivedRecipes);
@@ -421,27 +430,27 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     return formatApiError(err);
   }
 
-  function applyRecipe(recipe: RecipeResponse) {
+  function resetRecipeDetailState() {
     setRecipeDraftId(null);
     setRecipeDraftState(null);
-    setRecipeId(recipe.recipeId);
-    setRecipeTitle(recipe.name);
-    setRecipeSource(recipe.sourceName ?? '');
-    setRecipeSourceUrl(recipe.sourceUrl ?? '');
-    setRecipeOriginKind(recipe.originKind);
-    setRecipeServings(recipe.servings ?? '');
-    setRecipeMakeSoonAt(recipe.makeSoonAt);
-    setRecipeShortNote(recipe.shortNote ?? '');
-    setRecipeInstructions(recipe.instructions ?? '');
-    setRecipeArchivedAt(recipe.archivedAt);
-    setRecipeDeleteEligible(recipe.deleteEligible);
-    setRecipeDeleteBlockedReason(recipe.deleteBlockedReason);
-    setIngredientRows(ingredientRowsFromResponse(recipe.ingredients));
-    setRecipeDetailError(null);
-    setIsRecipeLoading(false);
-    setDetailMode('saved');
-    setIsRecipeReadMode(true);
-    setIsRecipeDetailOpen(true);
+    setRecipeId(null);
+    setRecipeTitle('');
+    setRecipeSource('');
+    setRecipeSourceUrl('');
+    setRecipeOriginKind('MANUAL');
+    setRecipeServings('');
+    setRecipeMakeSoonAt(null);
+    setRecipeShortNote('');
+    setRecipeInstructions('');
+    setRecipeLifecycleState(null);
+    setRecipeDeleteEligible(false);
+    setRecipeDeleteBlockedReason(null);
+    setIngredientRows([]);
+    setDetailMode('create');
+    setIsRecipeReadMode(false);
+    setPendingDuplicateCandidate(null);
+    setRecipeMemory(null);
+    setIsRecipeMemoryLoading(false);
   }
 
   function applyRecipeDraft(draft: RecipeDraftResponse, mode: RecipeDetailMode) {
@@ -456,7 +465,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeMakeSoonAt(null);
     setRecipeShortNote(draft.shortNote ?? '');
     setRecipeInstructions(draft.instructions ?? '');
-    setRecipeArchivedAt(null);
+    setRecipeLifecycleState(null);
     setRecipeDeleteEligible(false);
     setRecipeDeleteBlockedReason(null);
     setIngredientRows(ingredientRowsFromResponse(draft.ingredients));
@@ -479,7 +488,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeMakeSoonAt(detail.makeSoonAt);
     setRecipeShortNote(detail.shortNote ?? '');
     setRecipeInstructions(detail.instructions ?? '');
-    setRecipeArchivedAt(detail.lifecycle.state === 'archived' ? detail.updatedAt : null);
+    setRecipeLifecycleState(detail.lifecycle.state === 'archived' ? 'archived' : 'active');
     setRecipeDeleteEligible(detail.lifecycle.deleteEligible);
     setRecipeDeleteBlockedReason(detail.lifecycle.deleteBlockedReason);
     setIngredientRows(ingredientRowsFromResponse(detail.ingredients));
@@ -495,9 +504,9 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return;
     }
     const [nextActiveRecipes, nextArchivedRecipes, nextRecentlyUsedRecipes] = await Promise.all([
-      listRecipes({ token }),
-      listArchivedRecipes({ token }),
-      listRecentlyUsedRecipes({ token }),
+      listRecipeLibraryItems('active', { token }),
+      listRecipeLibraryItems('archived', { token }),
+      listRecentRecipeLibraryItems({ token }),
     ]);
     setActiveRecipes(nextActiveRecipes);
     setArchivedRecipes(nextArchivedRecipes);
@@ -506,37 +515,13 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   async function openRecipe(recipeIdToOpen: string) {
-    const existing = activeRecipes?.find((recipe) => recipe.recipeId === recipeIdToOpen)
-      ?? archivedRecipes?.find((recipe) => recipe.recipeId === recipeIdToOpen)
-      ?? null;
+    resetRecipeDetailState();
     setRecipeDetailError(null);
     setIsRecipeDetailOpen(true);
-
-    if (existing && !existing.archivedAt) {
-      applyRecipe(existing);
-      return;
-    }
-
-    if (existing) {
-      applyRecipe(existing);
-      setIsRecipeLoading(true);
-    } else {
-      setIsRecipeLoading(true);
-    }
+    setIsRecipeLoading(true);
     try {
-      const recipe = await getRecipe(recipeIdToOpen, { token });
-      if (recipe.archivedAt) {
-        setArchivedRecipes((current) => {
-          const others = (current ?? []).filter((entry) => entry.recipeId !== recipe.recipeId);
-          return [...others, recipe];
-        });
-      } else {
-        setActiveRecipes((current) => {
-          const others = (current ?? []).filter((entry) => entry.recipeId !== recipe.recipeId);
-          return [...others, recipe];
-        });
-      }
-      applyRecipe(recipe);
+      const recipe = await getRecipeDetail(recipeIdToOpen, { token });
+      applyRecipeDetail(recipe);
     } catch (err) {
       await handleApiError(err);
       setRecipeDetailError(formatApiError(err));
@@ -544,11 +529,49 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!token || !recipeId || detailMode !== 'saved') {
+      setRecipeMemory(null);
+      setIsRecipeMemoryLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsRecipeMemoryLoading(true);
+    void getRecipeChoiceSupportMemory(recipeId, { token })
+      .then((memory) => {
+        if (cancelled) {
+          return;
+        }
+        setRecipeMemory(memory);
+      })
+      .catch(async (err) => {
+        await handleApiError(err);
+        if (cancelled) {
+          return;
+        }
+        setRecipeMemory(null);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsRecipeMemoryLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailMode, handleApiError, recipeId, token]);
+
   async function openCreateRecipe() {
     if (pendingDetailAction || isRecipeLoading) {
       return;
     }
     focusMainRecipeLibrary();
+    resetRecipeDetailState();
     setRecipeDetailError(null);
     setIsRecipeLoading(true);
     setIsRecipeDetailOpen(true);
@@ -607,13 +630,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsRecipeDetailOpen(false);
     setRecipeDetailError(null);
-    setRecipeDraftId(null);
-    setRecipeDraftState(null);
-    setPendingDuplicateCandidate(null);
+    resetRecipeDetailState();
   }
 
   function startEditingRecipe() {
-    if (pendingDetailAction || isRecipeLoading || detailMode !== 'saved' || !!recipeArchivedAt) {
+    if (pendingDetailAction || isRecipeLoading || detailMode !== 'saved' || recipeLifecycleState === 'archived') {
       return;
     }
     setRecipeDetailError(null);
@@ -758,22 +779,10 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         await refreshRecipeCollections();
         applyRecipeDetail(savedDetail);
       } else {
-        const saved = await updateRecipe(recipeId!, request, { token });
+        const saved = await updateRecipeDetail(recipeId!, request, { token });
         setPendingDuplicateCandidate(null);
-        if (saved.archivedAt) {
-          setArchivedRecipes((current) => {
-            const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
-            return [...others, saved];
-          });
-        } else {
-          setActiveRecipes((current) => {
-            const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
-            return [...others, saved];
-          });
-          setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
-        }
-        setHasLoaded(true);
-        applyRecipe(saved);
+        await refreshRecipeCollections();
+        applyRecipeDetail(saved);
       }
     } catch (err) {
       await handleApiError(err);
@@ -799,7 +808,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   async function toggleRecipeMakeSoon() {
-    if (!recipeId || pendingDetailAction || isRecipeLoading || detailMode !== 'saved' || !!recipeArchivedAt) {
+    if (!recipeId || pendingDetailAction || isRecipeLoading || detailMode !== 'saved' || recipeLifecycleState === 'archived') {
       return;
     }
 
@@ -807,15 +816,10 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeDetailError(null);
     try {
       const saved = recipeMakeSoonAt
-        ? await clearRecipeMakeSoon(recipeId, { token })
-        : await markRecipeMakeSoon(recipeId, { token });
-      setActiveRecipes((current) => {
-        const others = (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId);
-        return [...others, saved];
-      });
-      setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== saved.recipeId));
-      setHasLoaded(true);
-      applyRecipe(saved);
+        ? await clearRecipeDetailMakeSoon(recipeId, { token })
+        : await markRecipeDetailMakeSoon(recipeId, { token });
+      await refreshRecipeCollections();
+      applyRecipeDetail(saved);
     } catch (err) {
       await handleApiError(err);
       setRecipeDetailError(formatApiError(err));
@@ -849,6 +853,12 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     if (!pendingDuplicateCandidate) {
       return;
     }
+    if (pendingDuplicateCandidate.archivedAt) {
+      setListMode('archived');
+      setBrowseMode('all');
+    } else {
+      focusMainRecipeLibrary();
+    }
     const duplicateRecipeId = pendingDuplicateCandidate.recipeId;
     setPendingDuplicateCandidate(null);
     await openRecipe(duplicateRecipeId);
@@ -866,15 +876,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setPendingDetailAction('archive');
     setRecipeDetailError(null);
     try {
-      const archived = await archiveRecipe(recipeId, { token });
-      setActiveRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== archived.recipeId));
-      setArchivedRecipes((current) => {
-        const others = (current ?? []).filter((entry) => entry.recipeId !== archived.recipeId);
-        return [...others, archived];
-      });
-      setHasLoaded(true);
-      setIsRecipeDetailOpen(false);
-      setRecipeId(null);
+      const archived = await archiveRecipeDetail(recipeId, { token });
+      await refreshRecipeCollections();
+      setListMode('archived');
+      setBrowseMode('all');
+      applyRecipeDetail(archived);
     } catch (err) {
       await handleApiError(err);
       setRecipeDetailError(formatApiError(err));
@@ -891,15 +897,10 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setPendingDetailAction('archive');
     setRecipeDetailError(null);
     try {
-      const restored = await restoreRecipe(recipeId, { token });
-      setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== restored.recipeId));
-      setActiveRecipes((current) => {
-        const others = (current ?? []).filter((entry) => entry.recipeId !== restored.recipeId);
-        return [...others, restored];
-      });
-      setHasLoaded(true);
+      const restored = await restoreRecipeDetail(recipeId, { token });
+      await refreshRecipeCollections();
       setListMode('active');
-      applyRecipe(restored);
+      applyRecipeDetail(restored);
     } catch (err) {
       await handleApiError(err);
       setRecipeDetailError(formatApiError(err));
@@ -909,7 +910,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   async function deleteCurrentRecipe() {
-    if (!recipeId || pendingDetailAction || isRecipeLoading || !recipeArchivedAt || !recipeDeleteEligible) {
+    if (!recipeId || pendingDetailAction || isRecipeLoading || recipeLifecycleState !== 'archived' || !recipeDeleteEligible) {
       return;
     }
 
@@ -917,10 +918,10 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setRecipeDetailError(null);
     try {
       await deleteRecipe(recipeId, { token });
-      setArchivedRecipes((current) => (current ?? []).filter((entry) => entry.recipeId !== recipeId));
-      setHasLoaded(true);
+      await refreshRecipeCollections();
       setIsRecipeDetailOpen(false);
       setRecipeId(null);
+      setRecipeLifecycleState(null);
       setRecipeDeleteEligible(false);
       setRecipeDeleteBlockedReason(null);
     } catch (err) {
@@ -991,20 +992,20 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       recipeMakeSoonAt,
       recipeShortNote,
       recipeInstructions,
-      recipeArchivedAt,
+      recipeArchivedAt: recipeLifecycleState === 'archived' ? 'archived' : null,
       recipeDeleteEligible,
       recipeDeleteBlockedReason,
       ingredientRows,
       isRecipeLoading,
       hasExistingRecipe: !!recipeId,
       isImportDraft: detailMode === 'import',
-      isArchivedRecipe: !!recipeArchivedAt,
+      isArchivedRecipe: recipeLifecycleState === 'archived',
       isReadMode: detailMode === 'saved' && isRecipeReadMode,
-      canEnterEditMode: detailMode === 'saved' && isRecipeReadMode && !recipeArchivedAt,
-      canArchiveRecipe: !!recipeId && detailMode === 'saved' && !recipeArchivedAt,
-      canRestoreRecipe: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt,
-      canDeleteRecipe: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt && recipeDeleteEligible,
-      showDeleteRecipeAction: !!recipeId && detailMode === 'saved' && !!recipeArchivedAt,
+      canEnterEditMode: detailMode === 'saved' && isRecipeReadMode && recipeLifecycleState !== 'archived',
+      canArchiveRecipe: !!recipeId && detailMode === 'saved' && recipeLifecycleState === 'active',
+      canRestoreRecipe: !!recipeId && detailMode === 'saved' && recipeLifecycleState === 'archived',
+      canDeleteRecipe: !!recipeId && detailMode === 'saved' && recipeLifecycleState === 'archived' && recipeDeleteEligible,
+      showDeleteRecipeAction: !!recipeId && detailMode === 'saved' && recipeLifecycleState === 'archived',
       hasIngredients,
       error: recipeDetailError,
       isSavingRecipe: pendingDetailAction === 'save',
@@ -1013,6 +1014,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       isTogglingMakeSoon: pendingDetailAction === 'make-soon',
       isActionPending: pendingDetailAction !== null,
       pendingDuplicateCandidate,
+      recipeMemory,
+      isRecipeMemoryLoading,
       setRecipeTitle,
       setRecipeSource,
       setRecipeSourceUrl,

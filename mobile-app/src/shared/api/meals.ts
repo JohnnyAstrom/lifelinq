@@ -20,6 +20,39 @@ export type RecentPlannedMealResponse = {
   recipeTitle: string | null;
 };
 
+export type MealChoiceCandidateResponse = {
+  family: 'recent' | 'familiar' | 'fallback' | 'make_soon';
+  mealIdentityKey: string;
+  mealIdentityKind: 'recipe' | 'title_only';
+  title: string;
+  recipeId: string | null;
+  lastPlannedDate: string;
+  totalOccurrences: number;
+  recent: boolean;
+  frequent: boolean;
+  familiar: boolean;
+  fallback: boolean;
+  slotFit: boolean;
+  preferenceFit: boolean;
+  deprioritized: boolean;
+  makeSoon: boolean;
+  surfacedBecause: string;
+};
+
+export type PlanningChoiceSupportResponse = {
+  scenario: 'slot' | 'tonight' | 'week_start' | 'recipe_context';
+  referenceDate: string;
+  year: number | null;
+  isoWeek: number | null;
+  dayOfWeek: number | null;
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER' | null;
+  recipeId: string | null;
+  recentCandidates: MealChoiceCandidateResponse[];
+  familiarCandidates: MealChoiceCandidateResponse[];
+  fallbackCandidates: MealChoiceCandidateResponse[];
+  makeSoonCandidates: MealChoiceCandidateResponse[];
+};
+
 export type WeekPlanResponse = {
   weekPlanId: string | null;
   year: number;
@@ -219,6 +252,30 @@ export type RecipeDetailResponse = {
   ingredients: IngredientResponse[];
 };
 
+export type RecipeLibraryItemResponse = {
+  recipeId: string;
+  name: string;
+  source: RecipeSourceSummaryResponse;
+  lifecycle: RecipeLifecycleResponse;
+  makeSoonAt: string | null;
+  updatedAt: string;
+  ingredientCount: number;
+};
+
+export type RecipeUsageSummaryResponse = {
+  recipeId: string;
+  recipeTitle: string;
+  lastUsedDate: string;
+  totalUses: number;
+  recentUses: number;
+  distinctWeeks: number;
+  frequent: boolean;
+  familiar: boolean;
+  makeSoon: boolean;
+  preferenceFit: boolean;
+  deprioritized: boolean;
+};
+
 export async function createRecipe(
   payload: CreateOrUpdateRecipeRequest,
   clientOptions: ApiClientOptions = {}
@@ -238,6 +295,39 @@ export async function listRecentPlannedMeals(
 ): Promise<RecentPlannedMealResponse[]> {
   return fetchJson<RecentPlannedMealResponse[]>(
     '/meals/recently-planned',
+    {},
+    clientOptions
+  );
+}
+
+export async function getSlotPlanningChoiceSupport(
+  params: {
+    year: number;
+    isoWeek: number;
+    dayOfWeek: number;
+    mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  },
+  clientOptions: ApiClientOptions = {}
+): Promise<PlanningChoiceSupportResponse> {
+  const query = new URLSearchParams({
+    year: String(params.year),
+    isoWeek: String(params.isoWeek),
+    dayOfWeek: String(params.dayOfWeek),
+    mealType: params.mealType,
+  });
+  return fetchJson<PlanningChoiceSupportResponse>(
+    `/meals/choice-support/slot?${query.toString()}`,
+    {},
+    clientOptions
+  );
+}
+
+export async function getRecipeChoiceSupportMemory(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeUsageSummaryResponse> {
+  return fetchJson<RecipeUsageSummaryResponse>(
+    `/meals/choice-support/recipes/${recipeId}/memory`,
     {},
     clientOptions
   );
@@ -462,6 +552,105 @@ export async function acceptRecipeDraft(
     {
       method: 'POST',
       body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function listRecipeLibraryItems(
+  state: 'active' | 'archived' = 'active',
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeLibraryItemResponse[]> {
+  return fetchJson<RecipeLibraryItemResponse[]>(
+    `/meals/recipe-library/items?state=${state}`,
+    {},
+    clientOptions
+  );
+}
+
+export async function listRecentRecipeLibraryItems(
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeLibraryItemResponse[]> {
+  return fetchJson<RecipeLibraryItemResponse[]>(
+    '/meals/recipe-library/recent-items',
+    {},
+    clientOptions
+  );
+}
+
+export async function getRecipeDetail(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDetailResponse> {
+  return fetchJson<RecipeDetailResponse>(
+    `/meals/recipe-details/${recipeId}`,
+    {},
+    clientOptions
+  );
+}
+
+export async function updateRecipeDetail(
+  recipeId: string,
+  payload: CreateOrUpdateRecipeRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDetailResponse> {
+  return fetchJson<RecipeDetailResponse>(
+    `/meals/recipe-details/${recipeId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
+export async function archiveRecipeDetail(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDetailResponse> {
+  return fetchJson<RecipeDetailResponse>(
+    `/meals/recipe-details/${recipeId}/archive`,
+    {
+      method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function restoreRecipeDetail(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDetailResponse> {
+  return fetchJson<RecipeDetailResponse>(
+    `/meals/recipe-details/${recipeId}/restore`,
+    {
+      method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function markRecipeDetailMakeSoon(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDetailResponse> {
+  return fetchJson<RecipeDetailResponse>(
+    `/meals/recipe-details/${recipeId}/make-soon`,
+    {
+      method: 'POST',
+    },
+    clientOptions
+  );
+}
+
+export async function clearRecipeDetailMakeSoon(
+  recipeId: string,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDetailResponse> {
+  return fetchJson<RecipeDetailResponse>(
+    `/meals/recipe-details/${recipeId}/make-soon`,
+    {
+      method: 'DELETE',
     },
     clientOptions
   );

@@ -231,6 +231,8 @@ Program 2 foundation note: Meals now also has a backend-first household memory a
 
 Program 2 step-2 note: the first visible Program 2 payoff now lives inside `Meals > Plan` slot editing. The old narrow `Reuse recent meal` path is replaced by a broader household-memory choice sheet backed by the slot-specific Program 2 contract (`/meals/choice-support/slot`) rather than frontend heuristics or legacy recent-only endpoints. That sheet stays bounded and calm: it groups helpful candidates into `Recent`, `Familiar`, and `Make soon`, dedupes overlapping entries presentation-side so the same meal does not dominate multiple groups, and still resolves selection back into the normal slot editor rather than opening a separate planning surface. Recipe-backed and title-only meal identities are both preserved, so familiar household meals are not reduced back into recipe-only choice support.
 
+Program 2 step-3 note: Program 2 now also reaches the recipe-led planning path instead of living only in the slot-support sheet. Saved recipe read mode can carry a small household-memory summary built from recipe usage history, and the same summary follows into `Plan this recipe` so recipe-led planning keeps a little context about whether the recipe is familiar, recently used, or mainly saved for later. This remains intentionally secondary to the recipe itself: the recipe detail destination stays content-first, and the plan bridge still behaves like a narrow slot-selection step rather than turning into a broader recommendation surface.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  

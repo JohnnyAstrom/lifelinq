@@ -11,6 +11,7 @@ export {
   createRecipe,
   deleteRecipe,
   getRecipeDetail,
+  getRecipeChoiceSupportMemory,
   getRecipeDraft,
   getRecipeDraftDuplicateAssessment,
   getRecipe,
@@ -50,6 +51,7 @@ export {
   type RecipeResponse,
   type RecipeSourceSummaryResponse,
   type RecipeProvenanceResponse,
+  type RecipeUsageSummaryResponse,
   type UpdateRecipeDraftRequest,
   type WeekPlanResponse,
 } from '../../../shared/api/meals';
