@@ -12,6 +12,8 @@ public record MealShoppingProjectionView(
         UUID recipeId,
         String recipeTitle,
         boolean recipeBacked,
+        UUID assessedShoppingListId,
+        String assessedShoppingListName,
         ShoppingLinkReferenceView shoppingLink,
         MealReadinessView readiness,
         ShoppingDeltaView delta,

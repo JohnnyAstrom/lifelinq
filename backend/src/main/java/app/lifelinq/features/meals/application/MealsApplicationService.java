@@ -1105,7 +1105,8 @@ public class MealsApplicationService {
             int year,
             int isoWeek,
             int dayOfWeek,
-            MealType mealType
+            MealType mealType,
+            UUID shoppingListId
     ) {
         ensureMealAccess(groupId, actorUserId);
         validateIsoWeek(year, isoWeek);
@@ -1115,7 +1116,23 @@ public class MealsApplicationService {
         if (meal == null) {
             throw new MealNotFoundException("Meal not found");
         }
-        return toMealShoppingProjectionView(buildMealShoppingProjection(groupId, actorUserId, year, isoWeek, meal));
+        UUID assessedShoppingListId = shoppingListId != null ? shoppingListId : meal.getShoppingListId();
+        String assessedShoppingListName = null;
+        if (assessedShoppingListId != null) {
+            MealsShoppingListSnapshot assessedShoppingList = loadShoppingListSnapshots(
+                    groupId,
+                    actorUserId,
+                    Set.of(assessedShoppingListId)
+            ).get(assessedShoppingListId);
+            if (assessedShoppingList != null) {
+                assessedShoppingListName = assessedShoppingList.listName();
+            }
+        }
+        return toMealShoppingProjectionView(
+                buildMealShoppingProjection(groupId, actorUserId, year, isoWeek, meal, shoppingListId),
+                assessedShoppingListId,
+                assessedShoppingListName
+        );
     }
 
     @Transactional(readOnly = true)
@@ -1145,7 +1162,7 @@ public class MealsApplicationService {
 
         List<MealShoppingProjection> meals = new ArrayList<>();
         for (PlannedMeal meal : weekPlan.getMeals()) {
-            meals.add(buildMealShoppingProjection(groupId, actorUserId, year, isoWeek, meal));
+            meals.add(buildMealShoppingProjection(groupId, actorUserId, year, isoWeek, meal, null));
         }
         return toWeekShoppingProjectionView(kitchenReadinessEngine.buildWeekProjection(
                 weekPlan.getId(),
@@ -1196,16 +1213,29 @@ public class MealsApplicationService {
             UUID actorUserId,
             int year,
             int isoWeek,
-            PlannedMeal meal
+            PlannedMeal meal,
+            UUID shoppingListId
     ) {
+        UUID linkedShoppingListId = meal.getShoppingListId();
+        UUID assessedShoppingListId = shoppingListId != null ? shoppingListId : linkedShoppingListId;
+        Set<UUID> requestedSnapshotIds = new HashSet<>();
+        if (linkedShoppingListId != null) {
+            requestedSnapshotIds.add(linkedShoppingListId);
+        }
+        if (assessedShoppingListId != null) {
+            requestedSnapshotIds.add(assessedShoppingListId);
+        }
         Map<UUID, MealsShoppingListSnapshot> shoppingListsById = loadShoppingListSnapshots(
                 groupId,
                 actorUserId,
-                meal.getShoppingListId() == null ? Set.of() : Set.of(meal.getShoppingListId())
+                requestedSnapshotIds
         );
-        MealsShoppingListSnapshot linkedShoppingList = meal.getShoppingListId() == null
+        MealsShoppingListSnapshot linkedShoppingList = linkedShoppingListId == null
                 ? null
-                : shoppingListsById.get(meal.getShoppingListId());
+                : shoppingListsById.get(linkedShoppingListId);
+        MealsShoppingListSnapshot assessedShoppingList = assessedShoppingListId == null
+                ? null
+                : shoppingListsById.get(assessedShoppingListId);
         Recipe recipe = meal.getRecipeId() == null ? null : loadRecipe(groupId, meal.getRecipeId());
         return kitchenReadinessEngine.buildMealProjection(
                 year,
@@ -1213,7 +1243,7 @@ public class MealsApplicationService {
                 meal,
                 buildShoppingLinkReference(meal, linkedShoppingList),
                 projectMealIngredientNeeds(recipe),
-                linkedShoppingList
+                assessedShoppingList
         );
     }
 
@@ -1458,7 +1488,11 @@ public class MealsApplicationService {
         );
     }
 
-    private MealShoppingProjectionView toMealShoppingProjectionView(MealShoppingProjection projection) {
+    private MealShoppingProjectionView toMealShoppingProjectionView(
+            MealShoppingProjection projection,
+            UUID assessedShoppingListId,
+            String assessedShoppingListName
+    ) {
         return new MealShoppingProjectionView(
                 projection.year(),
                 projection.isoWeek(),
@@ -1468,10 +1502,20 @@ public class MealsApplicationService {
                 projection.recipeId(),
                 projection.recipeTitle(),
                 projection.recipeBacked(),
+                assessedShoppingListId,
+                assessedShoppingListName,
                 toShoppingLinkReferenceView(projection.shoppingLink()),
                 toMealReadinessView(projection.readiness()),
                 toShoppingDeltaView(projection.delta()),
                 projection.ingredientCoverage().stream().map(this::toIngredientCoverageView).toList()
+        );
+    }
+
+    private MealShoppingProjectionView toMealShoppingProjectionView(MealShoppingProjection projection) {
+        return toMealShoppingProjectionView(
+                projection,
+                projection.shoppingLink().shoppingListId(),
+                projection.shoppingLink().shoppingListName()
         );
     }
 

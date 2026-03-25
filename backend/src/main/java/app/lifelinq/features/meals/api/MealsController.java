@@ -767,7 +767,8 @@ public class MealsController {
             @PathVariable int year,
             @PathVariable int isoWeek,
             @PathVariable int dayOfWeek,
-            @PathVariable String mealType
+            @PathVariable String mealType,
+            @RequestParam(required = false) UUID shoppingListId
     ) {
         RequestContext context = ApiScoping.getContext();
         if (context == null || context.getGroupId() == null || context.getUserId() == null) {
@@ -779,7 +780,8 @@ public class MealsController {
                 year,
                 isoWeek,
                 dayOfWeek,
-                app.lifelinq.features.meals.domain.MealType.valueOf(mealType)
+                app.lifelinq.features.meals.domain.MealType.valueOf(mealType),
+                shoppingListId
         );
         return ResponseEntity.ok(view);
     }

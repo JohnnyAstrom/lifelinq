@@ -374,10 +374,16 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     recentMealChoicesMakeSoon: 'Make soon',
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
     reviewShoppingAgainAction: 'Review shopping',
-    shoppingReviewTitle: 'Add ingredients to shopping',
+    shoppingReviewTitle: 'Review shopping',
     shoppingListLabel: 'Shopping list',
-    ingredientsToAddLabel: 'Ingredients to add',
-    ingredientsToAddHint: 'Tap ingredients to include.',
+    shoppingReviewNewListLabel: 'New list',
+    shoppingReviewNewListPlaceholder: 'List name',
+    shoppingReviewCreateListAction: 'Create list',
+    shoppingReviewCreatingListAction: 'Creating list...',
+    ingredientsAlreadyOnListLabel: 'Already on this list',
+    ingredientsToAddLabel: 'Add now',
+    everythingAlreadyOnListHint: 'Everything from this meal is already on this list.',
+    checkingShoppingListHint: 'Checking this list...',
     confirmAddIngredientsToShopping: 'Add selected ingredients',
     noShoppingLists: 'No shopping lists yet.',
     shoppingSyncFailed: 'Meal saved, but adding ingredients to shopping failed:',
@@ -1644,22 +1650,44 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
       {editor.isShoppingReviewOpen ? (
         <MealShoppingReviewSheet
-          ingredients={editor.shoppingReviewIngredients}
+          ingredients={editor.shoppingReviewAddableIngredients}
+          representedIngredients={editor.shoppingReviewRepresentedIngredients}
           selectedIngredientRowIds={editor.selectedShoppingIngredientRowIds}
           lists={lists}
           effectiveListId={effectiveListId}
+          hasProjection={editor.hasShoppingReviewProjection}
+          isLoadingProjection={editor.isShoppingProjectionLoading}
+          projectionError={editor.shoppingProjectionError}
+          showCreateListForm={editor.isShoppingListCreateOpen}
+          newListName={editor.newShoppingListName}
+          isCreatingList={editor.isCreatingShoppingList}
           onSelectListId={editor.setSelectedListId}
           onToggleIngredient={editor.toggleShoppingReviewIngredient}
+          onOpenCreateList={editor.openShoppingListCreate}
+          onCloseCreateList={editor.closeShoppingListCreate}
+          onChangeNewListName={editor.setNewShoppingListName}
+          onCreateList={() => {
+            void editor.createShoppingListFromReview();
+          }}
           shoppingSyncError={editor.shoppingSyncError}
           isSubmitting={editor.isAddingIngredientsToShopping}
           onConfirm={handleAddIngredientsToShopping}
           onClose={editor.closeShoppingReview}
           strings={{
             title: strings.shoppingReviewTitle,
-            ingredientsLabel: strings.ingredientsToAddLabel,
-            ingredientsHint: strings.ingredientsToAddHint,
+            subtitle: (editor.selectedMeal?.mealTitle ?? editor.mealTitle.trim()) || undefined,
             emptyIngredientsHint: 'No ingredients saved for this meal yet.',
             selectedListLabel: strings.shoppingListLabel,
+            newListLabel: strings.shoppingReviewNewListLabel,
+            newListPlaceholder: strings.shoppingReviewNewListPlaceholder,
+            createListAction: strings.shoppingReviewCreateListAction,
+            creatingListAction: strings.shoppingReviewCreatingListAction,
+            alreadyOnListLabel: strings.ingredientsAlreadyOnListLabel,
+            addNowLabel: strings.ingredientsToAddLabel,
+            onAnotherListLabel: 'Already on another list',
+            everythingAlreadyOnListHint: strings.everythingAlreadyOnListHint,
+            checkingListHint: strings.checkingShoppingListHint,
+            checkingListFailedHint: 'Couldn\'t check this list right now.',
             noShoppingLists: strings.noShoppingLists,
             shoppingSyncFailed: strings.shoppingSyncFailed,
             confirm: strings.confirmAddIngredientsToShopping,

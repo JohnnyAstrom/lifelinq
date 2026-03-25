@@ -276,6 +276,68 @@ export type RecipeUsageSummaryResponse = {
   deprioritized: boolean;
 };
 
+export type ShoppingLinkReferenceResponse = {
+  shoppingListId: string | null;
+  shoppingListName: string | null;
+  shoppingHandledAt: string | null;
+  status: 'not_linked' | 'linked' | 'missing_list';
+};
+
+export type MealIngredientNeedResponse = {
+  ingredientId: string;
+  position: number;
+  ingredientName: string;
+  normalizedShoppingName: string;
+  rawText: string | null;
+  quantity: number | null;
+  unitName: string | null;
+};
+
+export type IngredientCoverageResponse = {
+  need: MealIngredientNeedResponse;
+  coverageState: 'covered' | 'partially_covered' | 'missing' | 'unknown';
+  shoppingState: 'none' | 'to_buy' | 'bought' | 'mixed' | 'unknown';
+  matchingItemCount: number;
+  coveredQuantity: number | null;
+  uncoveredQuantity: number | null;
+  uncertaintyReason: string | null;
+};
+
+export type ShoppingDeltaResponse = {
+  unresolvedIngredientCount: number;
+  partialIngredientCount: number;
+  missingIngredientCount: number;
+  unknownIngredientCount: number;
+  unresolvedIngredients: IngredientCoverageResponse[];
+};
+
+export type MealReadinessResponse = {
+  state: 'needs_shopping' | 'partially_ready' | 'ready_from_shopping_view' | 'readiness_unclear';
+  coveredIngredientCount: number;
+  partiallyCoveredIngredientCount: number;
+  missingIngredientCount: number;
+  unknownIngredientCount: number;
+  boughtIngredientCount: number;
+  toBuyIngredientCount: number;
+};
+
+export type MealShoppingProjectionResponse = {
+  year: number;
+  isoWeek: number;
+  dayOfWeek: number;
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  mealTitle: string;
+  recipeId: string | null;
+  recipeTitle: string | null;
+  recipeBacked: boolean;
+  assessedShoppingListId: string | null;
+  assessedShoppingListName: string | null;
+  shoppingLink: ShoppingLinkReferenceResponse;
+  readiness: MealReadinessResponse;
+  delta: ShoppingDeltaResponse;
+  ingredientCoverage: IngredientCoverageResponse[];
+};
+
 export async function createRecipe(
   payload: CreateOrUpdateRecipeRequest,
   clientOptions: ApiClientOptions = {}
@@ -328,6 +390,28 @@ export async function getRecipeChoiceSupportMemory(
 ): Promise<RecipeUsageSummaryResponse> {
   return fetchJson<RecipeUsageSummaryResponse>(
     `/meals/choice-support/recipes/${recipeId}/memory`,
+    {},
+    clientOptions
+  );
+}
+
+export async function getMealShoppingProjection(
+  year: number,
+  isoWeek: number,
+  dayOfWeek: number,
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER',
+  params: {
+    shoppingListId?: string | null;
+  } = {},
+  clientOptions: ApiClientOptions = {}
+): Promise<MealShoppingProjectionResponse> {
+  const query = new URLSearchParams();
+  if (params.shoppingListId) {
+    query.set('shoppingListId', params.shoppingListId);
+  }
+  const querySuffix = query.size > 0 ? `?${query.toString()}` : '';
+  return fetchJson<MealShoppingProjectionResponse>(
+    `/meals/weeks/${year}/${isoWeek}/days/${dayOfWeek}/meals/${mealType}/shopping-impact${querySuffix}`,
     {},
     clientOptions
   );

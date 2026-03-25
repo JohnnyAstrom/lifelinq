@@ -240,6 +240,8 @@ Program 3 foundation note: Meals now also has a backend-first operational projec
 
 Program 3 contract note: operational queries now live under the Meals feature API rather than being left to frontend shopping heuristics. Meal-level and week-level shopping impact/readiness can be requested as platform projections, while the Meals ↔ Shopping bridge stays narrow and explicit so Shopping still owns list/item semantics.
 
+Program 3 visible-step note: the first visible Program 3 payoff now lives mainly inside the meal-scoped shopping review flow opened intentionally from Day detail. That review stays user-facing and simple: choose a shopping list, see which ingredients from this meal are already on that specific list, choose which remaining ingredients to add now, and save only that explicit selection. Day detail may lightly echo that shopping has already been used for a meal (`Added to ...` / `Review shopping`), but overview and the meal editor do not carry heavier readiness or unresolved-delta language.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  
@@ -282,7 +284,7 @@ Purpose: Update the saved recipe's lightweight make-soon marker while keeping th
 Response: `RecipeDetailView`.
 
 Endpoint: `GET /meals/weeks/{year}/{isoWeek}/days/{dayOfWeek}/meals/{mealType}/shopping-impact`  
-Purpose: Return one planned meal's operational shopping projection, including shopping-link reference, ingredient coverage, unresolved shopping delta, and shopping-aware readiness.  
+Purpose: Return one planned meal's operational shopping projection, including shopping-link reference, ingredient coverage, unresolved shopping delta, and shopping-aware readiness. An optional `shoppingListId` query parameter may be supplied to assess the meal against a currently chosen list in shopping review without changing the meal's persisted shopping link. The response also echoes which shopping list was actually assessed so the shopping-review UI can stay list-trustworthy.  
 Response: `MealShoppingProjectionView`.
 
 Endpoint: `GET /meals/weeks/{year}/{isoWeek}/shopping-impact`  

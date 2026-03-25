@@ -4,12 +4,15 @@ import { useAuth } from '../../../shared/auth/AuthContext';
 import { useShoppingLists } from '../../shopping/hooks/useShoppingLists';
 import {
   createRecipe,
+  getMealShoppingProjection,
   getRecipe,
   getSlotPlanningChoiceSupport,
   listRecipes,
   updateRecipe,
   type IngredientRequest,
+  type IngredientCoverageResponse,
   type MealChoiceCandidateResponse,
+  type MealShoppingProjectionResponse,
   type RecipeResponse,
 } from '../api/mealsApi';
 import {
@@ -46,6 +49,12 @@ type ShoppingReviewIngredient = {
   name: string;
   amount: string | null;
 };
+type ShoppingReviewDisplayIngredient = {
+  rowId: string;
+  name: string;
+  amount: string | null;
+  note: string | null;
+};
 type RecipePickerOption = {
   recipeId: string;
   name: string;
@@ -80,6 +89,23 @@ const MEAL_ORDER = new Map<MealType, number>([
   ['LUNCH', 1],
   ['DINNER', 2],
 ]);
+
+function normalizeShoppingReviewName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function toRepresentedIngredientNote(coverage: IngredientCoverageResponse) {
+  switch (coverage.shoppingState) {
+    case 'bought':
+      return 'Already bought';
+    case 'mixed':
+      return 'Already on this list';
+    case 'to_buy':
+      return 'Already on this list';
+    default:
+      return 'Already on this list';
+  }
+}
 
 type Params = {
   token: string;
@@ -196,6 +222,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [ingredientRows, setIngredientRows] = useState<MealIngredientRow[]>([]);
   const [isShoppingReviewOpen, setIsShoppingReviewOpen] = useState(false);
   const [pendingShoppingReviewOpen, setPendingShoppingReviewOpen] = useState(false);
+  const [isShoppingProjectionLoading, setIsShoppingProjectionLoading] = useState(false);
+  const [isShoppingListCreateOpen, setIsShoppingListCreateOpen] = useState(false);
   const [isRecipeDetailOpen, setIsRecipeDetailOpen] = useState(false);
   const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
   const [isRecentMealsOpen, setIsRecentMealsOpen] = useState(false);
@@ -205,7 +233,12 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [lastUsedShoppingListId, setLastUsedShoppingListId] = useState<string | null>(null);
   const [selectedShoppingIngredientRowIds, setSelectedShoppingIngredientRowIds] = useState<string[]>([]);
+  const [hasCustomizedShoppingSelection, setHasCustomizedShoppingSelection] = useState(false);
+  const [newShoppingListName, setNewShoppingListName] = useState('');
   const [shoppingSyncError, setShoppingSyncError] = useState<string | null>(null);
+  const [shoppingProjection, setShoppingProjection] = useState<MealShoppingProjectionResponse | null>(null);
+  const [shoppingProjectionScopeKey, setShoppingProjectionScopeKey] = useState<string | null>(null);
+  const [shoppingProjectionError, setShoppingProjectionError] = useState<string | null>(null);
   const [recipeLoadError, setRecipeLoadError] = useState<string | null>(null);
   const [recipeListError, setRecipeListError] = useState<string | null>(null);
   const [mealChoicesError, setMealChoicesError] = useState<string | null>(null);
@@ -246,6 +279,22 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     ?? lastUsedShoppingListId
     ?? (shopping.lists.length > 0 ? shopping.lists[0].id : null);
   const effectiveListName = shopping.lists.find((list) => list.id === effectiveListId)?.name ?? null;
+  const effectiveShoppingList = shopping.lists.find((list) => list.id === effectiveListId) ?? null;
+  const shoppingProjectionRequestScopeKey = useMemo(
+    () => (
+      isShoppingReviewOpen && selectedDay && selectedMealType && effectiveListId
+        ? `${selectedDay}:${selectedMealType}:${effectiveListId}`
+        : null
+    ),
+    [effectiveListId, isShoppingReviewOpen, selectedDay, selectedMealType]
+  );
+  const activeShoppingProjection = (
+    shoppingProjectionScopeKey === shoppingProjectionRequestScopeKey
+    && shoppingProjection?.assessedShoppingListId === effectiveListId
+  )
+    ? shoppingProjection
+    : null;
+  const isCreatingShoppingList = shopping.pendingMutation?.kind === 'create-list';
 
   const hasIngredients = useMemo(
     () => toIngredientRequests(ingredientRows).length > 0,
@@ -269,6 +318,118 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       .filter((ingredient) => selectedIds.has(ingredient.rowId))
       .map((ingredient) => ingredient.position);
   }, [selectedShoppingIngredientRowIds, shoppingReviewIngredients]);
+  const shoppingReviewDisplay = useMemo(() => {
+    const selectedIds = new Set(selectedShoppingIngredientRowIds);
+    const representedIngredients: ShoppingReviewDisplayIngredient[] = [];
+    const addableIngredients: ShoppingReviewDisplayIngredient[] = [];
+
+    const effectiveListItems = effectiveShoppingList?.items ?? [];
+    const listItemByName = new Map(
+      effectiveListItems.map((item) => [normalizeShoppingReviewName(item.name), item])
+    );
+    const otherListItemNames = new Set(
+      shopping.lists
+        .filter((list) => list.id !== effectiveListId)
+        .flatMap((list) => list.items.map((item) => normalizeShoppingReviewName(item.name)))
+    );
+    if (effectiveListItems.length > 0 || effectiveShoppingList) {
+      for (const ingredient of shoppingReviewIngredients) {
+        const normalizedIngredientName = normalizeShoppingReviewName(ingredient.name);
+        const matchingItem = listItemByName.get(normalizedIngredientName);
+        if (matchingItem) {
+          representedIngredients.push({
+            rowId: ingredient.rowId,
+            name: ingredient.name,
+            amount: ingredient.amount,
+            note: matchingItem.status === 'BOUGHT' ? 'Already bought' : 'Already on this list',
+          });
+        } else {
+          addableIngredients.push({
+            rowId: ingredient.rowId,
+            name: ingredient.name,
+            amount: ingredient.amount,
+            note: otherListItemNames.has(normalizedIngredientName) ? 'Already on another list' : null,
+          });
+        }
+      }
+
+      return {
+        representedIngredients,
+        addableIngredients,
+        selectedIngredientCount: addableIngredients.filter((ingredient) => selectedIds.has(ingredient.rowId)).length,
+        representedIngredientCount: representedIngredients.length,
+        addableIngredientCount: addableIngredients.length,
+      };
+    }
+
+    if (!activeShoppingProjection) {
+      return {
+        representedIngredients,
+        addableIngredients: shoppingReviewIngredients.map((ingredient) => ({
+          rowId: ingredient.rowId,
+          name: ingredient.name,
+          amount: ingredient.amount,
+          note: null,
+        })),
+        selectedIngredientCount: shoppingReviewIngredients.filter((ingredient) => selectedIds.has(ingredient.rowId)).length,
+        representedIngredientCount: 0,
+        addableIngredientCount: shoppingReviewIngredients.length,
+      };
+    }
+
+    const ingredientByPosition = new Map(
+      shoppingReviewIngredients.map((ingredient) => [ingredient.position, ingredient])
+    );
+    const seenRowIds = new Set<string>();
+
+    for (const coverage of activeShoppingProjection.ingredientCoverage) {
+      const ingredient = ingredientByPosition.get(coverage.need.position);
+      if (!ingredient) {
+        continue;
+      }
+      seenRowIds.add(ingredient.rowId);
+      const nextItem = {
+        rowId: ingredient.rowId,
+        name: ingredient.name,
+        amount: ingredient.amount,
+        note: coverage.matchingItemCount > 0
+          ? toRepresentedIngredientNote(coverage)
+          : null,
+      };
+      if (coverage.matchingItemCount > 0) {
+        representedIngredients.push(nextItem);
+      } else {
+        addableIngredients.push(nextItem);
+      }
+    }
+
+    for (const ingredient of shoppingReviewIngredients) {
+      if (seenRowIds.has(ingredient.rowId)) {
+        continue;
+      }
+      addableIngredients.push({
+        rowId: ingredient.rowId,
+        name: ingredient.name,
+        amount: ingredient.amount,
+        note: null,
+      });
+    }
+
+    return {
+      representedIngredients,
+      addableIngredients,
+      selectedIngredientCount: addableIngredients.filter((ingredient) => selectedIds.has(ingredient.rowId)).length,
+      representedIngredientCount: representedIngredients.length,
+      addableIngredientCount: addableIngredients.length,
+    };
+  }, [
+    activeShoppingProjection,
+    effectiveListId,
+    effectiveShoppingList,
+    selectedShoppingIngredientRowIds,
+    shopping.lists,
+    shoppingReviewIngredients,
+  ]);
   const recipePickerOptions = useMemo<RecipePickerOption[]>(() => {
     return [...(availableRecipes ?? [])]
       .filter((recipe) => recipe.archivedAt == null && recipe.savedInRecipes)
@@ -385,6 +546,8 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsRecentMealsOpen(false);
     setIsShoppingReviewOpen(false);
     setPendingShoppingReviewOpen(false);
+    setIsShoppingProjectionLoading(false);
+    setIsShoppingListCreateOpen(false);
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
     setPickedRecipeSnapshot(null);
@@ -392,7 +555,11 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsEditingSavedRecipeDirectly(false);
     setSelectedListId(existing?.shoppingListId ?? lastUsedShoppingListId);
     setSelectedShoppingIngredientRowIds([]);
+    setHasCustomizedShoppingSelection(false);
+    setNewShoppingListName('');
     setShoppingSyncError(null);
+    setShoppingProjection(null);
+    setShoppingProjectionError(null);
     setRecipeLoadError(null);
     setRecipeListError(null);
     setMealChoicesError(null);
@@ -546,12 +713,19 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     setIsRecentMealsOpen(false);
     setIsShoppingReviewOpen(false);
     setPendingShoppingReviewOpen(false);
+    setIsShoppingProjectionLoading(false);
+    setIsShoppingListCreateOpen(false);
     setIsRecipeLoading(false);
     setLoadedRecipeId(null);
     setPickedRecipeSnapshot(null);
     setIsSelectedRecipeSavedInRecipes(false);
     setIsEditingSavedRecipeDirectly(false);
     setSelectedShoppingIngredientRowIds([]);
+    setHasCustomizedShoppingSelection(false);
+    setNewShoppingListName('');
+    setShoppingProjection(null);
+    setShoppingProjectionScopeKey(null);
+    setShoppingProjectionError(null);
     setRecipeLoadError(null);
     setMealChoicesError(null);
     setMealChoiceSections(null);
@@ -754,10 +928,15 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return;
     }
     setShoppingSyncError(null);
+    setShoppingProjection(null);
+    setShoppingProjectionScopeKey(null);
+    setShoppingProjectionError(null);
     if (!selectedListId) {
       setSelectedListId(selectedMealHandledListId ?? lastUsedShoppingListId ?? null);
     }
-    setSelectedShoppingIngredientRowIds(shoppingReviewIngredients.map((ingredient) => ingredient.rowId));
+    setIsShoppingListCreateOpen(false);
+    setHasCustomizedShoppingSelection(false);
+    setSelectedShoppingIngredientRowIds([]);
     setIsShoppingReviewOpen(true);
     setPendingShoppingReviewOpen(false);
   }
@@ -767,16 +946,60 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return;
     }
     setSelectedShoppingIngredientRowIds([]);
+    setHasCustomizedShoppingSelection(false);
+    setIsShoppingListCreateOpen(false);
+    setNewShoppingListName('');
     setIsShoppingReviewOpen(false);
     setPendingShoppingReviewOpen(false);
+    setShoppingProjection(null);
+    setShoppingProjectionScopeKey(null);
+    setShoppingProjectionError(null);
   }
 
   function toggleShoppingReviewIngredient(rowId: string) {
+    setHasCustomizedShoppingSelection(true);
     setSelectedShoppingIngredientRowIds((current) => (
       current.includes(rowId)
         ? current.filter((value) => value !== rowId)
         : [...current, rowId]
     ));
+  }
+
+  function selectShoppingReviewListId(listId: string) {
+    setSelectedListId(listId);
+    setHasCustomizedShoppingSelection(false);
+    setSelectedShoppingIngredientRowIds([]);
+  }
+
+  function openShoppingListCreate() {
+    if (pendingEditorAction) {
+      return;
+    }
+    setIsShoppingListCreateOpen(true);
+    setNewShoppingListName('');
+  }
+
+  function closeShoppingListCreate() {
+    if (isCreatingShoppingList || pendingEditorAction) {
+      return;
+    }
+    setIsShoppingListCreateOpen(false);
+    setNewShoppingListName('');
+  }
+
+  async function createShoppingListFromReview() {
+    if (!newShoppingListName.trim() || pendingEditorAction) {
+      return;
+    }
+    const created = await shopping.createList(newShoppingListName.trim(), 'grocery');
+    if (!created) {
+      return;
+    }
+    setSelectedListId(created.listId);
+    setSelectedShoppingIngredientRowIds([]);
+    setHasCustomizedShoppingSelection(false);
+    setIsShoppingListCreateOpen(false);
+    setNewShoppingListName('');
   }
 
   function addIngredientRow() {
@@ -798,10 +1021,13 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return;
     }
     setShoppingSyncError(null);
+    setShoppingProjectionError(null);
     if (!selectedListId) {
       setSelectedListId(selectedMealHandledListId ?? lastUsedShoppingListId ?? null);
     }
-    setSelectedShoppingIngredientRowIds(shoppingReviewIngredients.map((ingredient) => ingredient.rowId));
+    setIsShoppingListCreateOpen(false);
+    setHasCustomizedShoppingSelection(false);
+    setSelectedShoppingIngredientRowIds([]);
     setIsShoppingReviewOpen(true);
     setPendingShoppingReviewOpen(false);
   }, [
@@ -815,6 +1041,95 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     selectedListId,
     selectedMealHandledListId,
     shoppingReviewIngredients,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isShoppingReviewOpen || !selectedDay || !selectedMealType) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!effectiveListId) {
+      setShoppingProjection(null);
+      setShoppingProjectionScopeKey(null);
+      setShoppingProjectionError(null);
+      setIsShoppingProjectionLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const requestScopeKey = `${selectedDay}:${selectedMealType}:${effectiveListId}`;
+    setShoppingProjection(null);
+    setShoppingProjectionScopeKey(null);
+    setIsShoppingProjectionLoading(true);
+    setShoppingProjectionError(null);
+
+    void getMealShoppingProjection(
+      year,
+      isoWeek,
+      selectedDay,
+      selectedMealType,
+      { shoppingListId: effectiveListId },
+      { token }
+    )
+      .then((projection) => {
+        if (cancelled) {
+          return;
+        }
+        if (projection.assessedShoppingListId !== effectiveListId) {
+          setShoppingProjection(null);
+          setShoppingProjectionScopeKey(null);
+          setShoppingProjectionError('Shopping review was checked against a different list than the one you selected.');
+          return;
+        }
+        setShoppingProjection(projection);
+        setShoppingProjectionScopeKey(requestScopeKey);
+      })
+      .catch(async (err) => {
+        if (cancelled) {
+          return;
+        }
+        await handleApiError(err);
+        if (cancelled) {
+          return;
+        }
+        setShoppingProjection(null);
+        setShoppingProjectionScopeKey(null);
+        setShoppingProjectionError(formatApiError(err));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsShoppingProjectionLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    effectiveListId,
+    handleApiError,
+    isShoppingReviewOpen,
+    isoWeek,
+    selectedDay,
+    selectedMealType,
+    token,
+    year,
+  ]);
+
+  useEffect(() => {
+    if (!isShoppingReviewOpen || hasCustomizedShoppingSelection) {
+      return;
+    }
+    setSelectedShoppingIngredientRowIds([]);
+  }, [
+    hasCustomizedShoppingSelection,
+    isShoppingReviewOpen,
+    shoppingProjection,
   ]);
 
   function updateIngredientRow(
@@ -1231,8 +1546,19 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       hasRecipeDraftContent,
       hasMeaningfulMealDetails,
       shoppingReviewIngredients,
+      shoppingReviewProjection: activeShoppingProjection,
+      hasShoppingReviewProjection: effectiveShoppingList !== null || activeShoppingProjection !== null,
+      isShoppingProjectionLoading,
+      shoppingProjectionError: effectiveShoppingList !== null ? null : shoppingProjectionError,
+      shoppingReviewRepresentedIngredients: shoppingReviewDisplay.representedIngredients,
+      shoppingReviewAddableIngredients: shoppingReviewDisplay.addableIngredients,
+      shoppingReviewRepresentedIngredientCount: shoppingReviewDisplay.representedIngredientCount,
+      shoppingReviewAddableIngredientCount: shoppingReviewDisplay.addableIngredientCount,
+      isShoppingListCreateOpen: isShoppingListCreateOpen || shopping.lists.length === 0,
+      newShoppingListName,
+      isCreatingShoppingList,
       selectedShoppingIngredientRowIds,
-      selectedShoppingIngredientCount: selectedShoppingIngredientPositions.length,
+      selectedShoppingIngredientCount: shoppingReviewDisplay.selectedIngredientCount,
       selectedListId,
       effectiveListId,
       effectiveListName,
@@ -1269,12 +1595,16 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       openShoppingReview,
       closeShoppingReview,
       toggleShoppingReviewIngredient,
+      openShoppingListCreate,
+      closeShoppingListCreate,
+      createShoppingListFromReview,
       addIngredientRow,
       removeIngredientRow,
       setIngredientName,
       setIngredientQuantity,
       setIngredientUnit,
-      setSelectedListId,
+      setSelectedListId: selectShoppingReviewListId,
+      setNewShoppingListName,
       setSelectedMealType: selectEditorMealType,
       setSelectedMealRecipeId,
       setShoppingSyncError,

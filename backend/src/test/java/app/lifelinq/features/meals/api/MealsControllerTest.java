@@ -282,7 +282,8 @@ class MealsControllerTest {
                 2026,
                 13,
                 2,
-                app.lifelinq.features.meals.domain.MealType.DINNER
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                null
         )).thenReturn(new MealShoppingProjectionView(
                 2026,
                 13,
@@ -292,6 +293,8 @@ class MealsControllerTest {
                 recipeId,
                 "Creamy Pasta",
                 true,
+                listId,
+                "Main list",
                 new ShoppingLinkReferenceView(listId, "Main list", Instant.parse("2026-03-24T10:00:00Z"), "linked"),
                 new MealReadinessView("partially_ready", 2, 0, 0, 0, 1, 1),
                 new ShoppingDeltaView(0, 0, 0, 0, List.of()),
@@ -310,6 +313,7 @@ class MealsControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mealTitle").value("Creamy Pasta"))
+                .andExpect(jsonPath("$.assessedShoppingListId").value(listId.toString()))
                 .andExpect(jsonPath("$.shoppingLink.status").value("linked"))
                 .andExpect(jsonPath("$.readiness.state").value("partially_ready"));
 
@@ -319,7 +323,60 @@ class MealsControllerTest {
                 2026,
                 13,
                 2,
-                app.lifelinq.features.meals.domain.MealType.DINNER
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                null
+        );
+    }
+
+    @Test
+    void getMealShoppingImpactPassesSelectedShoppingListOverride() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getMealShoppingProjection(
+                groupId,
+                userId,
+                2026,
+                13,
+                2,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                listId
+        )).thenReturn(new MealShoppingProjectionView(
+                2026,
+                13,
+                2,
+                "DINNER",
+                "Creamy Pasta",
+                recipeId,
+                "Creamy Pasta",
+                true,
+                listId,
+                "Main list",
+                new ShoppingLinkReferenceView(null, null, null, "not_linked"),
+                new MealReadinessView("needs_shopping", 0, 0, 2, 0, 0, 2),
+                new ShoppingDeltaView(2, 0, 2, 0, List.of()),
+                List.of()
+        ));
+
+        mockMvc.perform(get("/meals/weeks/2026/13/days/2/meals/DINNER/shopping-impact")
+                        .queryParam("shoppingListId", listId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.assessedShoppingListId").value(listId.toString()))
+                .andExpect(jsonPath("$.shoppingLink.status").value("not_linked"));
+
+        verify(mealsApplicationService).getMealShoppingProjection(
+                groupId,
+                userId,
+                2026,
+                13,
+                2,
+                app.lifelinq.features.meals.domain.MealType.DINNER,
+                listId
         );
     }
 

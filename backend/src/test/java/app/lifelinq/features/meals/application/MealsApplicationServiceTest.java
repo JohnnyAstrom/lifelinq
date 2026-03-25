@@ -1873,7 +1873,7 @@ class MealsApplicationServiceTest {
                 Instant.parse("2026-03-01T09:00:00Z"),
                 List.of(
                         new app.lifelinq.features.meals.domain.Ingredient(
-                                UUID.randomUUID(), "Pasta", null, new BigDecimal("200"), IngredientUnit.G, 1
+                                UUID.randomUUID(), "Pasta", null, null, null, 1
                         ),
                         new app.lifelinq.features.meals.domain.Ingredient(
                                 UUID.randomUUID(), "Milk", null, new BigDecimal("1"), IngredientUnit.PACK, 2
@@ -1893,7 +1893,7 @@ class MealsApplicationServiceTest {
                 .id();
         shoppingService.toggleShoppingItem(groupId, userId, listId, milkItemId);
 
-        var projection = service.getMealShoppingProjection(groupId, userId, 2026, 13, 2, MealType.DINNER);
+        var projection = service.getMealShoppingProjection(groupId, userId, 2026, 13, 2, MealType.DINNER, null);
 
         assertThat(projection.shoppingLink().status()).isEqualTo("linked");
         assertThat(projection.delta().unresolvedIngredientCount()).isZero();
@@ -1907,6 +1907,136 @@ class MealsApplicationServiceTest {
             assertThat(coverage.need().normalizedShoppingName()).isEqualTo("milk");
             assertThat(coverage.coverageState()).isEqualTo("covered");
             assertThat(coverage.shoppingState()).isEqualTo("bought");
+        });
+    }
+
+    @Test
+    void program3FoundationCanAssessMealAgainstSelectedShoppingListBeforeLinking() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        ShoppingApplicationService shoppingService = new ShoppingApplicationService(
+                new InMemoryShoppingListRepository(),
+                new InMemoryShoppingCategoryPreferenceRepository(),
+                membership,
+                clock
+        );
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                new MealsShoppingPortAdapter(shoppingService),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Creamy Pasta",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Pasta", null, new BigDecimal("200"), IngredientUnit.G, 1
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Milk", null, new BigDecimal("1"), IngredientUnit.PACK, 2
+                        )
+                )
+        ));
+
+        UUID listId = shoppingService.createShoppingList(groupId, userId, "Main list", ShoppingListType.MIXED).listId();
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, recipeId, null, null);
+        shoppingService.addShoppingItem(groupId, userId, listId, "pasta", null, null, null, null);
+
+        var projection = service.getMealShoppingProjection(groupId, userId, 2026, 13, 2, MealType.DINNER, listId);
+
+        assertThat(projection.shoppingLink().status()).isEqualTo("not_linked");
+        assertThat(projection.shoppingLink().shoppingListId()).isNull();
+        assertThat(projection.ingredientCoverage()).anySatisfy(coverage -> {
+            assertThat(coverage.need().normalizedShoppingName()).isEqualTo("pasta");
+            assertThat(coverage.coverageState()).isEqualTo("unknown");
+            assertThat(coverage.shoppingState()).isEqualTo("to_buy");
+        });
+        assertThat(projection.ingredientCoverage()).anySatisfy(coverage -> {
+            assertThat(coverage.need().normalizedShoppingName()).isEqualTo("milk");
+            assertThat(coverage.coverageState()).isEqualTo("missing");
+        });
+    }
+
+    @Test
+    void program3FoundationRecognizesMatchingIngredientAcrossMealsOnSameSelectedList() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID pancakeRecipeId = UUID.randomUUID();
+        UUID omeletteRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        ShoppingApplicationService shoppingService = new ShoppingApplicationService(
+                new InMemoryShoppingListRepository(),
+                new InMemoryShoppingCategoryPreferenceRepository(),
+                membership,
+                clock
+        );
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                new MealsShoppingPortAdapter(shoppingService),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                pancakeRecipeId,
+                groupId,
+                "Pancakes",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Egg", null, null, null, 1
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Milk", null, null, null, 2
+                        )
+                )
+        ));
+        recipes.save(new Recipe(
+                omeletteRecipeId,
+                groupId,
+                "Omelette",
+                Instant.parse("2026-03-02T09:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Egg", null, null, null, 1
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Butter", null, null, null, 2
+                        )
+                )
+        ));
+
+        UUID listId = shoppingService.createShoppingList(groupId, userId, "Main list", ShoppingListType.MIXED).listId();
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, pancakeRecipeId, listId, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 3, MealType.DINNER, omeletteRecipeId, null, null);
+
+        var projection = service.getMealShoppingProjection(groupId, userId, 2026, 13, 3, MealType.DINNER, listId);
+
+        assertThat(projection.shoppingLink().status()).isEqualTo("not_linked");
+        assertThat(projection.ingredientCoverage()).anySatisfy(coverage -> {
+            assertThat(coverage.need().normalizedShoppingName()).isEqualTo("egg");
+            assertThat(coverage.matchingItemCount()).isEqualTo(1);
+            assertThat(coverage.coverageState()).isEqualTo("covered");
+        });
+        assertThat(projection.ingredientCoverage()).anySatisfy(coverage -> {
+            assertThat(coverage.need().normalizedShoppingName()).isEqualTo("butter");
+            assertThat(coverage.matchingItemCount()).isZero();
+            assertThat(coverage.coverageState()).isEqualTo("missing");
         });
     }
 
@@ -1927,7 +2057,7 @@ class MealsApplicationServiceTest {
 
         service.addOrReplaceMeal(groupId, userId, 2026, 13, 4, MealType.DINNER, "Leftovers", null, null, null);
 
-        var projection = service.getMealShoppingProjection(groupId, userId, 2026, 13, 4, MealType.DINNER);
+        var projection = service.getMealShoppingProjection(groupId, userId, 2026, 13, 4, MealType.DINNER, null);
 
         assertThat(projection.recipeBacked()).isFalse();
         assertThat(projection.shoppingLink().status()).isEqualTo("not_linked");

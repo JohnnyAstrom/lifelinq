@@ -13,6 +13,7 @@ import {
   updateShoppingList,
   updateShoppingItem,
   type ShoppingUnit,
+  type CreateShoppingListResponse,
   type ShoppingListType,
   type AddShoppingItemResponse,
   type ShoppingListResponse,
@@ -162,15 +163,17 @@ export function useShoppingLists(token: string | null) {
     }
   }
 
-  const createList = async (name: string, type: ShoppingListType = 'mixed'): Promise<boolean> => {
+  const createList = async (
+    name: string,
+    type: ShoppingListType = 'mixed'
+  ): Promise<CreateShoppingListResponse | null> => {
     if (!token) {
       throw new Error('Missing token');
     }
-    const result = await runMutation(
+    return runMutation(
       { kind: 'create-list' },
       () => createShoppingList({ name, type }, { token })
     );
-    return result !== null;
   };
 
   const addItem = async (

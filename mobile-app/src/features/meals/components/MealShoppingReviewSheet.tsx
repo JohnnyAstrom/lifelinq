@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
-import { AppButton, AppChip, Subtle } from '../../../shared/ui/components';
+import { AppButton, AppChip, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
 
 type ShoppingListOption = {
@@ -13,14 +13,24 @@ type ShoppingReviewIngredient = {
   rowId: string;
   name: string;
   amount: string | null;
+  note: string | null;
 };
 
 type Strings = {
   title: string;
-  ingredientsLabel: string;
-  ingredientsHint: string;
+  subtitle?: string;
   emptyIngredientsHint?: string;
   selectedListLabel: string;
+  newListLabel: string;
+  newListPlaceholder: string;
+  createListAction: string;
+  creatingListAction: string;
+  alreadyOnListLabel: string;
+  addNowLabel: string;
+  onAnotherListLabel: string;
+  everythingAlreadyOnListHint: string;
+  checkingListHint: string;
+  checkingListFailedHint: string;
   noShoppingLists: string;
   shoppingSyncFailed: string;
   confirm: string;
@@ -30,11 +40,22 @@ type Strings = {
 
 type Props = {
   ingredients: ShoppingReviewIngredient[];
+  representedIngredients?: ShoppingReviewIngredient[];
   selectedIngredientRowIds: string[];
   lists: ShoppingListOption[];
   effectiveListId: string | null;
+  hasProjection?: boolean;
+  isLoadingProjection?: boolean;
+  projectionError?: string | null;
+  showCreateListForm?: boolean;
+  newListName: string;
+  isCreatingList: boolean;
   onSelectListId: (id: string) => void;
   onToggleIngredient: (rowId: string) => void;
+  onOpenCreateList: () => void;
+  onCloseCreateList: () => void;
+  onChangeNewListName: (value: string) => void;
+  onCreateList: () => void;
   shoppingSyncError: string | null;
   isSubmitting: boolean;
   onConfirm: () => void;
@@ -44,11 +65,22 @@ type Props = {
 
 export function MealShoppingReviewSheet({
   ingredients,
+  representedIngredients = [],
   selectedIngredientRowIds,
   lists,
   effectiveListId,
+  hasProjection = false,
+  isLoadingProjection = false,
+  projectionError = null,
+  showCreateListForm = false,
+  newListName,
+  isCreatingList,
   onSelectListId,
   onToggleIngredient,
+  onOpenCreateList,
+  onCloseCreateList,
+  onChangeNewListName,
+  onCreateList,
   shoppingSyncError,
   isSubmitting,
   onConfirm,
@@ -57,12 +89,27 @@ export function MealShoppingReviewSheet({
 }: Props) {
   const selectedIds = new Set(selectedIngredientRowIds);
   const selectedIngredientCount = ingredients.filter((ingredient) => selectedIds.has(ingredient.rowId)).length;
+  const showEmptyIngredients = !isLoadingProjection
+    && !projectionError
+    && hasProjection
+    && ingredients.length === 0
+    && representedIngredients.length === 0;
+  const showEverythingAlreadyHint = !isLoadingProjection
+    && !projectionError
+    && hasProjection
+    && ingredients.length === 0
+    && representedIngredients.length > 0;
+  const showProjectionPending = !!effectiveListId && !hasProjection && !isLoadingProjection && !projectionError;
+  const canCreateList = newListName.trim().length > 0;
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
         <View style={styles.header}>
           <Text style={textStyles.h2}>{strings.title}</Text>
+          {strings.subtitle ? (
+            <Subtle>{strings.subtitle}</Subtle>
+          ) : null}
         </View>
         <View style={styles.body}>
           <ScrollView
@@ -73,9 +120,7 @@ export function MealShoppingReviewSheet({
           >
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{strings.selectedListLabel}</Text>
-              {lists.length === 0 ? (
-                <Subtle>{strings.noShoppingLists}</Subtle>
-              ) : (
+              {lists.length > 0 ? (
                 <View style={styles.chipRow}>
                   {lists.map((list) => (
                     <AppChip
@@ -86,15 +131,88 @@ export function MealShoppingReviewSheet({
                       onPress={() => onSelectListId(list.id)}
                     />
                   ))}
+                  {!showCreateListForm ? (
+                    <AppChip
+                      label={strings.newListLabel}
+                      active={false}
+                      accentKey="meals"
+                      onPress={onOpenCreateList}
+                    />
+                  ) : null}
                 </View>
+              ) : (
+                <Subtle>{strings.noShoppingLists}</Subtle>
               )}
+
+              {showCreateListForm ? (
+                <View style={styles.createListCard}>
+                  <AppInput
+                    placeholder={strings.newListPlaceholder}
+                    value={newListName}
+                    onChangeText={onChangeNewListName}
+                    returnKeyType="done"
+                    onSubmitEditing={onCreateList}
+                    autoFocus={lists.length === 0}
+                  />
+                  <View style={styles.createListActions}>
+                    <AppButton
+                      title={isCreatingList ? strings.creatingListAction : strings.createListAction}
+                      onPress={onCreateList}
+                      accentKey="meals"
+                      disabled={!canCreateList || isCreatingList}
+                    />
+                    {lists.length > 0 ? (
+                      <AppButton
+                        title={strings.close}
+                        onPress={onCloseCreateList}
+                        variant="ghost"
+                        disabled={isCreatingList}
+                      />
+                    ) : null}
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{strings.ingredientsLabel}</Text>
-              <Subtle>{strings.ingredientsHint}</Subtle>
-              {ingredients.length === 0 ? (
+              {representedIngredients.length > 0 ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>{strings.alreadyOnListLabel}</Text>
+                  <View style={styles.ingredientList}>
+                    {representedIngredients.map((ingredient) => (
+                      <View
+                        key={ingredient.rowId}
+                        style={[styles.ingredientRow, styles.representedIngredientRow]}
+                      >
+                        <View style={[styles.checkbox, styles.checkboxSelected]}>
+                          <Ionicons name="checkmark" size={14} color="#fff" />
+                        </View>
+                        <View style={styles.ingredientCopy}>
+                          <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                          {ingredient.note ? (
+                            <Text style={styles.ingredientNote}>{ingredient.note}</Text>
+                          ) : null}
+                        </View>
+                        <View style={styles.ingredientMeta}>
+                          {ingredient.amount ? (
+                            <Text style={styles.ingredientAmount}>{ingredient.amount}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              <Text style={styles.sectionLabel}>{strings.addNowLabel}</Text>
+              {isLoadingProjection || showProjectionPending ? (
+                <Subtle>{strings.checkingListHint}</Subtle>
+              ) : projectionError ? (
+                <Text style={styles.error}>{strings.checkingListFailedHint}</Text>
+              ) : showEmptyIngredients ? (
                 <Subtle>{strings.emptyIngredientsHint ?? 'No ingredients saved for this meal yet.'}</Subtle>
+              ) : showEverythingAlreadyHint ? (
+                <Subtle>{strings.everythingAlreadyOnListHint}</Subtle>
               ) : (
                 <View style={styles.ingredientList}>
                   {ingredients.map((ingredient) => (
@@ -115,10 +233,17 @@ export function MealShoppingReviewSheet({
                           <Ionicons name="checkmark" size={14} color="#fff" />
                         ) : null}
                       </View>
-                      <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                      {ingredient.amount ? (
-                        <Text style={styles.ingredientAmount}>{ingredient.amount}</Text>
-                      ) : null}
+                      <View style={styles.ingredientCopy}>
+                        <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                        {ingredient.note ? (
+                          <Text style={styles.ingredientNote}>{ingredient.note}</Text>
+                        ) : null}
+                      </View>
+                      <View style={styles.ingredientMeta}>
+                        {ingredient.amount ? (
+                          <Text style={styles.ingredientAmount}>{ingredient.amount}</Text>
+                        ) : null}
+                      </View>
                     </Pressable>
                   ))}
                 </View>
@@ -135,7 +260,7 @@ export function MealShoppingReviewSheet({
                 onPress={onConfirm}
                 fullWidth
                 accentKey="meals"
-                disabled={!effectiveListId || selectedIngredientCount === 0 || isSubmitting}
+                disabled={!effectiveListId || selectedIngredientCount === 0 || isSubmitting || isLoadingProjection || !!projectionError || !hasProjection}
               />
               <AppButton
                 title={strings.close}
@@ -205,6 +330,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
+  createListCard: {
+    gap: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
+  },
+  createListActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
   ingredientList: {
     gap: theme.spacing.xs,
   },
@@ -225,7 +359,9 @@ const styles = StyleSheet.create({
   },
   ingredientRowUnselected: {
     backgroundColor: theme.colors.surface,
-    opacity: 0.72,
+  },
+  representedIngredientRow: {
+    backgroundColor: theme.colors.surfaceSubtle,
   },
   checkbox: {
     width: 20,
@@ -243,7 +379,21 @@ const styles = StyleSheet.create({
   },
   ingredientName: {
     ...textStyles.body,
+  },
+  ingredientCopy: {
     flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  ingredientMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    marginLeft: 'auto',
+  },
+  ingredientNote: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   ingredientAmount: {
     ...textStyles.subtle,
