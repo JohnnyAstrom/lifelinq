@@ -945,6 +945,9 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
     if (pendingEditorAction) {
       return;
     }
+    if (effectiveListId) {
+      setLastUsedShoppingListId(effectiveListId);
+    }
     setSelectedShoppingIngredientRowIds([]);
     setHasCustomizedShoppingSelection(false);
     setIsShoppingListCreateOpen(false);
@@ -967,6 +970,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
 
   function selectShoppingReviewListId(listId: string) {
     setSelectedListId(listId);
+    setLastUsedShoppingListId(listId);
     setHasCustomizedShoppingSelection(false);
     setSelectedShoppingIngredientRowIds([]);
   }
@@ -996,6 +1000,7 @@ export function useMealsWorkflow({ token, year, isoWeek }: Params) {
       return;
     }
     setSelectedListId(created.listId);
+    setLastUsedShoppingListId(created.listId);
     setSelectedShoppingIngredientRowIds([]);
     setHasCustomizedShoppingSelection(false);
     setIsShoppingListCreateOpen(false);

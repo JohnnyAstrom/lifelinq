@@ -381,7 +381,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     shoppingReviewCreateListAction: 'Create list',
     shoppingReviewCreatingListAction: 'Creating list...',
     ingredientsAlreadyOnListLabel: 'Already on this list',
-    ingredientsToAddLabel: 'Add now',
+    ingredientsToAddLabel: 'Add to this list',
     everythingAlreadyOnListHint: 'Everything from this meal is already on this list.',
     checkingShoppingListHint: 'Checking this list...',
     confirmAddIngredientsToShopping: 'Add selected ingredients',
