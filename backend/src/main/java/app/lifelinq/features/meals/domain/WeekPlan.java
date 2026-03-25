@@ -25,6 +25,8 @@ public final class WeekPlan {
     private final int isoWeek;
     private final Instant createdAt;
     private final Map<DaySlot, PlannedMeal> mealsBySlot;
+    private Instant shoppingReviewHandledAt;
+    private UUID shoppingReviewListId;
 
     public WeekPlan(
             UUID id,
@@ -33,7 +35,7 @@ public final class WeekPlan {
             int isoWeek,
             Instant createdAt
     ) {
-        this(id, groupId, year, isoWeek, createdAt, Map.of());
+        this(id, groupId, year, isoWeek, createdAt, null, null, Map.of());
     }
 
     public WeekPlan(
@@ -42,6 +44,8 @@ public final class WeekPlan {
             int year,
             int isoWeek,
             Instant createdAt,
+            Instant shoppingReviewHandledAt,
+            UUID shoppingReviewListId,
             Map<DaySlot, PlannedMeal> mealsByDay
     ) {
         if (id == null) {
@@ -64,6 +68,8 @@ public final class WeekPlan {
         this.year = year;
         this.isoWeek = isoWeek;
         this.createdAt = createdAt;
+        this.shoppingReviewHandledAt = shoppingReviewHandledAt;
+        this.shoppingReviewListId = shoppingReviewListId;
         this.mealsBySlot = new HashMap<>();
         for (Map.Entry<DaySlot, PlannedMeal> entry : mealsByDay.entrySet()) {
             DaySlot key = entry.getKey();
@@ -149,6 +155,14 @@ public final class WeekPlan {
         return createdAt;
     }
 
+    public Instant getShoppingReviewHandledAt() {
+        return shoppingReviewHandledAt;
+    }
+
+    public UUID getShoppingReviewListId() {
+        return shoppingReviewListId;
+    }
+
     public List<PlannedMeal> getMeals() {
         List<PlannedMeal> meals = new ArrayList<>(mealsBySlot.values());
         meals.sort((a, b) -> {
@@ -183,5 +197,16 @@ public final class WeekPlan {
             throw new IllegalArgumentException("mealType must not be null");
         }
         return mealsBySlot.get(new DaySlot(dayOfWeek, mealType));
+    }
+
+    public void rememberShoppingReview(UUID shoppingListId, Instant handledAt) {
+        if (shoppingListId == null) {
+            throw new IllegalArgumentException("shoppingListId must not be null");
+        }
+        if (handledAt == null) {
+            throw new IllegalArgumentException("handledAt must not be null");
+        }
+        this.shoppingReviewListId = shoppingListId;
+        this.shoppingReviewHandledAt = handledAt;
     }
 }

@@ -14,7 +14,9 @@ final class WeekPlanMapper {
                 weekPlan.getGroupId(),
                 weekPlan.getYear(),
                 weekPlan.getIsoWeek(),
-                weekPlan.getCreatedAt()
+                weekPlan.getCreatedAt(),
+                weekPlan.getShoppingReviewHandledAt(),
+                weekPlan.getShoppingReviewListId()
         );
         for (PlannedMeal meal : weekPlan.getMeals()) {
             entity.getMeals().add(toEntity(meal, entity));
@@ -45,6 +47,8 @@ final class WeekPlanMapper {
                 entity.getYear(),
                 entity.getIsoWeek(),
                 entity.getCreatedAt(),
+                entity.getShoppingReviewHandledAt(),
+                entity.getShoppingReviewListId(),
                 mealsByDay
         );
     }

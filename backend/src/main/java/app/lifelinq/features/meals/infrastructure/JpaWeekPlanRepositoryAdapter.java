@@ -111,6 +111,8 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
         if (!entity.getCreatedAt().equals(weekPlan.getCreatedAt())) {
             throw new IllegalArgumentException("createdAt cannot be changed");
         }
+        entity.setShoppingReviewHandledAt(weekPlan.getShoppingReviewHandledAt());
+        entity.setShoppingReviewListId(weekPlan.getShoppingReviewListId());
         entity.getMeals().clear();
         for (PlannedMeal meal : weekPlan.getMeals()) {
             entity.getMeals().add(mapper.toEntity(meal, entity));
@@ -128,6 +130,12 @@ public final class JpaWeekPlanRepositoryAdapter implements WeekPlanRepository {
             throw ex;
         }
         WeekPlan existing = mapper.toDomain(existingEntity.get());
+        if (weekPlan.getShoppingReviewListId() != null && weekPlan.getShoppingReviewHandledAt() != null) {
+            existing.rememberShoppingReview(
+                    weekPlan.getShoppingReviewListId(),
+                    weekPlan.getShoppingReviewHandledAt()
+            );
+        }
         for (PlannedMeal meal : weekPlan.getMeals()) {
             existing.addOrReplaceMeal(
                     meal.getDayOfWeek(),

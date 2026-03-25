@@ -38,6 +38,12 @@ public class WeekPlanEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "shopping_review_handled_at")
+    private Instant shoppingReviewHandledAt;
+
+    @Column(name = "shopping_review_list_id")
+    private UUID shoppingReviewListId;
+
     @OneToMany(
             mappedBy = "weekPlan",
             cascade = CascadeType.ALL,
@@ -48,12 +54,22 @@ public class WeekPlanEntity {
     protected WeekPlanEntity() {
     }
 
-    WeekPlanEntity(UUID id, UUID groupId, int year, int isoWeek, Instant createdAt) {
+    WeekPlanEntity(
+            UUID id,
+            UUID groupId,
+            int year,
+            int isoWeek,
+            Instant createdAt,
+            Instant shoppingReviewHandledAt,
+            UUID shoppingReviewListId
+    ) {
         this.id = id;
         this.groupId = groupId;
         this.year = year;
         this.isoWeek = isoWeek;
         this.createdAt = createdAt;
+        this.shoppingReviewHandledAt = shoppingReviewHandledAt;
+        this.shoppingReviewListId = shoppingReviewListId;
     }
 
     UUID getId() {
@@ -74,6 +90,22 @@ public class WeekPlanEntity {
 
     Instant getCreatedAt() {
         return createdAt;
+    }
+
+    Instant getShoppingReviewHandledAt() {
+        return shoppingReviewHandledAt;
+    }
+
+    void setShoppingReviewHandledAt(Instant shoppingReviewHandledAt) {
+        this.shoppingReviewHandledAt = shoppingReviewHandledAt;
+    }
+
+    UUID getShoppingReviewListId() {
+        return shoppingReviewListId;
+    }
+
+    void setShoppingReviewListId(UUID shoppingReviewListId) {
+        this.shoppingReviewListId = shoppingReviewListId;
     }
 
     List<PlannedMealEntity> getMeals() {

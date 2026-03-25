@@ -37,6 +37,9 @@ import app.lifelinq.features.meals.contract.MealReadinessView;
 import app.lifelinq.features.meals.contract.MealShoppingProjectionView;
 import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
 import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
+import app.lifelinq.features.meals.contract.AggregatedIngredientComparisonView;
+import app.lifelinq.features.meals.contract.AggregatedIngredientNeedView;
+import app.lifelinq.features.meals.contract.ContributorMealReferenceView;
 import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
 import app.lifelinq.features.meals.contract.RecipeLifecycleView;
 import app.lifelinq.features.meals.contract.RecipeProvenanceView;
@@ -48,6 +51,8 @@ import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.ShoppingDeltaView;
 import app.lifelinq.features.meals.contract.ShoppingLinkReferenceView;
+import app.lifelinq.features.meals.contract.WeekShoppingReviewLinkView;
+import app.lifelinq.features.meals.contract.WeekShoppingReviewView;
 import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -411,6 +416,112 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.delta.unresolvedIngredientCount").value(1));
 
         verify(mealsApplicationService).getWeekShoppingProjection(groupId, userId, 2026, 13);
+    }
+
+    @Test
+    void getWeekShoppingReviewReturnsProgram4FoundationProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID weekPlanId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getWeekShoppingReview(
+                groupId,
+                userId,
+                2026,
+                13,
+                listId
+        )).thenReturn(new WeekShoppingReviewView(
+                weekPlanId,
+                2026,
+                13,
+                listId,
+                "Weekly groceries",
+                new WeekShoppingReviewLinkView(
+                        listId,
+                        "Weekly groceries",
+                        Instant.parse("2026-03-24T10:00:00Z")
+                ),
+                List.of(new AggregatedIngredientComparisonView(
+                        new AggregatedIngredientNeedView(
+                                "line-1",
+                                "Egg",
+                                "egg",
+                                new java.math.BigDecimal("8"),
+                                "PCS",
+                                List.of(new ContributorMealReferenceView(2, "DINNER", "Pancakes"))
+                        ),
+                        "add_to_list",
+                        new java.math.BigDecimal("4"),
+                        new java.math.BigDecimal("4")
+                ))
+        ));
+
+        mockMvc.perform(get("/meals/weeks/2026/13/shopping-review")
+                        .queryParam("shoppingListId", listId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weekPlanId").value(weekPlanId.toString()))
+                .andExpect(jsonPath("$.assessedShoppingListId").value(listId.toString()))
+                .andExpect(jsonPath("$.assessedShoppingListName").value("Weekly groceries"))
+                .andExpect(jsonPath("$.ingredients[0].comparisonState").value("add_to_list"))
+                .andExpect(jsonPath("$.ingredients[0].need.normalizedShoppingName").value("egg"));
+
+        verify(mealsApplicationService).getWeekShoppingReview(groupId, userId, 2026, 13, listId);
+    }
+
+    @Test
+    void addWeekShoppingReviewLinesReturnsUpdatedReviewProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID listId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.addWeekShoppingReviewLines(
+                groupId,
+                userId,
+                2026,
+                13,
+                listId,
+                List.of("line-1")
+        )).thenReturn(new WeekShoppingReviewView(
+                UUID.randomUUID(),
+                2026,
+                13,
+                listId,
+                "Weekly groceries",
+                new WeekShoppingReviewLinkView(
+                        listId,
+                        "Weekly groceries",
+                        Instant.parse("2026-03-24T10:00:00Z")
+                ),
+                List.of()
+        ));
+
+        mockMvc.perform(post("/meals/weeks/2026/13/shopping-review/add")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "shoppingListId":"%s",
+                                  "selectedLineIds":["line-1"]
+                                }
+                                """.formatted(listId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.assessedShoppingListId").value(listId.toString()))
+                .andExpect(jsonPath("$.reviewLink.shoppingListId").value(listId.toString()));
+
+        verify(mealsApplicationService).addWeekShoppingReviewLines(
+                groupId,
+                userId,
+                2026,
+                13,
+                listId,
+                List.of("line-1")
+        );
     }
 
     @Test

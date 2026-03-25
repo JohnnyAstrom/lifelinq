@@ -22,6 +22,7 @@ import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
 import app.lifelinq.features.meals.contract.RecentMealOccurrenceView;
 import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
 import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
+import app.lifelinq.features.meals.contract.WeekShoppingReviewView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import java.util.ArrayList;
 import java.util.List;
@@ -758,6 +759,47 @@ public class MealsController {
                 context.getUserId(),
                 year,
                 isoWeek
+        );
+        return ResponseEntity.ok(view);
+    }
+
+    @GetMapping("/meals/weeks/{year}/{isoWeek}/shopping-review")
+    public ResponseEntity<?> getWeekShoppingReview(
+            @PathVariable int year,
+            @PathVariable int isoWeek,
+            @RequestParam(required = false) UUID shoppingListId
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        WeekShoppingReviewView view = mealsApplicationService.getWeekShoppingReview(
+                context.getGroupId(),
+                context.getUserId(),
+                year,
+                isoWeek,
+                shoppingListId
+        );
+        return ResponseEntity.ok(view);
+    }
+
+    @PostMapping("/meals/weeks/{year}/{isoWeek}/shopping-review/add")
+    public ResponseEntity<?> addWeekShoppingReviewLines(
+            @PathVariable int year,
+            @PathVariable int isoWeek,
+            @RequestBody AddWeekShoppingReviewLinesRequest request
+    ) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        WeekShoppingReviewView view = mealsApplicationService.addWeekShoppingReviewLines(
+                context.getGroupId(),
+                context.getUserId(),
+                year,
+                isoWeek,
+                request.getShoppingListId(),
+                request.getSelectedLineIds()
         );
         return ResponseEntity.ok(view);
     }

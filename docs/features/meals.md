@@ -242,6 +242,8 @@ Program 3 contract note: operational queries now live under the Meals feature AP
 
 Program 3 visible-step note: the first visible Program 3 payoff now lives mainly inside the meal-scoped shopping review flow opened intentionally from Day detail. That review stays user-facing and simple: choose a shopping list, see which ingredients from this meal are already on that specific list, choose which remaining ingredients to add to that list, and save only that explicit selection. Reopening review prefers the meal's linked list when one exists; otherwise the flow reuses the last list the user reviewed so continuity stays calm instead of resetting unpredictably. Day detail may lightly echo that shopping has already been used for a meal (`Added to ...` / `Review shopping`), but overview and the meal editor do not carry heavier readiness or unresolved-delta language.
 
+Program 4 foundation note: week-level shopping planning now has its own backend/API foundation separate from the older readiness/delta-oriented `WeekShoppingProjection`. The first-wave Program 4 contract is intentionally calmer and review-shaped: one displayed week, one optionally selected shopping list, aggregated ingredient lines across recipe-backed meals in that week, conservative list-specific comparison (`already_on_list` vs `add_to_list`), contributor meal references per aggregated line, and an explicit add-selected-lines mutation. This remains a foundation only at this stage; the main frontend week-shopping review surface still comes later.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  
@@ -290,3 +292,11 @@ Response: `MealShoppingProjectionView`.
 Endpoint: `GET /meals/weeks/{year}/{isoWeek}/shopping-impact`  
 Purpose: Return one plan week's operational shopping projection, including per-meal readiness/coverage summaries and aggregated unresolved shopping delta.  
 Response: `WeekShoppingProjectionView`.
+
+Endpoint: `GET /meals/weeks/{year}/{isoWeek}/shopping-review`  
+Purpose: Return the first-wave Program 4 week shopping review for one displayed week. The response is shaped for calm weekly planning rather than readiness: it may assess against an optional `shoppingListId`, otherwise it may reuse the week's remembered review list when one exists. Ingredient lines are already aggregated across recipe-backed meals in the week and compared conservatively against the assessed list.  
+Response: `WeekShoppingReviewView`.
+
+Endpoint: `POST /meals/weeks/{year}/{isoWeek}/shopping-review/add`  
+Purpose: Add only the selected aggregated week-review lines to the chosen shopping list, then return the refreshed week shopping review assessed against that same list. The request includes `shoppingListId` and `selectedLineIds[]`. When a week plan exists, the chosen list is also remembered as that week's latest review context for later re-entry.  
+Response: `WeekShoppingReviewView`.

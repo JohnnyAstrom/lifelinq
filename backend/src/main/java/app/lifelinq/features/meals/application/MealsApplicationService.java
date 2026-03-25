@@ -3,6 +3,9 @@ package app.lifelinq.features.meals.application;
 import app.lifelinq.features.group.contract.AccessDeniedException;
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.contract.AddMealOutput;
+import app.lifelinq.features.meals.contract.AggregatedIngredientComparisonView;
+import app.lifelinq.features.meals.contract.AggregatedIngredientNeedView;
+import app.lifelinq.features.meals.contract.ContributorMealReferenceView;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
@@ -15,6 +18,7 @@ import app.lifelinq.features.meals.contract.MealShoppingProjectionView;
 import app.lifelinq.features.meals.contract.MealIdentitySummaryView;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.MealsShoppingListSnapshot;
+import app.lifelinq.features.meals.contract.MealsShoppingListNotFoundException;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.PlanningChoiceSupportView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
@@ -32,8 +36,13 @@ import app.lifelinq.features.meals.contract.RecipeUsageSummaryView;
 import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.ShoppingDeltaView;
 import app.lifelinq.features.meals.contract.ShoppingLinkReferenceView;
+import app.lifelinq.features.meals.contract.WeekShoppingReviewLinkView;
+import app.lifelinq.features.meals.contract.WeekShoppingReviewView;
 import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
+import app.lifelinq.features.meals.domain.AggregatedIngredientComparison;
+import app.lifelinq.features.meals.domain.AggregatedIngredientComparisonState;
+import app.lifelinq.features.meals.domain.AggregatedIngredientNeed;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignal;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalTargetKind;
@@ -80,6 +89,9 @@ import app.lifelinq.features.meals.domain.ShoppingLinkReference;
 import app.lifelinq.features.meals.domain.ShoppingLinkStatus;
 import app.lifelinq.features.meals.domain.WeekPlan;
 import app.lifelinq.features.meals.domain.WeekShoppingProjection;
+import app.lifelinq.features.meals.domain.WeekShoppingReview;
+import app.lifelinq.features.meals.domain.WeekShoppingReviewEngine;
+import app.lifelinq.features.meals.domain.WeekShoppingReviewLink;
 import app.lifelinq.features.meals.domain.WeekPlanRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -87,6 +99,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -169,6 +182,7 @@ public class MealsApplicationService {
     private final Clock clock;
     private final MealChoiceSupportEngine mealChoiceSupportEngine;
     private final KitchenReadinessEngine kitchenReadinessEngine;
+    private final WeekShoppingReviewEngine weekShoppingReviewEngine;
 
     public MealsApplicationService(
             WeekPlanRepository weekPlanRepository,
@@ -227,6 +241,7 @@ public class MealsApplicationService {
         this.clock = clock;
         this.mealChoiceSupportEngine = new MealChoiceSupportEngine();
         this.kitchenReadinessEngine = new KitchenReadinessEngine();
+        this.weekShoppingReviewEngine = new WeekShoppingReviewEngine();
     }
 
     public MealsApplicationService(
@@ -1172,6 +1187,98 @@ public class MealsApplicationService {
         ));
     }
 
+    @Transactional(readOnly = true)
+    public WeekShoppingReviewView getWeekShoppingReview(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek,
+            UUID shoppingListId
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        validateIsoWeek(year, isoWeek);
+        WeekPlan weekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
+                .orElse(null);
+        return toWeekShoppingReviewView(
+                buildWeekShoppingReview(groupId, actorUserId, year, isoWeek, weekPlan, shoppingListId)
+        );
+    }
+
+    @Transactional
+    public WeekShoppingReviewView addWeekShoppingReviewLines(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek,
+            UUID shoppingListId,
+            List<String> selectedLineIds
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        validateIsoWeek(year, isoWeek);
+        if (shoppingListId == null) {
+            throw new IllegalArgumentException("shoppingListId must not be null");
+        }
+        if (selectedLineIds == null) {
+            throw new IllegalArgumentException("selectedLineIds must not be null");
+        }
+
+        WeekPlan weekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
+                .orElse(null);
+        ResolvedWeekShoppingReview initialReview = buildWeekShoppingReview(
+                groupId,
+                actorUserId,
+                year,
+                isoWeek,
+                weekPlan,
+                shoppingListId
+        );
+        WeekShoppingReview review = initialReview.review();
+        Map<String, AggregatedIngredientComparison> addableById = new HashMap<>();
+        for (AggregatedIngredientComparison ingredient : review.ingredients()) {
+            if (ingredient.state() == AggregatedIngredientComparisonState.ADD_TO_LIST) {
+                addableById.put(ingredient.need().lineId(), ingredient);
+            }
+        }
+
+        for (String selectedLineId : selectedLineIds) {
+            if (selectedLineId == null || selectedLineId.isBlank()) {
+                throw new IllegalArgumentException("selectedLineIds must not contain blanks");
+            }
+            if (!addableById.containsKey(selectedLineId)) {
+                throw new IllegalArgumentException("Unknown week shopping review line: " + selectedLineId);
+            }
+        }
+
+        for (String selectedLineId : selectedLineIds) {
+            AggregatedIngredientComparison ingredient = addableById.get(selectedLineId);
+            AggregatedIngredientNeed need = ingredient.need();
+            java.math.BigDecimal quantityToAdd = ingredient.remainingQuantity() != null
+                    ? ingredient.remainingQuantity()
+                    : need.totalQuantity();
+            mealsShoppingPort.addShoppingItem(
+                    groupId,
+                    actorUserId,
+                    shoppingListId,
+                    need.normalizedShoppingName(),
+                    quantityToAdd,
+                    need.unitName(),
+                    "meal-plan",
+                    "Week " + isoWeek + " meals"
+            );
+        }
+
+        if (weekPlan != null) {
+            weekPlan.rememberShoppingReview(shoppingListId, clock.instant());
+            weekPlanRepository.save(weekPlan);
+        }
+
+        WeekPlan refreshedWeekPlan = weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
+                .orElse(weekPlan);
+        return toWeekShoppingReviewView(
+                buildWeekShoppingReview(groupId, actorUserId, year, isoWeek, refreshedWeekPlan, shoppingListId)
+        );
+    }
+
     private WeekPlanView toView(WeekPlan weekPlan) {
         Set<UUID> recipeIds = new HashSet<>();
         for (PlannedMeal meal : weekPlan.getMeals()) {
@@ -1206,6 +1313,103 @@ public class MealsApplicationService {
                 weekPlan.getCreatedAt(),
                 meals
         );
+    }
+
+    private ResolvedWeekShoppingReview buildWeekShoppingReview(
+            UUID groupId,
+            UUID actorUserId,
+            int year,
+            int isoWeek,
+            WeekPlan weekPlan,
+            UUID shoppingListId
+    ) {
+        UUID rememberedListId = weekPlan == null ? null : weekPlan.getShoppingReviewListId();
+        UUID assessedShoppingListId = shoppingListId != null ? shoppingListId : rememberedListId;
+        Set<UUID> requestedShoppingListIds = new HashSet<>();
+        if (assessedShoppingListId != null) {
+            requestedShoppingListIds.add(assessedShoppingListId);
+        }
+        if (rememberedListId != null) {
+            requestedShoppingListIds.add(rememberedListId);
+        }
+        Map<UUID, MealsShoppingListSnapshot> shoppingListsById = loadShoppingListSnapshots(
+                groupId,
+                actorUserId,
+                requestedShoppingListIds
+        );
+        MealsShoppingListSnapshot assessedShoppingList = assessedShoppingListId == null
+                ? null
+                : shoppingListsById.get(assessedShoppingListId);
+        if (shoppingListId != null && assessedShoppingList == null) {
+            throw new MealsShoppingListNotFoundException("list not found: " + assessedShoppingListId);
+        }
+        if (shoppingListId == null && assessedShoppingList == null) {
+            assessedShoppingListId = null;
+        }
+        WeekShoppingReviewLink reviewLink = null;
+        if (weekPlan != null
+                && weekPlan.getShoppingReviewListId() != null
+                && weekPlan.getShoppingReviewHandledAt() != null) {
+            reviewLink = new WeekShoppingReviewLink(
+                    weekPlan.getShoppingReviewListId(),
+                    weekPlan.getShoppingReviewHandledAt()
+            );
+        }
+        return new ResolvedWeekShoppingReview(
+                weekShoppingReviewEngine.buildWeekReview(
+                        weekPlan == null ? null : weekPlan.getId(),
+                        year,
+                        isoWeek,
+                        reviewLink,
+                        buildWeekIngredientOccurrences(groupId, weekPlan),
+                        assessedShoppingList
+                ),
+                shoppingListsById
+        );
+    }
+
+    private List<WeekShoppingReviewEngine.WeekIngredientOccurrence> buildWeekIngredientOccurrences(
+            UUID groupId,
+            WeekPlan weekPlan
+    ) {
+        if (weekPlan == null) {
+            return List.of();
+        }
+        Set<UUID> recipeIds = new HashSet<>();
+        for (PlannedMeal meal : weekPlan.getMeals()) {
+            if (meal.getRecipeId() != null) {
+                recipeIds.add(meal.getRecipeId());
+            }
+        }
+
+        Map<UUID, Recipe> recipesById = new HashMap<>();
+        for (Recipe recipe : recipeRepository.findByGroupIdAndIds(groupId, recipeIds)) {
+            recipesById.put(recipe.getId(), recipe);
+        }
+
+        List<WeekShoppingReviewEngine.WeekIngredientOccurrence> occurrences = new ArrayList<>();
+        for (PlannedMeal meal : weekPlan.getMeals()) {
+            if (meal.getRecipeId() == null) {
+                continue;
+            }
+            Recipe recipe = recipesById.get(meal.getRecipeId());
+            if (recipe == null) {
+                continue;
+            }
+            for (MealIngredientNeed need : projectMealIngredientNeeds(recipe)) {
+                occurrences.add(new WeekShoppingReviewEngine.WeekIngredientOccurrence(
+                        meal.getDayOfWeek(),
+                        meal.getMealType(),
+                        meal.getMealTitle(),
+                        need
+                ));
+            }
+        }
+        occurrences.sort(Comparator
+                .comparingInt(WeekShoppingReviewEngine.WeekIngredientOccurrence::dayOfWeek)
+                .thenComparing(occurrence -> occurrence.mealType().ordinal())
+                .thenComparing(occurrence -> occurrence.need().position()));
+        return List.copyOf(occurrences);
     }
 
     private MealShoppingProjection buildMealShoppingProjection(
@@ -1531,6 +1735,70 @@ public class MealsApplicationService {
                 toShoppingDeltaView(projection.delta()),
                 projection.meals().stream().map(this::toMealShoppingProjectionView).toList()
         );
+    }
+
+    private WeekShoppingReviewView toWeekShoppingReviewView(ResolvedWeekShoppingReview resolvedReview) {
+        WeekShoppingReview review = resolvedReview.review();
+        Map<UUID, MealsShoppingListSnapshot> shoppingListsById = resolvedReview.shoppingListsById();
+        String assessedShoppingListName = review.assessedShoppingListId() == null
+                ? null
+                : shoppingListsById.containsKey(review.assessedShoppingListId())
+                        ? shoppingListsById.get(review.assessedShoppingListId()).listName()
+                        : null;
+        String linkedReviewListName = review.reviewLink() == null
+                ? null
+                : shoppingListsById.containsKey(review.reviewLink().shoppingListId())
+                        ? shoppingListsById.get(review.reviewLink().shoppingListId()).listName()
+                        : null;
+        return new WeekShoppingReviewView(
+                review.weekPlanId(),
+                review.year(),
+                review.isoWeek(),
+                review.assessedShoppingListId(),
+                assessedShoppingListName,
+                review.reviewLink() == null
+                        ? null
+                        : new WeekShoppingReviewLinkView(
+                                review.reviewLink().shoppingListId(),
+                                linkedReviewListName,
+                                review.reviewLink().reviewedAt()
+                        ),
+                review.ingredients().stream().map(this::toAggregatedIngredientComparisonView).toList()
+        );
+    }
+
+    private AggregatedIngredientComparisonView toAggregatedIngredientComparisonView(
+            AggregatedIngredientComparison comparison
+    ) {
+        return new AggregatedIngredientComparisonView(
+                toAggregatedIngredientNeedView(comparison.need()),
+                comparison.state().name().toLowerCase(Locale.ROOT),
+                comparison.quantityOnList(),
+                comparison.remainingQuantity()
+        );
+    }
+
+    private AggregatedIngredientNeedView toAggregatedIngredientNeedView(AggregatedIngredientNeed need) {
+        return new AggregatedIngredientNeedView(
+                need.lineId(),
+                need.ingredientName(),
+                need.normalizedShoppingName(),
+                need.totalQuantity(),
+                need.unitName(),
+                need.contributors().stream()
+                        .map(contributor -> new ContributorMealReferenceView(
+                                contributor.dayOfWeek(),
+                                contributor.mealType().name(),
+                                contributor.mealTitle()
+                        ))
+                        .toList()
+        );
+    }
+
+    private record ResolvedWeekShoppingReview(
+            WeekShoppingReview review,
+            Map<UUID, MealsShoppingListSnapshot> shoppingListsById
+    ) {
     }
 
     private ShoppingLinkReferenceView toShoppingLinkReferenceView(ShoppingLinkReference reference) {

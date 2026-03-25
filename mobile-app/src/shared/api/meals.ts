@@ -338,6 +338,49 @@ export type MealShoppingProjectionResponse = {
   ingredientCoverage: IngredientCoverageResponse[];
 };
 
+export type ContributorMealReferenceResponse = {
+  dayOfWeek: number;
+  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  mealTitle: string;
+};
+
+export type AggregatedIngredientNeedResponse = {
+  lineId: string;
+  ingredientName: string;
+  normalizedShoppingName: string;
+  totalQuantity: number | null;
+  unitName: string | null;
+  contributors: ContributorMealReferenceResponse[];
+};
+
+export type AggregatedIngredientComparisonResponse = {
+  need: AggregatedIngredientNeedResponse;
+  comparisonState: 'already_on_list' | 'add_to_list';
+  quantityOnList: number | null;
+  remainingQuantity: number | null;
+};
+
+export type WeekShoppingReviewLinkResponse = {
+  shoppingListId: string;
+  shoppingListName: string | null;
+  reviewedAt: string;
+};
+
+export type WeekShoppingReviewResponse = {
+  weekPlanId: string | null;
+  year: number;
+  isoWeek: number;
+  assessedShoppingListId: string | null;
+  assessedShoppingListName: string | null;
+  reviewLink: WeekShoppingReviewLinkResponse | null;
+  ingredients: AggregatedIngredientComparisonResponse[];
+};
+
+export type AddWeekShoppingReviewLinesRequest = {
+  shoppingListId: string;
+  selectedLineIds: string[];
+};
+
 export async function createRecipe(
   payload: CreateOrUpdateRecipeRequest,
   clientOptions: ApiClientOptions = {}
@@ -413,6 +456,42 @@ export async function getMealShoppingProjection(
   return fetchJson<MealShoppingProjectionResponse>(
     `/meals/weeks/${year}/${isoWeek}/days/${dayOfWeek}/meals/${mealType}/shopping-impact${querySuffix}`,
     {},
+    clientOptions
+  );
+}
+
+export async function getWeekShoppingReview(
+  year: number,
+  isoWeek: number,
+  params: {
+    shoppingListId?: string | null;
+  } = {},
+  clientOptions: ApiClientOptions = {}
+): Promise<WeekShoppingReviewResponse> {
+  const query = new URLSearchParams();
+  if (params.shoppingListId) {
+    query.set('shoppingListId', params.shoppingListId);
+  }
+  const querySuffix = query.size > 0 ? `?${query.toString()}` : '';
+  return fetchJson<WeekShoppingReviewResponse>(
+    `/meals/weeks/${year}/${isoWeek}/shopping-review${querySuffix}`,
+    {},
+    clientOptions
+  );
+}
+
+export async function addWeekShoppingReviewLines(
+  year: number,
+  isoWeek: number,
+  payload: AddWeekShoppingReviewLinesRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<WeekShoppingReviewResponse> {
+  return fetchJson<WeekShoppingReviewResponse>(
+    `/meals/weeks/${year}/${isoWeek}/shopping-review/add`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
     clientOptions
   );
 }
