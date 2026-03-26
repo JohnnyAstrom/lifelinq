@@ -15,7 +15,12 @@ type WeekShoppingReviewLine = {
   name: string;
   amount: string | null;
   metadataLabels: string[];
-  contributorMealTitles: string[];
+  contributorOccurrenceCount: number;
+  contributorOccurrenceLabels: string[];
+  contributorOccurrenceGroups: {
+    title: string;
+    occurrenceLabels: string[];
+  }[];
   otherListNames: string[];
   hasExpandableDetails: boolean;
 };
@@ -134,6 +139,32 @@ export function WeekShoppingReviewSheet({
       return null;
     }
 
+    const maxVisibleContributorOccurrences = 4;
+    let remainingContributorSlots = maxVisibleContributorOccurrences;
+    const visibleContributorGroups = line.contributorOccurrenceGroups
+      .map((group) => {
+        if (remainingContributorSlots <= 0) {
+          return null;
+        }
+        const visibleOccurrences = group.occurrenceLabels.slice(0, remainingContributorSlots);
+        remainingContributorSlots -= visibleOccurrences.length;
+        if (visibleOccurrences.length === 0) {
+          return null;
+        }
+        return {
+          title: group.title,
+          occurrenceLabels: visibleOccurrences,
+        };
+      })
+      .filter((group): group is { title: string; occurrenceLabels: string[] } => group != null);
+    const hiddenContributorOccurrenceCount = Math.max(
+      0,
+      line.contributorOccurrenceCount - visibleContributorGroups.reduce(
+        (count, group) => count + group.occurrenceLabels.length,
+        0
+      )
+    );
+
     return (
       <View style={styles.expandedDetails}>
         {line.otherListNames.length > 1 ? (
@@ -141,11 +172,32 @@ export function WeekShoppingReviewSheet({
             {`Also on: ${line.otherListNames.join(', ')}`}
           </Text>
         ) : null}
-        {(line.contributorMealTitles.length > 1 || (line.contributorMealTitles.length === 1 && line.metadataLabels.includes('1 meal'))) ? (
-          <Text style={styles.expandedDetailText}>
-            {`Meals: ${line.contributorMealTitles.join(', ')}`}
-          </Text>
-        ) : null}
+        {(line.contributorOccurrenceCount > 1
+          || (line.contributorOccurrenceCount === 1 && line.metadataLabels.includes('1 meal'))) ? (
+            <View style={styles.expandedContributorList}>
+              {visibleContributorGroups.length > 0
+                ? visibleContributorGroups.map((group) => (
+                    <View key={`${line.lineId}-${group.title}`} style={styles.expandedContributorGroup}>
+                      <Text style={styles.expandedContributorTitle}>{group.title}</Text>
+                      <View style={styles.expandedContributorOccurrences}>
+                        {group.occurrenceLabels.map((label) => (
+                          <Text key={`${line.lineId}-${group.title}-${label}`} style={styles.expandedOccurrenceText}>
+                            {label}
+                          </Text>
+                        ))}
+                      </View>
+                    </View>
+                  ))
+                : line.contributorOccurrenceLabels.map((label) => (
+                    <Text key={`${line.lineId}-${label}`} style={styles.expandedOccurrenceText}>
+                      {label}
+                    </Text>
+                  ))}
+              {hiddenContributorOccurrenceCount > 0 ? (
+                <Text style={styles.expandedOverflowText}>{`+ ${hiddenContributorOccurrenceCount} more`}</Text>
+              ) : null}
+            </View>
+          ) : null}
       </View>
     );
   }
@@ -527,6 +579,29 @@ const styles = StyleSheet.create({
   },
   expandedDetails: {
     gap: 2,
+  },
+  expandedContributorList: {
+    gap: 6,
+  },
+  expandedContributorGroup: {
+    gap: 2,
+  },
+  expandedContributorOccurrences: {
+    paddingLeft: theme.spacing.sm,
+    gap: 2,
+  },
+  expandedContributorTitle: {
+    ...textStyles.subtle,
+    color: theme.colors.text,
+    fontWeight: '600',
+  },
+  expandedOccurrenceText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+  },
+  expandedOverflowText: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
   },
   expandedDetailText: {
     ...textStyles.subtle,

@@ -27,6 +27,7 @@ import {
   getWeekPlan,
   getWeekShoppingReview,
   type AggregatedIngredientComparisonResponse,
+  type ContributorMealReferenceResponse,
   type WeekPlanResponse,
   type WeekShoppingReviewResponse,
 } from '../api/mealsApi';
@@ -72,7 +73,12 @@ type WeekShoppingReviewLine = {
   name: string;
   amount: string | null;
   metadataLabels: string[];
-  contributorMealTitles: string[];
+  contributorOccurrenceCount: number;
+  contributorOccurrenceLabels: string[];
+  contributorOccurrenceGroups: {
+    title: string;
+    occurrenceLabels: string[];
+  }[];
   otherListNames: string[];
   hasExpandableDetails: boolean;
 };
@@ -163,20 +169,51 @@ function formatShoppingAmount(quantity: number | null, unitName: string | null) 
   return `${formattedQuantity} ${label}`;
 }
 
-function getContributorMealTitles(contributors: AggregatedIngredientComparisonResponse['need']['contributors']) {
-  return Array.from(new Set(contributors.map((contributor) => contributor.mealTitle.trim()).filter(Boolean)));
+function formatContributorOccurrenceLabel(contributor: ContributorMealReferenceResponse) {
+  const dayLabel = DAY_LABELS[Math.max(0, contributor.dayOfWeek - 1)] ?? 'Day';
+  const mealTypeLabel = MEAL_TYPE_LABELS[contributor.mealType].toLowerCase();
+  const mealTitle = contributor.mealTitle.trim();
+  return `${dayLabel} ${mealTypeLabel} · ${mealTitle}`;
+}
+
+function formatContributorSlotLabel(contributor: ContributorMealReferenceResponse) {
+  const dayLabel = DAY_LABELS[Math.max(0, contributor.dayOfWeek - 1)] ?? 'Day';
+  const mealTypeLabel = MEAL_TYPE_LABELS[contributor.mealType].toLowerCase();
+  return `${dayLabel} ${mealTypeLabel}`;
+}
+
+function groupContributorOccurrences(contributors: AggregatedIngredientComparisonResponse['need']['contributors']) {
+  const groups = new Map<string, { title: string; occurrenceLabels: string[] }>();
+  for (const contributor of contributors) {
+    const title = contributor.mealTitle.trim();
+    const slotLabel = formatContributorSlotLabel(contributor);
+    const existing = groups.get(title);
+    if (existing) {
+      existing.occurrenceLabels.push(slotLabel);
+      continue;
+    }
+    groups.set(title, {
+      title,
+      occurrenceLabels: [slotLabel],
+    });
+  }
+  return Array.from(groups.values());
 }
 
 function formatContributorSummary(contributors: AggregatedIngredientComparisonResponse['need']['contributors']) {
-  const titles = getContributorMealTitles(contributors);
-  if (titles.length === 0) {
+  const contributorCount = contributors.length;
+  if (contributorCount === 0) {
     return null;
   }
-  if (titles.length === 1) {
-    const label = `From ${titles[0]}`;
+  if (contributorCount === 1) {
+    const title = contributors[0]?.mealTitle.trim() ?? '';
+    if (!title) {
+      return '1 meal';
+    }
+    const label = `From ${title}`;
     return label.length <= 22 ? label : '1 meal';
   }
-  return `${titles.length} meals`;
+  return `${contributorCount} meals`;
 }
 
 function normalizeWeekShoppingName(name: string) {
@@ -574,7 +611,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     for (const ingredient of weekShoppingReview?.ingredients ?? []) {
       const normalizedName = normalizeWeekShoppingName(ingredient.need.normalizedShoppingName);
       const matchingActiveItem = activeListItemsByName.get(normalizedName);
-      const contributorMealTitles = getContributorMealTitles(ingredient.need.contributors);
+      const contributorOccurrenceLabels = ingredient.need.contributors
+        .map(formatContributorOccurrenceLabel)
+        .filter((label) => label.trim().length > 0);
+      const contributorOccurrenceGroups = groupContributorOccurrences(ingredient.need.contributors);
+      const contributorOccurrenceCount = ingredient.need.contributors.length;
       const contributorSummary = formatContributorSummary(ingredient.need.contributors);
       const otherListNames = otherListNamesByIngredient.get(normalizedName) ?? [];
       const crossListSummary = otherListNames.length > 1
@@ -584,8 +625,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         ? [contributorSummary].filter((value): value is string => value != null).slice(0, 2)
         : [crossListSummary, contributorSummary].filter((value): value is string => value != null).slice(0, 2);
       const hasExpandableDetails = otherListNames.length > 1
-        || contributorMealTitles.length > 1
-        || (contributorMealTitles.length === 1 && contributorSummary === '1 meal');
+        || contributorOccurrenceCount > 1
+        || (contributorOccurrenceCount === 1 && contributorSummary === '1 meal');
       const line: WeekShoppingReviewLine = {
         lineId: ingredient.need.lineId,
         name: ingredient.need.ingredientName,
@@ -596,7 +637,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             )
           : formatShoppingAmount(ingredient.need.totalQuantity, ingredient.need.unitName),
         metadataLabels,
-        contributorMealTitles,
+        contributorOccurrenceCount,
+        contributorOccurrenceLabels,
+        contributorOccurrenceGroups,
         otherListNames,
         hasExpandableDetails,
       };
