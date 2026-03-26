@@ -51,6 +51,7 @@ import app.lifelinq.features.meals.contract.RecipeView;
 import app.lifelinq.features.meals.contract.PlannedMealView;
 import app.lifelinq.features.meals.contract.ShoppingDeltaView;
 import app.lifelinq.features.meals.contract.ShoppingLinkReferenceView;
+import app.lifelinq.features.meals.contract.WeekPlanView;
 import app.lifelinq.features.meals.contract.WeekShoppingReviewLinkView;
 import app.lifelinq.features.meals.contract.WeekShoppingReviewView;
 import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
@@ -270,6 +271,29 @@ class MealsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void getWeekPlanIncludesReviewableWeekShoppingSignal() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.getWeekPlan(groupId, userId, 2026, 13))
+                .thenReturn(new WeekPlanView(
+                        UUID.randomUUID(),
+                        2026,
+                        13,
+                        Instant.parse("2026-03-26T10:00:00Z"),
+                        true,
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/meals/weeks/2026/13")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasReviewableWeekShopping").value(true));
     }
 
     @Test

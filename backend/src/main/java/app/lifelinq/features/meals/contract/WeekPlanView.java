@@ -9,5 +9,6 @@ public record WeekPlanView(
         int year,
         int isoWeek,
         Instant createdAt,
+        boolean hasReviewableWeekShopping,
         List<PlannedMealView> meals
 ) {}

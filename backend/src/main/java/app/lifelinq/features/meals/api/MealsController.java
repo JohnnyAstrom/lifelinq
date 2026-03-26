@@ -864,6 +864,7 @@ public class MealsController {
                 view.year(),
                 view.isoWeek(),
                 view.createdAt(),
+                view.hasReviewableWeekShopping(),
                 meals
         );
     }

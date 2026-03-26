@@ -9,6 +9,7 @@ public record WeekPlanResponse(
         int year,
         int isoWeek,
         Instant createdAt,
+        boolean hasReviewableWeekShopping,
         List<PlannedMealResponse> meals
 ) {
 }

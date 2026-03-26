@@ -1721,6 +1721,70 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void getWeekPlanMarksWeekShoppingReviewAsAvailableWhenWeekHasRecipeIngredients() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-18T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Tacos",
+                Instant.parse("2026-03-10T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Egg", null, null, 1))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, null, null);
+
+        var weekPlan = service.getWeekPlan(groupId, userId, 2026, 12);
+
+        assertThat(weekPlan.hasReviewableWeekShopping()).isTrue();
+    }
+
+    @Test
+    void getWeekPlanLeavesWeekShoppingReviewUnavailableWhenWeekHasNoReviewableIngredients() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-18T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Empty Recipe",
+                Instant.parse("2026-03-10T09:00:00Z"),
+                List.of()
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 1, MealType.DINNER, recipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 12, 2, MealType.LUNCH, "Soup", null, null, null);
+
+        var weekPlan = service.getWeekPlan(groupId, userId, 2026, 12);
+
+        assertThat(weekPlan.hasReviewableWeekShopping()).isFalse();
+    }
+
+    @Test
     void getWeekPlanFallsBackToStoredRecipeTitleAfterRecipeDelete() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -2236,6 +2300,120 @@ class MealsApplicationServiceTest {
                 .hasSize(2)
                 .extracting(ingredient -> ingredient.need().unitName())
                 .containsExactlyInAnyOrder("G", "KG");
+    }
+
+    @Test
+    void program4CorrectionKeepsWeekReviewLineIdsStableAcrossListAssessmentChanges() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID recipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        ShoppingApplicationService shoppingService = new ShoppingApplicationService(
+                new InMemoryShoppingListRepository(),
+                new InMemoryShoppingCategoryPreferenceRepository(),
+                membership,
+                clock
+        );
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                new MealsShoppingPortAdapter(shoppingService),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                recipeId,
+                groupId,
+                "Plattar",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Egg", null, new BigDecimal("2"), IngredientUnit.PCS, 1
+                        ),
+                        new app.lifelinq.features.meals.domain.Ingredient(
+                                UUID.randomUUID(), "Milk", null, new BigDecimal("6"), IngredientUnit.DL, 2
+                        )
+                )
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, recipeId, null, null);
+
+        UUID firstListId = shoppingService.createShoppingList(groupId, userId, "Weekly groceries", ShoppingListType.GROCERY).listId();
+        UUID secondListId = shoppingService.createShoppingList(groupId, userId, "Cabin supplies", ShoppingListType.GROCERY).listId();
+
+        var firstReview = service.getWeekShoppingReview(groupId, userId, 2026, 13, firstListId);
+        var secondReview = service.getWeekShoppingReview(groupId, userId, 2026, 13, secondListId);
+
+        assertThat(firstReview.ingredients())
+                .extracting(ingredient -> ingredient.need().lineId())
+                .containsExactlyElementsOf(
+                        secondReview.ingredients().stream()
+                                .map(ingredient -> ingredient.need().lineId())
+                                .toList()
+                );
+    }
+
+    @Test
+    void program4CorrectionMarksFullyCoveredAggregatedWeekLinesAsAlreadyOnList() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID pancakesRecipeId = UUID.randomUUID();
+        UUID omeletteRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        ShoppingApplicationService shoppingService = new ShoppingApplicationService(
+                new InMemoryShoppingListRepository(),
+                new InMemoryShoppingCategoryPreferenceRepository(),
+                membership,
+                clock
+        );
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                new MealsShoppingPortAdapter(shoppingService),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                pancakesRecipeId,
+                groupId,
+                "Pancakes",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Egg", null, new BigDecimal("5"), IngredientUnit.PCS, 1
+                ))
+        ));
+        recipes.save(new Recipe(
+                omeletteRecipeId,
+                groupId,
+                "Omelette",
+                Instant.parse("2026-03-02T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Egg", null, new BigDecimal("3"), IngredientUnit.PCS, 1
+                ))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, pancakesRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 3, MealType.DINNER, omeletteRecipeId, null, null);
+
+        UUID listId = shoppingService.createShoppingList(groupId, userId, "Weekly groceries", ShoppingListType.GROCERY).listId();
+        shoppingService.addShoppingItem(groupId, userId, listId, "egg", new BigDecimal("8"), ShoppingUnit.PCS);
+
+        var review = service.getWeekShoppingReview(groupId, userId, 2026, 13, listId);
+
+        assertThat(review.ingredients()).singleElement().satisfies(ingredient -> {
+            assertThat(ingredient.need().normalizedShoppingName()).isEqualTo("egg");
+            assertThat(ingredient.comparisonState()).isEqualTo("already_on_list");
+            assertThat(ingredient.remainingQuantity()).isNull();
+            assertThat(ingredient.quantityOnList()).isEqualByComparingTo("8");
+        });
     }
 
     @Test

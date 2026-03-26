@@ -58,6 +58,7 @@ export type WeekPlanResponse = {
   year: number;
   isoWeek: number;
   createdAt: string | null;
+  hasReviewableWeekShopping: boolean;
   meals: PlannedMealResponse[];
 };
 

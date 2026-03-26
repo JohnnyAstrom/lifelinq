@@ -1110,7 +1110,7 @@ public class MealsApplicationService {
         validateIsoWeek(year, isoWeek);
         return weekPlanRepository.findByGroupAndWeek(groupId, year, isoWeek)
                 .map(this::toView)
-                .orElseGet(() -> new WeekPlanView(null, year, isoWeek, null, List.of()));
+                .orElseGet(() -> new WeekPlanView(null, year, isoWeek, null, false, List.of()));
     }
 
     @Transactional(readOnly = true)
@@ -1287,9 +1287,23 @@ public class MealsApplicationService {
             }
         }
 
+        Map<UUID, Recipe> recipesById = new HashMap<>();
         Map<UUID, String> namesByRecipeId = new HashMap<>();
         for (Recipe recipe : recipeRepository.findByGroupIdAndIds(weekPlan.getGroupId(), recipeIds)) {
+            recipesById.put(recipe.getId(), recipe);
             namesByRecipeId.put(recipe.getId(), recipe.getName());
+        }
+
+        boolean hasReviewableWeekShopping = false;
+        for (PlannedMeal meal : weekPlan.getMeals()) {
+            if (meal.getRecipeId() == null) {
+                continue;
+            }
+            Recipe recipe = recipesById.get(meal.getRecipeId());
+            if (recipe != null && !projectMealIngredientNeeds(recipe).isEmpty()) {
+                hasReviewableWeekShopping = true;
+                break;
+            }
         }
 
         List<PlannedMealView> meals = new ArrayList<>();
@@ -1311,6 +1325,7 @@ public class MealsApplicationService {
                 weekPlan.getYear(),
                 weekPlan.getIsoWeek(),
                 weekPlan.getCreatedAt(),
+                hasReviewableWeekShopping,
                 meals
         );
     }

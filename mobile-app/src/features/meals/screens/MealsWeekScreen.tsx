@@ -17,11 +17,19 @@ import { MealRecipePlanSheet } from '../components/MealRecipePlanSheet';
 import { MealRecipePickerSheet } from '../components/MealRecipePickerSheet';
 import { MealRecentMealsSheet } from '../components/MealRecentMealsSheet';
 import { MealShoppingReviewSheet } from '../components/MealShoppingReviewSheet';
+import { WeekShoppingReviewSheet } from '../components/WeekShoppingReviewSheet';
 import { MealsRecipesView } from '../components/MealsRecipesView';
 import { MealsMonthlyView } from '../components/MealsMonthlyView';
 import { MealsWeeklyView } from '../components/MealsWeeklyView';
 import { DuplicateRecipeWarningSheet } from '../components/DuplicateRecipeWarningSheet';
-import { getWeekPlan, type WeekPlanResponse } from '../api/mealsApi';
+import {
+  addWeekShoppingReviewLines,
+  getWeekPlan,
+  getWeekShoppingReview,
+  type AggregatedIngredientComparisonResponse,
+  type WeekPlanResponse,
+  type WeekShoppingReviewResponse,
+} from '../api/mealsApi';
 import {
   addDays,
   buildMonthGridCells,
@@ -58,6 +66,15 @@ type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER';
 type RecipePlanBridgeState = {
   recipeId: string;
   recipeTitle: string;
+};
+type WeekShoppingReviewLine = {
+  lineId: string;
+  name: string;
+  amount: string | null;
+  metadataLabels: string[];
+  contributorMealTitles: string[];
+  otherListNames: string[];
+  hasExpandableDetails: boolean;
 };
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -124,6 +141,53 @@ function formatRecipeMealAttachment(date: Date, mealType: MealType) {
   const day = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   const mealLabel = MEAL_TYPE_LABELS[mealType].toLowerCase();
   return `${weekday} ${day} · ${mealLabel}`;
+}
+
+function formatShoppingAmount(quantity: number | null, unitName: string | null) {
+  if (quantity == null || unitName == null) {
+    return null;
+  }
+  const formattedQuantity = Number.isInteger(quantity)
+    ? String(quantity)
+    : String(quantity).replace(/(\.\d*?[1-9])0+$/u, '$1').replace(/\.0+$/u, '');
+  const label = {
+    PCS: 'pcs',
+    PACK: 'pack',
+    KG: 'kg',
+    HG: 'hg',
+    G: 'g',
+    L: 'l',
+    DL: 'dl',
+    ML: 'ml',
+  }[unitName] ?? unitName.toLowerCase();
+  return `${formattedQuantity} ${label}`;
+}
+
+function getContributorMealTitles(contributors: AggregatedIngredientComparisonResponse['need']['contributors']) {
+  return Array.from(new Set(contributors.map((contributor) => contributor.mealTitle.trim()).filter(Boolean)));
+}
+
+function formatContributorSummary(contributors: AggregatedIngredientComparisonResponse['need']['contributors']) {
+  const titles = getContributorMealTitles(contributors);
+  if (titles.length === 0) {
+    return null;
+  }
+  if (titles.length === 1) {
+    const label = `From ${titles[0]}`;
+    return label.length <= 22 ? label : '1 meal';
+  }
+  return `${titles.length} meals`;
+}
+
+function normalizeWeekShoppingName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function formatWeekShoppingOtherListLabel(listName: string | null | undefined) {
+  if (!listName) {
+    return null;
+  }
+  return `On ${listName}`;
 }
 
 function formatRecipeMemorySupport(memory: {
@@ -375,6 +439,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     addIngredientsToShoppingAction: 'Add ingredients to shopping',
     reviewShoppingAgainAction: 'Review shopping',
     shoppingReviewTitle: 'Review shopping',
+    weekShoppingReviewAction: 'Review week shopping',
+    weekShoppingReviewTitle: 'Review week shopping',
     shoppingListLabel: 'Shopping list',
     shoppingReviewNewListLabel: 'New list',
     shoppingReviewNewListPlaceholder: 'List name',
@@ -383,7 +449,13 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     ingredientsAlreadyOnListLabel: 'Already on this list',
     ingredientsToAddLabel: 'Add to this list',
     everythingAlreadyOnListHint: 'Everything from this meal is already on this list.',
+    everythingAlreadyOnWeekListHint: 'Everything from this week is already on this list.',
     checkingShoppingListHint: 'Checking this list...',
+    loadingWeekShoppingReview: 'Loading week shopping...',
+    emptyWeekShoppingReview: 'No recipe ingredients planned for this week yet.',
+    loadingShoppingLists: 'Loading shopping lists...',
+    weekShoppingSelectionHint: 'Select what you want to add to this list.',
+    weekShoppingNothingToAddHint: 'Nothing to add to this list right now.',
     confirmAddIngredientsToShopping: 'Add selected ingredients',
     noShoppingLists: 'No shopping lists yet.',
     shoppingSyncFailed: 'Meal saved, but adding ingredients to shopping failed:',
@@ -408,6 +480,19 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const [recipePlanBridge, setRecipePlanBridge] = useState<RecipePlanBridgeState | null>(null);
   const [isPlanningRecipe, setIsPlanningRecipe] = useState(false);
   const [recipePlanError, setRecipePlanError] = useState<string | null>(null);
+  const [isWeekShoppingReviewOpen, setIsWeekShoppingReviewOpen] = useState(false);
+  const [weekShoppingSelectedListId, setWeekShoppingSelectedListId] = useState<string | null>(null);
+  const [weekShoppingSelectedLineIds, setWeekShoppingSelectedLineIds] = useState<string[]>([]);
+  const [weekShoppingReview, setWeekShoppingReview] = useState<WeekShoppingReviewResponse | null>(null);
+  const [isWeekShoppingReviewLoading, setIsWeekShoppingReviewLoading] = useState(false);
+  const [weekShoppingReviewError, setWeekShoppingReviewError] = useState<string | null>(null);
+  const [isWeekShoppingListCreateOpen, setIsWeekShoppingListCreateOpen] = useState(false);
+  const [weekShoppingNewListName, setWeekShoppingNewListName] = useState('');
+  const [isAddingWeekShoppingLines, setIsAddingWeekShoppingLines] = useState(false);
+  const [weekShoppingPostState, setWeekShoppingPostState] = useState<{
+    scopeKey: string;
+    listName: string;
+  } | null>(null);
   const [selectedDayPlan, setSelectedDayPlan] = useState<WeekPlanResponse | null>(null);
   const [isSelectedDayPlanLoading, setIsSelectedDayPlanLoading] = useState(false);
   const [selectedDayPlanError, setSelectedDayPlanError] = useState<string | null>(null);
@@ -415,6 +500,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     () => getIsoWeekParts(anchorDate),
     [anchorDate]
   );
+  const currentWeekScopeKey = `${year}:${isoWeek}`;
   const weekStart = useMemo(
     () => getWeekStartDate(year, isoWeek),
     [year, isoWeek]
@@ -454,8 +540,83 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const mealsByDay = workflow.mealsByDay;
   const lists = shopping.lists;
   const effectiveListId = editor.effectiveListId;
+  const activeWeekShoppingListId = weekShoppingSelectedListId ?? weekShoppingReview?.assessedShoppingListId ?? null;
+  const activeWeekShoppingListName = lists.find((list) => list.id === activeWeekShoppingListId)?.name
+    ?? weekShoppingReview?.assessedShoppingListName
+    ?? null;
   const pendingRecipesDuplicateCandidate = recipesWorkspace.recipeDetail.pendingDuplicateCandidate;
   const pendingMealDuplicateCandidate = editor.pendingDuplicateCandidate;
+  const weekShoppingDisplay = useMemo(() => {
+    const representedLines: WeekShoppingReviewLine[] = [];
+    const addableLines: WeekShoppingReviewLine[] = [];
+    const effectiveWeekShoppingList = activeWeekShoppingListId == null
+      ? null
+      : shopping.lists.find((list) => list.id === activeWeekShoppingListId) ?? null;
+    const activeListItems = effectiveWeekShoppingList?.items ?? [];
+    const activeListItemsByName = new Map(
+      activeListItems.map((item) => [normalizeWeekShoppingName(item.name), item])
+    );
+    const otherListNamesByIngredient = new Map<string, string[]>();
+    for (const list of shopping.lists) {
+      if (list.id === activeWeekShoppingListId) {
+        continue;
+      }
+      for (const item of list.items) {
+        const normalizedName = normalizeWeekShoppingName(item.name);
+        const currentNames = otherListNamesByIngredient.get(normalizedName) ?? [];
+        if (!currentNames.includes(list.name)) {
+          currentNames.push(list.name);
+          otherListNamesByIngredient.set(normalizedName, currentNames);
+        }
+      }
+    }
+
+    for (const ingredient of weekShoppingReview?.ingredients ?? []) {
+      const normalizedName = normalizeWeekShoppingName(ingredient.need.normalizedShoppingName);
+      const matchingActiveItem = activeListItemsByName.get(normalizedName);
+      const contributorMealTitles = getContributorMealTitles(ingredient.need.contributors);
+      const contributorSummary = formatContributorSummary(ingredient.need.contributors);
+      const otherListNames = otherListNamesByIngredient.get(normalizedName) ?? [];
+      const crossListSummary = otherListNames.length > 1
+        ? `On ${otherListNames.length} lists`
+        : formatWeekShoppingOtherListLabel(otherListNames[0]);
+      const metadataLabels = matchingActiveItem
+        ? [contributorSummary].filter((value): value is string => value != null).slice(0, 2)
+        : [crossListSummary, contributorSummary].filter((value): value is string => value != null).slice(0, 2);
+      const hasExpandableDetails = otherListNames.length > 1
+        || contributorMealTitles.length > 1
+        || (contributorMealTitles.length === 1 && contributorSummary === '1 meal');
+      const line: WeekShoppingReviewLine = {
+        lineId: ingredient.need.lineId,
+        name: ingredient.need.ingredientName,
+        amount: ingredient.comparisonState === 'add_to_list'
+          ? formatShoppingAmount(
+              ingredient.remainingQuantity ?? ingredient.need.totalQuantity,
+              ingredient.need.unitName
+            )
+          : formatShoppingAmount(ingredient.need.totalQuantity, ingredient.need.unitName),
+        metadataLabels,
+        contributorMealTitles,
+        otherListNames,
+        hasExpandableDetails,
+      };
+      if (matchingActiveItem) {
+        representedLines.push(line);
+      } else {
+        addableLines.push(line);
+      }
+    }
+    representedLines.sort((left, right) => left.name.localeCompare(right.name));
+    addableLines.sort((left, right) => left.name.localeCompare(right.name));
+    return {
+      representedLines,
+      addableLines,
+    };
+  }, [activeWeekShoppingListId, shopping.lists, weekShoppingReview]);
+  const currentWeekAddableLineIds = useMemo(
+    () => new Set(weekShoppingDisplay.addableLines.map((line) => line.lineId)),
+    [weekShoppingDisplay.addableLines]
+  );
 
   async function handleSave() {
     await actions.saveMeal();
@@ -467,6 +628,101 @@ export function MealsWeekScreen({ token, onDone }: Props) {
 
   async function handleAddIngredientsToShopping() {
     await actions.addIngredientsToShopping();
+  }
+
+  function openWeekShoppingReview() {
+    setIsWeekShoppingReviewOpen(true);
+    setIsWeekShoppingReviewLoading(true);
+    setWeekShoppingReviewError(null);
+    setIsWeekShoppingListCreateOpen(false);
+    setWeekShoppingNewListName('');
+  }
+
+  function closeWeekShoppingReview() {
+    if (isAddingWeekShoppingLines) {
+      return;
+    }
+    setIsWeekShoppingReviewOpen(false);
+    setIsWeekShoppingReviewLoading(false);
+    setIsWeekShoppingListCreateOpen(false);
+    setWeekShoppingNewListName('');
+    setWeekShoppingSelectedLineIds([]);
+  }
+
+  function toggleWeekShoppingLine(lineId: string) {
+    setWeekShoppingSelectedLineIds((current) => (
+      current.includes(lineId)
+        ? current.filter((id) => id !== lineId)
+        : [...current, lineId]
+    ));
+  }
+
+  function openWeekShoppingListCreate() {
+    setIsWeekShoppingListCreateOpen(true);
+  }
+
+  function closeWeekShoppingListCreate() {
+    if (shopping.pendingMutation?.kind === 'create-list') {
+      return;
+    }
+    setIsWeekShoppingListCreateOpen(false);
+    setWeekShoppingNewListName('');
+  }
+
+  async function createWeekShoppingList() {
+    const normalizedName = weekShoppingNewListName.trim();
+    if (!normalizedName) {
+      return;
+    }
+    const created = await shopping.createList(normalizedName, 'grocery');
+    if (!created) {
+      return;
+    }
+    setIsWeekShoppingReviewLoading(true);
+    setWeekShoppingReviewError(null);
+    setWeekShoppingReview(null);
+    setWeekShoppingSelectedListId(created.listId);
+    setWeekShoppingSelectedLineIds([]);
+    setIsWeekShoppingListCreateOpen(false);
+    setWeekShoppingNewListName('');
+  }
+
+  async function confirmWeekShoppingAdd() {
+    const selectedLineIds = weekShoppingSelectedLineIds.filter((lineId) => currentWeekAddableLineIds.has(lineId));
+    if (!activeWeekShoppingListId || selectedLineIds.length === 0 || isAddingWeekShoppingLines) {
+      if (selectedLineIds.length !== weekShoppingSelectedLineIds.length) {
+        setWeekShoppingSelectedLineIds(selectedLineIds);
+      }
+      return;
+    }
+    try {
+      setIsAddingWeekShoppingLines(true);
+      const updated = await addWeekShoppingReviewLines(
+        year,
+        isoWeek,
+        {
+          shoppingListId: activeWeekShoppingListId,
+          selectedLineIds,
+        },
+        { token }
+      );
+      setWeekShoppingReview(updated);
+      setWeekShoppingSelectedListId(updated.assessedShoppingListId);
+      setWeekShoppingSelectedLineIds([]);
+      if (activeWeekShoppingListName) {
+        setWeekShoppingPostState({
+          scopeKey: currentWeekScopeKey,
+          listName: activeWeekShoppingListName,
+        });
+      }
+      await shopping.reload();
+      closeWeekShoppingReview();
+    } catch (err) {
+      await handleApiError(err);
+      setWeekShoppingReviewError(formatApiError(err));
+    } finally {
+      setIsAddingWeekShoppingLines(false);
+    }
   }
 
   function confirmDeleteArchivedRecipe() {
@@ -499,6 +755,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   }, [weekStart]);
 
   const isAnchorWeekLoaded = plan.data?.year === year && plan.data?.isoWeek === isoWeek;
+  const hasReviewableWeekShopping = isAnchorWeekLoaded && !!plan.data?.hasReviewableWeekShopping;
   const showInitialPlanLoading = workspaceMode === 'plan'
     && surfaceMode === 'week'
     && plan.isInitialLoading
@@ -661,6 +918,108 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       cancelled = true;
     };
   }, [handleApiError, isSelectedDayInAnchorWeek, selectedDayDetail, token]);
+
+  useEffect(() => {
+    if (weekShoppingPostState?.scopeKey === currentWeekScopeKey) {
+      return;
+    }
+    setWeekShoppingPostState(null);
+  }, [currentWeekScopeKey, weekShoppingPostState]);
+
+  useEffect(() => {
+    setWeekShoppingSelectedListId(null);
+    setWeekShoppingSelectedLineIds([]);
+    setWeekShoppingReview(null);
+    setWeekShoppingReviewError(null);
+    setIsWeekShoppingListCreateOpen(false);
+    setWeekShoppingNewListName('');
+  }, [currentWeekScopeKey]);
+
+  useEffect(() => {
+    setWeekShoppingSelectedLineIds([]);
+  }, [activeWeekShoppingListId]);
+
+  useEffect(() => {
+    if (weekShoppingSelectedLineIds.length === 0) {
+      return;
+    }
+    setWeekShoppingSelectedLineIds((current) => current.filter((lineId) => currentWeekAddableLineIds.has(lineId)));
+  }, [currentWeekAddableLineIds, weekShoppingSelectedLineIds.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isWeekShoppingReviewOpen) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsWeekShoppingReviewLoading(true);
+    setWeekShoppingReviewError(null);
+    setWeekShoppingReview(null);
+    setWeekShoppingSelectedLineIds([]);
+
+    void getWeekShoppingReview(
+      year,
+      isoWeek,
+      weekShoppingSelectedListId ? { shoppingListId: weekShoppingSelectedListId } : {},
+      { token }
+    )
+      .then((review) => {
+        if (cancelled) {
+          return;
+        }
+        setWeekShoppingReview(review);
+        setWeekShoppingSelectedLineIds([]);
+      })
+      .catch(async (err) => {
+        if (cancelled) {
+          return;
+        }
+        await handleApiError(err);
+        if (cancelled) {
+          return;
+        }
+        setWeekShoppingReview(null);
+        setWeekShoppingReviewError(formatApiError(err));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsWeekShoppingReviewLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handleApiError, isWeekShoppingReviewOpen, isoWeek, token, weekShoppingSelectedListId, year]);
+
+  useEffect(() => {
+    if (!isWeekShoppingReviewOpen) {
+      return;
+    }
+    if (isWeekShoppingReviewLoading) {
+      return;
+    }
+    if (weekShoppingSelectedListId != null) {
+      return;
+    }
+    if (weekShoppingReview?.assessedShoppingListId) {
+      return;
+    }
+    if (!shopping.hasLoaded || shopping.lists.length === 0) {
+      return;
+    }
+    setWeekShoppingSelectedListId(shopping.lists[0].id);
+  }, [
+    isWeekShoppingReviewOpen,
+    isWeekShoppingReviewLoading,
+    shopping.hasLoaded,
+    shopping.lists,
+    weekShoppingReview?.assessedShoppingListId,
+    weekShoppingSelectedListId,
+  ]);
 
   const selectedDayMeals = useMemo(() => {
     if (!selectedDayDetail || !effectiveSelectedDayPlan) {
@@ -845,6 +1204,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     onGoBack: handleMealsBack,
     isOverlayOpen:
       !!selectedDayDetailDate
+      || isWeekShoppingReviewOpen
       || !!recipePlanBridge
       || editor.isOpen
       || editor.isRecipeDetailOpen
@@ -855,6 +1215,8 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       || recipesWorkspace.recipeDetail.isOpen,
     onCloseOverlay: recipePlanBridge
         ? closeRecipePlanBridge
+      : isWeekShoppingReviewOpen
+        ? closeWeekShoppingReview
       : editor.isRecipeDetailOpen
         ? editor.closeRecipeDetail
       : editor.isRecipePickerOpen
@@ -993,6 +1355,20 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                         <Ionicons name="chevron-forward" size={18} color={theme.colors.text} />
                       </Pressable>
                     </View>
+                    {surfaceMode === 'week' && hasReviewableWeekShopping ? (
+                      <View style={styles.weekShoppingActionRow}>
+                        <AppButton
+                          title={strings.weekShoppingReviewAction}
+                          onPress={openWeekShoppingReview}
+                          variant="ghost"
+                        />
+                        {weekShoppingPostState?.scopeKey === currentWeekScopeKey ? (
+                          <Subtle style={styles.weekShoppingPostState}>
+                            {`Added to ${weekShoppingPostState.listName}`}
+                          </Subtle>
+                        ) : null}
+                      </View>
+                    ) : null}
                   </AppCard>
 
                   {showInitialPlanLoading ? <Subtle>{strings.loadingPlan}</Subtle> : null}
@@ -1697,6 +2073,64 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         />
       ) : null}
 
+      {isWeekShoppingReviewOpen ? (
+        <WeekShoppingReviewSheet
+          representedLines={weekShoppingDisplay.representedLines}
+          addableLines={weekShoppingDisplay.addableLines}
+          selectedLineIds={weekShoppingSelectedLineIds}
+          lists={lists.map((list) => ({ id: list.id, name: list.name }))}
+          effectiveListId={activeWeekShoppingListId}
+          isLoadingLists={shopping.loading && lists.length === 0}
+          hasReview={weekShoppingReview !== null}
+          isLoadingReview={isWeekShoppingReviewLoading}
+          reviewError={weekShoppingReviewError}
+          showCreateListForm={isWeekShoppingListCreateOpen || lists.length === 0}
+          newListName={weekShoppingNewListName}
+          isCreatingList={shopping.pendingMutation?.kind === 'create-list'}
+          isSubmitting={isAddingWeekShoppingLines}
+          onSelectListId={(listId) => {
+            setIsWeekShoppingReviewLoading(true);
+            setWeekShoppingReviewError(null);
+            setWeekShoppingReview(null);
+            setWeekShoppingSelectedListId(listId);
+            setWeekShoppingSelectedLineIds([]);
+          }}
+          onToggleLine={toggleWeekShoppingLine}
+          onOpenCreateList={openWeekShoppingListCreate}
+          onCloseCreateList={closeWeekShoppingListCreate}
+          onChangeNewListName={setWeekShoppingNewListName}
+          onCreateList={() => {
+            void createWeekShoppingList();
+          }}
+          onConfirm={() => {
+            void confirmWeekShoppingAdd();
+          }}
+          onClose={closeWeekShoppingReview}
+          strings={{
+            title: strings.weekShoppingReviewTitle,
+            subtitle: `${periodSummary.primary}${periodSummary.secondary ? ` · ${periodSummary.secondary}` : ''}`,
+            selectedListLabel: strings.shoppingListLabel,
+            loadingListsHint: strings.loadingShoppingLists,
+            noShoppingLists: strings.noShoppingLists,
+            newListLabel: strings.shoppingReviewNewListLabel,
+            newListPlaceholder: strings.shoppingReviewNewListPlaceholder,
+            createListAction: strings.shoppingReviewCreateListAction,
+            creatingListAction: strings.shoppingReviewCreatingListAction,
+            alreadyOnListLabel: strings.ingredientsAlreadyOnListLabel,
+            addToListLabel: strings.ingredientsToAddLabel,
+            emptyWeekHint: strings.emptyWeekShoppingReview,
+            everythingAlreadyOnListHint: strings.everythingAlreadyOnWeekListHint,
+            loadingReviewHint: strings.loadingWeekShoppingReview,
+            loadingReviewFailedHint: 'Couldn\'t load week shopping right now.',
+            selectionHint: strings.weekShoppingSelectionHint,
+            nothingToAddHint: strings.weekShoppingNothingToAddHint,
+            confirm: strings.confirmAddIngredientsToShopping,
+            confirming: strings.addingIngredientsToShopping,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
     </AppScreen>
   );
 }
@@ -1810,6 +2244,15 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
+  },
+  weekShoppingActionRow: {
+    gap: theme.spacing.xs,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  weekShoppingPostState: {
+    color: theme.colors.textSecondary,
   },
   periodNavButton: {
     width: 36,

@@ -49,8 +49,8 @@ public final class WeekShoppingReviewEngine {
         }
 
         List<AggregatedIngredientComparison> ingredients = new ArrayList<>();
-        for (List<WeekIngredientOccurrence> group : grouped.values()) {
-            ingredients.add(compare(aggregate(group), shoppingListSnapshot));
+        for (Map.Entry<AggregationKey, List<WeekIngredientOccurrence>> entry : grouped.entrySet()) {
+            ingredients.add(compare(aggregate(entry.getKey(), entry.getValue()), shoppingListSnapshot));
         }
 
         return new WeekShoppingReview(
@@ -70,7 +70,10 @@ public final class WeekShoppingReviewEngine {
         return new AggregationKey(need.normalizedShoppingName(), "quantified", need.unitName());
     }
 
-    private AggregatedIngredientNeed aggregate(List<WeekIngredientOccurrence> group) {
+    private AggregatedIngredientNeed aggregate(
+            AggregationKey aggregationKey,
+            List<WeekIngredientOccurrence> group
+    ) {
         WeekIngredientOccurrence first = group.get(0);
         BigDecimal totalQuantity = first.need().quantity() == null
                 ? null
@@ -94,7 +97,13 @@ public final class WeekShoppingReviewEngine {
             );
         }
         lineKeyParts.sort(String::compareTo);
-        String lineKey = first.need().normalizedShoppingName() + "|" + String.join("|", lineKeyParts);
+        String lineKey = aggregationKey.normalizedShoppingName()
+                + "|"
+                + aggregationKey.mode()
+                + "|"
+                + (aggregationKey.unitName() == null ? "" : aggregationKey.unitName())
+                + "|"
+                + String.join("|", lineKeyParts);
         String lineId = UUID.nameUUIDFromBytes(lineKey.getBytes(StandardCharsets.UTF_8)).toString();
 
         return new AggregatedIngredientNeed(
