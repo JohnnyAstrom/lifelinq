@@ -1800,6 +1800,7 @@ public class MealsApplicationService {
                 need.normalizedShoppingName(),
                 need.totalQuantity(),
                 need.unitName(),
+                need.quantityConfidence().name().toLowerCase(Locale.ROOT),
                 need.contributors().stream()
                         .map(contributor -> new ContributorMealReferenceView(
                                 contributor.dayOfWeek(),

@@ -9,6 +9,7 @@ public record AggregatedIngredientNeedView(
         String normalizedShoppingName,
         BigDecimal totalQuantity,
         String unitName,
+        String quantityConfidence,
         List<ContributorMealReferenceView> contributors
 ) {
 }

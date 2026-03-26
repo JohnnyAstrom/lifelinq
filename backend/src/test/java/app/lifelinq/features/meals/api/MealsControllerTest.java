@@ -475,6 +475,7 @@ class MealsControllerTest {
                                 "egg",
                                 new java.math.BigDecimal("8"),
                                 "PCS",
+                                "exact",
                                 List.of(new ContributorMealReferenceView(2, "DINNER", "Pancakes"))
                         ),
                         "add_to_list",
@@ -491,6 +492,7 @@ class MealsControllerTest {
                 .andExpect(jsonPath("$.assessedShoppingListId").value(listId.toString()))
                 .andExpect(jsonPath("$.assessedShoppingListName").value("Weekly groceries"))
                 .andExpect(jsonPath("$.ingredients[0].comparisonState").value("add_to_list"))
+                .andExpect(jsonPath("$.ingredients[0].need.quantityConfidence").value("exact"))
                 .andExpect(jsonPath("$.ingredients[0].need.normalizedShoppingName").value("egg"));
 
         verify(mealsApplicationService).getWeekShoppingReview(groupId, userId, 2026, 13, listId);

@@ -2297,9 +2297,261 @@ class MealsApplicationServiceTest {
 
         assertThat(review.ingredients())
                 .filteredOn(ingredient -> ingredient.need().normalizedShoppingName().equals("flour"))
-                .hasSize(2)
-                .extracting(ingredient -> ingredient.need().unitName())
-                .containsExactlyInAnyOrder("G", "KG");
+                .singleElement()
+                .satisfies(ingredient -> {
+                    assertThat(ingredient.need().quantityConfidence()).isEqualTo("uncertain");
+                    assertThat(ingredient.need().totalQuantity()).isNull();
+                    assertThat(ingredient.need().unitName()).isNull();
+                    assertThat(ingredient.need().contributors()).hasSize(2);
+                });
+    }
+
+    @Test
+    void program4IdentityFirstMergesExactSameUnitBananaQuantities() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID smoothieRecipeId = UUID.randomUUID();
+        UUID pancakesRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                smoothieRecipeId,
+                groupId,
+                "Smoothie",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Banana", null, new BigDecimal("1"), IngredientUnit.PCS, 1
+                ))
+        ));
+        recipes.save(new Recipe(
+                pancakesRecipeId,
+                groupId,
+                "Pancakes",
+                Instant.parse("2026-03-02T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Banana", null, new BigDecimal("2"), IngredientUnit.PCS, 1
+                ))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, smoothieRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 3, MealType.DINNER, pancakesRecipeId, null, null);
+
+        var review = service.getWeekShoppingReview(groupId, userId, 2026, 13, null);
+
+        assertThat(review.ingredients())
+                .filteredOn(ingredient -> ingredient.need().normalizedShoppingName().equals("banana"))
+                .singleElement()
+                .satisfies(ingredient -> {
+                    assertThat(ingredient.need().quantityConfidence()).isEqualTo("exact");
+                    assertThat(ingredient.need().totalQuantity()).isEqualByComparingTo("3");
+                    assertThat(ingredient.need().unitName()).isEqualTo("PCS");
+                    assertThat(ingredient.need().contributors()).hasSize(2);
+                });
+    }
+
+    @Test
+    void program4IdentityFirstMergesBananaWithMixedQuantityConfidence() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tacosRecipeId = UUID.randomUUID();
+        UUID bananaRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                tacosRecipeId,
+                groupId,
+                "Tacos",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Banana", "banana", null, null, 1
+                ))
+        ));
+        recipes.save(new Recipe(
+                bananaRecipeId,
+                groupId,
+                "Banana bread",
+                Instant.parse("2026-03-02T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Banana", null, new BigDecimal("2"), IngredientUnit.PCS, 1
+                ))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, tacosRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 3, MealType.DINNER, bananaRecipeId, null, null);
+
+        var review = service.getWeekShoppingReview(groupId, userId, 2026, 13, null);
+
+        assertThat(review.ingredients())
+                .filteredOn(ingredient -> ingredient.need().normalizedShoppingName().equals("banana"))
+                .singleElement()
+                .satisfies(ingredient -> {
+                    assertThat(ingredient.need().quantityConfidence()).isEqualTo("uncertain");
+                    assertThat(ingredient.need().totalQuantity()).isNull();
+                    assertThat(ingredient.need().unitName()).isNull();
+                    assertThat(ingredient.need().contributors()).hasSize(2);
+                });
+    }
+
+    @Test
+    void program4IdentityFirstMergesSaltAndMeasuredSaltWithoutFalsePrecision() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID tacosRecipeId = UUID.randomUUID();
+        UUID soupRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                tacosRecipeId,
+                groupId,
+                "Tacos",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Salt", "salt", null, null, 1
+                ))
+        ));
+        recipes.save(new Recipe(
+                soupRecipeId,
+                groupId,
+                "Soup",
+                Instant.parse("2026-03-02T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Salt", null, new BigDecimal("15"), IngredientUnit.ML, 1
+                ))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, tacosRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 3, MealType.DINNER, soupRecipeId, null, null);
+
+        var review = service.getWeekShoppingReview(groupId, userId, 2026, 13, null);
+
+        assertThat(review.ingredients())
+                .filteredOn(ingredient -> ingredient.need().normalizedShoppingName().equals("salt"))
+                .singleElement()
+                .satisfies(ingredient -> {
+                    assertThat(ingredient.need().quantityConfidence()).isEqualTo("uncertain");
+                    assertThat(ingredient.need().totalQuantity()).isNull();
+                    assertThat(ingredient.need().unitName()).isNull();
+                    assertThat(ingredient.need().contributors()).hasSize(2);
+                });
+    }
+
+    @Test
+    void program4IdentityFirstMergesOliveOilWithoutFalsePrecision() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID saladRecipeId = UUID.randomUUID();
+        UUID pastaRecipeId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                membership,
+                mock(MealsShoppingPort.class),
+                clock
+        );
+
+        recipes.save(new Recipe(
+                saladRecipeId,
+                groupId,
+                "Salad",
+                Instant.parse("2026-03-01T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Olive oil", "olive oil", null, null, 1
+                ))
+        ));
+        recipes.save(new Recipe(
+                pastaRecipeId,
+                groupId,
+                "Pasta",
+                Instant.parse("2026-03-02T09:00:00Z"),
+                List.of(new app.lifelinq.features.meals.domain.Ingredient(
+                        UUID.randomUUID(), "Olive oil", null, new BigDecimal("30"), IngredientUnit.ML, 1
+                ))
+        ));
+
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 2, MealType.DINNER, saladRecipeId, null, null);
+        service.addOrReplaceMeal(groupId, userId, 2026, 13, 3, MealType.DINNER, pastaRecipeId, null, null);
+
+        var review = service.getWeekShoppingReview(groupId, userId, 2026, 13, null);
+
+        assertThat(review.ingredients())
+                .filteredOn(ingredient -> ingredient.need().normalizedShoppingName().equals("olive oil"))
+                .singleElement()
+                .satisfies(ingredient -> {
+                    assertThat(ingredient.need().quantityConfidence()).isEqualTo("uncertain");
+                    assertThat(ingredient.need().totalQuantity()).isNull();
+                    assertThat(ingredient.need().unitName()).isNull();
+                    assertThat(ingredient.need().contributors()).hasSize(2);
+                });
+    }
+
+    @Test
+    void mealPlanShoppingMergeDropsFalsePrecisionForUncertainSaltIdentity() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        Clock clock = Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC);
+        ShoppingApplicationService shoppingService = new ShoppingApplicationService(
+                new InMemoryShoppingListRepository(),
+                new InMemoryShoppingCategoryPreferenceRepository(),
+                membership,
+                clock
+        );
+
+        UUID listId = shoppingService.createShoppingList(groupId, userId, "Weekly groceries", ShoppingListType.GROCERY).listId();
+        shoppingService.addShoppingItem(groupId, userId, listId, "salt", new BigDecimal("15"), ShoppingUnit.ML);
+        shoppingService.addShoppingItem(
+                groupId,
+                userId,
+                listId,
+                "salt",
+                null,
+                null,
+                app.lifelinq.features.shopping.domain.ShoppingItemSourceKind.MEAL_PLAN,
+                "Week 13 meals"
+        );
+
+        var shoppingLists = shoppingService.listShoppingLists(groupId, userId);
+        assertThat(shoppingLists).singleElement().satisfies(list -> {
+            assertThat(list.items()).singleElement().satisfies(item -> {
+                assertThat(item.name()).isEqualTo("salt");
+                assertThat(item.quantity()).isNull();
+                assertThat(item.unit()).isNull();
+            });
+        });
     }
 
     @Test

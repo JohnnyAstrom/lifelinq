@@ -175,8 +175,8 @@ class ShoppingItemTest {
 
         item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.PCS);
 
-        assertEquals(new BigDecimal("3"), item.getQuantity());
-        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getQuantity());
+        assertEquals(null, item.getUnit());
         assertEquals(null, item.getSourceKind());
         assertEquals(null, item.getSourceLabel());
     }
@@ -195,14 +195,14 @@ class ShoppingItemTest {
 
         item.absorbMealPlanIntake(null, null);
 
-        assertEquals(new BigDecimal("3"), item.getQuantity());
-        assertEquals(ShoppingUnit.PCS, item.getUnit());
+        assertEquals(null, item.getQuantity());
+        assertEquals(null, item.getUnit());
         assertEquals(null, item.getSourceKind());
         assertEquals(null, item.getSourceLabel());
     }
 
     @Test
-    void rejectsIncompatibleMealPlanAbsorb() {
+    void dropsFalsePrecisionForIncompatibleMealPlanAbsorb() {
         ShoppingItem item = new ShoppingItem(
                 UUID.randomUUID(),
                 "milk",
@@ -211,8 +211,9 @@ class ShoppingItemTest {
                 ShoppingUnit.PCS
         );
 
-        assertThrows(IllegalArgumentException.class, () ->
-                item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.KG)
-        );
+        item.absorbMealPlanIntake(new BigDecimal("3"), ShoppingUnit.KG);
+
+        assertEquals(null, item.getQuantity());
+        assertEquals(null, item.getUnit());
     }
 }

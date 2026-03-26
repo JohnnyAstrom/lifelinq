@@ -9,6 +9,7 @@ public record AggregatedIngredientNeed(
         String normalizedShoppingName,
         BigDecimal totalQuantity,
         String unitName,
+        AggregatedIngredientQuantityConfidence quantityConfidence,
         List<WeekShoppingContributorMeal> contributors
 ) {
     public AggregatedIngredientNeed {
@@ -21,8 +22,15 @@ public record AggregatedIngredientNeed(
         if (normalizedShoppingName == null || normalizedShoppingName.isBlank()) {
             throw new IllegalArgumentException("normalizedShoppingName must not be blank");
         }
-        if ((totalQuantity == null) != (unitName == null)) {
-            throw new IllegalArgumentException("totalQuantity and unitName must be set together");
+        if (quantityConfidence == null) {
+            throw new IllegalArgumentException("quantityConfidence must not be null");
+        }
+        if (quantityConfidence == AggregatedIngredientQuantityConfidence.EXACT) {
+            if ((totalQuantity == null) != (unitName == null) || totalQuantity == null) {
+                throw new IllegalArgumentException("exact aggregated quantities must include totalQuantity and unitName");
+            }
+        } else if (totalQuantity != null || unitName != null) {
+            throw new IllegalArgumentException("non-exact aggregated quantities must not preserve totalQuantity or unitName");
         }
         if (contributors == null) {
             throw new IllegalArgumentException("contributors must not be null");

@@ -123,44 +123,26 @@ public final class ShoppingItem {
     }
 
     public boolean canAbsorbMealPlanIntake(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
-        if (status != ShoppingItemStatus.TO_BUY) {
-            return false;
-        }
-        if (quantity == null && unit == null && incomingQuantity == null && incomingUnit == null) {
-            return true;
-        }
-        if (quantity == null && unit == null) {
-            return incomingQuantity != null && incomingUnit != null;
-        }
-        if (quantity == null || unit == null) {
-            return false;
-        }
-        if (incomingQuantity == null && incomingUnit == null) {
-            return true;
-        }
-        if (incomingQuantity == null || incomingUnit == null) {
-            return false;
-        }
-        return unit == incomingUnit;
+        return status == ShoppingItemStatus.TO_BUY;
     }
 
     public void absorbMealPlanIntake(BigDecimal incomingQuantity, ShoppingUnit incomingUnit) {
         if (!canAbsorbMealPlanIntake(incomingQuantity, incomingUnit)) {
             throw new IllegalArgumentException("incoming meal-plan item is not compatible with existing item");
         }
-        if (quantity == null && unit == null) {
-            quantity = incomingQuantity;
-            unit = incomingUnit;
+        boolean existingHasExactQuantity = quantity != null && unit != null;
+        boolean incomingHasExactQuantity = incomingQuantity != null && incomingUnit != null;
+        if (!existingHasExactQuantity && !incomingHasExactQuantity) {
             clearSource();
             return;
         }
-        if (incomingQuantity == null && incomingUnit == null) {
-            clearSource();
-            return;
-        }
-        if (quantity != null && incomingQuantity != null) {
+        if (existingHasExactQuantity && incomingHasExactQuantity && unit == incomingUnit) {
             quantity = quantity.add(incomingQuantity);
+            clearSource();
+            return;
         }
+        quantity = null;
+        unit = null;
         clearSource();
     }
 

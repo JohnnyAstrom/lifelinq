@@ -351,6 +351,7 @@ export type AggregatedIngredientNeedResponse = {
   normalizedShoppingName: string;
   totalQuantity: number | null;
   unitName: string | null;
+  quantityConfidence: 'exact' | 'uncertain' | 'none';
   contributors: ContributorMealReferenceResponse[];
 };
 

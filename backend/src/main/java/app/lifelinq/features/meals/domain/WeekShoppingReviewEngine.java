@@ -64,10 +64,7 @@ public final class WeekShoppingReviewEngine {
     }
 
     private AggregationKey toAggregationKey(MealIngredientNeed need) {
-        if (need.quantity() == null || need.unitName() == null) {
-            return new AggregationKey(need.normalizedShoppingName(), "unquantified", null);
-        }
-        return new AggregationKey(need.normalizedShoppingName(), "quantified", need.unitName());
+        return new AggregationKey(need.normalizedShoppingName());
     }
 
     private AggregatedIngredientNeed aggregate(
@@ -75,11 +72,29 @@ public final class WeekShoppingReviewEngine {
             List<WeekIngredientOccurrence> group
     ) {
         WeekIngredientOccurrence first = group.get(0);
-        BigDecimal totalQuantity = first.need().quantity() == null
-                ? null
-                : group.stream()
+        List<WeekIngredientOccurrence> quantifiedOccurrences = group.stream()
+                .filter(occurrence -> occurrence.need().quantity() != null && occurrence.need().unitName() != null)
+                .toList();
+        AggregatedIngredientQuantityConfidence quantityConfidence;
+        BigDecimal totalQuantity = null;
+        String unitName = null;
+        if (quantifiedOccurrences.isEmpty()) {
+            quantityConfidence = AggregatedIngredientQuantityConfidence.NONE;
+        } else {
+            String firstUnit = quantifiedOccurrences.get(0).need().unitName();
+            boolean allQuantified = quantifiedOccurrences.size() == group.size();
+            boolean sameUnit = quantifiedOccurrences.stream()
+                    .allMatch(occurrence -> firstUnit.equals(occurrence.need().unitName()));
+            if (allQuantified && sameUnit) {
+                quantityConfidence = AggregatedIngredientQuantityConfidence.EXACT;
+                totalQuantity = quantifiedOccurrences.stream()
                         .map(occurrence -> occurrence.need().quantity())
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
+                unitName = firstUnit;
+            } else {
+                quantityConfidence = AggregatedIngredientQuantityConfidence.UNCERTAIN;
+            }
+        }
 
         LinkedHashSet<WeekShoppingContributorMeal> contributors = new LinkedHashSet<>();
         List<String> lineKeyParts = new ArrayList<>();
@@ -97,13 +112,7 @@ public final class WeekShoppingReviewEngine {
             );
         }
         lineKeyParts.sort(String::compareTo);
-        String lineKey = aggregationKey.normalizedShoppingName()
-                + "|"
-                + aggregationKey.mode()
-                + "|"
-                + (aggregationKey.unitName() == null ? "" : aggregationKey.unitName())
-                + "|"
-                + String.join("|", lineKeyParts);
+        String lineKey = aggregationKey.normalizedShoppingName() + "|" + String.join("|", lineKeyParts);
         String lineId = UUID.nameUUIDFromBytes(lineKey.getBytes(StandardCharsets.UTF_8)).toString();
 
         return new AggregatedIngredientNeed(
@@ -111,7 +120,8 @@ public final class WeekShoppingReviewEngine {
                 first.need().ingredientName(),
                 first.need().normalizedShoppingName(),
                 totalQuantity,
-                first.need().unitName(),
+                unitName,
+                quantityConfidence,
                 List.copyOf(contributors)
         );
     }
@@ -136,12 +146,12 @@ public final class WeekShoppingReviewEngine {
             return new AggregatedIngredientComparison(
                     need,
                     AggregatedIngredientComparisonState.ADD_TO_LIST,
-                    BigDecimal.ZERO,
-                    need.totalQuantity()
+                    need.quantityConfidence() == AggregatedIngredientQuantityConfidence.EXACT ? BigDecimal.ZERO : null,
+                    need.quantityConfidence() == AggregatedIngredientQuantityConfidence.EXACT ? need.totalQuantity() : null
             );
         }
 
-        if (need.totalQuantity() == null || need.unitName() == null) {
+        if (need.quantityConfidence() != AggregatedIngredientQuantityConfidence.EXACT) {
             return new AggregatedIngredientComparison(
                     need,
                     AggregatedIngredientComparisonState.ALREADY_ON_LIST,
@@ -153,10 +163,20 @@ public final class WeekShoppingReviewEngine {
         BigDecimal comparableQuantity = BigDecimal.ZERO;
         for (MealsShoppingItemSnapshot match : matches) {
             if (match.quantity() == null || match.unitName() == null) {
-                continue;
+                return new AggregatedIngredientComparison(
+                        need,
+                        AggregatedIngredientComparisonState.ALREADY_ON_LIST,
+                        null,
+                        null
+                );
             }
             if (!need.unitName().equals(match.unitName())) {
-                continue;
+                return new AggregatedIngredientComparison(
+                        need,
+                        AggregatedIngredientComparisonState.ALREADY_ON_LIST,
+                        null,
+                        null
+                );
             }
             comparableQuantity = comparableQuantity.add(match.quantity());
         }
@@ -201,9 +221,7 @@ public final class WeekShoppingReviewEngine {
     }
 
     private record AggregationKey(
-            String normalizedShoppingName,
-            String mode,
-            String unitName
+            String normalizedShoppingName
     ) {
     }
 }

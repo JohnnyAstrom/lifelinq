@@ -19,7 +19,7 @@ public record AggregatedIngredientComparison(
             throw new IllegalArgumentException("remainingQuantity must be null for already-on-list lines");
         }
         if (state == AggregatedIngredientComparisonState.ADD_TO_LIST
-                && need.totalQuantity() != null
+                && need.quantityConfidence() == AggregatedIngredientQuantityConfidence.EXACT
                 && remainingQuantity == null) {
             throw new IllegalArgumentException("remainingQuantity must not be null for quantified add-to-list lines");
         }

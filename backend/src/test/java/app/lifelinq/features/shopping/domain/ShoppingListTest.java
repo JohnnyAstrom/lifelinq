@@ -148,10 +148,10 @@ class ShoppingListTest {
         );
 
         assertEquals(existingId, result.itemId());
-        assertEquals(ShoppingAddItemOutcome.REUSED_EXISTING, result.outcome());
+        assertEquals(ShoppingAddItemOutcome.UPDATED_EXISTING, result.outcome());
         assertEquals(1, list.getItems().size());
-        assertEquals(new BigDecimal("3"), list.getItems().get(0).getQuantity());
-        assertEquals(ShoppingUnit.PCS, list.getItems().get(0).getUnit());
+        assertNull(list.getItems().get(0).getQuantity());
+        assertNull(list.getItems().get(0).getUnit());
         assertNull(list.getItems().get(0).getSourceKind());
         assertNull(list.getItems().get(0).getSourceLabel());
     }
@@ -196,8 +196,39 @@ class ShoppingListTest {
         assertEquals(existingId, result.itemId());
         assertEquals(1, list.getItems().size());
         assertEquals(ShoppingAddItemOutcome.UPDATED_EXISTING, result.outcome());
-        assertEquals(new BigDecimal("2"), list.getItems().get(0).getQuantity());
-        assertEquals(ShoppingUnit.PCS, list.getItems().get(0).getUnit());
+        assertNull(list.getItems().get(0).getQuantity());
+        assertNull(list.getItems().get(0).getUnit());
+    }
+
+    @Test
+    void mealPlanIntakeDropsFalsePrecisionWhenUnitsDiffer() {
+        ShoppingList list = new ShoppingList(UUID.randomUUID(), UUID.randomUUID(), "List", Instant.now());
+        UUID existingId = UUID.randomUUID();
+        list.addItem(
+                existingId,
+                "olive oil",
+                new BigDecimal("30"),
+                ShoppingUnit.ML,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Pasta",
+                Instant.now()
+        );
+
+        ShoppingAddItemResult result = list.addItem(
+                UUID.randomUUID(),
+                "olive oil",
+                new BigDecimal("1"),
+                ShoppingUnit.L,
+                ShoppingItemSourceKind.MEAL_PLAN,
+                "Salad",
+                Instant.now()
+        );
+
+        assertEquals(existingId, result.itemId());
+        assertEquals(ShoppingAddItemOutcome.UPDATED_EXISTING, result.outcome());
+        assertEquals(1, list.getItems().size());
+        assertNull(list.getItems().get(0).getQuantity());
+        assertNull(list.getItems().get(0).getUnit());
     }
 
     @Test

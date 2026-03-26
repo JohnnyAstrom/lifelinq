@@ -129,9 +129,14 @@ public final class ShoppingList {
             if (mergeCandidate != null) {
                 boolean candidateHadNoQuantityDetails = mergeCandidate.hasNoQuantityDetails();
                 mergeCandidate.absorbMealPlanIntake(quantity, unit);
+                boolean candidateHasNoQuantityDetails = mergeCandidate.hasNoQuantityDetails();
                 return new ShoppingAddItemResult(
                         mergeCandidate.getId(),
-                        quantity == null
+                        candidateHasNoQuantityDetails
+                                ? (candidateHadNoQuantityDetails && quantity == null
+                                ? ShoppingAddItemOutcome.REUSED_EXISTING
+                                : ShoppingAddItemOutcome.UPDATED_EXISTING)
+                        : quantity == null
                                 ? ShoppingAddItemOutcome.REUSED_EXISTING
                                 : candidateHadNoQuantityDetails
                                 ? ShoppingAddItemOutcome.UPDATED_EXISTING
