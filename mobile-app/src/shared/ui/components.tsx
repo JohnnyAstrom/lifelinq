@@ -17,6 +17,7 @@ import {
   type RefreshControlProps,
   type StyleProp,
   type TextStyle,
+  type TextInputSelectionChangeEventData,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -369,6 +370,7 @@ type InputProps = {
   showSoftInputOnFocus?: boolean;
   onLayout?: (event: LayoutChangeEvent) => void;
   selection?: { start: number; end?: number };
+  onSelectionChange?: (event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => void;
   onContentSizeChange?: (event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => void;
   scrollEnabled?: boolean;
 };
@@ -390,6 +392,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
   showSoftInputOnFocus,
   onLayout,
   selection,
+  onSelectionChange,
   onContentSizeChange,
   scrollEnabled,
 }, ref) {
@@ -411,6 +414,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
       showSoftInputOnFocus={showSoftInputOnFocus}
       onLayout={onLayout}
       selection={selection}
+      onSelectionChange={onSelectionChange}
       onContentSizeChange={onContentSizeChange}
       scrollEnabled={scrollEnabled}
       style={[styles.input, style]}

@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import {
+  InteractionManager,
+  Keyboard,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  type TextInputSelectionChangeEventData,
   type KeyboardTypeOptions,
   type StyleProp,
   type TextStyle,
@@ -195,6 +200,8 @@ type EditableFieldProps = {
   keyboardType?: KeyboardTypeOptions;
   inputStyle?: StyleProp<TextStyle>;
   cardStyle?: StyleProp<ViewStyle>;
+  containerRef?: RefObject<View | null>;
+  onFocus?: () => void;
 };
 
 function EditableField({
@@ -207,9 +214,11 @@ function EditableField({
   keyboardType,
   inputStyle,
   cardStyle,
+  containerRef,
+  onFocus,
 }: EditableFieldProps) {
   return (
-    <View style={styles.subSection}>
+    <View ref={containerRef} style={styles.subSection} collapsable={false}>
       <View style={styles.sectionCopy}>
         <Text style={styles.sectionTitle}>{label}</Text>
         {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
@@ -222,6 +231,7 @@ function EditableField({
           multiline={multiline}
           keyboardType={keyboardType}
           editable
+          onFocus={onFocus}
           style={[styles.embeddedInput, inputStyle]}
         />
       </View>
@@ -345,7 +355,16 @@ export function MealRecipeDetailSheet({
   strings,
 }: Props) {
   const scrollRef = useRef<ScrollView | null>(null);
-  const instructionsInputRef = useRef<any>(null);
+  const instructionsInputRef = useRef<TextInput | null>(null);
+  const currentScrollOffsetRef = useRef(0);
+  const keyboardVisibleRef = useRef(false);
+  const focusedFieldRef = useRef<RefObject<View | null> | null>(null);
+  const lastInstructionSelectionRef = useRef<{ start: number; end: number } | null>(null);
+  const instructionsSectionRef = useRef<View | null>(null);
+  const shortNoteSectionRef = useRef<View | null>(null);
+  const servingsFieldRef = useRef<View | null>(null);
+  const sourceFieldRef = useRef<View | null>(null);
+  const sourceUrlFieldRef = useRef<View | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [activeRowFocusField, setActiveRowFocusField] = useState<'name' | 'quantity'>('name');
   const [reviewedImportRowIds, setReviewedImportRowIds] = useState<string[]>([]);
@@ -559,6 +578,91 @@ export function MealRecipeDetailSheet({
     setSelectedServings(activeServings + 1);
   }
 
+  function scrollFieldIntoView(fieldRef: RefObject<View | null>, options?: { settleForKeyboard?: boolean }) {
+    const fieldNode = fieldRef.current;
+    const scrollNode = scrollRef.current;
+    if (!fieldNode || !scrollNode) {
+      return;
+    }
+
+    const performScroll = () => {
+      const scrollMeasureTarget = scrollNode as unknown as View;
+      scrollMeasureTarget.measureInWindow?.((_: number, scrollTop: number, __: number, scrollHeight: number) => {
+        fieldNode.measureInWindow?.((__: number, fieldTop: number, ___: number, fieldHeight: number) => {
+          const margin = theme.spacing.lg;
+          const visibleTop = scrollTop + margin;
+          const visibleBottom = scrollTop + scrollHeight - margin;
+          const fieldBottom = fieldTop + fieldHeight;
+
+          let delta = 0;
+          if (fieldBottom > visibleBottom) {
+            delta = fieldBottom - visibleBottom;
+          } else if (fieldTop < visibleTop) {
+            delta = fieldTop - visibleTop;
+          }
+
+          if (delta === 0) {
+            return;
+          }
+
+          scrollRef.current?.scrollTo({
+            y: Math.max(0, currentScrollOffsetRef.current + delta),
+            animated: true,
+          });
+        });
+      });
+    };
+
+    const runSettledScroll = () => {
+      InteractionManager.runAfterInteractions(performScroll);
+      setTimeout(performScroll, 120);
+      if (options?.settleForKeyboard) {
+        setTimeout(performScroll, 240);
+      }
+    };
+
+    runSettledScroll();
+  }
+
+  function handleFieldFocus(fieldRef: RefObject<View | null>) {
+    focusedFieldRef.current = fieldRef;
+    if (keyboardVisibleRef.current) {
+      scrollFieldIntoView(fieldRef);
+    }
+  }
+
+  function handleInstructionsSelectionChange(
+    event: NativeSyntheticEvent<TextInputSelectionChangeEventData>
+  ) {
+    const { start, end } = event.nativeEvent.selection;
+    const previous = lastInstructionSelectionRef.current;
+    if (previous && previous.start === start && previous.end === end) {
+      return;
+    }
+    lastInstructionSelectionRef.current = { start, end };
+    focusedFieldRef.current = instructionsSectionRef;
+    if (keyboardVisibleRef.current) {
+      scrollFieldIntoView(instructionsSectionRef);
+    }
+  }
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardVisibleRef.current = true;
+      if (focusedFieldRef.current) {
+        scrollFieldIntoView(focusedFieldRef.current, { settleForKeyboard: true });
+      }
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisibleRef.current = false;
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
@@ -628,6 +732,10 @@ export function MealRecipeDetailSheet({
             contentContainerStyle={[styles.scrollContent, isContentFirstEditor ? styles.scrollContentCompact : null]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={(event) => {
+              currentScrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+            }}
           >
             {showsSeparateTitleSection ? (
               <View style={styles.section}>
@@ -768,7 +876,7 @@ export function MealRecipeDetailSheet({
                   )}
                 </View>
                 ) : (
-                  <View style={styles.subSection}>
+                  <View ref={instructionsSectionRef} style={styles.subSection} collapsable={false}>
                     <View style={styles.sectionCopy}>
                       <Text style={styles.sectionTitle}>{strings.recipeInstructionsLabel}</Text>
                       {isImportDraft ? (
@@ -802,6 +910,10 @@ export function MealRecipeDetailSheet({
                         placeholder={strings.recipeInstructionsPlaceholder}
                         value={recipeInstructions}
                         onChangeText={onChangeRecipeInstructions}
+                        onFocus={() => {
+                          handleFieldFocus(instructionsSectionRef);
+                        }}
+                        onSelectionChange={handleInstructionsSelectionChange}
                         multiline
                         editable
                         style={[styles.embeddedInput, styles.instructionsInput]}
@@ -846,6 +958,10 @@ export function MealRecipeDetailSheet({
                   placeholder={strings.recipeShortNotePlaceholder}
                   value={recipeShortNote}
                   onChangeText={onChangeRecipeShortNote}
+                  containerRef={shortNoteSectionRef}
+                  onFocus={() => {
+                    handleFieldFocus(shortNoteSectionRef);
+                  }}
                   multiline
                   cardStyle={[
                     styles.noteCard,
@@ -903,7 +1019,7 @@ export function MealRecipeDetailSheet({
                 ) : (
                   <>
                     {onChangeRecipeServings ? (
-                      <View style={styles.metadataField}>
+                      <View ref={servingsFieldRef} style={styles.metadataField} collapsable={false}>
                         <Text style={styles.fieldLabel}>{strings.recipeServingsLabel}</Text>
                         <View style={[
                           styles.metadataInputWrap,
@@ -914,13 +1030,16 @@ export function MealRecipeDetailSheet({
                             value={recipeServings}
                             onChangeText={onChangeRecipeServings}
                             editable
+                            onFocus={() => {
+                              handleFieldFocus(servingsFieldRef);
+                            }}
                             style={styles.metadataInput}
                           />
                         </View>
                       </View>
                     ) : null}
                     <View style={styles.metadataFields}>
-                      <View style={styles.metadataField}>
+                      <View ref={sourceFieldRef} style={styles.metadataField} collapsable={false}>
                         {!useCompactMetadataFields ? (
                           <Text style={styles.fieldLabel}>{strings.recipeSourceLabel}</Text>
                         ) : null}
@@ -933,12 +1052,15 @@ export function MealRecipeDetailSheet({
                             value={recipeSource}
                             onChangeText={onChangeRecipeSource}
                             editable
+                            onFocus={() => {
+                              handleFieldFocus(sourceFieldRef);
+                            }}
                             style={styles.metadataInput}
                           />
                         </View>
                       </View>
                       {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel ? (
-                        <View style={styles.metadataField}>
+                        <View ref={sourceUrlFieldRef} style={styles.metadataField} collapsable={false}>
                           {!useCompactMetadataFields ? (
                             <Text style={styles.fieldLabel}>{strings.recipeSourceUrlLabel}</Text>
                           ) : null}
@@ -952,6 +1074,9 @@ export function MealRecipeDetailSheet({
                               onChangeText={onChangeRecipeSourceUrl}
                               keyboardType="url"
                               editable
+                              onFocus={() => {
+                                handleFieldFocus(sourceUrlFieldRef);
+                              }}
                               style={styles.metadataInput}
                             />
                           </View>
