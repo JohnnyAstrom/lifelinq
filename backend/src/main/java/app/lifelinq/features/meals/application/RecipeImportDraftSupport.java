@@ -70,6 +70,27 @@ final class RecipeImportDraftSupport {
             "marinade",
             "marinad"
     );
+    private static final Set<String> INGREDIENT_SECTION_HEADINGS = Set.of(
+            "ingredients",
+            "ingredienser"
+    );
+    private static final Set<String> INSTRUCTION_SECTION_HEADINGS = Set.of(
+            "instructions",
+            "instruction",
+            "directions",
+            "method",
+            "preparation",
+            "prep",
+            "gör så här",
+            "gor sa har",
+            "gör såhär",
+            "gor sahar",
+            "tillagning"
+    );
+    private static final Pattern SERVINGS_LINE_PATTERN = Pattern.compile(
+            "^(?:(?:servings?|yield|portioner?|serverar))\\s*[:\\-]?\\s*(?<value>.+)$",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
 
     private RecipeImportDraftSupport() {
     }
@@ -98,6 +119,40 @@ final class RecipeImportDraftSupport {
                 normalizedServings,
                 normalizedShortNote,
                 instructions,
+                ingredients,
+                RecipeDraftState.DRAFT_NEEDS_REVIEW
+        );
+    }
+
+    static RecipeDraftSeed importFromText(String text) {
+        List<List<String>> blocks = normalizePastedTextBlocks(text);
+        if (blocks.isEmpty() || blocks.get(0).isEmpty()) {
+            throw new IllegalArgumentException("text must not be blank");
+        }
+
+        List<String> titleBlock = blocks.get(0);
+        String name = normalizeRequiredName(titleBlock.get(0));
+        List<List<String>> remainingBlocks = new ArrayList<>();
+        if (titleBlock.size() > 1) {
+            remainingBlocks.add(List.copyOf(titleBlock.subList(1, titleBlock.size())));
+        }
+        if (blocks.size() > 1) {
+            remainingBlocks.addAll(blocks.subList(1, blocks.size()));
+        }
+
+        PastedTextSections sections = extractPastedTextSections(remainingBlocks);
+        List<Ingredient> ingredients = normalizeIngredientsAllowEmpty(sections.ingredientLines());
+        if (!isReviewablePastedText(name, sections, ingredients)) {
+            throw new RecipeImportFailedException("Paste a little more of the recipe so you have something useful to review");
+        }
+        RecipeProvenance provenance = new RecipeProvenance(RecipeOriginKind.PASTED_TEXT, null);
+        return new RecipeDraftSeed(
+                name,
+                new RecipeSource(null, null),
+                provenance,
+                sections.servings(),
+                null,
+                new RecipeInstructions(sections.instructions()),
                 ingredients,
                 RecipeDraftState.DRAFT_NEEDS_REVIEW
         );
@@ -150,6 +205,24 @@ final class RecipeImportDraftSupport {
             throw new RecipeImportFailedException("Imported recipe is missing ingredients");
         }
         return ingredients;
+    }
+
+    private static List<Ingredient> normalizeIngredientsAllowEmpty(List<String> ingredientLines) {
+        if (ingredientLines == null || ingredientLines.isEmpty()) {
+            return List.of();
+        }
+
+        List<Ingredient> ingredients = new ArrayList<>();
+        int nextPosition = 1;
+        for (String line : ingredientLines) {
+            String normalizedLine = normalizeOptionalText(line);
+            if (normalizedLine == null || isIgnorableIngredientLine(normalizedLine)) {
+                continue;
+            }
+            ingredients.add(toIngredient(normalizedLine, nextPosition));
+            nextPosition += 1;
+        }
+        return List.copyOf(ingredients);
     }
 
     private static Ingredient toIngredient(String line, int position) {
@@ -216,6 +289,223 @@ final class RecipeImportDraftSupport {
         }
 
         return new Ingredient(UUID.randomUUID(), normalizedLine, normalizedLine, null, null, position);
+    }
+
+    private static PastedTextSections extractPastedTextSections(List<List<String>> blocks) {
+        List<String> ingredientLines = new ArrayList<>();
+        List<String> instructionLines = new ArrayList<>();
+        List<List<String>> unsectionedBlocks = new ArrayList<>();
+        String servings = null;
+        Section currentSection = Section.NONE;
+
+        for (List<String> block : blocks) {
+            List<String> currentUnsectionedBlock = new ArrayList<>();
+            for (String line : block) {
+                String normalizedLine = normalizeOptionalText(line);
+                if (normalizedLine == null) {
+                    continue;
+                }
+
+                String extractedServings = extractServings(normalizedLine);
+                if (servings == null && extractedServings != null) {
+                    servings = extractedServings;
+                    continue;
+                }
+                if (isIngredientSectionHeading(normalizedLine)) {
+                    currentSection = Section.INGREDIENTS;
+                    continue;
+                }
+                if (isInstructionSectionHeading(normalizedLine)) {
+                    currentSection = Section.INSTRUCTIONS;
+                    continue;
+                }
+
+                switch (currentSection) {
+                    case INGREDIENTS -> ingredientLines.add(normalizedLine);
+                    case INSTRUCTIONS -> instructionLines.add(normalizedLine);
+                    case NONE -> currentUnsectionedBlock.add(normalizedLine);
+                }
+            }
+            if (!currentUnsectionedBlock.isEmpty()) {
+                unsectionedBlocks.add(List.copyOf(currentUnsectionedBlock));
+            }
+        }
+
+        if (ingredientLines.isEmpty() && !unsectionedBlocks.isEmpty()) {
+            if (unsectionedBlocks.size() >= 2) {
+                ingredientLines.addAll(extractLikelyIngredientLines(unsectionedBlocks.get(0)));
+                for (int index = 1; index < unsectionedBlocks.size(); index += 1) {
+                    instructionLines.addAll(unsectionedBlocks.get(index));
+                }
+            } else {
+                List<String> singleBlock = unsectionedBlocks.get(0);
+                int splitIndex = 0;
+                while (splitIndex < singleBlock.size() && looksLikeIngredientLine(singleBlock.get(splitIndex))) {
+                    ingredientLines.add(singleBlock.get(splitIndex));
+                    splitIndex += 1;
+                }
+                for (int index = splitIndex; index < singleBlock.size(); index += 1) {
+                    instructionLines.add(singleBlock.get(index));
+                }
+            }
+        }
+
+        if (ingredientLines.isEmpty() && instructionLines.isEmpty() && !unsectionedBlocks.isEmpty()) {
+            ingredientLines.addAll(unsectionedBlocks.get(0));
+        }
+
+        return new PastedTextSections(
+                servings,
+                List.copyOf(ingredientLines),
+                joinInstructionLines(instructionLines)
+        );
+    }
+
+    private static List<List<String>> normalizePastedTextBlocks(String text) {
+        if (text == null) {
+            throw new IllegalArgumentException("text must not be null");
+        }
+        String normalizedText = text
+                .replace("\r\n", "\n")
+                .replace('\r', '\n');
+        List<List<String>> blocks = new ArrayList<>();
+        List<String> currentBlock = new ArrayList<>();
+        for (String rawLine : normalizedText.split("\n", -1)) {
+            String normalizedLine = normalizeOptionalText(rawLine);
+            if (normalizedLine == null) {
+                if (!currentBlock.isEmpty()) {
+                    blocks.add(List.copyOf(currentBlock));
+                    currentBlock.clear();
+                }
+                continue;
+            }
+            currentBlock.add(normalizedLine);
+        }
+        if (!currentBlock.isEmpty()) {
+            blocks.add(List.copyOf(currentBlock));
+        }
+        return List.copyOf(blocks);
+    }
+
+    private static List<String> extractLikelyIngredientLines(List<String> lines) {
+        List<String> likelyLines = new ArrayList<>();
+        for (String line : lines) {
+            if (looksLikeIngredientLine(line)) {
+                likelyLines.add(line);
+            }
+        }
+        return likelyLines.isEmpty() ? List.copyOf(lines) : List.copyOf(likelyLines);
+    }
+
+    private static boolean looksLikeIngredientLine(String value) {
+        String normalizedLine = normalizeIngredientLine(value);
+        if (normalizedLine == null) {
+            return false;
+        }
+        if (LEADING_QUANTITY_PATTERN.matcher(normalizedLine).matches()
+                || ATTACHED_UNIT_PATTERN.matcher(normalizedLine).matches()) {
+            return true;
+        }
+        if (isInstructionSectionHeading(normalizedLine) || isIngredientSectionHeading(normalizedLine)) {
+            return false;
+        }
+        if (normalizedLine.endsWith(".") || normalizedLine.endsWith("!") || normalizedLine.endsWith("?")) {
+            return false;
+        }
+        return normalizedLine.split("\\s+").length <= 6;
+    }
+
+    private static boolean isIngredientSectionHeading(String value) {
+        return INGREDIENT_SECTION_HEADINGS.contains(normalizeSectionHeading(value));
+    }
+
+    private static boolean isInstructionSectionHeading(String value) {
+        return INSTRUCTION_SECTION_HEADINGS.contains(normalizeSectionHeading(value));
+    }
+
+    private static String normalizeSectionHeading(String value) {
+        return normalizeOptionalText(value == null ? null : value.replace(":", "")) == null
+                ? ""
+                : normalizeOptionalText(value.replace(":", "")).toLowerCase(Locale.ROOT);
+    }
+
+    private static String extractServings(String value) {
+        Matcher matcher = SERVINGS_LINE_PATTERN.matcher(value);
+        if (!matcher.matches()) {
+            return null;
+        }
+        return normalizeOptionalText(matcher.group("value"));
+    }
+
+    private static String joinInstructionLines(List<String> lines) {
+        if (lines.isEmpty()) {
+            return null;
+        }
+        return String.join("\n", lines);
+    }
+
+    private static boolean isReviewablePastedText(
+            String name,
+            PastedTextSections sections,
+            List<Ingredient> ingredients
+    ) {
+        if (ingredients != null && !ingredients.isEmpty()) {
+            return true;
+        }
+
+        String normalizedName = normalizeOptionalText(name);
+        String normalizedInstructions = normalizeOptionalText(sections.instructions());
+        int ingredientLineCount = sections.ingredientLines() == null ? 0 : sections.ingredientLines().size();
+        int instructionLineCount = countMeaningfulLines(sections.instructions());
+        int meaningfulBodyCharacters = countMeaningfulCharacters(sections.ingredientLines(), sections.instructions());
+
+        if (normalizedName == null || normalizedName.length() < 3) {
+            return false;
+        }
+
+        if (instructionLineCount >= 2) {
+            return true;
+        }
+        if (ingredientLineCount >= 2) {
+            return true;
+        }
+        if (normalizedInstructions != null && meaningfulBodyCharacters >= 30) {
+            return true;
+        }
+        return meaningfulBodyCharacters >= 60;
+    }
+
+    private static int countMeaningfulLines(String value) {
+        if (value == null) {
+            return 0;
+        }
+        int count = 0;
+        for (String line : value.split("\\R")) {
+            String normalized = normalizeOptionalText(line);
+            if (normalized != null) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+    private static int countMeaningfulCharacters(List<String> ingredientLines, String instructions) {
+        int total = 0;
+        if (ingredientLines != null) {
+            for (String line : ingredientLines) {
+                String normalized = normalizeOptionalText(line);
+                if (normalized != null) {
+                    total += normalized.length();
+                }
+            }
+        }
+        if (instructions != null) {
+            String normalizedInstructions = normalizeOptionalText(instructions.replace('\n', ' '));
+            if (normalizedInstructions != null) {
+                total += normalizedInstructions.length();
+            }
+        }
+        return total;
     }
 
     private static BigDecimal parseQuantity(String quantityText) {
@@ -529,5 +819,18 @@ final class RecipeImportDraftSupport {
     }
 
     private record UnitParseResult(IngredientUnit unit, String ingredientName) {
+    }
+
+    private record PastedTextSections(
+            String servings,
+            List<String> ingredientLines,
+            String instructions
+    ) {
+    }
+
+    private enum Section {
+        NONE,
+        INGREDIENTS,
+        INSTRUCTIONS
     }
 }

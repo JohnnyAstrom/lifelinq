@@ -168,6 +168,141 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void pastedTextDraftStartsInNeedsReviewAndCanFlowThroughDraftReviewAndAccept() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                drafts,
+                null,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        var created = service.createRecipeDraftFromText(
+                groupId,
+                userId,
+                """
+                Weeknight Pasta
+
+                Ingredients
+                1 pack pasta
+                2 dl cream
+
+                Instructions
+                Boil pasta.
+                Mix sauce.
+                """
+        );
+
+        assertThat(created.state()).isEqualTo("draft_needs_review");
+        assertThat(created.name()).isEqualTo("Weeknight Pasta");
+        assertThat(created.provenance().originKind()).isEqualTo("pasted_text");
+        assertThat(created.source().sourceUrl()).isNull();
+        assertThat(created.ingredients()).hasSize(2);
+        assertThat(created.instructions()).contains("Boil pasta.");
+
+        var updated = service.updateRecipeDraft(
+                groupId,
+                userId,
+                created.draftId(),
+                created.name(),
+                null,
+                null,
+                null,
+                null,
+                created.instructions(),
+                true,
+                List.of(
+                        new IngredientInput("pasta", null, new java.math.BigDecimal("1"), IngredientUnit.PACK, 1),
+                        new IngredientInput("cream", null, new java.math.BigDecimal("2"), IngredientUnit.DL, 2),
+                        new IngredientInput("salt", null, null, null, 3)
+                )
+        );
+
+        assertThat(updated.state()).isEqualTo("draft_ready");
+        assertThat(service.getRecipeDraftDuplicateAssessment(groupId, userId, created.draftId()).attentionRequired())
+                .isFalse();
+
+        var saved = service.acceptRecipeDraft(groupId, userId, created.draftId(), false);
+        assertThat(saved.provenance().originKind()).isEqualTo("pasted_text");
+        assertThat(saved.lifecycle().state()).isEqualTo("active");
+        assertThat(saved.ingredients()).hasSize(3);
+    }
+
+    @Test
+    void pastedTextDraftCanBeCreatedWithoutExtractedIngredientsWhenTextIsStillReviewable() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                drafts,
+                null,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        var created = service.createRecipeDraftFromText(
+                groupId,
+                userId,
+                """
+                Quick Tomato Sauce
+
+                Simmer everything gently until the sauce thickens.
+                Taste and adjust before serving with pasta.
+                """
+        );
+
+        assertThat(created.state()).isEqualTo("draft_needs_review");
+        assertThat(created.name()).isEqualTo("Quick Tomato Sauce");
+        assertThat(created.provenance().originKind()).isEqualTo("pasted_text");
+        assertThat(created.ingredients()).isEmpty();
+        assertThat(created.instructions()).contains("Simmer everything gently");
+    }
+
+    @Test
+    void pastedTextDraftStillRejectsTextThatIsTooThinToReviewMeaningfully() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                drafts,
+                null,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        assertThatThrownBy(() -> service.createRecipeDraftFromText(
+                groupId,
+                userId,
+                """
+                Pasta
+                Nice.
+                """
+        ))
+                .isInstanceOf(RecipeImportFailedException.class)
+                .hasMessageContaining("Paste a little more of the recipe");
+    }
+
+    @Test
     void program2FoundationExposesRecentIdentityAndRecipeUsageMemoryFromWeekPlans() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

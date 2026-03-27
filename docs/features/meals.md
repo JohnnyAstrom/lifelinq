@@ -246,6 +246,12 @@ Program 4 foundation note: week-level shopping planning now has its own backend/
 
 Program 4 visible-step note: the first visible Program 4 payoff now enters intentionally from `Meals > Plan > Week` through a small `Review week shopping` action tied to the currently displayed week, and it only appears when that week has reviewable ingredient lines. That flow opens a dedicated secondary review surface rather than turning Week view itself into a dashboard: choose one shopping list, see which aggregated weekly ingredient lines are already on that list, choose which remaining lines to add to that list, and save only that explicit selection. Weekly ingredient rows now merge primarily by shopping identity; exact totals are shown only when all contributors support them safely, otherwise the review falls back to the calmer ingredient identity without false numeric precision. The visible grouping stays concrete (`Already on this list` / `Add to this list`), contributor meals stay as light aggregated support context like `From <meal>` or `2 meals`, optional cross-list awareness stays secondary as compact metadata like `On Weekend Mix`, and Week view only gets a very light recent-result echo instead of a broader weekly shopping-status layer.
 
+Program 5A foundation note: recipe capture is now explicitly first-wave multi-source at the backend/platform level while still staying inside the same draft-first recipe platform. Manual draft creation remains the clean write-it-yourself path, URL import remains the structured remote-intake path, and pasted recipe text is now a third bounded intake source that creates a persisted `RecipeDraft` instead of bypassing review. The downstream flow remains shared: all three sources still use the same `RecipeDraft -> review -> duplicate assessment -> accept/save` pipeline. The provenance model is only broadened as much as needed for this first wave, via a new `pasted_text` origin kind rather than a larger attachment/import system. Text intake stays intentionally conservative: it can shape common pasted recipe text into a reviewable draft using lightweight block/heading heuristics, but it does not introduce OCR, file intake, or speculative parser smartness.
+
+Program 5A visible-step note: `Meals > Recipes` now presents one calm `Add recipe` entry instead of splitting top-level capture emphasis between separate create/import actions. That entry opens a lightweight source chooser with three bounded first-wave paths: `From link`, `Paste recipe text`, and `Create manually`. Each source gets only the minimum source-specific capture step needed up front, then hands off into the same shared `RecipeDraft -> review -> duplicate assessment -> accept/save` destination family rather than creating separate save experiences by source.
+The current Program 5A stabilization direction is to make those entry paths feel like one capture family rather than three older tools hidden behind a chooser: the main `Add recipe` entry should stay calm but clearly primary inside the Recipes overview, chooser copy and hierarchy should stay simple and human rather than overexplaining the intake model, and bounded source sheets such as `From link` should read more like gentle intake steps than like isolated utility forms.
+For pasted recipe text specifically, first-wave capture is intentionally broader than URL import: the text only needs to be reviewable enough to enter the shared draft surface, not already structured enough to produce confident ingredient extraction. Longer pasted text should therefore stay practical to inspect in the capture step, and backend intake should only reject text that is truly too thin to form a meaningful review draft.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  
@@ -253,6 +259,11 @@ Response: `RecipeDraftView`.
 Endpoint: `POST /meals/recipe-drafts/from-url`  
 Purpose: Start a persisted imported recipe draft from a URL.  
 Request body: `url`.  
+Response: `RecipeDraftView`.  
+
+Endpoint: `POST /meals/recipe-drafts/from-text`  
+Purpose: Start a persisted imported recipe draft from pasted recipe text. The backend may apply bounded text-to-draft shaping before the draft enters the normal review flow.  
+Request body: `text`.  
 Response: `RecipeDraftView`.  
 
 Endpoint: `GET /meals/recipe-drafts/{draftId}` / `PUT /meals/recipe-drafts/{draftId}`  

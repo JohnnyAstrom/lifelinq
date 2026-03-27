@@ -659,6 +659,20 @@ export async function createRecipeDraftFromUrl(
   );
 }
 
+export async function createRecipeDraftFromText(
+  payload: { text: string },
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDraftResponse> {
+  return fetchJson<RecipeDraftResponse>(
+    '/meals/recipe-drafts/from-text',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
 export type UpdateRecipeDraftRequest = {
   name?: string | null;
   sourceName?: string | null;

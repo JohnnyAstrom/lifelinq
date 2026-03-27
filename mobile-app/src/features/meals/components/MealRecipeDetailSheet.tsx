@@ -259,6 +259,7 @@ type Props = {
   useContentFirstEditor?: boolean;
   alwaysShowIdentityBadge?: boolean;
   showHeaderIdentityBadge?: boolean;
+  suppressInitialSeedIngredientAutofocus?: boolean;
   strings: Strings;
 };
 
@@ -316,6 +317,7 @@ export function MealRecipeDetailSheet({
   useContentFirstEditor = false,
   alwaysShowIdentityBadge = false,
   showHeaderIdentityBadge = true,
+  suppressInitialSeedIngredientAutofocus = false,
   strings,
 }: Props) {
   const scrollRef = useRef<ScrollView | null>(null);
@@ -432,6 +434,14 @@ export function MealRecipeDetailSheet({
     }
 
     if (ingredientRows.length > previousCount) {
+      const isInitialSeedRow = previousCount === 0
+        && ingredientRows.length === 1
+        && isMealIngredientRowEffectivelyEmpty(ingredientRows[0] ?? null);
+      if (suppressInitialSeedIngredientAutofocus && isInitialSeedRow) {
+        setActiveRowId(null);
+        setActiveRowFocusField('name');
+        return;
+      }
       const nextRowId = ingredientRows[ingredientRows.length - 1]?.id ?? null;
       setActiveRowId(nextRowId);
       setActiveRowFocusField('name');
@@ -450,7 +460,7 @@ export function MealRecipeDetailSheet({
     const firstEmptyRow = ingredientRows.find((row) => isMealIngredientRowEffectivelyEmpty(row));
     setActiveRowId(firstEmptyRow?.id ?? null);
     setActiveRowFocusField('name');
-  }, [ingredientRows, activeRowId]);
+  }, [ingredientRows, activeRowId, suppressInitialSeedIngredientAutofocus]);
 
   useEffect(() => {
     if (!isImportDraft) {

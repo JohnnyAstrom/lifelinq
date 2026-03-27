@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { MealDayDetailSheet } from '../components/MealDayDetailSheet';
 import { MealEditorSheet } from '../components/MealEditorSheet';
+import { MealRecipeCaptureSourceSheet } from '../components/MealRecipeCaptureSourceSheet';
 import { MealRecipeDetailSheet } from '../components/MealRecipeDetailSheet';
 import { MealRecipeImportSheet } from '../components/MealRecipeImportSheet';
+import { MealRecipeTextImportSheet } from '../components/MealRecipeTextImportSheet';
 import { MealRecipePlanSheet } from '../components/MealRecipePlanSheet';
 import { MealRecipePickerSheet } from '../components/MealRecipePickerSheet';
 import { MealRecentMealsSheet } from '../components/MealRecentMealsSheet';
@@ -404,20 +406,34 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     searchRecipesPlaceholder: 'Search recipes',
     noRecipeSearchResults: 'No recipes match this search.',
     noRecipeSearchResultsHint: 'Try a title or source.',
-    createRecipeFromRecipes: 'Create recipe',
-    importRecipeFromRecipes: 'Save recipe',
-    importRecipeTitle: 'Save recipe',
-    importRecipeSubtitle: 'Bring in a recipe from a link.',
+    addRecipeFromRecipes: 'Add recipe',
+    addRecipeFromRecipesHint: 'Choose how to start.',
+    addRecipeChooserTitle: 'Add recipe',
+    addRecipeChooserSubtitle: 'Choose how to start.',
+    addRecipeFromLink: 'From link',
+    addRecipeFromLinkHint: 'Use a recipe link you already have.',
+    addRecipeFromText: 'Paste recipe text',
+    addRecipeFromTextHint: 'Paste the recipe and start from there.',
+    addRecipeCreateManual: 'Create manually',
+    addRecipeCreateManualHint: 'Write the recipe in yourself.',
+    importRecipeTitle: 'From link',
+    importRecipeSubtitle: 'Paste a recipe link to get started.',
     importRecipeUrlPlaceholder: 'https://example.com/recipe',
-    importRecipeHelpText: 'Check it once before it goes into Recipe library.',
-    importRecipeClipboardHint: 'Link from clipboard ready',
-    importRecipeAction: 'Review before saving',
+    importRecipeHelpText: 'We’ll bring in what we can for you to check.',
+    importRecipeClipboardHint: 'Using link from clipboard',
+    importRecipeAction: 'Continue',
     importingRecipeAction: 'Opening recipe...',
-    recipeDestinationSubtitle: undefined,
+    importRecipeTextTitle: 'Paste recipe text',
+    importRecipeTextSubtitle: 'Paste the recipe to get started.',
+    importRecipeTextPlaceholder: 'Recipe title\n\nIngredients\n...\n\nInstructions\n...',
+    importRecipeTextHelpText: 'We’ll shape what we can for you to check.',
+    importRecipeTextAction: 'Continue',
+    importingRecipeTextAction: 'Opening recipe...',
+    recipeDestinationSubtitle: 'Review the recipe, then save it into Recipes.',
     savedRecipeContextHint: 'Reusable recipe in Recipes.',
-    newSavedRecipeContextHint: undefined,
-    importDraftSubtitle: undefined,
-    importDraftContextHint: undefined,
+    newSavedRecipeContextHint: 'Start with what you have, then save it into Recipes when it feels ready.',
+    importDraftSubtitle: 'Review the recipe, then save it into Recipes.',
+    importDraftContextHint: 'Start with what came through, then adjust only what needs it.',
     importReviewSourceSummaryTitle: 'From',
     importReviewSourceSummaryHint: undefined,
     importReviewSourceEmpty: 'No source name came through from this import.',
@@ -1254,7 +1270,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       || editor.isRecipePickerOpen
       || editor.isRecentMealsOpen
       || editor.isShoppingReviewOpen
+      || recipesWorkspace.addRecipe.isOpen
       || recipesWorkspace.importDraft.isOpen
+      || recipesWorkspace.textImportDraft.isOpen
       || recipesWorkspace.recipeDetail.isOpen,
     onCloseOverlay: recipePlanBridge
         ? closeRecipePlanBridge
@@ -1268,6 +1286,10 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         ? editor.closeRecentMeals
       : editor.isShoppingReviewOpen
         ? editor.closeShoppingReview
+        : recipesWorkspace.textImportDraft.isOpen
+          ? recipesWorkspace.textImportDraft.closeImportRecipeText
+        : recipesWorkspace.addRecipe.isOpen
+          ? recipesWorkspace.addRecipe.closeAddRecipe
         : recipesWorkspace.importDraft.isOpen
           ? recipesWorkspace.importDraft.closeImportRecipe
         : recipesWorkspace.recipeDetail.isOpen
@@ -1465,15 +1487,11 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                   onShowRecentRecipes={recipesWorkspace.recipes.showRecentBrowseRecipes}
                   onChangeSearchQuery={recipesWorkspace.recipes.setSearchQuery}
                   onOpenRecipe={recipesWorkspace.recipes.openRecipe}
-                  onCreateRecipe={recipesWorkspace.recipes.openCreateRecipe}
-                  onImportRecipe={recipesWorkspace.recipes.openImportRecipe}
+                  onAddRecipe={recipesWorkspace.addRecipe.openAddRecipe}
                   strings={{
                     title: strings.recipesOverviewTitle,
-                    intakeLabel: 'Add recipes',
-                    newRecipe: strings.createRecipeFromRecipes,
-                    newRecipeHint: 'Add one yourself',
-                    importRecipe: strings.importRecipeFromRecipes,
-                    importRecipeHint: 'From a link',
+                    addRecipe: strings.addRecipeFromRecipes,
+                    addRecipeHint: strings.addRecipeFromRecipesHint,
                     archivedAction: 'Archived recipes',
                     archivedTitle: 'Archived recipes',
                     savedRecipesLabel: 'Saved recipes',
@@ -1485,7 +1503,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                     searchPlaceholder: strings.searchRecipesPlaceholder,
                     loadingRecipes: strings.loadingRecipes,
                     noRecipes: strings.noRecipes,
-                    noRecipesHint: 'Save a recipe from a link or create your own to start the library.',
+                    noRecipesHint: 'Add a recipe from a link, pasted text, or a clean draft to start the library.',
                     noMakeSoonRecipes: 'Nothing marked for make soon yet.',
                     noMakeSoonRecipesHint: 'Use make soon on saved recipes you want to come back to quickly.',
                     noRecentRecipes: 'No recent recipes yet.',
@@ -1713,6 +1731,26 @@ export function MealsWeekScreen({ token, onDone }: Props) {
         />
       ) : null}
 
+      {recipesWorkspace.addRecipe.isOpen ? (
+        <MealRecipeCaptureSourceSheet
+          onChooseLink={recipesWorkspace.addRecipe.chooseLink}
+          onChoosePasteText={recipesWorkspace.addRecipe.choosePasteText}
+          onChooseManual={recipesWorkspace.addRecipe.chooseManual}
+          onClose={recipesWorkspace.addRecipe.closeAddRecipe}
+          strings={{
+            title: strings.addRecipeChooserTitle,
+            subtitle: strings.addRecipeChooserSubtitle,
+            fromLink: strings.addRecipeFromLink,
+            fromLinkHint: strings.addRecipeFromLinkHint,
+            pasteText: strings.addRecipeFromText,
+            pasteTextHint: strings.addRecipeFromTextHint,
+            createManually: strings.addRecipeCreateManual,
+            createManuallyHint: strings.addRecipeCreateManualHint,
+            close: strings.close,
+          }}
+        />
+      ) : null}
+
       {recipesWorkspace.importDraft.isOpen ? (
         <MealRecipeImportSheet
           importUrl={recipesWorkspace.importDraft.importUrl}
@@ -1730,7 +1768,27 @@ export function MealsWeekScreen({ token, onDone }: Props) {
             clipboardHint: strings.importRecipeClipboardHint,
             importAction: strings.importRecipeAction,
             importingAction: strings.importingRecipeAction,
-            close: strings.close,
+            close: 'Back',
+          }}
+        />
+      ) : null}
+
+      {recipesWorkspace.textImportDraft.isOpen ? (
+        <MealRecipeTextImportSheet
+          importText={recipesWorkspace.textImportDraft.importText}
+          onChangeImportText={recipesWorkspace.textImportDraft.setImportText}
+          onImport={recipesWorkspace.textImportDraft.importRecipeTextDraft}
+          onClose={recipesWorkspace.textImportDraft.closeImportRecipeText}
+          isImporting={recipesWorkspace.textImportDraft.isImportingDraft}
+          error={recipesWorkspace.textImportDraft.error}
+          strings={{
+            title: strings.importRecipeTextTitle,
+            subtitle: strings.importRecipeTextSubtitle,
+            textPlaceholder: strings.importRecipeTextPlaceholder,
+            helpText: strings.importRecipeTextHelpText,
+            importAction: strings.importRecipeTextAction,
+            importingAction: strings.importingRecipeTextAction,
+            close: 'Back',
           }}
         />
       ) : null}
@@ -1847,14 +1905,15 @@ export function MealsWeekScreen({ token, onDone }: Props) {
           canEnterEditMode={recipesWorkspace.recipeDetail.canEnterEditMode}
           useContentFirstEditor
           showHeaderIdentityBadge={false}
+          suppressInitialSeedIngredientAutofocus={!recipesWorkspace.recipeDetail.hasExistingRecipe && !recipesWorkspace.recipeDetail.isImportDraft}
           strings={{
             eyebrow: recipesWorkspace.recipeDetail.isImportDraft
-              ? 'SAVE RECIPE'
+              ? 'ADD RECIPE'
               : recipesWorkspace.recipeDetail.isArchivedRecipe
                 ? 'ARCHIVED RECIPE'
                 : recipesWorkspace.recipeDetail.hasExistingRecipe
                   ? (recipesWorkspace.recipeDetail.isReadMode ? 'SAVED RECIPE' : 'EDIT RECIPE')
-                  : 'CREATE RECIPE',
+                  : 'ADD RECIPE',
             title: strings.recipeSheetTitle,
             subtitle: recipesWorkspace.recipeDetail.isImportDraft
               ? strings.importDraftSubtitle

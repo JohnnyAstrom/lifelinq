@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, AppInput, Subtle } from '../../../shared/ui/components';
 import { textStyles, theme } from '../../../shared/ui/theme';
@@ -7,37 +7,34 @@ import { textStyles, theme } from '../../../shared/ui/theme';
 type Strings = {
   title: string;
   subtitle: string;
-  urlPlaceholder: string;
+  textPlaceholder: string;
   helpText: string;
-  clipboardHint?: string;
   importAction: string;
   importingAction: string;
   close: string;
 };
 
 type Props = {
-  importUrl: string;
-  onChangeImportUrl: (value: string) => void;
+  importText: string;
+  onChangeImportText: (value: string) => void;
   onImport: () => void;
   onClose: () => void;
   isImporting: boolean;
   error: string | null;
-  clipboardImportUrl?: string | null;
   strings: Strings;
 };
 
-export function MealRecipeImportSheet({
-  importUrl,
-  onChangeImportUrl,
+export function MealRecipeTextImportSheet({
+  importText,
+  onChangeImportText,
   onImport,
   onClose,
   isImporting,
   error,
-  clipboardImportUrl,
   strings,
 }: Props) {
-  const [isUrlFocused, setIsUrlFocused] = useState(false);
-  const [inputHeight, setInputHeight] = useState(56);
+  const [inputHeight, setInputHeight] = useState(180);
+  const resolvedInputHeight = Math.min(320, Math.max(180, inputHeight));
 
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
@@ -47,29 +44,26 @@ export function MealRecipeImportSheet({
           <Subtle>{strings.subtitle}</Subtle>
         </View>
 
-        <View style={styles.body}>
-          {clipboardImportUrl && strings.clipboardHint ? (
-            <View style={styles.clipboardCallout}>
-              <Text style={styles.clipboardCalloutText}>{strings.clipboardHint}</Text>
-            </View>
-          ) : null}
+        <ScrollView
+          style={styles.bodyScroll}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
           <AppInput
-            value={importUrl}
-            onChangeText={onChangeImportUrl}
-            placeholder={strings.urlPlaceholder}
-            keyboardType="url"
+            value={importText}
+            onChangeText={onChangeImportText}
+            placeholder={strings.textPlaceholder}
             multiline
             blurOnSubmit={false}
-            onFocus={() => setIsUrlFocused(true)}
-            onBlur={() => setIsUrlFocused(false)}
+            scrollEnabled
             onContentSizeChange={(event) => {
-              const nextHeight = Math.max(56, Math.ceil(event.nativeEvent.contentSize.height) + 12);
+              const nextHeight = Math.ceil(event.nativeEvent.contentSize.height) + 12;
               setInputHeight((currentHeight) =>
                 currentHeight === nextHeight ? currentHeight : nextHeight,
               );
             }}
-            selection={isUrlFocused ? undefined : { start: 0, end: 0 }}
-            style={[styles.captureInput, { height: inputHeight }]}
+            style={[styles.captureInput, { height: resolvedInputHeight }]}
           />
           <Subtle>{strings.helpText}</Subtle>
 
@@ -81,7 +75,7 @@ export function MealRecipeImportSheet({
               onPress={onImport}
               fullWidth
               accentKey="meals"
-              disabled={isImporting || importUrl.trim().length === 0}
+              disabled={isImporting || importText.trim().length === 0}
             />
             <AppButton
               title={strings.close}
@@ -91,7 +85,7 @@ export function MealRecipeImportSheet({
               disabled={isImporting}
             />
           </View>
-        </View>
+        </ScrollView>
       </View>
     </OverlaySheet>
   );
@@ -114,6 +108,8 @@ const styles = StyleSheet.create({
   },
   layout: {
     gap: theme.spacing.md,
+    maxHeight: '100%',
+    minHeight: 0,
   },
   header: {
     gap: 6,
@@ -122,24 +118,17 @@ const styles = StyleSheet.create({
     ...textStyles.h2,
     color: theme.colors.textPrimary,
   },
+  bodyScroll: {
+    minHeight: 0,
+    maxHeight: '100%',
+  },
   body: {
     gap: theme.spacing.sm,
-  },
-  clipboardCallout: {
-    alignSelf: 'flex-start',
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.surfaceSubtle,
-  },
-  clipboardCalloutText: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
+    paddingBottom: theme.spacing.xs,
   },
   captureInput: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
     fontWeight: '500',
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,

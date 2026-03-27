@@ -351,6 +351,29 @@ public class MealsApplicationService {
         return toDraftView(recipeDraftRepository.save(draft));
     }
 
+    @Transactional
+    public RecipeDraftView createRecipeDraftFromText(UUID groupId, UUID actorUserId, String text) {
+        ensureMealAccess(groupId, actorUserId);
+        requireRecipeDraftRepository();
+        Instant now = clock.instant();
+        RecipeImportDraftSupport.RecipeDraftSeed seed = RecipeImportDraftSupport.importFromText(text);
+        RecipeDraft draft = new RecipeDraft(
+                UUID.randomUUID(),
+                groupId,
+                seed.name(),
+                seed.source(),
+                seed.provenance(),
+                seed.servings(),
+                seed.shortNote(),
+                seed.instructions(),
+                seed.state(),
+                now,
+                now,
+                seed.ingredients()
+        );
+        return toDraftView(recipeDraftRepository.save(draft));
+    }
+
     @Transactional(readOnly = true)
     public RecipeDraftView getRecipeDraft(UUID groupId, UUID actorUserId, UUID draftId) {
         ensureMealAccess(groupId, actorUserId);
@@ -2005,10 +2028,15 @@ public class MealsApplicationService {
         if (!hasDraftCoreContent(name, ingredients)) {
             return RecipeDraftState.DRAFT_OPEN;
         }
-        if (provenance.originKind() == RecipeOriginKind.URL_IMPORT && !markReady) {
+        if (needsDraftReviewByDefault(provenance.originKind()) && !markReady) {
             return RecipeDraftState.DRAFT_NEEDS_REVIEW;
         }
         return RecipeDraftState.DRAFT_READY;
+    }
+
+    private boolean needsDraftReviewByDefault(RecipeOriginKind originKind) {
+        return originKind == RecipeOriginKind.URL_IMPORT
+                || originKind == RecipeOriginKind.PASTED_TEXT;
     }
 
     private boolean hasDraftCoreContent(String name, List<Ingredient> ingredients) {

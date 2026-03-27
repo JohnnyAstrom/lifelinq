@@ -6,6 +6,7 @@ export {
   clearRecipeMakeSoon,
   clearRecipeDetailMakeSoon,
   createManualRecipeDraft,
+  createRecipeDraftFromText,
   createRecipeDraftFromUrl,
   createRecipeImportDraft,
   createRecipe,

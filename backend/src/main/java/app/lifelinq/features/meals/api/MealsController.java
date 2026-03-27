@@ -99,6 +99,20 @@ public class MealsController {
         return ResponseEntity.ok(draft);
     }
 
+    @PostMapping("/meals/recipe-drafts/from-text")
+    public ResponseEntity<?> createRecipeDraftFromText(@RequestBody CreateRecipeDraftFromTextRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDraftView draft = mealsApplicationService.createRecipeDraftFromText(
+                context.getGroupId(),
+                context.getUserId(),
+                request.getText()
+        );
+        return ResponseEntity.ok(draft);
+    }
+
     @GetMapping("/meals/recipe-drafts/{draftId}")
     public ResponseEntity<?> getRecipeDraft(@PathVariable UUID draftId) {
         RequestContext context = ApiScoping.getContext();

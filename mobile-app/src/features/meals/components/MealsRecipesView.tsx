@@ -16,11 +16,8 @@ type RecipeListItem = {
 
 type Strings = {
   title: string;
-  intakeLabel: string;
-  newRecipe: string;
-  newRecipeHint: string;
-  importRecipe: string;
-  importRecipeHint: string;
+  addRecipe: string;
+  addRecipeHint: string;
   archivedAction: string;
   archivedTitle: string;
   savedRecipesLabel: string;
@@ -65,8 +62,7 @@ type Props = {
   onShowRecentRecipes: () => void;
   onChangeSearchQuery: (value: string) => void;
   onOpenRecipe: (recipeId: string) => void;
-  onCreateRecipe: () => void;
-  onImportRecipe: () => void;
+  onAddRecipe: () => void;
   strings: Strings;
 };
 
@@ -87,8 +83,7 @@ export function MealsRecipesView({
   onShowRecentRecipes,
   onChangeSearchQuery,
   onOpenRecipe,
-  onCreateRecipe,
-  onImportRecipe,
+  onAddRecipe,
   strings,
 }: Props) {
   const hasSearchQuery = searchQuery.trim().length > 0;
@@ -236,36 +231,27 @@ export function MealsRecipesView({
               style={styles.searchInput}
             />
           </View>
-          <View style={styles.intakeSection}>
-            <Text style={styles.intakeLabel}>{strings.intakeLabel}</Text>
-            <View style={styles.libraryActionRow}>
-              <Pressable
-                onPress={onImportRecipe}
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.libraryActionPill,
-                  styles.libraryActionPillPrimary,
-                  pressed ? styles.actionPressed : null,
-                ]}
-              >
-                <Ionicons name="bookmark-outline" size={15} color={theme.colors.feature.meals} />
-                <Text style={styles.libraryActionPillTitle}>{strings.importRecipe}</Text>
-                <Text style={styles.libraryActionPillHint}>{strings.importRecipeHint}</Text>
-              </Pressable>
-              <Pressable
-                onPress={onCreateRecipe}
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.libraryActionPill,
-                  pressed ? styles.actionPressed : null,
-                ]}
-              >
-                <Ionicons name="add" size={15} color={theme.colors.textSecondary} />
-                <Text style={styles.libraryActionPillTitle}>{strings.newRecipe}</Text>
-                <Text style={styles.libraryActionPillHint}>{strings.newRecipeHint}</Text>
-              </Pressable>
+          <View style={styles.captureDivider} />
+          <Pressable
+            onPress={onAddRecipe}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.captureEntry,
+              pressed ? styles.actionPressed : null,
+            ]}
+          >
+            <View style={styles.captureEntryIcon}>
+              <Ionicons name="add" size={18} color={theme.colors.feature.meals} />
             </View>
-          </View>
+            <View style={styles.captureEntryCopy}>
+              <Text style={styles.captureEntryTitle}>{strings.addRecipe}</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.colors.textSecondary}
+            />
+          </Pressable>
         </View>
       ) : null}
 
@@ -381,11 +367,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   libraryHero: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     borderRadius: theme.radius.xl,
-    backgroundColor: iconBackground(theme.colors.feature.meals, 0.12),
+    backgroundColor: iconBackground(theme.colors.feature.meals, 0.1),
   },
   libraryHeroTop: {
     flexDirection: 'row',
@@ -405,44 +391,32 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     flex: 1,
   },
-  intakeSection: {
-    gap: 6,
-  },
-  intakeLabel: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  libraryActionRow: {
+  captureEntry: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-  },
-  libraryActionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 8,
-    borderRadius: theme.radius.pill,
-    borderWidth: 1,
-    borderColor: iconBackground(theme.colors.textPrimary, 0.08),
-    backgroundColor: iconBackground(theme.colors.surface, 0.5),
-  },
-  libraryActionPillPrimary: {
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
   },
-  libraryActionPillTitle: {
-    ...textStyles.subtle,
+  captureEntryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: iconBackground(theme.colors.feature.meals, 0.12),
+  },
+  captureEntryCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  captureEntryTitle: {
+    ...textStyles.body,
     color: theme.colors.textPrimary,
     fontWeight: '700',
-  },
-  libraryActionPillHint: {
-    ...textStyles.subtle,
-    color: theme.colors.textSecondary,
+    lineHeight: 20,
   },
   libraryTitle: {
     ...textStyles.h2,
@@ -458,6 +432,10 @@ const styles = StyleSheet.create({
   },
   retrievalBand: {
     gap: theme.spacing.xs,
+  },
+  captureDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
   },
   searchInput: {
     backgroundColor: theme.colors.surface,

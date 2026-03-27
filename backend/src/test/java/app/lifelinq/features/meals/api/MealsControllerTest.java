@@ -730,6 +730,53 @@ class MealsControllerTest {
     }
 
     @Test
+    void createRecipeDraftFromTextReturnsDraftProjection() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID draftId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.createRecipeDraftFromText(
+                groupId,
+                userId,
+                "Weeknight Pasta\n\nIngredients\n1 pack pasta\n2 dl cream"
+        )).thenReturn(new RecipeDraftView(
+                draftId,
+                groupId,
+                "draft_needs_review",
+                "Weeknight Pasta",
+                new RecipeSourceView(null, null),
+                new RecipeProvenanceView("pasted_text", null),
+                null,
+                null,
+                "Boil pasta",
+                Instant.parse("2026-03-24T10:00:00Z"),
+                Instant.parse("2026-03-24T10:00:00Z"),
+                List.of()
+        ));
+
+        mockMvc.perform(post("/meals/recipe-drafts/from-text")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "text":"Weeknight Pasta\\n\\nIngredients\\n1 pack pasta\\n2 dl cream"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.draftId").value(draftId.toString()))
+                .andExpect(jsonPath("$.state").value("draft_needs_review"))
+                .andExpect(jsonPath("$.provenance.originKind").value("pasted_text"));
+
+        verify(mealsApplicationService).createRecipeDraftFromText(
+                groupId,
+                userId,
+                "Weeknight Pasta\n\nIngredients\n1 pack pasta\n2 dl cream"
+        );
+    }
+
+    @Test
     void updateRecipeDraftPassesScenarioPayload() throws Exception {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

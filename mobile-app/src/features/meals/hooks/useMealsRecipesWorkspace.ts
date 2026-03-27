@@ -7,6 +7,7 @@ import {
   archiveRecipeDetail,
   clearRecipeDetailMakeSoon,
   createManualRecipeDraft,
+  createRecipeDraftFromText,
   createRecipeDraftFromUrl,
   deleteRecipe,
   getRecipeChoiceSupportMemory,
@@ -186,6 +187,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [importError, setImportError] = useState<string | null>(null);
   const [isImportingDraft, setIsImportingDraft] = useState(false);
   const [clipboardImportUrl, setClipboardImportUrl] = useState<string | null>(null);
+  const [isAddRecipeSheetOpen, setIsAddRecipeSheetOpen] = useState(false);
+  const [isTextImportSheetOpen, setIsTextImportSheetOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importTextError, setImportTextError] = useState<string | null>(null);
+  const [isImportingTextDraft, setIsImportingTextDraft] = useState(false);
 
   const hasIngredients = useMemo(
     () => toIngredientRequests(ingredientRows).length > 0,
@@ -430,6 +436,18 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     return formatApiError(err);
   }
 
+  function formatTextImportDraftError(err: unknown): string {
+    if (err instanceof ApiError) {
+      if (err.status === 400) {
+        return 'Paste the recipe text you want to review first.';
+      }
+      if (err.status === 422) {
+        return 'Paste a little more of the recipe so you have something useful to review.';
+      }
+    }
+    return formatApiError(err);
+  }
+
   function resetRecipeDetailState() {
     setRecipeDraftId(null);
     setRecipeDraftState(null);
@@ -570,6 +588,11 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     if (pendingDetailAction || isRecipeLoading) {
       return;
     }
+    setIsAddRecipeSheetOpen(false);
+    setIsImportSheetOpen(false);
+    setIsTextImportSheetOpen(false);
+    setImportError(null);
+    setImportTextError(null);
     focusMainRecipeLibrary();
     resetRecipeDetailState();
     setRecipeDetailError(null);
@@ -586,6 +609,28 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setRecipeDetailError(formatApiError(err));
       setIsRecipeLoading(false);
     }
+  }
+
+  function openAddRecipe() {
+    if (
+      pendingDetailAction
+      || isRecipeLoading
+      || isImportingDraft
+      || isImportingTextDraft
+    ) {
+      return;
+    }
+    focusMainRecipeLibrary();
+    setImportError(null);
+    setImportTextError(null);
+    setIsAddRecipeSheetOpen(true);
+  }
+
+  function closeAddRecipe() {
+    if (isImportingDraft || isImportingTextDraft || isRecipeLoading) {
+      return;
+    }
+    setIsAddRecipeSheetOpen(false);
   }
 
   async function hydrateImportUrlFromClipboard() {
@@ -608,6 +653,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return;
     }
     focusMainRecipeLibrary();
+    setIsAddRecipeSheetOpen(false);
+    setIsTextImportSheetOpen(false);
     setImportUrl('');
     setImportError(null);
     setClipboardImportUrl(null);
@@ -622,6 +669,28 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setIsImportSheetOpen(false);
     setImportError(null);
     setClipboardImportUrl(null);
+    setIsAddRecipeSheetOpen(true);
+  }
+
+  function openImportRecipeText() {
+    if (isImportingTextDraft || pendingDetailAction) {
+      return;
+    }
+    focusMainRecipeLibrary();
+    setIsAddRecipeSheetOpen(false);
+    setIsImportSheetOpen(false);
+    setImportText('');
+    setImportTextError(null);
+    setIsTextImportSheetOpen(true);
+  }
+
+  function closeImportRecipeText() {
+    if (isImportingTextDraft) {
+      return;
+    }
+    setIsTextImportSheetOpen(false);
+    setImportTextError(null);
+    setIsAddRecipeSheetOpen(true);
   }
 
   function closeRecipeDetail() {
@@ -722,6 +791,30 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setImportError(formatImportDraftError(err));
     } finally {
       setIsImportingDraft(false);
+    }
+  }
+
+  async function importRecipeTextDraft() {
+    if (isImportingTextDraft || !importText.trim()) {
+      return;
+    }
+
+    setIsImportingTextDraft(true);
+    setImportTextError(null);
+    try {
+      const draft = await createRecipeDraftFromText(
+        { text: importText.trim() },
+        { token }
+      );
+      focusMainRecipeLibrary();
+      applyRecipeDraft(draft, 'import');
+      setIsTextImportSheetOpen(false);
+      setImportText('');
+    } catch (err) {
+      await handleApiError(err);
+      setImportTextError(formatTextImportDraftError(err));
+    } finally {
+      setIsImportingTextDraft(false);
     }
   }
 
@@ -968,8 +1061,15 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       showRecentBrowseRecipes,
       setSearchQuery: setRecipeSearchQuery,
       openRecipe,
-      openCreateRecipe,
-      openImportRecipe,
+      openAddRecipe,
+    },
+    addRecipe: {
+      isOpen: isAddRecipeSheetOpen,
+      openAddRecipe,
+      closeAddRecipe,
+      chooseLink: openImportRecipe,
+      choosePasteText: openImportRecipeText,
+      chooseManual: openCreateRecipe,
     },
     importDraft: {
       isOpen: isImportSheetOpen,
@@ -981,6 +1081,16 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       openImportRecipe,
       closeImportRecipe,
       importRecipeDraft,
+    },
+    textImportDraft: {
+      isOpen: isTextImportSheetOpen,
+      importText,
+      error: importTextError,
+      isImportingDraft: isImportingTextDraft,
+      setImportText,
+      openImportRecipeText,
+      closeImportRecipeText,
+      importRecipeTextDraft,
     },
     recipeDetail: {
       isOpen: isRecipeDetailOpen,

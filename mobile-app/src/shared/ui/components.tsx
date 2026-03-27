@@ -370,6 +370,7 @@ type InputProps = {
   onLayout?: (event: LayoutChangeEvent) => void;
   selection?: { start: number; end?: number };
   onContentSizeChange?: (event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => void;
+  scrollEnabled?: boolean;
 };
 
 export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInput({
@@ -390,6 +391,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
   onLayout,
   selection,
   onContentSizeChange,
+  scrollEnabled,
 }, ref) {
   return (
       <TextInput
@@ -410,6 +412,7 @@ export const AppInput = React.forwardRef<TextInput, InputProps>(function AppInpu
       onLayout={onLayout}
       selection={selection}
       onContentSizeChange={onContentSizeChange}
+      scrollEnabled={scrollEnabled}
       style={[styles.input, style]}
       placeholderTextColor={theme.colors.textSecondary}
     />
