@@ -134,6 +134,30 @@ function parseBaseServings(value: string) {
   return parsed;
 }
 
+function formatReadableSourceLink(value: string) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(trimmedValue);
+    const host = parsed.hostname.replace(/^www\./i, '');
+    const path = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/+$/u, '');
+    if (!path) {
+      return host || trimmedValue;
+    }
+    const shortenedPath = path.length > 18 ? `${path.slice(0, 18)}...` : path;
+    return `${host}${shortenedPath}`;
+  } catch {
+    return trimmedValue.length > 36 ? `${trimmedValue.slice(0, 36)}...` : trimmedValue;
+  }
+}
+
+function normalizeSourceSummary(value: string) {
+  return value.trim().replace(/^www\./i, '').toLocaleLowerCase();
+}
+
 type ReadOnlyFieldProps = {
   label: string;
   value: string;
@@ -344,10 +368,13 @@ export function MealRecipeDetailSheet({
   const normalizedServings = recipeServings.trim();
   const normalizedSource = recipeSource.trim();
   const normalizedSourceUrl = recipeSourceUrl?.trim() ?? '';
+  const readableSourceLink = formatReadableSourceLink(normalizedSourceUrl);
   const baseServings = parseBaseServings(normalizedServings);
   const hasReadableRecipeMetadata = normalizedServings.length > 0
     || normalizedSource.length > 0
     || normalizedSourceUrl.length > 0;
+  const showReadableSourceLink = normalizedSourceUrl.length > 0
+    && normalizeSourceSummary(readableSourceLink) !== normalizeSourceSummary(normalizedSource);
   const instructionSteps = getInstructionSteps(recipeInstructions);
   const editableInstructionLines = getEditableInstructionLines(recipeInstructions);
   const instructionLineCount = editableInstructionLines.length;
@@ -403,6 +430,7 @@ export function MealRecipeDetailSheet({
     || (showSaveAsNewRecipeHint && !isEditingSavedRecipeDirectly && !!strings.saveAsNewRecipeHint)
     || (isEditingSavedRecipeDirectly && !!strings.editingSavedRecipeHint)
     || (canEnterSavedRecipeEditMode && !!strings.editSavedRecipeAction);
+  const useMinimalHeader = isContentFirstEditor && !strings.subtitle && !hasHeaderMetaContent;
 
   useEffect(() => {
     setSelectedServings(baseServings);
@@ -534,7 +562,11 @@ export function MealRecipeDetailSheet({
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
-        <View style={[styles.header, isContentFirstEditor ? styles.headerCompact : null]}>
+        <View style={[
+          styles.header,
+          isContentFirstEditor ? styles.headerCompact : null,
+          useMinimalHeader ? styles.headerMinimal : null,
+        ]}>
           <Text style={styles.eyebrow}>{strings.eyebrow}</Text>
           {isContentFirstEditor ? (
             <AppInput
@@ -832,6 +864,14 @@ export function MealRecipeDetailSheet({
                   isContentFirstEditor ? styles.secondarySection : null,
                 ]}
               >
+                {(isImportDraft || !hasExistingRecipe) && (strings.recipeContentLabel || strings.recipeMetadataHint) ? (
+                  <View style={styles.sectionCopy}>
+                    <Text style={styles.sectionTitle}>{strings.recipeContentLabel}</Text>
+                    {strings.recipeMetadataHint ? (
+                      <Text style={styles.sectionHint}>{strings.recipeMetadataHint}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
                 {isContentReadOnly ? (
                   hasReadableRecipeMetadata ? (
                     <View style={styles.metadataReadStack}>
@@ -850,10 +890,10 @@ export function MealRecipeDetailSheet({
                               <Text style={styles.metadataReadValue}>{normalizedSource}</Text>
                             </View>
                           ) : null}
-                          {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel && normalizedSourceUrl.length > 0 ? (
+                          {onChangeRecipeSourceUrl && strings.recipeSourceUrlLabel && showReadableSourceLink ? (
                             <View style={styles.metadataReadRow}>
                               <Text style={styles.metadataReadLabel}>{strings.recipeSourceUrlLabel}</Text>
-                              <Text style={styles.metadataReadValue}>{normalizedSourceUrl}</Text>
+                              <Text style={styles.metadataReadValue}>{readableSourceLink}</Text>
                             </View>
                           ) : null}
                         </View>
@@ -1105,12 +1145,16 @@ const styles = StyleSheet.create({
   headerCompact: {
     paddingBottom: theme.spacing.xs,
   },
+  headerMinimal: {
+    gap: 4,
+    paddingBottom: 4,
+  },
   eyebrow: {
     ...textStyles.subtle,
-    color: theme.colors.feature.meals,
+    color: theme.colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontWeight: '600',
   },
   headerMeta: {
     gap: theme.spacing.xs,
