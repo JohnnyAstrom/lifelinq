@@ -216,14 +216,11 @@ export function MealsRecipesView({
   return (
     <View style={styles.layout}>
       {!isArchivedView ? (
-        <View style={styles.libraryHero}>
-          <View style={styles.libraryHeroTop}>
-            <View style={styles.libraryHeroBadge}>
-              <Ionicons name="book-outline" size={18} color={theme.colors.feature.meals} />
-            </View>
-            <Text style={styles.libraryHeroTitle}>{strings.title}</Text>
+        <View style={styles.controlsZone}>
+          <View style={styles.controlsHeader}>
+            <Text style={styles.controlsTitle}>{strings.title}</Text>
           </View>
-          <View style={styles.retrievalBand}>
+          <View style={styles.controlsSearchRow}>
             <AppInput
               value={searchQuery}
               onChangeText={onChangeSearchQuery}
@@ -231,20 +228,20 @@ export function MealsRecipesView({
               style={styles.searchInput}
             />
           </View>
-          <View style={styles.captureDivider} />
+          <View style={styles.controlsDivider} />
           <Pressable
             onPress={onAddRecipe}
             accessibilityRole="button"
             style={({ pressed }) => [
-              styles.captureEntry,
+              styles.captureActionRow,
               pressed ? styles.actionPressed : null,
             ]}
           >
-            <View style={styles.captureEntryIcon}>
+            <View style={styles.captureActionIcon}>
               <Ionicons name="add" size={18} color={theme.colors.feature.meals} />
             </View>
-            <View style={styles.captureEntryCopy}>
-              <Text style={styles.captureEntryTitle}>{strings.addRecipe}</Text>
+            <View style={styles.captureActionCopy}>
+              <Text style={styles.captureActionTitle}>{strings.addRecipe}</Text>
             </View>
             <Ionicons
               name="chevron-forward"
@@ -260,7 +257,7 @@ export function MealsRecipesView({
           <View style={styles.archivedHeader}>
             <Text style={styles.libraryTitle}>{libraryTitle}</Text>
           </View>
-          <View style={styles.retrievalBand}>
+          <View style={styles.controlsSearchRow}>
             <AppInput
               value={searchQuery}
               onChangeText={onChangeSearchQuery}
@@ -366,41 +363,33 @@ const styles = StyleSheet.create({
   layout: {
     gap: theme.spacing.md,
   },
-  libraryHero: {
+  controlsZone: {
     gap: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.radius.xl,
-    backgroundColor: iconBackground(theme.colors.feature.meals, 0.1),
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.cardRadius,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
   },
-  libraryHeroTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
+  controlsHeader: {
+    gap: 2,
   },
-  libraryHeroBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: theme.radius.circle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.surface,
-  },
-  libraryHeroTitle: {
-    ...textStyles.h1,
+  controlsTitle: {
+    ...textStyles.h2,
     color: theme.colors.textPrimary,
-    flex: 1,
   },
-  captureEntry: {
+  controlsSearchRow: {
+    gap: theme.spacing.xs,
+  },
+  captureActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.surface,
+    minHeight: 44,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
   },
-  captureEntryIcon: {
+  captureActionIcon: {
     width: 36,
     height: 36,
     borderRadius: theme.radius.circle,
@@ -408,11 +397,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: iconBackground(theme.colors.feature.meals, 0.12),
   },
-  captureEntryCopy: {
+  captureActionCopy: {
     flex: 1,
     minWidth: 0,
   },
-  captureEntryTitle: {
+  captureActionTitle: {
     ...textStyles.body,
     color: theme.colors.textPrimary,
     fontWeight: '700',
@@ -430,10 +419,7 @@ const styles = StyleSheet.create({
   actionPressed: {
     opacity: 0.72,
   },
-  retrievalBand: {
-    gap: theme.spacing.xs,
-  },
-  captureDivider: {
+  controlsDivider: {
     height: 1,
     backgroundColor: theme.colors.border,
   },

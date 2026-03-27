@@ -284,10 +284,14 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     title: 'Meals',
     homeTitle: 'Meals',
     homeSubtitle: 'Choose where you want to start.',
-    homePlanTitle: 'Plan your meals',
+    homePlanTitle: 'Meal plan',
     homePlanSubtitle: 'Set up the week and keep meals in view.',
     homeRecipesTitle: 'Recipe library',
     homeRecipesSubtitle: 'Browse, save, and return to your recipes.',
+    planTitle: 'Meal plan',
+    planSubtitle: 'Set up the week and keep meals in view.',
+    recipesTitle: 'Recipe library',
+    recipesSubtitle: 'Browse, save, and return to your recipes.',
     planWorkspace: 'Plan',
     recipesWorkspace: 'Recipes',
     weeklyPlanner: 'Week',
@@ -826,6 +830,21 @@ export function MealsWeekScreen({ token, onDone }: Props) {
   const currentSurfaceError = workspaceMode === 'plan'
     ? (surfaceMode === 'week' ? plan.error : monthOverview.error)
     : recipesWorkspace.recipes.error;
+  const topBarTitle = workspaceMode === 'home'
+    ? strings.homeTitle
+    : workspaceMode === 'plan'
+      ? strings.planTitle
+      : strings.recipesTitle;
+  const topBarSubtitle = workspaceMode === 'home'
+    ? strings.homeSubtitle
+    : workspaceMode === 'plan'
+      ? strings.planSubtitle
+      : strings.recipesSubtitle;
+  const topBarIconName = workspaceMode === 'home'
+    ? 'restaurant-outline'
+    : workspaceMode === 'plan'
+      ? 'calendar-outline'
+      : 'book-outline';
   const shouldRenderPlanViews = surfaceMode === 'week'
     ? !showInitialPlanLoading && (isAnchorWeekLoaded || !plan.error)
     : !showInitialMonthOverviewLoading && monthOverview.hasLoaded;
@@ -1305,9 +1324,9 @@ export function MealsWeekScreen({ token, onDone }: Props) {
       contentStyle={styles.screenContent}
       header={(
         <TopBar
-          title={workspaceMode === 'home' ? strings.homeTitle : strings.title}
-          subtitle={workspaceMode === 'home' ? strings.homeSubtitle : undefined}
-          icon={<Ionicons name="restaurant-outline" />}
+          title={topBarTitle}
+          subtitle={topBarSubtitle}
+          icon={<Ionicons name={topBarIconName} />}
           accentKey="meals"
           right={<BackIconButton onPress={handleMealsBack} />}
         />
@@ -1366,7 +1385,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
                       ]}
                     >
                       <View style={styles.homeDestinationIcon}>
-                        <Ionicons name="bookmark-outline" size={20} color={theme.colors.feature.meals} />
+                        <Ionicons name="book-outline" size={20} color={theme.colors.feature.meals} />
                       </View>
                       <View style={styles.homeDestinationCopy}>
                         <Text style={styles.homeDestinationTitle}>{strings.homeRecipesTitle}</Text>
