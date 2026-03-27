@@ -6,6 +6,7 @@ import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.RecipeDeleteBlockedException;
 import app.lifelinq.features.meals.application.RecipeDraftNotFoundException;
 import app.lifelinq.features.meals.application.RecipeDuplicateAttentionRequiredException;
+import app.lifelinq.features.meals.application.RecipeAssetIntakeUnavailableException;
 import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
@@ -67,6 +68,14 @@ public final class MealsExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRecipeImportFailed(RecipeImportFailedException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ApiErrorResponse("RECIPE_IMPORT_FAILED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RecipeAssetIntakeUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleRecipeAssetIntakeUnavailable(
+            RecipeAssetIntakeUnavailableException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ApiErrorResponse("RECIPE_ASSET_INTAKE_UNAVAILABLE", ex.getMessage()));
     }
 
     @ExceptionHandler(RecipeDeleteBlockedException.class)

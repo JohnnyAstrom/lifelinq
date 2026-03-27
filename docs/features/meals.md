@@ -254,6 +254,14 @@ The shared Program 5A draft destination should now be treated as the same captur
 Small finishing polish should keep the lower metadata area broad enough to fit what it actually contains, for example a `Recipe details` label rather than a narrow source-only label, and source links should prefer calmer readable source presentation over long raw URLs whenever the context already makes the origin clear.
 For pasted recipe text specifically, first-wave capture is intentionally broader than URL import: the text only needs to be reviewable enough to enter the shared draft surface, not already structured enough to produce confident ingredient extraction. Longer pasted text should therefore stay practical to inspect in the capture step, and backend intake should only reject text that is truly too thin to form a meaningful review draft.
 
+Program 5B1 foundation note: richer recipe capture is now also given a bounded upstream platform shape without changing the shared downstream draft/save truth. The new foundation introduces a transient asset-backed intake layer for document/image-backed recipe capture, so later PDF/file/photo/share-file slices do not need to invent separate importer paths. That layer intentionally stays upstream of `RecipeDraft`: a source-specific frontend or handoff flow can provide an asset intake reference (`document` or `image`, plus a temporary reference id and light source metadata), an asset-intake port can extract recipe-like content from that transient reference, and only the extracted result becomes a persisted `RecipeDraft`. The saved recipe domain still keeps the same review-before-save lifecycle, while persistent provenance is only broadened enough for this level through new `document_import` and `image_import` origin kinds rather than a full attachment system. Raw files/images are therefore not promoted into durable recipe-domain objects at this stage; they remain transient capture inputs until a later source slice chooses how to ingest them.
+
+Program 5B2A handoff note: inbound shared recipe URLs now behave as a thin external entry into the existing `From link` capture path instead of creating a parallel importer experience. On Android, sharing plain text into LifeLinq can hand off the first usable `http(s)` URL as an internal recipe-import deep link, the app opens directly into `Meals > Recipes`, and the existing URL draft creation path starts without showing the chooser. If the shared text does not contain a usable recipe URL, the app stays calm: it routes into the Recipes workspace and shows a lightweight failure message rather than forcing the payload into the wrong intake flow. Persistent recipe provenance remains normal URL-origin capture; the OS share action itself stays transient handoff context.
+
+Program 5B2B handoff note: inbound shared files and images now follow the same “thin handoff into existing capture” direction as shared URLs, but through the Program 5B1 asset-backed intake family instead of the URL path. On Android, a single shared image or document/PDF can now be classified at app entry as `image` or `document`, translated into an internal asset-import deep link, and routed straight into `Meals > Recipes` without showing the chooser. The Recipes workspace then calls the existing `from-asset` draft path rather than inventing a separate integration flow. If the shared payload is unsupported, malformed, or the downstream asset-intake platform is not yet available in the normal backend boot path, the user gets a calm failure message instead of being pushed into the wrong source flow. Persistent recipe provenance still remains aligned with the 5B1 model (`image_import` / `document_import`) rather than storing “shared from app X” as durable recipe provenance.
+
+Program 5C1 visible-step note: the first chooser simplification now folds pasted-text start into the broader `Create recipe` family instead of keeping `Paste recipe text` and manual create as equal top-level entry points. `Meals > Recipes > Add recipe` now presents two first-level choices: `From link` and `Create recipe`. Choosing `Create recipe` opens one small secondary step where the user can either `Write it yourself` or `Paste recipe text`. The downstream platform remains unchanged: manual start and pasted-text start still use their existing internal intake paths and still converge into the same `RecipeDraft -> review -> duplicate assessment -> accept/save` flow. The product simplification is therefore user-facing first: the chooser now reflects clearer capture families without collapsing useful internal source distinctions.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  
@@ -266,6 +274,11 @@ Response: `RecipeDraftView`.
 Endpoint: `POST /meals/recipe-drafts/from-text`  
 Purpose: Start a persisted imported recipe draft from pasted recipe text. The backend may apply bounded text-to-draft shaping before the draft enters the normal review flow.  
 Request body: `text`.  
+Response: `RecipeDraftView`.  
+
+Endpoint: `POST /meals/recipe-drafts/from-asset`  
+Purpose: Start a persisted imported recipe draft from a transient asset-backed intake reference. This foundation path is for later document/image-backed capture slices and accepts only intake metadata plus a temporary reference id, not raw file upload itself.  
+Request body: `assetKind`, `referenceId`, optional `sourceLabel`, optional `originalFilename`, optional `mimeType`.  
 Response: `RecipeDraftView`.  
 
 Endpoint: `GET /meals/recipe-drafts/{draftId}` / `PUT /meals/recipe-drafts/{draftId}`  
@@ -315,3 +328,4 @@ Response: `WeekShoppingReviewView`.
 Endpoint: `POST /meals/weeks/{year}/{isoWeek}/shopping-review/add`  
 Purpose: Add only the selected aggregated week-review lines to the chosen shopping list, then return the refreshed week shopping review assessed against that same list. The request includes `shoppingListId` and `selectedLineIds[]`. When a week plan exists, the chosen list is also remembered as that week's latest review context for later re-entry.  
 Response: `WeekShoppingReviewView`.
+

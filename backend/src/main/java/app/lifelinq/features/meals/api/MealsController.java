@@ -5,6 +5,8 @@ import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
+import app.lifelinq.features.meals.contract.RecipeAssetIntakeKind;
+import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
 import app.lifelinq.features.meals.contract.RecipeDetailView;
 import app.lifelinq.features.meals.contract.RecipeDraftView;
 import app.lifelinq.features.meals.contract.RecipeDuplicateAssessmentView;
@@ -109,6 +111,26 @@ public class MealsController {
                 context.getGroupId(),
                 context.getUserId(),
                 request.getText()
+        );
+        return ResponseEntity.ok(draft);
+    }
+
+    @PostMapping("/meals/recipe-drafts/from-asset")
+    public ResponseEntity<?> createRecipeDraftFromAsset(@RequestBody CreateRecipeDraftFromAssetRequest request) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        RecipeDraftView draft = mealsApplicationService.createRecipeDraftFromAsset(
+                context.getGroupId(),
+                context.getUserId(),
+                new RecipeAssetIntakeReference(
+                        parseAssetIntakeKind(request.getAssetKind()),
+                        request.getReferenceId(),
+                        request.getSourceLabel(),
+                        request.getOriginalFilename(),
+                        request.getMimeType()
+                )
         );
         return ResponseEntity.ok(draft);
     }
@@ -931,6 +953,17 @@ public class MealsController {
             ));
         }
         return inputs;
+    }
+
+    private RecipeAssetIntakeKind parseAssetIntakeKind(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("assetKind must not be null");
+        }
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("assetKind must not be blank");
+        }
+        return RecipeAssetIntakeKind.valueOf(normalized.toUpperCase());
     }
 
     private RecipeImportDraftResponse toRecipeImportDraftResponse(RecipeImportDraftView view) {

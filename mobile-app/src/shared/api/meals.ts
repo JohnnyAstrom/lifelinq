@@ -673,6 +673,28 @@ export async function createRecipeDraftFromText(
   );
 }
 
+export type CreateRecipeDraftFromAssetRequest = {
+  assetKind: 'document' | 'image';
+  referenceId: string;
+  sourceLabel?: string | null;
+  originalFilename?: string | null;
+  mimeType?: string | null;
+};
+
+export async function createRecipeDraftFromAsset(
+  payload: CreateRecipeDraftFromAssetRequest,
+  clientOptions: ApiClientOptions = {}
+): Promise<RecipeDraftResponse> {
+  return fetchJson<RecipeDraftResponse>(
+    '/meals/recipe-drafts/from-asset',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    clientOptions
+  );
+}
+
 export type UpdateRecipeDraftRequest = {
   name?: string | null;
   sourceName?: string | null;

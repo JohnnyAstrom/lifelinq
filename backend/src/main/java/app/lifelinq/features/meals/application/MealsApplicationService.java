@@ -7,6 +7,8 @@ import app.lifelinq.features.meals.contract.AggregatedIngredientComparisonView;
 import app.lifelinq.features.meals.contract.AggregatedIngredientNeedView;
 import app.lifelinq.features.meals.contract.ContributorMealReferenceView;
 import app.lifelinq.features.meals.contract.IngredientInput;
+import app.lifelinq.features.meals.contract.RecipeAssetIntakePort;
+import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
@@ -177,6 +179,7 @@ public class MealsApplicationService {
     private final MealMemoryRepository mealMemoryRepository;
     private final HouseholdPreferenceSignalRepository householdPreferenceSignalRepository;
     private final RecipeImportPort recipeImportPort;
+    private final RecipeAssetIntakePort recipeAssetIntakePort;
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
@@ -198,6 +201,7 @@ public class MealsApplicationService {
                 null,
                 null,
                 null,
+                null,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -211,6 +215,32 @@ public class MealsApplicationService {
             MealMemoryRepository mealMemoryRepository,
             HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
             RecipeImportPort recipeImportPort,
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
+            MealsShoppingPort mealsShoppingPort,
+            Clock clock
+    ) {
+        this(
+                weekPlanRepository,
+                recipeRepository,
+                recipeDraftRepository,
+                mealMemoryRepository,
+                householdPreferenceSignalRepository,
+                recipeImportPort,
+                null,
+                ensureGroupMemberUseCase,
+                mealsShoppingPort,
+                clock
+        );
+    }
+
+    public MealsApplicationService(
+            WeekPlanRepository weekPlanRepository,
+            RecipeRepository recipeRepository,
+            RecipeDraftRepository recipeDraftRepository,
+            MealMemoryRepository mealMemoryRepository,
+            HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
+            RecipeImportPort recipeImportPort,
+            RecipeAssetIntakePort recipeAssetIntakePort,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -236,6 +266,7 @@ public class MealsApplicationService {
         this.mealMemoryRepository = mealMemoryRepository;
         this.householdPreferenceSignalRepository = householdPreferenceSignalRepository;
         this.recipeImportPort = recipeImportPort;
+        this.recipeAssetIntakePort = recipeAssetIntakePort;
         this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
@@ -260,6 +291,31 @@ public class MealsApplicationService {
                 null,
                 null,
                 recipeImportPort,
+                null,
+                ensureGroupMemberUseCase,
+                mealsShoppingPort,
+                clock
+        );
+    }
+
+    public MealsApplicationService(
+            WeekPlanRepository weekPlanRepository,
+            RecipeRepository recipeRepository,
+            RecipeDraftRepository recipeDraftRepository,
+            RecipeImportPort recipeImportPort,
+            RecipeAssetIntakePort recipeAssetIntakePort,
+            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
+            MealsShoppingPort mealsShoppingPort,
+            Clock clock
+    ) {
+        this(
+                weekPlanRepository,
+                recipeRepository,
+                recipeDraftRepository,
+                null,
+                null,
+                recipeImportPort,
+                recipeAssetIntakePort,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -357,6 +413,37 @@ public class MealsApplicationService {
         requireRecipeDraftRepository();
         Instant now = clock.instant();
         RecipeImportDraftSupport.RecipeDraftSeed seed = RecipeImportDraftSupport.importFromText(text);
+        RecipeDraft draft = new RecipeDraft(
+                UUID.randomUUID(),
+                groupId,
+                seed.name(),
+                seed.source(),
+                seed.provenance(),
+                seed.servings(),
+                seed.shortNote(),
+                seed.instructions(),
+                seed.state(),
+                now,
+                now,
+                seed.ingredients()
+        );
+        return toDraftView(recipeDraftRepository.save(draft));
+    }
+
+    @Transactional
+    public RecipeDraftView createRecipeDraftFromAsset(
+            UUID groupId,
+            UUID actorUserId,
+            RecipeAssetIntakeReference reference
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        requireRecipeDraftRepository();
+        requireRecipeAssetIntakePort();
+        Instant now = clock.instant();
+        RecipeImportDraftSupport.RecipeDraftSeed seed = RecipeImportDraftSupport.importFromAsset(
+                recipeAssetIntakePort,
+                reference
+        );
         RecipeDraft draft = new RecipeDraft(
                 UUID.randomUUID(),
                 groupId,
@@ -1573,6 +1660,12 @@ public class MealsApplicationService {
         }
     }
 
+    private void requireRecipeAssetIntakePort() {
+        if (recipeAssetIntakePort == null) {
+            throw new RecipeAssetIntakeUnavailableException("Recipe file and image import is not available yet");
+        }
+    }
+
     private void requireMealMemoryRepository() {
         if (mealMemoryRepository == null) {
             throw new IllegalStateException("Meal memory platform is not configured");
@@ -2036,7 +2129,9 @@ public class MealsApplicationService {
 
     private boolean needsDraftReviewByDefault(RecipeOriginKind originKind) {
         return originKind == RecipeOriginKind.URL_IMPORT
-                || originKind == RecipeOriginKind.PASTED_TEXT;
+                || originKind == RecipeOriginKind.PASTED_TEXT
+                || originKind == RecipeOriginKind.DOCUMENT_IMPORT
+                || originKind == RecipeOriginKind.IMAGE_IMPORT;
     }
 
     private boolean hasDraftCoreContent(String name, List<Ingredient> ingredients) {

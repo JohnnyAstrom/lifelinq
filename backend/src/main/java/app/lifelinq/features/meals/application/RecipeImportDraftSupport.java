@@ -2,6 +2,9 @@ package app.lifelinq.features.meals.application;
 
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.ParsedRecipeImportData;
+import app.lifelinq.features.meals.contract.RecipeAssetIntakeKind;
+import app.lifelinq.features.meals.contract.RecipeAssetIntakePort;
+import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
 import app.lifelinq.features.meals.contract.RecipeImportDraftIngredientView;
 import app.lifelinq.features.meals.contract.RecipeImportDraftView;
 import app.lifelinq.features.meals.contract.RecipeImportPort;
@@ -158,6 +161,45 @@ final class RecipeImportDraftSupport {
         );
     }
 
+    static RecipeDraftSeed importFromAsset(RecipeAssetIntakePort recipeAssetIntakePort, RecipeAssetIntakeReference reference) {
+        if (recipeAssetIntakePort == null) {
+            throw new IllegalArgumentException("recipeAssetIntakePort must not be null");
+        }
+        if (reference == null) {
+            throw new IllegalArgumentException("reference must not be null");
+        }
+
+        ParsedRecipeImportData parsed = recipeAssetIntakePort.extract(reference);
+        String parsedName = normalizeOptionalText(parsed.name());
+        String name = parsedName != null ? parsedName : deriveAssetRecipeName(reference);
+        if (name == null) {
+            throw new RecipeImportFailedException("Imported asset is missing recipe content");
+        }
+
+        List<Ingredient> ingredients = normalizeIngredientsAllowEmpty(parsed.ingredientLines());
+        String normalizedServings = normalizeOptionalText(parsed.servings());
+        String normalizedShortNote = normalizeOptionalText(parsed.shortNote());
+        RecipeInstructions instructions = new RecipeInstructions(parsed.instructions());
+        RecipeSource source = new RecipeSource(
+                firstNonBlank(parsed.sourceName(), reference.effectiveSourceLabel()),
+                normalizeOptionalText(parsed.sourceUrl())
+        );
+        if (!isReviewableAssetImport(name, ingredients, normalizedShortNote, instructions.body())) {
+            throw new RecipeImportFailedException("Imported asset is missing recipe content");
+        }
+        RecipeProvenance provenance = new RecipeProvenance(toAssetOriginKind(reference.kind()), null);
+        return new RecipeDraftSeed(
+                name,
+                source,
+                provenance,
+                normalizedServings,
+                normalizedShortNote,
+                instructions,
+                ingredients,
+                RecipeDraftState.DRAFT_NEEDS_REVIEW
+        );
+    }
+
     static RecipeImportDraftView toLegacyView(RecipeDraftSeed seed) {
         List<RecipeImportDraftIngredientView> ingredients = new ArrayList<>();
         for (Ingredient ingredient : seed.ingredients()) {
@@ -289,6 +331,24 @@ final class RecipeImportDraftSupport {
         }
 
         return new Ingredient(UUID.randomUUID(), normalizedLine, normalizedLine, null, null, position);
+    }
+
+    private static boolean isReviewableAssetImport(
+            String name,
+            List<Ingredient> ingredients,
+            String shortNote,
+            String instructions
+    ) {
+        if (normalizeOptionalText(name) == null) {
+            return false;
+        }
+        if (ingredients != null && !ingredients.isEmpty()) {
+            return true;
+        }
+        if (normalizeOptionalText(shortNote) != null) {
+            return true;
+        }
+        return normalizeOptionalText(instructions) != null;
     }
 
     private static PastedTextSections extractPastedTextSections(List<List<String>> blocks) {
@@ -797,6 +857,36 @@ final class RecipeImportDraftSupport {
         }
         String normalizedHost = host.startsWith("www.") ? host.substring(4) : host;
         return normalizedHost;
+    }
+
+    private static String deriveAssetRecipeName(RecipeAssetIntakeReference reference) {
+        String candidate = firstNonBlank(reference.sourceLabel(), reference.originalFilename());
+        if (candidate == null) {
+            return null;
+        }
+        String strippedExtension = candidate.replaceFirst("\\.[\\p{Alnum}]{1,8}$", "");
+        String normalized = normalizeOptionalText(strippedExtension);
+        return normalized == null ? null : normalized;
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            String normalized = normalizeOptionalText(value);
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+        return null;
+    }
+
+    private static RecipeOriginKind toAssetOriginKind(RecipeAssetIntakeKind kind) {
+        return switch (kind) {
+            case DOCUMENT -> RecipeOriginKind.DOCUMENT_IMPORT;
+            case IMAGE -> RecipeOriginKind.IMAGE_IMPORT;
+        };
     }
 
     record RecipeDraftSeed(

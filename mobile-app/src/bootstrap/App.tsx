@@ -52,6 +52,19 @@ type Screen =
   | 'economy'
   | 'accept-invite';
 
+type RecipeCaptureEntryRequest = {
+  key: number;
+  sharedUrl?: string | null;
+  sharedAsset?: {
+    assetKind: 'DOCUMENT' | 'IMAGE';
+    referenceId: string;
+    sourceLabel?: string | null;
+    originalFilename?: string | null;
+    mimeType?: string | null;
+  } | null;
+  failureMessage?: string | null;
+};
+
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -97,12 +110,31 @@ function AppShell() {
     reloadMe,
     handleApiError,
   });
+  const [recipeCaptureEntryRequest, setRecipeCaptureEntryRequest] = useState<RecipeCaptureEntryRequest | null>(null);
 
   useDeepLinkBootstrap({
     onLoginFromDeepLink: login,
     onAuthError: setAuthError,
     onInviteToken: setPendingInviteToken,
     onClearInviteError: clearInviteError,
+    onSharedRecipeUrl: (url) => {
+      setRecipeCaptureEntryRequest({
+        key: Date.now(),
+        sharedUrl: url,
+      });
+    },
+    onSharedRecipeAsset: (asset) => {
+      setRecipeCaptureEntryRequest({
+        key: Date.now(),
+        sharedAsset: asset,
+      });
+    },
+    onRecipeCaptureFailure: (message) => {
+      setRecipeCaptureEntryRequest({
+        key: Date.now(),
+        failureMessage: message,
+      });
+    },
   });
 
   return (
@@ -118,6 +150,8 @@ function AppShell() {
         inviteError={inviteError}
         clearInviteError={clearInviteError}
         autoAccepting={autoAccepting}
+        recipeCaptureEntryRequest={recipeCaptureEntryRequest}
+        onRecipeCaptureEntryHandled={() => setRecipeCaptureEntryRequest(null)}
       />
     </AuthGate>
   );
@@ -130,6 +164,8 @@ function AppStack({
   inviteError,
   clearInviteError,
   autoAccepting,
+  recipeCaptureEntryRequest,
+  onRecipeCaptureEntryHandled,
 }: {
   setManualInviteAcceptInFlight: (value: boolean) => void;
   pendingInviteToken: string | null;
@@ -137,6 +173,8 @@ function AppStack({
   inviteError: string | null;
   clearInviteError: () => void;
   autoAccepting: boolean;
+  recipeCaptureEntryRequest: RecipeCaptureEntryRequest | null;
+  onRecipeCaptureEntryHandled: () => void;
 }) {
   const { token, me, meLoading, meError, reloadMe, logout, handleApiError } = useAuth();
   const { setPendingInviteToken, clearPendingInviteToken, clearInviteOnboarding } = usePendingInvite();
@@ -177,6 +215,13 @@ function AppStack({
   function showToast(message: string) {
     setToast((prev) => ({ message, key: (prev?.key ?? 0) + 1 }));
   }
+
+  useEffect(() => {
+    if (!recipeCaptureEntryRequest) {
+      return;
+    }
+    setScreen('meals');
+  }, [recipeCaptureEntryRequest]);
 
   async function switchPlace(groupId: string) {
     if (!token) {
@@ -651,6 +696,9 @@ function AppStack({
     screenContent = (
       <MealsWeekScreen
         token={token}
+        recipeCaptureEntryRequest={recipeCaptureEntryRequest}
+        onRecipeCaptureEntryHandled={onRecipeCaptureEntryHandled}
+        onShowToast={showToast}
         onDone={() => {
           setScreen('home');
         }}

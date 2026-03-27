@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 import { MealDayDetailSheet } from '../components/MealDayDetailSheet';
 import { MealEditorSheet } from '../components/MealEditorSheet';
+
 import { MealRecipeCaptureSourceSheet } from '../components/MealRecipeCaptureSourceSheet';
+
 import { MealRecipeDetailSheet } from '../components/MealRecipeDetailSheet';
 import { MealRecipeImportSheet } from '../components/MealRecipeImportSheet';
 import { MealRecipeTextImportSheet } from '../components/MealRecipeTextImportSheet';
@@ -60,6 +62,20 @@ import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
 
 type Props = {
   token: string;
+  recipeCaptureEntryRequest?: {
+    key: number;
+    sharedUrl?: string | null;
+    sharedAsset?: {
+      assetKind: 'DOCUMENT' | 'IMAGE';
+      referenceId: string;
+      sourceLabel?: string | null;
+      originalFilename?: string | null;
+      mimeType?: string | null;
+    } | null;
+    failureMessage?: string | null;
+  } | null;
+  onRecipeCaptureEntryHandled?: () => void;
+  onShowToast?: (message: string) => void;
   onDone: () => void;
 };
 
@@ -278,8 +294,15 @@ function formatRecipeMemorySupport(memory: {
   return `${lead} · ${trailing}`;
 }
 
-export function MealsWeekScreen({ token, onDone }: Props) {
+export function MealsWeekScreen({
+  token,
+  recipeCaptureEntryRequest = null,
+  onRecipeCaptureEntryHandled,
+  onShowToast,
+  onDone,
+}: Props) {
   const { handleApiError } = useAuth();
+  const lastHandledRecipeCaptureEntryRef = useRef<number | null>(null);
   const strings = {
     title: 'Meals',
     homeTitle: 'Meals',
@@ -575,6 +598,7 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     token,
     enabled: workspaceMode === 'recipes',
   });
+
   const recipeMemorySupport = useMemo(
     () => formatRecipeMemorySupport(recipesWorkspace.recipeDetail.recipeMemory),
     [recipesWorkspace.recipeDetail.recipeMemory]
@@ -586,6 +610,57 @@ export function MealsWeekScreen({ token, onDone }: Props) {
     }
     void recipesWorkspace.recipes.reload();
   }, [workspaceMode]);
+  useEffect(() => {
+    if (!recipeCaptureEntryRequest) {
+      return;
+    }
+    if (lastHandledRecipeCaptureEntryRef.current === recipeCaptureEntryRequest.key) {
+      return;
+    }
+
+    lastHandledRecipeCaptureEntryRef.current = recipeCaptureEntryRequest.key;
+    setWorkspaceMode('recipes');
+
+    if (recipeCaptureEntryRequest.failureMessage) {
+      onShowToast?.(recipeCaptureEntryRequest.failureMessage);
+      onRecipeCaptureEntryHandled?.();
+      return;
+    }
+
+    const sharedUrl = recipeCaptureEntryRequest.sharedUrl?.trim();
+    if (sharedUrl) {
+      void recipesWorkspace.importDraft.importSharedRecipeUrl(sharedUrl, {
+        onError: (message) => {
+          onShowToast?.(message);
+        },
+        onComplete: () => {
+          onRecipeCaptureEntryHandled?.();
+        },
+      });
+      return;
+    }
+
+    const sharedAsset = recipeCaptureEntryRequest.sharedAsset;
+    if (sharedAsset?.referenceId?.trim()) {
+      void recipesWorkspace.importDraft.importSharedRecipeAsset(sharedAsset, {
+        onError: (message) => {
+          onShowToast?.(message);
+        },
+        onComplete: () => {
+          onRecipeCaptureEntryHandled?.();
+        },
+      });
+      return;
+    }
+
+    onShowToast?.('We could not use that shared file or image. Try sharing it again.');
+    onRecipeCaptureEntryHandled?.();
+  }, [
+    onRecipeCaptureEntryHandled,
+    onShowToast,
+    recipeCaptureEntryRequest,
+    recipesWorkspace.importDraft,
+  ]);
   useEffect(() => {
     if (recipesWorkspace.recipeDetail.isOpen || !recipePlanBridge) {
       return;
@@ -2574,3 +2649,4 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
+

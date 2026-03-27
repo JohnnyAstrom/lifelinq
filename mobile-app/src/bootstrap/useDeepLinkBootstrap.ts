@@ -1,52 +1,39 @@
 import { Linking } from 'react-native';
 import { useCallback, useEffect, useRef } from 'react';
+import {
+  parseAuthCompleteUrl,
+  parseInviteUrl,
+  parseSharedRecipeAsset,
+  parseSharedRecipeUrl,
+  type ParsedSharedRecipeAsset,
+} from './deepLinkIntents';
+
+type SharedRecipeAssetPayload = {
+  assetKind: 'DOCUMENT' | 'IMAGE';
+  referenceId: string;
+  sourceLabel?: string | null;
+  originalFilename?: string | null;
+  mimeType?: string | null;
+};
 
 type Params = {
   onLoginFromDeepLink: (token: string, refreshToken?: string | null) => Promise<void>;
   onAuthError: (message: string | null) => void;
   onInviteToken: (token: string) => void;
   onClearInviteError: () => void;
+  onSharedRecipeUrl: (url: string) => void;
+  onSharedRecipeAsset: (asset: SharedRecipeAssetPayload) => void;
+  onRecipeCaptureFailure: (message: string) => void;
 };
-
-function parseAuthCompleteUrl(url: string): { token?: string; refresh?: string; error?: string } | null {
-  const [base, fragment = ''] = url.split('#', 2);
-  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  if (normalizedBase !== 'mobileapp://auth/complete') {
-    return null;
-  }
-  const params = new URLSearchParams(fragment);
-  const token = params.get('token')?.trim();
-  const refresh = params.get('refresh')?.trim();
-  const error = params.get('error')?.trim();
-  if (token) {
-    return { token, refresh };
-  }
-  if (error) {
-    return { error };
-  }
-  return null;
-}
-
-function parseInviteUrl(url: string): { token: string } | null {
-  const [baseWithPath, queryAndMaybeFragment = ''] = url.split('?', 2);
-  const normalizedBase = baseWithPath.endsWith('/') ? baseWithPath.slice(0, -1) : baseWithPath;
-  if (normalizedBase !== 'mobileapp://invite') {
-    return null;
-  }
-  const query = queryAndMaybeFragment.split('#', 1)[0];
-  const params = new URLSearchParams(query);
-  const token = params.get('token')?.trim();
-  if (!token) {
-    return null;
-  }
-  return { token };
-}
 
 export function useDeepLinkBootstrap({
   onLoginFromDeepLink,
   onAuthError,
   onInviteToken,
   onClearInviteError,
+  onSharedRecipeUrl,
+  onSharedRecipeAsset,
+  onRecipeCaptureFailure,
 }: Params) {
   const lastHandledUrlRef = useRef<string | null>(null);
   const tokenInFlightRef = useRef<string | null>(null);
@@ -84,9 +71,53 @@ export function useDeepLinkBootstrap({
         lastHandledUrlRef.current = url;
         onClearInviteError();
         onInviteToken(invite.token);
+        return;
+      }
+
+      const sharedRecipe = parseSharedRecipeUrl(url);
+      if (sharedRecipe) {
+        lastHandledUrlRef.current = url;
+        if (sharedRecipe.url) {
+          onSharedRecipeUrl(sharedRecipe.url);
+          return;
+        }
+        if (sharedRecipe.invalid) {
+          onRecipeCaptureFailure('We could not use that shared link. Try sharing a full recipe page link.');
+          return;
+        }
+      }
+
+      const sharedAsset = parseSharedRecipeAsset(url);
+      if (sharedAsset) {
+        lastHandledUrlRef.current = url;
+        if (sharedAsset.referenceId && !sharedAsset.invalid && !sharedAsset.unsupported) {
+          onSharedRecipeAsset({
+            assetKind: sharedAsset.assetKind,
+            referenceId: sharedAsset.referenceId,
+            sourceLabel: sharedAsset.sourceLabel,
+            originalFilename: sharedAsset.originalFilename,
+            mimeType: sharedAsset.mimeType,
+          });
+          return;
+        }
+        if (sharedAsset.unsupported) {
+          onRecipeCaptureFailure('That shared file is not supported for recipe capture yet.');
+          return;
+        }
+        if (sharedAsset.invalid) {
+          onRecipeCaptureFailure('We could not use that shared file or image. Try sharing it again.');
+        }
       }
     },
-    [onAuthError, onClearInviteError, onInviteToken, onLoginFromDeepLink]
+    [
+      onAuthError,
+      onClearInviteError,
+      onInviteToken,
+      onLoginFromDeepLink,
+      onRecipeCaptureFailure,
+      onSharedRecipeAsset,
+      onSharedRecipeUrl,
+    ]
   );
 
   useEffect(() => {
@@ -110,4 +141,3 @@ export function useDeepLinkBootstrap({
     };
   }, [handleIncomingUrl]);
 }
-

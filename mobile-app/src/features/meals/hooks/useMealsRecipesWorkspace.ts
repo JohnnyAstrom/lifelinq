@@ -7,6 +7,7 @@ import {
   archiveRecipeDetail,
   clearRecipeDetailMakeSoon,
   createManualRecipeDraft,
+  createRecipeDraftFromAsset,
   createRecipeDraftFromText,
   createRecipeDraftFromUrl,
   deleteRecipe,
@@ -101,7 +102,7 @@ function buildTitleFamilyKey(name: string) {
   return `${tokens[0]} ${tokens[1]}`;
 }
 
-function normalizeClipboardUrlCandidate(value: string) {
+function normalizeImportUrlCandidate(value: string) {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
     return null;
@@ -142,6 +143,19 @@ function toDuplicateCandidate(
 type Params = {
   token: string;
   enabled: boolean;
+};
+
+type SharedRecipeUrlImportCallbacks = {
+  onError?: (message: string) => void;
+  onComplete?: () => void;
+};
+
+type SharedRecipeAssetImport = {
+  assetKind: 'DOCUMENT' | 'IMAGE';
+  referenceId: string;
+  sourceLabel?: string | null;
+  originalFilename?: string | null;
+  mimeType?: string | null;
 };
 
 export function useMealsRecipesWorkspace({ token, enabled }: Params) {
@@ -188,6 +202,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [isImportingDraft, setIsImportingDraft] = useState(false);
   const [clipboardImportUrl, setClipboardImportUrl] = useState<string | null>(null);
   const [isAddRecipeSheetOpen, setIsAddRecipeSheetOpen] = useState(false);
+  const [isCreateRecipeSheetOpen, setIsCreateRecipeSheetOpen] = useState(false);
   const [isTextImportSheetOpen, setIsTextImportSheetOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importTextError, setImportTextError] = useState<string | null>(null);
@@ -448,6 +463,28 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     return formatApiError(err);
   }
 
+  function formatAssetImportDraftError(err: unknown): string {
+    if (err instanceof ApiError) {
+      if (err.status === 400) {
+        return 'We could not use that shared file or image. Try sharing it again.';
+      }
+      if (err.status === 422) {
+        return 'We could not turn that file or image into a recipe yet.';
+      }
+      if (err.status === 503) {
+        try {
+          const payload = JSON.parse(err.body) as { code?: string };
+          if (payload.code === 'RECIPE_ASSET_INTAKE_UNAVAILABLE') {
+            return 'File and image import is not available yet.';
+          }
+        } catch {
+          return 'File and image import is not available yet.';
+        }
+      }
+    }
+    return formatApiError(err);
+  }
+
   function resetRecipeDetailState() {
     setRecipeDraftId(null);
     setRecipeDraftState(null);
@@ -589,6 +626,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return;
     }
     setIsAddRecipeSheetOpen(false);
+    setIsCreateRecipeSheetOpen(false);
     setIsImportSheetOpen(false);
     setIsTextImportSheetOpen(false);
     setImportError(null);
@@ -624,6 +662,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setImportError(null);
     setImportTextError(null);
     setIsAddRecipeSheetOpen(true);
+    setIsCreateRecipeSheetOpen(false);
   }
 
   function closeAddRecipe() {
@@ -631,12 +670,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       return;
     }
     setIsAddRecipeSheetOpen(false);
+    setIsCreateRecipeSheetOpen(false);
   }
+
 
   async function hydrateImportUrlFromClipboard() {
     try {
       const clipboardValue = await Clipboard.getStringAsync();
-      const normalizedUrl = normalizeClipboardUrlCandidate(clipboardValue);
+      const normalizedUrl = normalizeImportUrlCandidate(clipboardValue);
       if (!normalizedUrl) {
         setClipboardImportUrl(null);
         return;
@@ -648,12 +689,112 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
+  async function importSharedRecipeUrl(
+    sharedUrl: string,
+    callbacks?: SharedRecipeUrlImportCallbacks
+  ) {
+    if (isRecipeLoading || pendingDetailAction || isImportingDraft || isImportingTextDraft) {
+      callbacks?.onError?.('Finish the current recipe first, then try sharing the link again.');
+      callbacks?.onComplete?.();
+      return;
+    }
+
+    const normalizedUrl = normalizeImportUrlCandidate(sharedUrl);
+    if (!normalizedUrl) {
+      callbacks?.onError?.('We could not use that shared link. Try sharing a full recipe page link.');
+      callbacks?.onComplete?.();
+      return;
+    }
+
+    focusMainRecipeLibrary();
+    setIsAddRecipeSheetOpen(false);
+    setIsCreateRecipeSheetOpen(false);
+    setIsImportSheetOpen(false);
+    setIsTextImportSheetOpen(false);
+    setImportError(null);
+    setImportTextError(null);
+    resetRecipeDetailState();
+    setRecipeDetailError(null);
+    setIsRecipeLoading(true);
+    setIsRecipeDetailOpen(true);
+
+    try {
+      const draft = await createRecipeDraftFromUrl(
+        { url: normalizedUrl },
+        { token }
+      );
+      applyRecipeDraft(draft, 'import');
+      callbacks?.onComplete?.();
+    } catch (err) {
+      await handleApiError(err);
+      setIsRecipeDetailOpen(false);
+      setIsRecipeLoading(false);
+      setRecipeDetailError(null);
+      resetRecipeDetailState();
+      callbacks?.onError?.(formatImportDraftError(err));
+      callbacks?.onComplete?.();
+    }
+  }
+
+  async function importSharedRecipeAsset(
+    asset: SharedRecipeAssetImport,
+    callbacks?: SharedRecipeUrlImportCallbacks
+  ) {
+    if (isRecipeLoading || pendingDetailAction || isImportingDraft || isImportingTextDraft) {
+      callbacks?.onError?.('Finish the current recipe first, then try sharing the file again.');
+      callbacks?.onComplete?.();
+      return;
+    }
+
+    if (!asset.referenceId.trim()) {
+      callbacks?.onError?.('We could not use that shared file or image. Try sharing it again.');
+      callbacks?.onComplete?.();
+      return;
+    }
+
+    focusMainRecipeLibrary();
+    setIsAddRecipeSheetOpen(false);
+    setIsCreateRecipeSheetOpen(false);
+    setIsImportSheetOpen(false);
+    setIsTextImportSheetOpen(false);
+    setImportError(null);
+    setImportTextError(null);
+    resetRecipeDetailState();
+    setRecipeDetailError(null);
+    setIsRecipeLoading(true);
+    setIsRecipeDetailOpen(true);
+
+    try {
+      const draft = await createRecipeDraftFromAsset(
+        {
+          assetKind: asset.assetKind === 'IMAGE' ? 'image' : 'document',
+          referenceId: asset.referenceId.trim(),
+          sourceLabel: asset.sourceLabel?.trim() || null,
+          originalFilename: asset.originalFilename?.trim() || null,
+          mimeType: asset.mimeType?.trim() || null,
+        },
+        { token }
+      );
+      applyRecipeDraft(draft, 'import');
+      callbacks?.onComplete?.();
+    } catch (err) {
+      await handleApiError(err);
+      setIsRecipeDetailOpen(false);
+      setIsRecipeLoading(false);
+      setRecipeDetailError(null);
+      resetRecipeDetailState();
+      callbacks?.onError?.(formatAssetImportDraftError(err));
+      callbacks?.onComplete?.();
+    }
+  }
+
   function openImportRecipe() {
     if (isImportingDraft || pendingDetailAction) {
       return;
     }
     focusMainRecipeLibrary();
     setIsAddRecipeSheetOpen(false);
+    setIsCreateRecipeSheetOpen(false);
     setIsTextImportSheetOpen(false);
     setImportUrl('');
     setImportError(null);
@@ -678,6 +819,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     focusMainRecipeLibrary();
     setIsAddRecipeSheetOpen(false);
+    setIsCreateRecipeSheetOpen(false);
     setIsImportSheetOpen(false);
     setImportText('');
     setImportTextError(null);
@@ -690,7 +832,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsTextImportSheetOpen(false);
     setImportTextError(null);
-    setIsAddRecipeSheetOpen(true);
+    setIsCreateRecipeSheetOpen(true);
   }
 
   function closeRecipeDetail() {
@@ -1081,6 +1223,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       openImportRecipe,
       closeImportRecipe,
       importRecipeDraft,
+      importSharedRecipeUrl,
+      importSharedRecipeAsset,
     },
     textImportDraft: {
       isOpen: isTextImportSheetOpen,
@@ -1150,3 +1294,4 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     },
   };
 }
+
