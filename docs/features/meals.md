@@ -266,6 +266,8 @@ Program 5C2 visible-step note: the first real in-app rich-source path now appear
 
 Program 5C3 visible-step note: the first visible image-based rich-source path now appears as `Scan photo` alongside `From link`, `Create recipe`, and `Import file / PDF`. This path stays intentionally small and calm: the user chooses whether to take a photo or use one from the library, LifeLinq routes the selected image into the existing `image` asset-intake family, and the result continues into the same recipe-draft review flow when downstream extraction can proceed. It therefore establishes image/photo as its own capture family without turning Recipes into a scanner tool or collapsing image intake into the document path.
 
+Program 5D stabilization note: Program 5 recipe capture is now intended to read as one calm source-family system rather than a stack of separate importer utilities. The visible model is `Add recipe` -> choose one family (`From link`, `Create recipe`, `Import file / PDF`, `Scan photo`) -> review -> save. Manual and pasted-text starts stay grouped under the broader create family, document/file and photo stay as distinct rich-source families, and both in-app import and external share handoff should now use the same short, product-safe language when a richer path is unavailable or cannot proceed yet.
+
 Endpoint: `POST /meals/recipe-drafts/manual`  
 Purpose: Start a persisted manual recipe draft.  
 Response: `RecipeDraftView`.  

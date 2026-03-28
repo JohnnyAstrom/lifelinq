@@ -101,11 +101,11 @@ export function useDeepLinkBootstrap({
           return;
         }
         if (sharedAsset.unsupported) {
-          onRecipeCaptureFailure('That shared file is not supported for recipe capture yet.');
+          onRecipeCaptureFailure('That shared item is not supported for recipe capture yet.');
           return;
         }
         if (sharedAsset.invalid) {
-          onRecipeCaptureFailure('We could not use that shared file or image. Try sharing it again.');
+          onRecipeCaptureFailure('We could not use that shared file or photo. Try sharing it again.');
         }
       }
     },

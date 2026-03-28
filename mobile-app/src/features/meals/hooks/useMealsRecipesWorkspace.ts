@@ -1,6 +1,4 @@
 import * as Clipboard from 'expo-clipboard';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
@@ -118,6 +116,29 @@ function normalizeImportUrlCandidate(value: string) {
       return null;
     }
     return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function getAssetEntryLabel(assetKind: RecipeAssetImport['assetKind'], options?: { sharedEntry?: boolean }) {
+  if (options?.sharedEntry) {
+    return assetKind === 'IMAGE' ? 'shared photo' : 'shared file';
+  }
+  return assetKind === 'IMAGE' ? 'photo' : 'file';
+}
+
+async function loadDocumentPickerModule() {
+  try {
+    return await import('expo-document-picker');
+  } catch {
+    return null;
+  }
+}
+
+async function loadImagePickerModule() {
+  try {
+    return await import('expo-image-picker');
   } catch {
     return null;
   }
@@ -440,15 +461,15 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
               return 'We could not reach that recipe page. Check the URL or try another recipe site.';
             }
             if (message.includes('structured recipe data')) {
-              return 'We could not find a usable recipe on that page. Try another recipe URL or create it manually.';
+              return 'We could not find a usable recipe on that page. Try another link or create the recipe yourself.';
             }
             if (message.includes('missing ingredients')) {
-              return 'We found the page, but the recipe draft was too incomplete. Try another URL or finish the recipe manually.';
+              return 'We found the page, but it was too incomplete to review. Try another link or finish the recipe yourself.';
             }
-            return 'We could not import that recipe page yet. Try another URL or create the recipe manually.';
+            return 'We could not import that recipe page yet. Try another link or create the recipe yourself.';
           }
         } catch {
-          return 'We could not import that recipe page yet. Try another URL or create the recipe manually.';
+          return 'We could not import that recipe page yet. Try another link or create the recipe yourself.';
         }
       }
     }
@@ -467,22 +488,31 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     return formatApiError(err);
   }
 
-  function formatAssetImportDraftError(err: unknown): string {
+  function formatAssetImportDraftError(
+    err: unknown,
+    assetKind: RecipeAssetImport['assetKind'],
+    options?: { sharedEntry?: boolean }
+  ): string {
+    const entryLabel = getAssetEntryLabel(assetKind, options);
     if (err instanceof ApiError) {
       if (err.status === 400) {
-        return 'We could not use that shared file or image. Try sharing it again.';
+        return `We could not use that ${entryLabel}. Try again.`;
       }
       if (err.status === 422) {
-        return 'We could not turn that file or image into a recipe yet.';
+        return `We could not turn that ${entryLabel} into a recipe yet.`;
       }
       if (err.status === 503) {
         try {
           const payload = JSON.parse(err.body) as { code?: string };
           if (payload.code === 'RECIPE_ASSET_INTAKE_UNAVAILABLE') {
-            return 'File and image import is not available yet.';
+            return assetKind === 'IMAGE'
+              ? `${options?.sharedEntry ? 'Shared photo import' : 'Photo import'} is not available yet.`
+              : `${options?.sharedEntry ? 'Shared file import' : 'File import'} is not available yet.`;
           }
         } catch {
-          return 'File and image import is not available yet.';
+          return assetKind === 'IMAGE'
+            ? `${options?.sharedEntry ? 'Shared photo import' : 'Photo import'} is not available yet.`
+            : `${options?.sharedEntry ? 'Shared file import' : 'File import'} is not available yet.`;
         }
       }
     }
@@ -490,11 +520,17 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   function formatDocumentImportSelectionError() {
-    return 'We could not open that file. Try another file or try again.';
+    return 'We could not open that file. Try another one or try again.';
   }
 
   function formatImageImportSelectionError() {
     return 'We could not use that photo. Try another one or try again.';
+  }
+
+  function formatMissingNativeAssetPickerError(assetKind: RecipeAssetImport['assetKind']) {
+    return assetKind === 'IMAGE'
+      ? 'Photo import is not available in this app build yet. Rebuild the app and try again.'
+      : 'File import is not available in this app build yet. Rebuild the app and try again.';
   }
 
   function isSupportedRecipeDocumentMimeType(mimeType: string | null | undefined) {
@@ -822,7 +858,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   async function importRecipeAsset(
     asset: RecipeAssetImport,
-    callbacks?: RecipeImportCallbacks
+    callbacks?: RecipeImportCallbacks,
+    options?: { sharedEntry?: boolean }
   ) {
     if (
       isRecipeLoading
@@ -832,13 +869,19 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       || isSelectingImportDocument
       || isSelectingImportImage
     ) {
-      callbacks?.onError?.('Finish the current recipe first, then try sharing the file again.');
+      callbacks?.onError?.(
+        options?.sharedEntry
+          ? `Finish the current recipe first, then try sharing the ${asset.assetKind === 'IMAGE' ? 'photo' : 'file'} again.`
+          : `Finish the current recipe first, then try importing the ${asset.assetKind === 'IMAGE' ? 'photo' : 'file'} again.`
+      );
       callbacks?.onComplete?.();
       return;
     }
 
     if (!asset.referenceId.trim()) {
-      callbacks?.onError?.('We could not use that shared file or image. Try sharing it again.');
+      callbacks?.onError?.(
+        `We could not use that ${getAssetEntryLabel(asset.assetKind, options)}. Try again.`
+      );
       callbacks?.onComplete?.();
       return;
     }
@@ -874,7 +917,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setIsRecipeLoading(false);
       setRecipeDetailError(null);
       resetRecipeDetailState();
-      callbacks?.onError?.(formatAssetImportDraftError(err));
+      callbacks?.onError?.(formatAssetImportDraftError(err, asset.assetKind, options));
       callbacks?.onComplete?.();
     }
   }
@@ -883,7 +926,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     asset: RecipeAssetImport,
     callbacks?: RecipeImportCallbacks
   ) {
-    await importRecipeAsset(asset, callbacks);
+    await importRecipeAsset(asset, callbacks, { sharedEntry: true });
   }
 
   function openImportRecipe() {
@@ -1075,7 +1118,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
     setIsSelectingImportDocument(true);
     try {
-      const result = await DocumentPicker.getDocumentAsync({
+      const documentPicker = await loadDocumentPickerModule();
+      if (!documentPicker) {
+        callbacks?.onError?.(formatMissingNativeAssetPickerError('DOCUMENT'));
+        callbacks?.onComplete?.();
+        return;
+      }
+
+      const result = await documentPicker.getDocumentAsync({
         multiple: false,
         type: ['application/pdf', 'application/*', 'text/*'],
       });
@@ -1093,7 +1143,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
       const mimeType = asset.mimeType?.trim() || null;
       if (!isSupportedRecipeDocumentMimeType(mimeType)) {
-        callbacks?.onError?.('That file type is not supported here yet. Try a recipe document or PDF.');
+        callbacks?.onError?.('That file is not supported here yet. Try a recipe PDF or document.');
         callbacks?.onComplete?.();
         return;
       }
@@ -1128,7 +1178,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       || isImportingDraft
       || isImportingTextDraft
     ) {
-      callbacks?.onError?.('Finish the current recipe first, then try scanning the photo again.');
+      callbacks?.onError?.('Finish the current recipe first, then try the photo again.');
       callbacks?.onComplete?.();
       return;
     }
@@ -1138,27 +1188,34 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setIsCreateRecipeSheetOpen(false);
 
     try {
+      const imagePicker = await loadImagePickerModule();
+      if (!imagePicker) {
+        callbacks?.onError?.(formatMissingNativeAssetPickerError('IMAGE'));
+        callbacks?.onComplete?.();
+        return;
+      }
+
       const permission = source === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        ? await imagePicker.requestCameraPermissionsAsync()
+        : await imagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
         callbacks?.onError?.(
           source === 'camera'
             ? 'Allow camera access to take a recipe photo.'
-            : 'Allow photo access to choose a recipe image.'
+            : 'Allow photo access to choose a recipe photo.'
         );
         callbacks?.onComplete?.();
         return;
       }
 
       const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({
+        ? await imagePicker.launchCameraAsync({
             mediaTypes: ['images'],
             allowsEditing: false,
             quality: 1,
           })
-        : await ImagePicker.launchImageLibraryAsync({
+        : await imagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsMultipleSelection: false,
             allowsEditing: false,
@@ -1178,14 +1235,14 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       }
 
       if (asset.type === 'video') {
-        callbacks?.onError?.('That file type is not supported here yet. Try a recipe photo.');
+        callbacks?.onError?.('That photo is not supported here yet. Try another recipe photo.');
         callbacks?.onComplete?.();
         return;
       }
 
       const mimeType = asset.mimeType?.trim() || null;
       if (!isSupportedRecipeImageMimeType(mimeType)) {
-        callbacks?.onError?.('That file type is not supported here yet. Try a recipe photo.');
+        callbacks?.onError?.('That photo is not supported here yet. Try another recipe photo.');
         callbacks?.onComplete?.();
         return;
       }
@@ -1198,7 +1255,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
           originalFilename: asset.fileName?.trim() || null,
           mimeType,
         },
-        callbacks
+        callbacks,
+        { sharedEntry: false }
       );
     } catch {
       callbacks?.onError?.(formatImageImportSelectionError());
