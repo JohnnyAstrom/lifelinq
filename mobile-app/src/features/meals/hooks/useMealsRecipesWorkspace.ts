@@ -1,4 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, formatApiError } from '../../../shared/api/client';
 import { useAuth } from '../../../shared/auth/AuthContext';
@@ -145,12 +147,12 @@ type Params = {
   enabled: boolean;
 };
 
-type SharedRecipeUrlImportCallbacks = {
+type RecipeImportCallbacks = {
   onError?: (message: string) => void;
   onComplete?: () => void;
 };
 
-type SharedRecipeAssetImport = {
+type RecipeAssetImport = {
   assetKind: 'DOCUMENT' | 'IMAGE';
   referenceId: string;
   sourceLabel?: string | null;
@@ -207,6 +209,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [importText, setImportText] = useState('');
   const [importTextError, setImportTextError] = useState<string | null>(null);
   const [isImportingTextDraft, setIsImportingTextDraft] = useState(false);
+  const [isSelectingImportDocument, setIsSelectingImportDocument] = useState(false);
+  const [isSelectingImportImage, setIsSelectingImportImage] = useState(false);
 
   const hasIngredients = useMemo(
     () => toIngredientRequests(ingredientRows).length > 0,
@@ -485,6 +489,45 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     return formatApiError(err);
   }
 
+  function formatDocumentImportSelectionError() {
+    return 'We could not open that file. Try another file or try again.';
+  }
+
+  function formatImageImportSelectionError() {
+    return 'We could not use that photo. Try another one or try again.';
+  }
+
+  function isSupportedRecipeDocumentMimeType(mimeType: string | null | undefined) {
+    if (!mimeType) {
+      return true;
+    }
+
+    const normalized = mimeType.trim().toLowerCase();
+    if (normalized.length === 0) {
+      return true;
+    }
+    if (normalized.startsWith('image/') || normalized.startsWith('audio/') || normalized.startsWith('video/')) {
+      return false;
+    }
+
+    return normalized === 'application/pdf'
+      || normalized.startsWith('application/')
+      || normalized.startsWith('text/');
+  }
+
+  function isSupportedRecipeImageMimeType(mimeType: string | null | undefined) {
+    if (!mimeType) {
+      return true;
+    }
+
+    const normalized = mimeType.trim().toLowerCase();
+    if (normalized.length === 0) {
+      return true;
+    }
+
+    return normalized.startsWith('image/');
+  }
+
   function resetRecipeDetailState() {
     setRecipeDraftId(null);
     setRecipeDraftState(null);
@@ -655,6 +698,8 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       || isRecipeLoading
       || isImportingDraft
       || isImportingTextDraft
+      || isSelectingImportDocument
+      || isSelectingImportImage
     ) {
       return;
     }
@@ -666,13 +711,45 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   }
 
   function closeAddRecipe() {
-    if (isImportingDraft || isImportingTextDraft || isRecipeLoading) {
+    if (
+      isImportingDraft
+      || isImportingTextDraft
+      || isRecipeLoading
+      || isSelectingImportDocument
+      || isSelectingImportImage
+    ) {
       return;
     }
     setIsAddRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(false);
   }
 
+  function openCreateRecipeOptions() {
+    if (
+      isImportingTextDraft
+      || pendingDetailAction
+      || isRecipeLoading
+      || isSelectingImportDocument
+      || isSelectingImportImage
+    ) {
+      return;
+    }
+    focusMainRecipeLibrary();
+    setIsAddRecipeSheetOpen(false);
+    setIsImportSheetOpen(false);
+    setImportError(null);
+    setImportTextError(null);
+    setIsCreateRecipeSheetOpen(true);
+  }
+
+  function closeCreateRecipeOptions() {
+    if (isImportingTextDraft || isRecipeLoading || isSelectingImportDocument || isSelectingImportImage) {
+      return;
+    }
+    setIsCreateRecipeSheetOpen(false);
+    setImportTextError(null);
+    setIsAddRecipeSheetOpen(true);
+  }
 
   async function hydrateImportUrlFromClipboard() {
     try {
@@ -691,9 +768,16 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   async function importSharedRecipeUrl(
     sharedUrl: string,
-    callbacks?: SharedRecipeUrlImportCallbacks
+    callbacks?: RecipeImportCallbacks
   ) {
-    if (isRecipeLoading || pendingDetailAction || isImportingDraft || isImportingTextDraft) {
+    if (
+      isRecipeLoading
+      || pendingDetailAction
+      || isImportingDraft
+      || isImportingTextDraft
+      || isSelectingImportDocument
+      || isSelectingImportImage
+    ) {
       callbacks?.onError?.('Finish the current recipe first, then try sharing the link again.');
       callbacks?.onComplete?.();
       return;
@@ -736,11 +820,18 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
   }
 
-  async function importSharedRecipeAsset(
-    asset: SharedRecipeAssetImport,
-    callbacks?: SharedRecipeUrlImportCallbacks
+  async function importRecipeAsset(
+    asset: RecipeAssetImport,
+    callbacks?: RecipeImportCallbacks
   ) {
-    if (isRecipeLoading || pendingDetailAction || isImportingDraft || isImportingTextDraft) {
+    if (
+      isRecipeLoading
+      || pendingDetailAction
+      || isImportingDraft
+      || isImportingTextDraft
+      || isSelectingImportDocument
+      || isSelectingImportImage
+    ) {
       callbacks?.onError?.('Finish the current recipe first, then try sharing the file again.');
       callbacks?.onComplete?.();
       return;
@@ -786,6 +877,13 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       callbacks?.onError?.(formatAssetImportDraftError(err));
       callbacks?.onComplete?.();
     }
+  }
+
+  async function importSharedRecipeAsset(
+    asset: RecipeAssetImport,
+    callbacks?: RecipeImportCallbacks
+  ) {
+    await importRecipeAsset(asset, callbacks);
   }
 
   function openImportRecipe() {
@@ -957,6 +1055,156 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       setImportTextError(formatTextImportDraftError(err));
     } finally {
       setIsImportingTextDraft(false);
+    }
+  }
+
+  async function pickImportRecipeDocument(
+    callbacks?: RecipeImportCallbacks
+  ) {
+    if (
+      isSelectingImportDocument
+      || isRecipeLoading
+      || pendingDetailAction
+      || isImportingDraft
+      || isImportingTextDraft
+    ) {
+      callbacks?.onError?.('Finish the current recipe first, then try importing the file again.');
+      callbacks?.onComplete?.();
+      return;
+    }
+
+    setIsSelectingImportDocument(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        multiple: false,
+        type: ['application/pdf', 'application/*', 'text/*'],
+      });
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const referenceId = asset?.uri?.trim() ?? '';
+      if (!referenceId) {
+        callbacks?.onError?.(formatDocumentImportSelectionError());
+        callbacks?.onComplete?.();
+        return;
+      }
+
+      const mimeType = asset.mimeType?.trim() || null;
+      if (!isSupportedRecipeDocumentMimeType(mimeType)) {
+        callbacks?.onError?.('That file type is not supported here yet. Try a recipe document or PDF.');
+        callbacks?.onComplete?.();
+        return;
+      }
+
+      await importRecipeAsset(
+        {
+          assetKind: 'DOCUMENT',
+          referenceId,
+          sourceLabel: asset.name?.trim() || null,
+          originalFilename: asset.name?.trim() || null,
+          mimeType,
+        },
+        callbacks
+      );
+    } catch {
+      callbacks?.onError?.(formatDocumentImportSelectionError());
+      callbacks?.onComplete?.();
+    } finally {
+      setIsSelectingImportDocument(false);
+    }
+  }
+
+  async function pickImportRecipeImage(
+    source: 'camera' | 'library',
+    callbacks?: RecipeImportCallbacks
+  ) {
+    if (
+      isSelectingImportImage
+      || isSelectingImportDocument
+      || isRecipeLoading
+      || pendingDetailAction
+      || isImportingDraft
+      || isImportingTextDraft
+    ) {
+      callbacks?.onError?.('Finish the current recipe first, then try scanning the photo again.');
+      callbacks?.onComplete?.();
+      return;
+    }
+
+    setIsSelectingImportImage(true);
+    setIsAddRecipeSheetOpen(false);
+    setIsCreateRecipeSheetOpen(false);
+
+    try {
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        callbacks?.onError?.(
+          source === 'camera'
+            ? 'Allow camera access to take a recipe photo.'
+            : 'Allow photo access to choose a recipe image.'
+        );
+        callbacks?.onComplete?.();
+        return;
+      }
+
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: false,
+            quality: 1,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsMultipleSelection: false,
+            allowsEditing: false,
+            quality: 1,
+          });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const referenceId = asset?.uri?.trim() ?? '';
+      if (!referenceId) {
+        callbacks?.onError?.(formatImageImportSelectionError());
+        callbacks?.onComplete?.();
+        return;
+      }
+
+      if (asset.type === 'video') {
+        callbacks?.onError?.('That file type is not supported here yet. Try a recipe photo.');
+        callbacks?.onComplete?.();
+        return;
+      }
+
+      const mimeType = asset.mimeType?.trim() || null;
+      if (!isSupportedRecipeImageMimeType(mimeType)) {
+        callbacks?.onError?.('That file type is not supported here yet. Try a recipe photo.');
+        callbacks?.onComplete?.();
+        return;
+      }
+
+      await importRecipeAsset(
+        {
+          assetKind: 'IMAGE',
+          referenceId,
+          sourceLabel: asset.fileName?.trim() || null,
+          originalFilename: asset.fileName?.trim() || null,
+          mimeType,
+        },
+        callbacks
+      );
+    } catch {
+      callbacks?.onError?.(formatImageImportSelectionError());
+      callbacks?.onComplete?.();
+    } finally {
+      setIsSelectingImportImage(false);
     }
   }
 
@@ -1210,6 +1458,18 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       openAddRecipe,
       closeAddRecipe,
       chooseLink: openImportRecipe,
+      chooseCreate: openCreateRecipeOptions,
+      chooseImportFile: pickImportRecipeDocument,
+      chooseScanPhotoFromCamera: (callbacks?: RecipeImportCallbacks) => {
+        void pickImportRecipeImage('camera', callbacks);
+      },
+      chooseScanPhotoFromLibrary: (callbacks?: RecipeImportCallbacks) => {
+        void pickImportRecipeImage('library', callbacks);
+      },
+    },
+    createRecipe: {
+      isOpen: isCreateRecipeSheetOpen,
+      closeCreateRecipeOptions,
       choosePasteText: openImportRecipeText,
       chooseManual: openCreateRecipe,
     },
@@ -1225,6 +1485,13 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       importRecipeDraft,
       importSharedRecipeUrl,
       importSharedRecipeAsset,
+      pickImportRecipeDocument,
+      pickImportRecipeImageFromCamera: (callbacks?: RecipeImportCallbacks) => {
+        void pickImportRecipeImage('camera', callbacks);
+      },
+      pickImportRecipeImageFromLibrary: (callbacks?: RecipeImportCallbacks) => {
+        void pickImportRecipeImage('library', callbacks);
+      },
     },
     textImportDraft: {
       isOpen: isTextImportSheetOpen,
@@ -1294,4 +1561,3 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     },
   };
 }
-

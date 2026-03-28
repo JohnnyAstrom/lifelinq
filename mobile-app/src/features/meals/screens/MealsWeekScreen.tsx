@@ -11,9 +11,10 @@ import {
 } from 'react-native';
 import { MealDayDetailSheet } from '../components/MealDayDetailSheet';
 import { MealEditorSheet } from '../components/MealEditorSheet';
-
-import { MealRecipeCaptureSourceSheet } from '../components/MealRecipeCaptureSourceSheet';
-
+import {
+  MealRecipeCaptureSourceSheet,
+  type MealRecipeCaptureSourceOption,
+} from '../components/MealRecipeCaptureSourceSheet';
 import { MealRecipeDetailSheet } from '../components/MealRecipeDetailSheet';
 import { MealRecipeImportSheet } from '../components/MealRecipeImportSheet';
 import { MealRecipeTextImportSheet } from '../components/MealRecipeTextImportSheet';
@@ -439,10 +440,23 @@ export function MealsWeekScreen({
     addRecipeChooserSubtitle: 'Choose how to add it.',
     addRecipeFromLink: 'From link',
     addRecipeFromLinkHint: 'Use a recipe link you already have.',
-    addRecipeFromText: 'Paste recipe text',
-    addRecipeFromTextHint: 'Paste the recipe you have.',
-    addRecipeCreateManual: 'Create manually',
-    addRecipeCreateManualHint: 'Write the recipe in yourself.',
+    addRecipeCreate: 'Create recipe',
+    addRecipeCreateHint: 'Write it yourself or paste it in.',
+    addRecipeImportFile: 'Import file / PDF',
+    addRecipeImportFileHint: 'Use a recipe document you already have.',
+    addRecipeScanPhoto: 'Scan photo',
+    addRecipeScanPhotoHint: 'Use a recipe photo from your camera or library.',
+    scanPhotoChoiceTitle: 'Scan photo',
+    scanPhotoChoiceMessage: 'Choose how to add the photo.',
+    scanPhotoTakePhoto: 'Take photo',
+    scanPhotoChoosePhoto: 'Choose photo',
+    scanPhotoCancel: 'Cancel',
+    createRecipeChooserTitle: 'Create recipe',
+    createRecipeChooserSubtitle: 'Choose how to start.',
+    createRecipeWriteYourself: 'Write it yourself',
+    createRecipeWriteYourselfHint: 'Start with a blank recipe.',
+    createRecipePasteText: 'Paste recipe text',
+    createRecipePasteTextHint: 'Paste the recipe you have.',
     importRecipeTitle: 'From link',
     importRecipeSubtitle: 'Paste a recipe link.',
     importRecipeUrlPlaceholder: 'https://example.com/recipe',
@@ -598,7 +612,83 @@ export function MealsWeekScreen({
     token,
     enabled: workspaceMode === 'recipes',
   });
-
+  const addRecipeOptions: MealRecipeCaptureSourceOption[] = [
+    {
+      icon: 'link-outline',
+      title: strings.addRecipeFromLink,
+      hint: strings.addRecipeFromLinkHint,
+      onPress: recipesWorkspace.addRecipe.chooseLink,
+    },
+    {
+      icon: 'create-outline',
+      title: strings.addRecipeCreate,
+      hint: strings.addRecipeCreateHint,
+      onPress: recipesWorkspace.addRecipe.chooseCreate,
+    },
+    {
+      icon: 'document-attach-outline',
+      title: strings.addRecipeImportFile,
+      hint: strings.addRecipeImportFileHint,
+      onPress: () => {
+        void recipesWorkspace.addRecipe.chooseImportFile({
+          onError: (message) => {
+            onShowToast?.(message);
+          },
+        });
+      },
+    },
+    {
+      icon: 'camera-outline',
+      title: strings.addRecipeScanPhoto,
+      hint: strings.addRecipeScanPhotoHint,
+      onPress: () => {
+        Alert.alert(
+          strings.scanPhotoChoiceTitle,
+          strings.scanPhotoChoiceMessage,
+          [
+            {
+              text: strings.scanPhotoTakePhoto,
+              onPress: () => {
+                recipesWorkspace.addRecipe.chooseScanPhotoFromCamera({
+                  onError: (message) => {
+                    onShowToast?.(message);
+                  },
+                });
+              },
+            },
+            {
+              text: strings.scanPhotoChoosePhoto,
+              onPress: () => {
+                recipesWorkspace.addRecipe.chooseScanPhotoFromLibrary({
+                  onError: (message) => {
+                    onShowToast?.(message);
+                  },
+                });
+              },
+            },
+            {
+              text: strings.scanPhotoCancel,
+              style: 'cancel',
+            },
+          ]
+        );
+      },
+    },
+  ];
+  const createRecipeOptions: MealRecipeCaptureSourceOption[] = [
+    {
+      icon: 'create-outline',
+      title: strings.createRecipeWriteYourself,
+      hint: strings.createRecipeWriteYourselfHint,
+      onPress: recipesWorkspace.createRecipe.chooseManual,
+    },
+    {
+      icon: 'document-text-outline',
+      title: strings.createRecipePasteText,
+      hint: strings.createRecipePasteTextHint,
+      onPress: recipesWorkspace.createRecipe.choosePasteText,
+    },
+  ];
   const recipeMemorySupport = useMemo(
     () => formatRecipeMemorySupport(recipesWorkspace.recipeDetail.recipeMemory),
     [recipesWorkspace.recipeDetail.recipeMemory]
@@ -1827,20 +1917,24 @@ export function MealsWeekScreen({
 
       {recipesWorkspace.addRecipe.isOpen ? (
         <MealRecipeCaptureSourceSheet
-          onChooseLink={recipesWorkspace.addRecipe.chooseLink}
-          onChoosePasteText={recipesWorkspace.addRecipe.choosePasteText}
-          onChooseManual={recipesWorkspace.addRecipe.chooseManual}
+          options={addRecipeOptions}
           onClose={recipesWorkspace.addRecipe.closeAddRecipe}
           strings={{
             title: strings.addRecipeChooserTitle,
             subtitle: strings.addRecipeChooserSubtitle,
-            fromLink: strings.addRecipeFromLink,
-            fromLinkHint: strings.addRecipeFromLinkHint,
-            pasteText: strings.addRecipeFromText,
-            pasteTextHint: strings.addRecipeFromTextHint,
-            createManually: strings.addRecipeCreateManual,
-            createManuallyHint: strings.addRecipeCreateManualHint,
             close: strings.close,
+          }}
+        />
+      ) : null}
+
+      {recipesWorkspace.createRecipe.isOpen ? (
+        <MealRecipeCaptureSourceSheet
+          options={createRecipeOptions}
+          onClose={recipesWorkspace.createRecipe.closeCreateRecipeOptions}
+          strings={{
+            title: strings.createRecipeChooserTitle,
+            subtitle: strings.createRecipeChooserSubtitle,
+            close: 'Back',
           }}
         />
       ) : null}
@@ -2649,4 +2743,3 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.body,
   },
 });
-

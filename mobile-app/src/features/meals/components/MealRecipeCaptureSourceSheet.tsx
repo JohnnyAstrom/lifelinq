@@ -4,7 +4,7 @@ import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, Subtle } from '../../../shared/ui/components';
 import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
 
-type SourceOption = {
+export type MealRecipeCaptureSourceOption = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   hint: string;
@@ -14,51 +14,20 @@ type SourceOption = {
 type Strings = {
   title: string;
   subtitle: string;
-  fromLink: string;
-  fromLinkHint: string;
-  pasteText: string;
-  pasteTextHint: string;
-  createManually: string;
-  createManuallyHint: string;
   close: string;
 };
 
 type Props = {
-  onChooseLink: () => void;
-  onChoosePasteText: () => void;
-  onChooseManual: () => void;
+  options: MealRecipeCaptureSourceOption[];
   onClose: () => void;
   strings: Strings;
 };
 
 export function MealRecipeCaptureSourceSheet({
-  onChooseLink,
-  onChoosePasteText,
-  onChooseManual,
+  options,
   onClose,
   strings,
 }: Props) {
-  const options: SourceOption[] = [
-    {
-      icon: 'link-outline',
-      title: strings.fromLink,
-      hint: strings.fromLinkHint,
-      onPress: onChooseLink,
-    },
-    {
-      icon: 'document-text-outline',
-      title: strings.pasteText,
-      hint: strings.pasteTextHint,
-      onPress: onChoosePasteText,
-    },
-    {
-      icon: 'create-outline',
-      title: strings.createManually,
-      hint: strings.createManuallyHint,
-      onPress: onChooseManual,
-    },
-  ];
-
   return (
     <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
       <View style={styles.layout}>
