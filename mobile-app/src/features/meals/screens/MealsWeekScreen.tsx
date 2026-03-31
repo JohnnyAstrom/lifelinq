@@ -442,15 +442,18 @@ export function MealsWeekScreen({
     addRecipeFromLinkHint: 'Start from a recipe link.',
     addRecipeCreate: 'Create recipe',
     addRecipeCreateHint: 'Start from scratch or paste a recipe in.',
-    addRecipeImportFile: 'Import file / PDF',
-    addRecipeImportFileHint: 'Start from a recipe PDF or document.',
-    addRecipeScanPhoto: 'Scan photo',
-    addRecipeScanPhotoHint: 'Start from a recipe photo.',
-    scanPhotoChoiceTitle: 'Scan photo',
-    scanPhotoChoiceMessage: 'Use your camera or photo library.',
-    scanPhotoTakePhoto: 'Take photo',
-    scanPhotoChoosePhoto: 'Choose photo',
-    scanPhotoCancel: 'Cancel',
+    addRecipeImport: 'Import recipe',
+    addRecipeImportHint: 'Bring in a recipe from a document or photo.',
+    addRecipeImportLoadingTitle: 'Importing recipe',
+    addRecipeImportLoadingHint: 'Bringing in your recipe now.',
+    importRecipeChooserTitle: 'Import recipe',
+    importRecipeChooserSubtitle: 'Choose how to bring it in.',
+    importRecipeChooseDocument: 'Choose document',
+    importRecipeChooseDocumentHint: 'Use a recipe PDF or document.',
+    importRecipeTakePhoto: 'Take photo',
+    importRecipeTakePhotoHint: 'Use your camera for a recipe page.',
+    importRecipeChoosePhoto: 'Choose photo',
+    importRecipeChoosePhotoHint: 'Use a recipe photo you already have.',
     createRecipeChooserTitle: 'Create recipe',
     createRecipeChooserSubtitle: 'Start from scratch or paste a recipe in.',
     createRecipeWriteYourself: 'Write it yourself',
@@ -627,52 +630,9 @@ export function MealsWeekScreen({
     },
     {
       icon: 'document-attach-outline',
-      title: strings.addRecipeImportFile,
-      hint: strings.addRecipeImportFileHint,
-      onPress: () => {
-        void recipesWorkspace.addRecipe.chooseImportFile({
-          onError: (message) => {
-            onShowToast?.(message);
-          },
-        });
-      },
-    },
-    {
-      icon: 'camera-outline',
-      title: strings.addRecipeScanPhoto,
-      hint: strings.addRecipeScanPhotoHint,
-      onPress: () => {
-        Alert.alert(
-          strings.scanPhotoChoiceTitle,
-          strings.scanPhotoChoiceMessage,
-          [
-            {
-              text: strings.scanPhotoTakePhoto,
-              onPress: () => {
-                recipesWorkspace.addRecipe.chooseScanPhotoFromCamera({
-                  onError: (message) => {
-                    onShowToast?.(message);
-                  },
-                });
-              },
-            },
-            {
-              text: strings.scanPhotoChoosePhoto,
-              onPress: () => {
-                recipesWorkspace.addRecipe.chooseScanPhotoFromLibrary({
-                  onError: (message) => {
-                    onShowToast?.(message);
-                  },
-                });
-              },
-            },
-            {
-              text: strings.scanPhotoCancel,
-              style: 'cancel',
-            },
-          ]
-        );
-      },
+      title: strings.addRecipeImport,
+      hint: strings.addRecipeImportHint,
+      onPress: recipesWorkspace.addRecipe.chooseImport,
     },
   ];
   const createRecipeOptions: MealRecipeCaptureSourceOption[] = [
@@ -687,6 +647,44 @@ export function MealsWeekScreen({
       title: strings.createRecipePasteText,
       hint: strings.createRecipePasteTextHint,
       onPress: recipesWorkspace.createRecipe.choosePasteText,
+    },
+  ];
+  const importRecipeOptions: MealRecipeCaptureSourceOption[] = [
+    {
+      icon: 'document-attach-outline',
+      title: strings.importRecipeChooseDocument,
+      hint: strings.importRecipeChooseDocumentHint,
+      onPress: () => {
+        void recipesWorkspace.importRecipe.chooseDocument({
+          onError: (message) => {
+            onShowToast?.(message);
+          },
+        });
+      },
+    },
+    {
+      icon: 'camera-outline',
+      title: strings.importRecipeTakePhoto,
+      hint: strings.importRecipeTakePhotoHint,
+      onPress: () => {
+        recipesWorkspace.importRecipe.choosePhotoFromCamera({
+          onError: (message) => {
+            onShowToast?.(message);
+          },
+        });
+      },
+    },
+    {
+      icon: 'images-outline',
+      title: strings.importRecipeChoosePhoto,
+      hint: strings.importRecipeChoosePhotoHint,
+      onPress: () => {
+        recipesWorkspace.importRecipe.choosePhotoFromLibrary({
+          onError: (message) => {
+            onShowToast?.(message);
+          },
+        });
+      },
     },
   ];
   const recipeMemorySupport = useMemo(
@@ -1934,6 +1932,24 @@ export function MealsWeekScreen({
           strings={{
             title: strings.createRecipeChooserTitle,
             subtitle: strings.createRecipeChooserSubtitle,
+            close: 'Back',
+          }}
+        />
+      ) : null}
+
+      {recipesWorkspace.importRecipe.isOpen ? (
+        <MealRecipeCaptureSourceSheet
+          options={importRecipeOptions}
+          onClose={recipesWorkspace.importRecipe.closeImportRecipeOptions}
+          isWorking={
+            recipesWorkspace.importRecipe.isSelectingImportDocument
+            || recipesWorkspace.importRecipe.isSelectingImportImage
+          }
+          workingTitle={strings.addRecipeImportLoadingTitle}
+          workingHint={strings.addRecipeImportLoadingHint}
+          strings={{
+            title: strings.importRecipeChooserTitle,
+            subtitle: strings.importRecipeChooserSubtitle,
             close: 'Back',
           }}
         />

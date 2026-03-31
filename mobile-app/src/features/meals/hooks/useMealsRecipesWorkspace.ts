@@ -227,6 +227,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
   const [clipboardImportUrl, setClipboardImportUrl] = useState<string | null>(null);
   const [isAddRecipeSheetOpen, setIsAddRecipeSheetOpen] = useState(false);
   const [isCreateRecipeSheetOpen, setIsCreateRecipeSheetOpen] = useState(false);
+  const [isImportRecipeSheetOpen, setIsImportRecipeSheetOpen] = useState(false);
   const [isTextImportSheetOpen, setIsTextImportSheetOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importTextError, setImportTextError] = useState<string | null>(null);
@@ -722,6 +723,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsAddRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(false);
     setIsImportSheetOpen(false);
     setIsTextImportSheetOpen(false);
     setImportError(null);
@@ -760,6 +762,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setImportTextError(null);
     setIsAddRecipeSheetOpen(true);
     setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(false);
   }
 
   function closeAddRecipe() {
@@ -774,6 +777,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsAddRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(false);
   }
 
   function openCreateRecipeOptions() {
@@ -791,6 +795,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     setIsImportSheetOpen(false);
     setImportError(null);
     setImportTextError(null);
+    setIsImportRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(true);
   }
 
@@ -800,6 +805,33 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     }
     setIsCreateRecipeSheetOpen(false);
     setImportTextError(null);
+    setIsAddRecipeSheetOpen(true);
+  }
+
+  function openImportRecipeOptions() {
+    if (
+      pendingDetailAction
+      || isRecipeLoading
+      || isImportingTextDraft
+      || isSelectingImportDocument
+      || isSelectingImportImage
+    ) {
+      return;
+    }
+    focusMainRecipeLibrary();
+    setIsAddRecipeSheetOpen(false);
+    setIsImportSheetOpen(false);
+    setImportError(null);
+    setImportTextError(null);
+    setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(true);
+  }
+
+  function closeImportRecipeOptions() {
+    if (isRecipeLoading || isSelectingImportDocument || isSelectingImportImage) {
+      return;
+    }
+    setIsImportRecipeSheetOpen(false);
     setIsAddRecipeSheetOpen(true);
   }
 
@@ -845,6 +877,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     focusMainRecipeLibrary();
     setIsAddRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(false);
     setIsImportSheetOpen(false);
     setIsTextImportSheetOpen(false);
     setImportError(null);
@@ -905,6 +938,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     focusMainRecipeLibrary();
     setIsAddRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(false);
     setIsImportSheetOpen(false);
     setIsTextImportSheetOpen(false);
     setImportError(null);
@@ -952,6 +986,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     focusMainRecipeLibrary();
     setIsAddRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(false);
     setIsTextImportSheetOpen(false);
     setImportUrl('');
     setImportError(null);
@@ -977,6 +1012,7 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
     focusMainRecipeLibrary();
     setIsAddRecipeSheetOpen(false);
     setIsCreateRecipeSheetOpen(false);
+    setIsImportRecipeSheetOpen(false);
     setIsImportSheetOpen(false);
     setImportText('');
     setImportTextError(null);
@@ -1546,19 +1582,27 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
       closeAddRecipe,
       chooseLink: openImportRecipe,
       chooseCreate: openCreateRecipeOptions,
-      chooseImportFile: pickImportRecipeDocument,
-      chooseScanPhotoFromCamera: (callbacks?: RecipeImportCallbacks) => {
-        void pickImportRecipeImage('camera', callbacks);
-      },
-      chooseScanPhotoFromLibrary: (callbacks?: RecipeImportCallbacks) => {
-        void pickImportRecipeImage('library', callbacks);
-      },
+      chooseImport: openImportRecipeOptions,
     },
     createRecipe: {
       isOpen: isCreateRecipeSheetOpen,
       closeCreateRecipeOptions,
       choosePasteText: openImportRecipeText,
       chooseManual: openCreateRecipe,
+    },
+    importRecipe: {
+      isOpen: isImportRecipeSheetOpen,
+      isSelectingImportDocument,
+      isSelectingImportImage,
+      openImportRecipeOptions,
+      closeImportRecipeOptions,
+      chooseDocument: pickImportRecipeDocument,
+      choosePhotoFromCamera: (callbacks?: RecipeImportCallbacks) => {
+        void pickImportRecipeImage('camera', callbacks);
+      },
+      choosePhotoFromLibrary: (callbacks?: RecipeImportCallbacks) => {
+        void pickImportRecipeImage('library', callbacks);
+      },
     },
     importDraft: {
       isOpen: isImportSheetOpen,

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { OverlaySheet } from '../../../shared/ui/OverlaySheet';
 import { AppButton, Subtle } from '../../../shared/ui/components';
 import { iconBackground, textStyles, theme } from '../../../shared/ui/theme';
@@ -21,55 +21,75 @@ type Props = {
   options: MealRecipeCaptureSourceOption[];
   onClose: () => void;
   strings: Strings;
+  isWorking?: boolean;
+  workingTitle?: string;
+  workingHint?: string;
 };
 
 export function MealRecipeCaptureSourceSheet({
   options,
   onClose,
   strings,
+  isWorking = false,
+  workingTitle,
+  workingHint,
 }: Props) {
   return (
-    <OverlaySheet onClose={onClose} sheetStyle={styles.sheet}>
+    <OverlaySheet onClose={onClose} sheetStyle={styles.sheet} closeDisabled={isWorking}>
       <View style={styles.layout}>
         <View style={styles.header}>
-          <Text style={styles.title}>{strings.title}</Text>
-          <Subtle>{strings.subtitle}</Subtle>
+          <Text style={styles.title}>{isWorking ? (workingTitle ?? strings.title) : strings.title}</Text>
+          <Subtle>{isWorking ? (workingHint ?? strings.subtitle) : strings.subtitle}</Subtle>
         </View>
 
-        <View style={styles.options}>
-          {options.map((option, index) => (
-            <Pressable
-              key={option.title}
-              onPress={option.onPress}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.optionRow,
-                index > 0 ? styles.optionRowBorder : null,
-                pressed ? styles.optionRowPressed : null,
-              ]}
-            >
-              <View style={styles.optionIcon}>
-                <Ionicons name={option.icon} size={18} color={theme.colors.feature.meals} />
-              </View>
-              <View style={styles.optionCopy}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Text style={styles.optionHint}>{option.hint}</Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={theme.colors.textSecondary}
-              />
-            </Pressable>
-          ))}
-        </View>
+        {isWorking ? (
+          <View style={styles.loadingCard}>
+            <View style={styles.loadingIcon}>
+              <ActivityIndicator size="small" color={theme.colors.feature.meals} />
+            </View>
+            <View style={styles.loadingCopy}>
+              <Text style={styles.loadingTitle}>{workingTitle ?? strings.title}</Text>
+              <Text style={styles.loadingHint}>{workingHint ?? strings.subtitle}</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.options}>
+            {options.map((option, index) => (
+              <Pressable
+                key={option.title}
+                onPress={option.onPress}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.optionRow,
+                  index > 0 ? styles.optionRowBorder : null,
+                  pressed ? styles.optionRowPressed : null,
+                ]}
+              >
+                <View style={styles.optionIcon}>
+                  <Ionicons name={option.icon} size={18} color={theme.colors.feature.meals} />
+                </View>
+                <View style={styles.optionCopy}>
+                  <Text style={styles.optionTitle}>{option.title}</Text>
+                  <Text style={styles.optionHint}>{option.hint}</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={theme.colors.textSecondary}
+                />
+              </Pressable>
+            ))}
+          </View>
+        )}
 
-        <AppButton
-          title={strings.close}
-          onPress={onClose}
-          variant="ghost"
-          fullWidth
-        />
+        {!isWorking ? (
+          <AppButton
+            title={strings.close}
+            onPress={onClose}
+            variant="ghost"
+            fullWidth
+          />
+        ) : null}
       </View>
     </OverlaySheet>
   );
@@ -142,6 +162,40 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   optionHint: {
+    ...textStyles.subtle,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
+  },
+  loadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    borderRadius: theme.radius.cardRadius,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+  },
+  loadingIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: theme.radius.circle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: iconBackground(theme.colors.feature.meals, 0.1),
+  },
+  loadingCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  loadingTitle: {
+    ...textStyles.body,
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  loadingHint: {
     ...textStyles.subtle,
     color: theme.colors.textSecondary,
     lineHeight: 18,

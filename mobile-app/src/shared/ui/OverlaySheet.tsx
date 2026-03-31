@@ -20,6 +20,7 @@ type OverlaySheetProps = {
   onClose: () => void;
   sheetStyle?: StyleProp<ViewStyle>;
   aboveSheet?: ReactNode;
+  closeDisabled?: boolean;
 };
 
 export function OverlaySheet({
@@ -27,6 +28,7 @@ export function OverlaySheet({
   onClose,
   sheetStyle,
   aboveSheet,
+  closeDisabled = false,
 }: OverlaySheetProps) {
   const overlayId = useRef(`overlay-sheet-${Math.random().toString(36).slice(2)}`).current;
   const screenHeight = Dimensions.get('window').height;
@@ -84,7 +86,11 @@ export function OverlaySheet({
       pointerEvents="box-none"
     >
       <RNAnimated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={closeDisabled ? undefined : onClose}
+          disabled={closeDisabled}
+        />
       </RNAnimated.View>
 
       <RNAnimated.View
