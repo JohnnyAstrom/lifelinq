@@ -4,17 +4,23 @@ import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.RecipeImageTextExtractor;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.util.LoadLibs;
 
 public final class Tess4jRecipeImageTextExtractor implements RecipeImageTextExtractor {
-    private static final String OCR_LANGUAGE = "eng";
+    private static final String OCR_LANGUAGE = "swe+eng";
     private final String tessdataPath;
 
     public Tess4jRecipeImageTextExtractor() {
         File tessdataDirectory = LoadLibs.extractTessResources("tessdata");
+        ensureBundledLanguageData(tessdataDirectory.toPath(), "swe.traineddata");
         this.tessdataPath = tessdataDirectory.getAbsolutePath();
     }
 
@@ -50,6 +56,22 @@ public final class Tess4jRecipeImageTextExtractor implements RecipeImageTextExtr
                     "We could not read enough from that photo. Try another recipe photo or document.",
                     ex
             );
+        }
+    }
+
+    private void ensureBundledLanguageData(Path tessdataDirectory, String filename) {
+        Path target = tessdataDirectory.resolve(filename);
+        if (Files.exists(target)) {
+            return;
+        }
+
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("tessdata/" + filename)) {
+            if (input == null) {
+                throw new IllegalStateException("Bundled OCR language data is missing: " + filename);
+            }
+            Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Could not prepare OCR language data: " + filename, ex);
         }
     }
 }
