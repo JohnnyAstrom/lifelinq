@@ -9,6 +9,7 @@ import app.lifelinq.features.meals.contract.ContributorMealReferenceView;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.RecipeAssetIntakePort;
 import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
+import app.lifelinq.features.meals.contract.RecipeDocumentAssetStore;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
@@ -180,6 +181,7 @@ public class MealsApplicationService {
     private final HouseholdPreferenceSignalRepository householdPreferenceSignalRepository;
     private final RecipeImportPort recipeImportPort;
     private final RecipeAssetIntakePort recipeAssetIntakePort;
+    private final RecipeDocumentAssetStore recipeDocumentAssetStore;
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
@@ -197,6 +199,7 @@ public class MealsApplicationService {
         this(
                 weekPlanRepository,
                 recipeRepository,
+                null,
                 null,
                 null,
                 null,
@@ -227,6 +230,7 @@ public class MealsApplicationService {
                 householdPreferenceSignalRepository,
                 recipeImportPort,
                 null,
+                null,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -241,6 +245,7 @@ public class MealsApplicationService {
             HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
             RecipeImportPort recipeImportPort,
             RecipeAssetIntakePort recipeAssetIntakePort,
+            RecipeDocumentAssetStore recipeDocumentAssetStore,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -267,6 +272,7 @@ public class MealsApplicationService {
         this.householdPreferenceSignalRepository = householdPreferenceSignalRepository;
         this.recipeImportPort = recipeImportPort;
         this.recipeAssetIntakePort = recipeAssetIntakePort;
+        this.recipeDocumentAssetStore = recipeDocumentAssetStore;
         this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
@@ -292,6 +298,7 @@ public class MealsApplicationService {
                 null,
                 recipeImportPort,
                 null,
+                null,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -304,6 +311,7 @@ public class MealsApplicationService {
             RecipeDraftRepository recipeDraftRepository,
             RecipeImportPort recipeImportPort,
             RecipeAssetIntakePort recipeAssetIntakePort,
+            RecipeDocumentAssetStore recipeDocumentAssetStore,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -316,6 +324,7 @@ public class MealsApplicationService {
                 null,
                 recipeImportPort,
                 recipeAssetIntakePort,
+                recipeDocumentAssetStore,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -428,6 +437,29 @@ public class MealsApplicationService {
                 seed.ingredients()
         );
         return toDraftView(recipeDraftRepository.save(draft));
+    }
+
+    public RecipeAssetIntakeReference stageRecipeDocumentAsset(
+            UUID groupId,
+            UUID actorUserId,
+            String sourceLabel,
+            String originalFilename,
+            String mimeType,
+            byte[] content
+    ) {
+        ensureMealAccess(groupId, actorUserId);
+        requireRecipeDocumentAssetStore();
+        if (content == null || content.length == 0) {
+            throw new RecipeImportFailedException(
+                    "We could not use that file. Try another recipe PDF or document."
+            );
+        }
+        return recipeDocumentAssetStore.stageDocument(
+                sourceLabel,
+                originalFilename,
+                mimeType,
+                content
+        );
     }
 
     @Transactional
@@ -1663,6 +1695,12 @@ public class MealsApplicationService {
     private void requireRecipeAssetIntakePort() {
         if (recipeAssetIntakePort == null) {
             throw new RecipeAssetIntakeUnavailableException("Recipe file and image import is not available yet");
+        }
+    }
+
+    private void requireRecipeDocumentAssetStore() {
+        if (recipeDocumentAssetStore == null) {
+            throw new RecipeAssetIntakeUnavailableException("Recipe file import is not available yet");
         }
     }
 

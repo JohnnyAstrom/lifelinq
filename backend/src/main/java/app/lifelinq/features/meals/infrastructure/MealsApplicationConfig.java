@@ -1,10 +1,13 @@
 package app.lifelinq.features.meals.infrastructure;
 
 import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
+import app.lifelinq.features.meals.application.DocumentRecipeAssetIntakeService;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.RecipeAssetIntakePort;
+import app.lifelinq.features.meals.contract.RecipeDocumentAssetStore;
+import app.lifelinq.features.meals.contract.RecipeDocumentTextExtractor;
 import app.lifelinq.features.meals.contract.RecipeImportPort;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
 import app.lifelinq.features.meals.domain.MealMemoryRepository;
@@ -28,6 +31,7 @@ public class MealsApplicationConfig {
             HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
             RecipeImportPort recipeImportPort,
             ObjectProvider<RecipeAssetIntakePort> recipeAssetIntakePortProvider,
+            ObjectProvider<RecipeDocumentAssetStore> recipeDocumentAssetStoreProvider,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -40,6 +44,7 @@ public class MealsApplicationConfig {
                 householdPreferenceSignalRepository,
                 recipeImportPort,
                 recipeAssetIntakePortProvider.getIfAvailable(),
+                recipeDocumentAssetStoreProvider.getIfAvailable(),
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -54,6 +59,27 @@ public class MealsApplicationConfig {
         return new RecipeImportApplicationService(
                 ensureGroupMemberUseCase,
                 recipeImportPort
+        );
+    }
+
+    @Bean
+    public RecipeDocumentAssetStore recipeDocumentAssetStore() {
+        return new InMemoryRecipeDocumentAssetStore();
+    }
+
+    @Bean
+    public RecipeDocumentTextExtractor recipeDocumentTextExtractor() {
+        return new PdfBoxRecipeDocumentTextExtractor();
+    }
+
+    @Bean
+    public RecipeAssetIntakePort recipeAssetIntakePort(
+            RecipeDocumentAssetStore recipeDocumentAssetStore,
+            RecipeDocumentTextExtractor recipeDocumentTextExtractor
+    ) {
+        return new DocumentRecipeAssetIntakeService(
+                recipeDocumentAssetStore,
+                recipeDocumentTextExtractor
         );
     }
 }

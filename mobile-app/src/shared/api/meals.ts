@@ -681,6 +681,41 @@ export type CreateRecipeDraftFromAssetRequest = {
   mimeType?: string | null;
 };
 
+export type StageRecipeDocumentAssetResponse = {
+  assetKind: 'document';
+  referenceId: string;
+  sourceLabel: string | null;
+  originalFilename: string | null;
+  mimeType: string | null;
+};
+
+export async function stageRecipeDocumentAsset(
+  payload: {
+    uri: string;
+    name: string;
+    mimeType?: string | null;
+  },
+  clientOptions: ApiClientOptions = {}
+): Promise<StageRecipeDocumentAssetResponse> {
+  const formData = new FormData();
+  formData.append(
+    'file',
+    {
+      uri: payload.uri,
+      name: payload.name,
+      type: payload.mimeType ?? 'application/octet-stream',
+    } as any
+  );
+  return fetchJson<StageRecipeDocumentAssetResponse>(
+    '/meals/recipe-assets/documents',
+    {
+      method: 'POST',
+      body: formData,
+    },
+    clientOptions
+  );
+}
+
 export async function createRecipeDraftFromAsset(
   payload: CreateRecipeDraftFromAssetRequest,
   clientOptions: ApiClientOptions = {}

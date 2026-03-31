@@ -10,6 +10,7 @@ import {
   createRecipeDraftFromAsset,
   createRecipeDraftFromText,
   createRecipeDraftFromUrl,
+  stageRecipeDocumentAsset,
   deleteRecipe,
   getRecipeChoiceSupportMemory,
   getRecipeDraftDuplicateAssessment,
@@ -521,6 +522,21 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   function formatDocumentImportSelectionError() {
     return 'We could not open that file. Try another one or try again.';
+  }
+
+  function formatDocumentImportUploadError(err: unknown) {
+    if (err instanceof ApiError) {
+      if (err.status === 400) {
+        return 'That file is not supported here yet. Try a recipe PDF or document.';
+      }
+      if (err.status === 413) {
+        return 'That file is too large for recipe import. Try a smaller PDF or document.';
+      }
+      if (err.status === 422) {
+        return 'We could not use that file for recipe capture yet. Try another recipe PDF or document.';
+      }
+    }
+    return formatApiError(err);
   }
 
   function formatImageImportSelectionError() {
@@ -1148,18 +1164,31 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         return;
       }
 
+      const stagedAsset = await stageRecipeDocumentAsset(
+        {
+          uri: referenceId,
+          name: asset.name?.trim() || 'recipe-document',
+          mimeType,
+        },
+        { token }
+      );
+
       await importRecipeAsset(
         {
           assetKind: 'DOCUMENT',
-          referenceId,
-          sourceLabel: asset.name?.trim() || null,
-          originalFilename: asset.name?.trim() || null,
-          mimeType,
+          referenceId: stagedAsset.referenceId,
+          sourceLabel: stagedAsset.sourceLabel,
+          originalFilename: stagedAsset.originalFilename,
+          mimeType: stagedAsset.mimeType,
         },
         callbacks
       );
-    } catch {
-      callbacks?.onError?.(formatDocumentImportSelectionError());
+    } catch (err) {
+      callbacks?.onError?.(
+        err instanceof ApiError
+          ? formatDocumentImportUploadError(err)
+          : formatDocumentImportSelectionError()
+      );
       callbacks?.onComplete?.();
     } finally {
       setIsSelectingImportDocument(false);

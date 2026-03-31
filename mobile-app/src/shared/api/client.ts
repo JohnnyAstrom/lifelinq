@@ -55,12 +55,14 @@ export async function fetchJson<T>(
   clientOptions: ApiClientOptions = {}
 ): Promise<T> {
   const baseUrl = getApiBaseUrl();
+  const isFormDataBody =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
 
-  if (options.body && !headers['Content-Type']) {
+  if (options.body && !isFormDataBody && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
@@ -135,12 +137,14 @@ export async function fetchText(
   clientOptions: ApiClientOptions = {}
 ): Promise<string> {
   const baseUrl = getApiBaseUrl();
+  const isFormDataBody =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: 'text/plain, text/html, */*',
     ...(options.headers as Record<string, string> | undefined),
   };
 
-  if (options.body && !headers['Content-Type']) {
+  if (options.body && !isFormDataBody && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
