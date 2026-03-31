@@ -162,6 +162,30 @@ public class MealsController {
         }
     }
 
+    @PostMapping(value = "/meals/recipe-assets/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> stageRecipeImageAsset(@RequestParam("file") MultipartFile file) {
+        RequestContext context = ApiScoping.getContext();
+        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
+            return ApiScoping.missingContext();
+        }
+        try {
+            RecipeAssetIntakeReference reference = mealsApplicationService.stageRecipeImageAsset(
+                    context.getGroupId(),
+                    context.getUserId(),
+                    file.getOriginalFilename(),
+                    file.getOriginalFilename(),
+                    file.getContentType(),
+                    file.getBytes()
+            );
+            return ResponseEntity.ok(toStageRecipeImageAssetResponse(reference));
+        } catch (IOException ex) {
+            throw new app.lifelinq.features.meals.application.RecipeImportFailedException(
+                    "We could not open that photo. Try another recipe photo.",
+                    ex
+            );
+        }
+    }
+
     @GetMapping("/meals/recipe-drafts/{draftId}")
     public ResponseEntity<?> getRecipeDraft(@PathVariable UUID draftId) {
         RequestContext context = ApiScoping.getContext();
@@ -1018,6 +1042,16 @@ public class MealsController {
 
     private StageRecipeDocumentAssetResponse toStageRecipeDocumentAssetResponse(RecipeAssetIntakeReference reference) {
         return new StageRecipeDocumentAssetResponse(
+                reference.kind().name().toLowerCase(),
+                reference.referenceId(),
+                reference.sourceLabel(),
+                reference.originalFilename(),
+                reference.mimeType()
+        );
+    }
+
+    private StageRecipeImageAssetResponse toStageRecipeImageAssetResponse(RecipeAssetIntakeReference reference) {
+        return new StageRecipeImageAssetResponse(
                 reference.kind().name().toLowerCase(),
                 reference.referenceId(),
                 reference.sourceLabel(),

@@ -11,6 +11,7 @@ import {
   createRecipeDraftFromText,
   createRecipeDraftFromUrl,
   stageRecipeDocumentAsset,
+  stageRecipeImageAsset,
   deleteRecipe,
   getRecipeChoiceSupportMemory,
   getRecipeDraftDuplicateAssessment,
@@ -542,6 +543,21 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
 
   function formatImageImportSelectionError() {
     return 'We could not use that photo. Try another one or try again.';
+  }
+
+  function formatImageImportUploadError(err: unknown) {
+    if (err instanceof ApiError) {
+      if (err.status === 400) {
+        return 'That photo is not supported here yet. Try another recipe photo.';
+      }
+      if (err.status === 413) {
+        return 'That photo is too large for recipe import. Try a smaller recipe photo.';
+      }
+      if (err.status === 422) {
+        return 'We could not use that photo for recipe capture yet. Try another recipe photo.';
+      }
+    }
+    return formatApiError(err);
   }
 
   function formatMissingNativeAssetPickerError(assetKind: RecipeAssetImport['assetKind']) {
@@ -1312,19 +1328,32 @@ export function useMealsRecipesWorkspace({ token, enabled }: Params) {
         return;
       }
 
+      const stagedAsset = await stageRecipeImageAsset(
+        {
+          uri: referenceId,
+          name: asset.fileName?.trim() || 'recipe-photo',
+          mimeType,
+        },
+        { token }
+      );
+
       await importRecipeAsset(
         {
           assetKind: 'IMAGE',
-          referenceId,
-          sourceLabel: asset.fileName?.trim() || null,
-          originalFilename: asset.fileName?.trim() || null,
-          mimeType,
+          referenceId: stagedAsset.referenceId,
+          sourceLabel: stagedAsset.sourceLabel,
+          originalFilename: stagedAsset.originalFilename,
+          mimeType: stagedAsset.mimeType,
         },
         callbacks,
         { sharedEntry: false }
       );
-    } catch {
-      callbacks?.onError?.(formatImageImportSelectionError());
+    } catch (err) {
+      callbacks?.onError?.(
+        err instanceof ApiError
+          ? formatImageImportUploadError(err)
+          : formatImageImportSelectionError()
+      );
       callbacks?.onComplete?.();
     } finally {
       setIsSelectingImportImage(false);

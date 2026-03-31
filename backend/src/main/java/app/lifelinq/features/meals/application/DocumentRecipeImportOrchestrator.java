@@ -25,6 +25,14 @@ final class DocumentRecipeImportOrchestrator {
     }
 
     ParsedRecipeImportData extract(RecipeAssetIntakeReference reference, RecipeDocumentAssetPayload document) {
+        return extract(reference, document, null);
+    }
+
+    ParsedRecipeImportData extract(
+            RecipeAssetIntakeReference reference,
+            RecipeDocumentAssetPayload document,
+            ImageRecipeImportOrchestrator imageImportOrchestrator
+    ) {
         if (reference == null) {
             throw new IllegalArgumentException("reference must not be null");
         }
@@ -35,9 +43,14 @@ final class DocumentRecipeImportOrchestrator {
         RecipeDocumentImportAnalysis analysis = documentTextExtractor.analyze(document);
         return switch (analysis.strategy()) {
             case TEXT_BACKED_DOCUMENT -> documentImportShaper.shape(reference, analysis.extractedText());
-            case IMAGE_LIKE_DOCUMENT -> throw new RecipeAssetIntakeUnavailableException(
-                    "That file looks more like a scanned or photo-based recipe. Photo import is not available yet."
-            );
+            case IMAGE_LIKE_DOCUMENT -> {
+                if (imageImportOrchestrator == null) {
+                    throw new RecipeAssetIntakeUnavailableException(
+                            "That file looks more like a scanned or photo-based recipe. Photo import is not available yet."
+                    );
+                }
+                yield imageImportOrchestrator.extractFromImageLikeDocument(reference, document);
+            }
             case TOO_WEAK_TO_CLASSIFY -> throw new RecipeImportFailedException(
                     "We could not get enough readable recipe content from that file to review."
             );

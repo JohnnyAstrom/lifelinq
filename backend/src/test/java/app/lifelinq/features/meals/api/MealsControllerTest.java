@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -69,6 +70,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -274,6 +276,54 @@ class MealsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void stageRecipeImageAssetReturnsStagedReferenceForPhotoImport() throws Exception {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        userRepository.withUser(userId, groupId);
+        String token = createToken(userId, Instant.now().plusSeconds(60));
+
+        when(mealsApplicationService.stageRecipeImageAsset(
+                groupId,
+                userId,
+                "recipe-photo.jpg",
+                "recipe-photo.jpg",
+                "image/jpeg",
+                "photo".getBytes(StandardCharsets.UTF_8)
+        )).thenReturn(new RecipeAssetIntakeReference(
+                RecipeAssetIntakeKind.IMAGE,
+                "image-ref-1",
+                "recipe-photo.jpg",
+                "recipe-photo.jpg",
+                "image/jpeg"
+        ));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "recipe-photo.jpg",
+                "image/jpeg",
+                "photo".getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/meals/recipe-assets/images")
+                        .file(file)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.assetKind").value("image"))
+                .andExpect(jsonPath("$.referenceId").value("image-ref-1"))
+                .andExpect(jsonPath("$.sourceLabel").value("recipe-photo.jpg"))
+                .andExpect(jsonPath("$.mimeType").value("image/jpeg"));
+
+        verify(mealsApplicationService).stageRecipeImageAsset(
+                groupId,
+                userId,
+                "recipe-photo.jpg",
+                "recipe-photo.jpg",
+                "image/jpeg",
+                "photo".getBytes(StandardCharsets.UTF_8)
+        );
     }
 
     @Test

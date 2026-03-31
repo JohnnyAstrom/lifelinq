@@ -328,7 +328,6 @@ class MealsApplicationServiceTest {
                 drafts,
                 null,
                 assetIntakePort,
-                null,
                 membership,
                 mock(MealsShoppingPort.class),
                 Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)

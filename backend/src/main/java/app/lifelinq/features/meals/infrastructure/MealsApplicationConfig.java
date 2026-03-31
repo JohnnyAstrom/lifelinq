@@ -8,6 +8,8 @@ import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.RecipeAssetIntakePort;
 import app.lifelinq.features.meals.contract.RecipeDocumentAssetStore;
 import app.lifelinq.features.meals.contract.RecipeDocumentTextExtractor;
+import app.lifelinq.features.meals.contract.RecipeImageAssetStore;
+import app.lifelinq.features.meals.contract.RecipeImageTextExtractor;
 import app.lifelinq.features.meals.contract.RecipeImportPort;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
 import app.lifelinq.features.meals.domain.MealMemoryRepository;
@@ -32,6 +34,7 @@ public class MealsApplicationConfig {
             RecipeImportPort recipeImportPort,
             ObjectProvider<RecipeAssetIntakePort> recipeAssetIntakePortProvider,
             ObjectProvider<RecipeDocumentAssetStore> recipeDocumentAssetStoreProvider,
+            ObjectProvider<RecipeImageAssetStore> recipeImageAssetStoreProvider,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -45,6 +48,7 @@ public class MealsApplicationConfig {
                 recipeImportPort,
                 recipeAssetIntakePortProvider.getIfAvailable(),
                 recipeDocumentAssetStoreProvider.getIfAvailable(),
+                recipeImageAssetStoreProvider.getIfAvailable(),
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -73,13 +77,27 @@ public class MealsApplicationConfig {
     }
 
     @Bean
+    public RecipeImageAssetStore recipeImageAssetStore() {
+        return new InMemoryRecipeImageAssetStore();
+    }
+
+    @Bean
+    public RecipeImageTextExtractor recipeImageTextExtractor() {
+        return new Tess4jRecipeImageTextExtractor();
+    }
+
+    @Bean
     public RecipeAssetIntakePort recipeAssetIntakePort(
             RecipeDocumentAssetStore recipeDocumentAssetStore,
-            RecipeDocumentTextExtractor recipeDocumentTextExtractor
+            RecipeDocumentTextExtractor recipeDocumentTextExtractor,
+            RecipeImageAssetStore recipeImageAssetStore,
+            RecipeImageTextExtractor recipeImageTextExtractor
     ) {
         return new DocumentRecipeAssetIntakeService(
                 recipeDocumentAssetStore,
-                recipeDocumentTextExtractor
+                recipeDocumentTextExtractor,
+                recipeImageAssetStore,
+                recipeImageTextExtractor
         );
     }
 }
