@@ -9,8 +9,7 @@ import app.lifelinq.features.meals.contract.RecipeDocumentTextExtractor;
 
 public final class DocumentRecipeAssetIntakeService implements RecipeAssetIntakePort {
     private final RecipeDocumentAssetStore documentAssetStore;
-    private final RecipeDocumentTextExtractor documentTextExtractor;
-    private final DocumentRecipeImportShaper documentImportShaper;
+    private final DocumentRecipeImportOrchestrator documentImportOrchestrator;
 
     public DocumentRecipeAssetIntakeService(
             RecipeDocumentAssetStore documentAssetStore,
@@ -22,9 +21,12 @@ public final class DocumentRecipeAssetIntakeService implements RecipeAssetIntake
         if (documentTextExtractor == null) {
             throw new IllegalArgumentException("documentTextExtractor must not be null");
         }
+        DocumentRecipeImportShaper documentImportShaper = new DocumentRecipeImportShaper();
         this.documentAssetStore = documentAssetStore;
-        this.documentTextExtractor = documentTextExtractor;
-        this.documentImportShaper = new DocumentRecipeImportShaper();
+        this.documentImportOrchestrator = new DocumentRecipeImportOrchestrator(
+                documentTextExtractor,
+                documentImportShaper
+        );
     }
 
     @Override
@@ -34,7 +36,6 @@ public final class DocumentRecipeAssetIntakeService implements RecipeAssetIntake
         }
 
         RecipeDocumentAssetPayload document = documentAssetStore.loadDocument(reference.referenceId());
-        String extractedText = documentTextExtractor.extract(document);
-        return documentImportShaper.shape(reference, extractedText);
+        return documentImportOrchestrator.extract(reference, document);
     }
 }
