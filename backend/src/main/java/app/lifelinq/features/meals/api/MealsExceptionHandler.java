@@ -6,7 +6,6 @@ import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.RecipeDeleteBlockedException;
 import app.lifelinq.features.meals.application.RecipeDraftNotFoundException;
 import app.lifelinq.features.meals.application.RecipeDuplicateAttentionRequiredException;
-import app.lifelinq.features.meals.application.RecipeAssetIntakeUnavailableException;
 import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
 import app.lifelinq.features.meals.contract.MealsShoppingDuplicateItemException;
@@ -14,7 +13,6 @@ import app.lifelinq.features.meals.contract.MealsShoppingListNotFoundException;
 import app.lifelinq.features.meals.application.RecipeNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -71,14 +69,6 @@ public final class MealsExceptionHandler {
                 .body(new ApiErrorResponse("RECIPE_IMPORT_FAILED", ex.getMessage()));
     }
 
-    @ExceptionHandler(RecipeAssetIntakeUnavailableException.class)
-    public ResponseEntity<ApiErrorResponse> handleRecipeAssetIntakeUnavailable(
-            RecipeAssetIntakeUnavailableException ex
-    ) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(new ApiErrorResponse("RECIPE_ASSET_INTAKE_UNAVAILABLE", ex.getMessage()));
-    }
-
     @ExceptionHandler(RecipeDeleteBlockedException.class)
     public ResponseEntity<ApiErrorResponse> handleRecipeDeleteBlocked(RecipeDeleteBlockedException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -91,15 +81,6 @@ public final class MealsExceptionHandler {
     ) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiErrorResponse("RECIPE_DUPLICATE_ATTENTION_REQUIRED", ex.getMessage()));
-    }
-
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ApiErrorResponse> handleAssetUploadTooLarge(MaxUploadSizeExceededException ex) {
-        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(new ApiErrorResponse(
-                        "RECIPE_ASSET_TOO_LARGE",
-                        "That file is too large for recipe import. Try a smaller PDF or document."
-                ));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

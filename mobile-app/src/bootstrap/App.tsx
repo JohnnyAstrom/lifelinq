@@ -55,13 +55,6 @@ type Screen =
 type RecipeCaptureEntryRequest = {
   key: number;
   sharedUrl?: string | null;
-  sharedAsset?: {
-    assetKind: 'DOCUMENT' | 'IMAGE';
-    referenceId: string;
-    sourceLabel?: string | null;
-    originalFilename?: string | null;
-    mimeType?: string | null;
-  } | null;
   failureMessage?: string | null;
 };
 
@@ -121,12 +114,6 @@ function AppShell() {
       setRecipeCaptureEntryRequest({
         key: Date.now(),
         sharedUrl: url,
-      });
-    },
-    onSharedRecipeAsset: (asset) => {
-      setRecipeCaptureEntryRequest({
-        key: Date.now(),
-        sharedAsset: asset,
       });
     },
     onRecipeCaptureFailure: (message) => {

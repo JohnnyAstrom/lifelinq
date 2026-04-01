@@ -3,18 +3,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import {
   parseAuthCompleteUrl,
   parseInviteUrl,
-  parseSharedRecipeAsset,
   parseSharedRecipeUrl,
-  type ParsedSharedRecipeAsset,
 } from './deepLinkIntents';
-
-type SharedRecipeAssetPayload = {
-  assetKind: 'DOCUMENT' | 'IMAGE';
-  referenceId: string;
-  sourceLabel?: string | null;
-  originalFilename?: string | null;
-  mimeType?: string | null;
-};
 
 type Params = {
   onLoginFromDeepLink: (token: string, refreshToken?: string | null) => Promise<void>;
@@ -22,7 +12,6 @@ type Params = {
   onInviteToken: (token: string) => void;
   onClearInviteError: () => void;
   onSharedRecipeUrl: (url: string) => void;
-  onSharedRecipeAsset: (asset: SharedRecipeAssetPayload) => void;
   onRecipeCaptureFailure: (message: string) => void;
 };
 
@@ -32,7 +21,6 @@ export function useDeepLinkBootstrap({
   onInviteToken,
   onClearInviteError,
   onSharedRecipeUrl,
-  onSharedRecipeAsset,
   onRecipeCaptureFailure,
 }: Params) {
   const lastHandledUrlRef = useRef<string | null>(null);
@@ -87,27 +75,6 @@ export function useDeepLinkBootstrap({
         }
       }
 
-      const sharedAsset = parseSharedRecipeAsset(url);
-      if (sharedAsset) {
-        lastHandledUrlRef.current = url;
-        if (sharedAsset.referenceId && !sharedAsset.invalid && !sharedAsset.unsupported) {
-          onSharedRecipeAsset({
-            assetKind: sharedAsset.assetKind,
-            referenceId: sharedAsset.referenceId,
-            sourceLabel: sharedAsset.sourceLabel,
-            originalFilename: sharedAsset.originalFilename,
-            mimeType: sharedAsset.mimeType,
-          });
-          return;
-        }
-        if (sharedAsset.unsupported) {
-          onRecipeCaptureFailure('That shared item is not supported for recipe capture yet.');
-          return;
-        }
-        if (sharedAsset.invalid) {
-          onRecipeCaptureFailure('We could not use that shared file or photo. Try sharing it again.');
-        }
-      }
     },
     [
       onAuthError,
@@ -115,7 +82,6 @@ export function useDeepLinkBootstrap({
       onInviteToken,
       onLoginFromDeepLink,
       onRecipeCaptureFailure,
-      onSharedRecipeAsset,
       onSharedRecipeUrl,
     ]
   );

@@ -14,9 +14,6 @@ import app.lifelinq.features.group.contract.EnsureGroupMemberUseCase;
 import app.lifelinq.features.meals.contract.IngredientInput;
 import app.lifelinq.features.meals.contract.MealsShoppingPort;
 import app.lifelinq.features.meals.contract.ParsedRecipeImportData;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakePort;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakeKind;
 import app.lifelinq.features.meals.contract.RecipeImportPort;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignal;
 import app.lifelinq.features.meals.domain.HouseholdPreferenceSignalRepository;
@@ -303,113 +300,6 @@ class MealsApplicationServiceTest {
         ))
                 .isInstanceOf(RecipeImportFailedException.class)
                 .hasMessageContaining("Paste a little more of the recipe");
-    }
-
-    @Test
-    void assetBackedDraftCanBeCreatedThroughSharedIntakeFoundation() {
-        UUID groupId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        EnsureGroupMemberUseCase membership = (h, u) -> {};
-        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
-        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
-        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
-        RecipeAssetIntakePort assetIntakePort = reference -> new ParsedRecipeImportData(
-                null,
-                null,
-                null,
-                "4 servings",
-                "Imported from document",
-                "Bake gently until set",
-                List.of("2 eggs", "2 dl cream")
-        );
-        MealsApplicationService service = new MealsApplicationService(
-                weekPlans,
-                recipes,
-                drafts,
-                null,
-                assetIntakePort,
-                membership,
-                mock(MealsShoppingPort.class),
-                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
-        );
-
-        var created = service.createRecipeDraftFromAsset(
-                groupId,
-                userId,
-                new RecipeAssetIntakeReference(
-                        RecipeAssetIntakeKind.DOCUMENT,
-                        "asset-ref-1",
-                        "Shared PDF",
-                        "weekend-gratin.pdf",
-                        "application/pdf"
-                )
-        );
-
-        assertThat(created.state()).isEqualTo("draft_needs_review");
-        assertThat(created.name()).isEqualTo("Shared PDF");
-        assertThat(created.provenance().originKind()).isEqualTo("document_import");
-        assertThat(created.provenance().referenceUrl()).isNull();
-        assertThat(created.source().sourceName()).isEqualTo("Shared PDF");
-        assertThat(created.ingredients()).hasSize(2);
-        assertThat(created.instructions()).contains("Bake gently until set");
-    }
-
-    @Test
-    void imageAssetDraftFailsSoftWhenOneParsedIngredientRowHasInvalidQuantity() {
-        UUID groupId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        EnsureGroupMemberUseCase membership = (h, u) -> {};
-        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
-        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
-        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
-        RecipeAssetIntakePort assetIntakePort = reference -> new ParsedRecipeImportData(
-                "OCR omelette",
-                null,
-                null,
-                null,
-                "Quick stovetop fallback",
-                "Whisk and cook gently",
-                List.of("0 g salt", "2 eggs")
-        );
-        MealsApplicationService service = new MealsApplicationService(
-                weekPlans,
-                recipes,
-                drafts,
-                null,
-                assetIntakePort,
-                membership,
-                mock(MealsShoppingPort.class),
-                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
-        );
-
-        var created = service.createRecipeDraftFromAsset(
-                groupId,
-                userId,
-                new RecipeAssetIntakeReference(
-                        RecipeAssetIntakeKind.IMAGE,
-                        "asset-ref-image-1",
-                        "recipe-photo.jpg",
-                        "recipe-photo.jpg",
-                        "image/jpeg"
-                )
-        );
-
-        assertThat(created.state()).isEqualTo("draft_needs_review");
-        assertThat(created.name()).isEqualTo("OCR omelette");
-        assertThat(created.ingredients()).hasSize(2);
-        assertThat(created.ingredients()).anySatisfy(ingredient -> {
-            assertThat(ingredient.name()).isEqualTo("salt");
-            assertThat(ingredient.rawText()).isEqualTo("0 g salt");
-            assertThat(ingredient.quantity()).isNull();
-            assertThat(ingredient.unit()).isNull();
-        });
-        assertThat(created.ingredients()).anySatisfy(ingredient -> {
-            assertThat(ingredient.name()).isEqualTo("eggs");
-            assertThat(ingredient.rawText()).isEqualTo("2 eggs");
-            assertThat(ingredient.quantity()).isEqualByComparingTo("2");
-            assertThat(ingredient.unit().name()).isEqualTo("PCS");
-        });
-        assertThat(created.instructions()).contains("Whisk and cook gently");
     }
 
     @Test

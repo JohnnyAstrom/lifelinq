@@ -5,8 +5,6 @@ import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.contract.AddMealOutput;
 import app.lifelinq.features.meals.contract.IngredientInput;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakeKind;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
 import app.lifelinq.features.meals.contract.RecipeDetailView;
 import app.lifelinq.features.meals.contract.RecipeDraftView;
 import app.lifelinq.features.meals.contract.RecipeDuplicateAssessmentView;
@@ -27,10 +25,8 @@ import app.lifelinq.features.meals.contract.WeekShoppingProjectionView;
 import app.lifelinq.features.meals.contract.WeekShoppingReviewView;
 import app.lifelinq.features.meals.contract.WeekPlanView;
 import java.util.ArrayList;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,7 +36,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 public class MealsController {
@@ -116,74 +111,6 @@ public class MealsController {
                 request.getText()
         );
         return ResponseEntity.ok(draft);
-    }
-
-    @PostMapping("/meals/recipe-drafts/from-asset")
-    public ResponseEntity<?> createRecipeDraftFromAsset(@RequestBody CreateRecipeDraftFromAssetRequest request) {
-        RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
-            return ApiScoping.missingContext();
-        }
-        RecipeDraftView draft = mealsApplicationService.createRecipeDraftFromAsset(
-                context.getGroupId(),
-                context.getUserId(),
-                new RecipeAssetIntakeReference(
-                        parseAssetIntakeKind(request.getAssetKind()),
-                        request.getReferenceId(),
-                        request.getSourceLabel(),
-                        request.getOriginalFilename(),
-                        request.getMimeType()
-                )
-        );
-        return ResponseEntity.ok(draft);
-    }
-
-    @PostMapping(value = "/meals/recipe-assets/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> stageRecipeDocumentAsset(@RequestParam("file") MultipartFile file) {
-        RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
-            return ApiScoping.missingContext();
-        }
-        try {
-            RecipeAssetIntakeReference reference = mealsApplicationService.stageRecipeDocumentAsset(
-                    context.getGroupId(),
-                    context.getUserId(),
-                    file.getOriginalFilename(),
-                    file.getOriginalFilename(),
-                    file.getContentType(),
-                    file.getBytes()
-            );
-            return ResponseEntity.ok(toStageRecipeDocumentAssetResponse(reference));
-        } catch (IOException ex) {
-            throw new app.lifelinq.features.meals.application.RecipeImportFailedException(
-                    "We could not open that file. Try another recipe PDF or document.",
-                    ex
-            );
-        }
-    }
-
-    @PostMapping(value = "/meals/recipe-assets/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> stageRecipeImageAsset(@RequestParam("file") MultipartFile file) {
-        RequestContext context = ApiScoping.getContext();
-        if (context == null || context.getGroupId() == null || context.getUserId() == null) {
-            return ApiScoping.missingContext();
-        }
-        try {
-            RecipeAssetIntakeReference reference = mealsApplicationService.stageRecipeImageAsset(
-                    context.getGroupId(),
-                    context.getUserId(),
-                    file.getOriginalFilename(),
-                    file.getOriginalFilename(),
-                    file.getContentType(),
-                    file.getBytes()
-            );
-            return ResponseEntity.ok(toStageRecipeImageAssetResponse(reference));
-        } catch (IOException ex) {
-            throw new app.lifelinq.features.meals.application.RecipeImportFailedException(
-                    "We could not open that photo. Try another recipe photo.",
-                    ex
-            );
-        }
     }
 
     @GetMapping("/meals/recipe-drafts/{draftId}")
@@ -1006,17 +933,6 @@ public class MealsController {
         return inputs;
     }
 
-    private RecipeAssetIntakeKind parseAssetIntakeKind(String value) {
-        if (value == null) {
-            throw new IllegalArgumentException("assetKind must not be null");
-        }
-        String normalized = value.trim();
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("assetKind must not be blank");
-        }
-        return RecipeAssetIntakeKind.valueOf(normalized.toUpperCase());
-    }
-
     private RecipeImportDraftResponse toRecipeImportDraftResponse(RecipeImportDraftView view) {
         List<RecipeImportDraftIngredientResponse> ingredients = new ArrayList<>();
         for (RecipeImportDraftIngredientView ingredient : view.ingredients()) {
@@ -1037,26 +953,6 @@ public class MealsController {
                 view.shortNote(),
                 view.instructions(),
                 ingredients
-        );
-    }
-
-    private StageRecipeDocumentAssetResponse toStageRecipeDocumentAssetResponse(RecipeAssetIntakeReference reference) {
-        return new StageRecipeDocumentAssetResponse(
-                reference.kind().name().toLowerCase(),
-                reference.referenceId(),
-                reference.sourceLabel(),
-                reference.originalFilename(),
-                reference.mimeType()
-        );
-    }
-
-    private StageRecipeImageAssetResponse toStageRecipeImageAssetResponse(RecipeAssetIntakeReference reference) {
-        return new StageRecipeImageAssetResponse(
-                reference.kind().name().toLowerCase(),
-                reference.referenceId(),
-                reference.sourceLabel(),
-                reference.originalFilename(),
-                reference.mimeType()
         );
     }
 }

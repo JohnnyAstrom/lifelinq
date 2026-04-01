@@ -7,10 +7,6 @@ import app.lifelinq.features.meals.contract.AggregatedIngredientComparisonView;
 import app.lifelinq.features.meals.contract.AggregatedIngredientNeedView;
 import app.lifelinq.features.meals.contract.ContributorMealReferenceView;
 import app.lifelinq.features.meals.contract.IngredientInput;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakePort;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
-import app.lifelinq.features.meals.contract.RecipeDocumentAssetStore;
-import app.lifelinq.features.meals.contract.RecipeImageAssetStore;
 import app.lifelinq.features.meals.contract.IngredientUnitView;
 import app.lifelinq.features.meals.contract.IngredientView;
 import app.lifelinq.features.meals.contract.HouseholdPreferenceSummaryView;
@@ -181,9 +177,6 @@ public class MealsApplicationService {
     private final MealMemoryRepository mealMemoryRepository;
     private final HouseholdPreferenceSignalRepository householdPreferenceSignalRepository;
     private final RecipeImportPort recipeImportPort;
-    private final RecipeAssetIntakePort recipeAssetIntakePort;
-    private final RecipeDocumentAssetStore recipeDocumentAssetStore;
-    private final RecipeImageAssetStore recipeImageAssetStore;
     private final EnsureGroupMemberUseCase ensureGroupMemberUseCase;
     private final MealsShoppingPort mealsShoppingPort;
     private final Clock clock;
@@ -205,9 +198,6 @@ public class MealsApplicationService {
                 null,
                 null,
                 null,
-                null,
-                null,
-                null,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -221,65 +211,6 @@ public class MealsApplicationService {
             MealMemoryRepository mealMemoryRepository,
             HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
             RecipeImportPort recipeImportPort,
-            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
-            MealsShoppingPort mealsShoppingPort,
-            Clock clock
-    ) {
-        this(
-                weekPlanRepository,
-                recipeRepository,
-                recipeDraftRepository,
-                mealMemoryRepository,
-                householdPreferenceSignalRepository,
-                recipeImportPort,
-                null,
-                null,
-                null,
-                ensureGroupMemberUseCase,
-                mealsShoppingPort,
-                clock
-        );
-    }
-
-    public MealsApplicationService(
-            WeekPlanRepository weekPlanRepository,
-            RecipeRepository recipeRepository,
-            RecipeDraftRepository recipeDraftRepository,
-            MealMemoryRepository mealMemoryRepository,
-            HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
-            RecipeImportPort recipeImportPort,
-            RecipeDocumentAssetStore recipeDocumentAssetStore,
-            RecipeImageAssetStore recipeImageAssetStore,
-            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
-            MealsShoppingPort mealsShoppingPort,
-            Clock clock
-    ) {
-        this(
-                weekPlanRepository,
-                recipeRepository,
-                recipeDraftRepository,
-                mealMemoryRepository,
-                householdPreferenceSignalRepository,
-                recipeImportPort,
-                null,
-                recipeDocumentAssetStore,
-                recipeImageAssetStore,
-                ensureGroupMemberUseCase,
-                mealsShoppingPort,
-                clock
-        );
-    }
-
-    public MealsApplicationService(
-            WeekPlanRepository weekPlanRepository,
-            RecipeRepository recipeRepository,
-            RecipeDraftRepository recipeDraftRepository,
-            MealMemoryRepository mealMemoryRepository,
-            HouseholdPreferenceSignalRepository householdPreferenceSignalRepository,
-            RecipeImportPort recipeImportPort,
-            RecipeAssetIntakePort recipeAssetIntakePort,
-            RecipeDocumentAssetStore recipeDocumentAssetStore,
-            RecipeImageAssetStore recipeImageAssetStore,
             EnsureGroupMemberUseCase ensureGroupMemberUseCase,
             MealsShoppingPort mealsShoppingPort,
             Clock clock
@@ -305,9 +236,6 @@ public class MealsApplicationService {
         this.mealMemoryRepository = mealMemoryRepository;
         this.householdPreferenceSignalRepository = householdPreferenceSignalRepository;
         this.recipeImportPort = recipeImportPort;
-        this.recipeAssetIntakePort = recipeAssetIntakePort;
-        this.recipeDocumentAssetStore = recipeDocumentAssetStore;
-        this.recipeImageAssetStore = recipeImageAssetStore;
         this.ensureGroupMemberUseCase = ensureGroupMemberUseCase;
         this.mealsShoppingPort = mealsShoppingPort;
         this.clock = clock;
@@ -332,61 +260,6 @@ public class MealsApplicationService {
                 null,
                 null,
                 recipeImportPort,
-                null,
-                null,
-                null,
-                ensureGroupMemberUseCase,
-                mealsShoppingPort,
-                clock
-        );
-    }
-
-    public MealsApplicationService(
-            WeekPlanRepository weekPlanRepository,
-            RecipeRepository recipeRepository,
-            RecipeDraftRepository recipeDraftRepository,
-            RecipeImportPort recipeImportPort,
-            RecipeAssetIntakePort recipeAssetIntakePort,
-            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
-            MealsShoppingPort mealsShoppingPort,
-            Clock clock
-    ) {
-        this(
-                weekPlanRepository,
-                recipeRepository,
-                recipeDraftRepository,
-                recipeImportPort,
-                recipeAssetIntakePort,
-                null,
-                null,
-                ensureGroupMemberUseCase,
-                mealsShoppingPort,
-                clock
-        );
-    }
-
-    public MealsApplicationService(
-            WeekPlanRepository weekPlanRepository,
-            RecipeRepository recipeRepository,
-            RecipeDraftRepository recipeDraftRepository,
-            RecipeImportPort recipeImportPort,
-            RecipeAssetIntakePort recipeAssetIntakePort,
-            RecipeDocumentAssetStore recipeDocumentAssetStore,
-            RecipeImageAssetStore recipeImageAssetStore,
-            EnsureGroupMemberUseCase ensureGroupMemberUseCase,
-            MealsShoppingPort mealsShoppingPort,
-            Clock clock
-    ) {
-        this(
-                weekPlanRepository,
-                recipeRepository,
-                recipeDraftRepository,
-                null,
-                null,
-                recipeImportPort,
-                recipeAssetIntakePort,
-                recipeDocumentAssetStore,
-                recipeImageAssetStore,
                 ensureGroupMemberUseCase,
                 mealsShoppingPort,
                 clock
@@ -484,83 +357,6 @@ public class MealsApplicationService {
         requireRecipeDraftRepository();
         Instant now = clock.instant();
         RecipeImportDraftSupport.RecipeDraftSeed seed = RecipeImportDraftSupport.importFromText(text);
-        RecipeDraft draft = new RecipeDraft(
-                UUID.randomUUID(),
-                groupId,
-                seed.name(),
-                seed.source(),
-                seed.provenance(),
-                seed.servings(),
-                seed.shortNote(),
-                seed.instructions(),
-                seed.state(),
-                now,
-                now,
-                seed.ingredients()
-        );
-        return toDraftView(recipeDraftRepository.save(draft));
-    }
-
-    public RecipeAssetIntakeReference stageRecipeDocumentAsset(
-            UUID groupId,
-            UUID actorUserId,
-            String sourceLabel,
-            String originalFilename,
-            String mimeType,
-            byte[] content
-    ) {
-        ensureMealAccess(groupId, actorUserId);
-        requireRecipeDocumentAssetStore();
-        if (content == null || content.length == 0) {
-            throw new RecipeImportFailedException(
-                    "We could not use that file. Try another recipe PDF or document."
-            );
-        }
-        return recipeDocumentAssetStore.stageDocument(
-                sourceLabel,
-                originalFilename,
-                mimeType,
-                content
-        );
-    }
-
-    public RecipeAssetIntakeReference stageRecipeImageAsset(
-            UUID groupId,
-            UUID actorUserId,
-            String sourceLabel,
-            String originalFilename,
-            String mimeType,
-            byte[] content
-    ) {
-        ensureMealAccess(groupId, actorUserId);
-        requireRecipeImageAssetStore();
-        if (content == null || content.length == 0) {
-            throw new RecipeImportFailedException(
-                    "We could not use that photo. Try another recipe photo."
-            );
-        }
-        return recipeImageAssetStore.stageImage(
-                sourceLabel,
-                originalFilename,
-                mimeType,
-                content
-        );
-    }
-
-    @Transactional
-    public RecipeDraftView createRecipeDraftFromAsset(
-            UUID groupId,
-            UUID actorUserId,
-            RecipeAssetIntakeReference reference
-    ) {
-        ensureMealAccess(groupId, actorUserId);
-        requireRecipeDraftRepository();
-        requireRecipeAssetIntakePort();
-        Instant now = clock.instant();
-        RecipeImportDraftSupport.RecipeDraftSeed seed = RecipeImportDraftSupport.importFromAsset(
-                recipeAssetIntakePort,
-                reference
-        );
         RecipeDraft draft = new RecipeDraft(
                 UUID.randomUUID(),
                 groupId,
@@ -1774,24 +1570,6 @@ public class MealsApplicationService {
     private void requireRecipeImportPort() {
         if (recipeImportPort == null) {
             throw new IllegalStateException("Recipe import platform is not configured");
-        }
-    }
-
-    private void requireRecipeAssetIntakePort() {
-        if (recipeAssetIntakePort == null) {
-            throw new RecipeAssetIntakeUnavailableException("Recipe file and image import is not available yet");
-        }
-    }
-
-    private void requireRecipeDocumentAssetStore() {
-        if (recipeDocumentAssetStore == null) {
-            throw new RecipeAssetIntakeUnavailableException("Recipe file import is not available yet");
-        }
-    }
-
-    private void requireRecipeImageAssetStore() {
-        if (recipeImageAssetStore == null) {
-            throw new RecipeAssetIntakeUnavailableException("Recipe photo import is not available yet");
         }
     }
 

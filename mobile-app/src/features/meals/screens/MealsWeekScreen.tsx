@@ -435,25 +435,13 @@ export function MealsWeekScreen({
     noRecipeSearchResults: 'No recipes match this search.',
     noRecipeSearchResultsHint: 'Try a title or source.',
     addRecipeFromRecipes: 'Add recipe',
-    addRecipeFromRecipesHint: 'Choose what to start from.',
+    addRecipeFromRecipesHint: 'Best results come from a recipe link.',
     addRecipeChooserTitle: 'Add recipe',
-    addRecipeChooserSubtitle: 'Choose what to start from.',
+    addRecipeChooserSubtitle: 'Best results come from a recipe link.',
     addRecipeFromLink: 'From link',
-    addRecipeFromLinkHint: 'Start from a recipe link.',
+    addRecipeFromLinkHint: 'Best for recipe websites and shared links.',
     addRecipeCreate: 'Create recipe',
-    addRecipeCreateHint: 'Start from scratch or paste a recipe in.',
-    addRecipeImport: 'Import recipe',
-    addRecipeImportHint: 'Bring in a recipe from a document or photo.',
-    addRecipeImportLoadingTitle: 'Importing recipe',
-    addRecipeImportLoadingHint: 'Bringing in your recipe now.',
-    importRecipeChooserTitle: 'Import recipe',
-    importRecipeChooserSubtitle: 'Choose how to bring it in.',
-    importRecipeChooseDocument: 'Choose document',
-    importRecipeChooseDocumentHint: 'Use a recipe PDF or document.',
-    importRecipeTakePhoto: 'Take photo',
-    importRecipeTakePhotoHint: 'Use your camera for a recipe page.',
-    importRecipeChoosePhoto: 'Choose photo',
-    importRecipeChoosePhotoHint: 'Use a recipe photo you already have.',
+    addRecipeCreateHint: 'Write it yourself or paste recipe text.',
     createRecipeChooserTitle: 'Create recipe',
     createRecipeChooserSubtitle: 'Start from scratch or paste a recipe in.',
     createRecipeWriteYourself: 'Write it yourself',
@@ -628,12 +616,6 @@ export function MealsWeekScreen({
       hint: strings.addRecipeCreateHint,
       onPress: recipesWorkspace.addRecipe.chooseCreate,
     },
-    {
-      icon: 'document-attach-outline',
-      title: strings.addRecipeImport,
-      hint: strings.addRecipeImportHint,
-      onPress: recipesWorkspace.addRecipe.chooseImport,
-    },
   ];
   const createRecipeOptions: MealRecipeCaptureSourceOption[] = [
     {
@@ -647,44 +629,6 @@ export function MealsWeekScreen({
       title: strings.createRecipePasteText,
       hint: strings.createRecipePasteTextHint,
       onPress: recipesWorkspace.createRecipe.choosePasteText,
-    },
-  ];
-  const importRecipeOptions: MealRecipeCaptureSourceOption[] = [
-    {
-      icon: 'document-attach-outline',
-      title: strings.importRecipeChooseDocument,
-      hint: strings.importRecipeChooseDocumentHint,
-      onPress: () => {
-        void recipesWorkspace.importRecipe.chooseDocument({
-          onError: (message) => {
-            onShowToast?.(message);
-          },
-        });
-      },
-    },
-    {
-      icon: 'camera-outline',
-      title: strings.importRecipeTakePhoto,
-      hint: strings.importRecipeTakePhotoHint,
-      onPress: () => {
-        recipesWorkspace.importRecipe.choosePhotoFromCamera({
-          onError: (message) => {
-            onShowToast?.(message);
-          },
-        });
-      },
-    },
-    {
-      icon: 'images-outline',
-      title: strings.importRecipeChoosePhoto,
-      hint: strings.importRecipeChoosePhotoHint,
-      onPress: () => {
-        recipesWorkspace.importRecipe.choosePhotoFromLibrary({
-          onError: (message) => {
-            onShowToast?.(message);
-          },
-        });
-      },
     },
   ];
   const recipeMemorySupport = useMemo(
@@ -728,20 +672,15 @@ export function MealsWeekScreen({
       return;
     }
 
-    const sharedAsset = recipeCaptureEntryRequest.sharedAsset;
-    if (sharedAsset?.referenceId?.trim()) {
-      void recipesWorkspace.importDraft.importSharedRecipeAsset(sharedAsset, {
-        onError: (message) => {
-          onShowToast?.(message);
-        },
-        onComplete: () => {
-          onRecipeCaptureEntryHandled?.();
-        },
-      });
+    if (recipeCaptureEntryRequest.sharedAsset?.referenceId?.trim()) {
+      onShowToast?.(
+        'Shared files and photos are not supported for recipe import right now. Try sharing a recipe link or recipe text instead.'
+      );
+      onRecipeCaptureEntryHandled?.();
       return;
     }
 
-    onShowToast?.('We could not use that shared file or photo. Try sharing it again.');
+    onShowToast?.('We could not use that shared item. Try sharing a recipe link or recipe text instead.');
     onRecipeCaptureEntryHandled?.();
   }, [
     onRecipeCaptureEntryHandled,
@@ -1932,24 +1871,6 @@ export function MealsWeekScreen({
           strings={{
             title: strings.createRecipeChooserTitle,
             subtitle: strings.createRecipeChooserSubtitle,
-            close: 'Back',
-          }}
-        />
-      ) : null}
-
-      {recipesWorkspace.importRecipe.isOpen ? (
-        <MealRecipeCaptureSourceSheet
-          options={importRecipeOptions}
-          onClose={recipesWorkspace.importRecipe.closeImportRecipeOptions}
-          isWorking={
-            recipesWorkspace.importRecipe.isSelectingImportDocument
-            || recipesWorkspace.importRecipe.isSelectingImportImage
-          }
-          workingTitle={strings.addRecipeImportLoadingTitle}
-          workingHint={strings.addRecipeImportLoadingHint}
-          strings={{
-            title: strings.importRecipeChooserTitle,
-            subtitle: strings.importRecipeChooserSubtitle,
             close: 'Back',
           }}
         />

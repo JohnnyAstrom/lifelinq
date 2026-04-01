@@ -3,9 +3,8 @@ package app.lifelinq.features.meals.api;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,7 +18,6 @@ import app.lifelinq.features.meals.application.MealNotFoundException;
 import app.lifelinq.features.meals.application.MealsApplicationService;
 import app.lifelinq.features.meals.application.RecipeDeleteBlockedException;
 import app.lifelinq.features.meals.application.RecipeDuplicateAttentionRequiredException;
-import app.lifelinq.features.meals.application.RecipeAssetIntakeUnavailableException;
 import app.lifelinq.features.meals.application.RecipeImportApplicationService;
 import app.lifelinq.features.meals.application.RecipeImportFailedException;
 import app.lifelinq.features.meals.contract.MealsShoppingAccessDeniedException;
@@ -44,8 +42,6 @@ import app.lifelinq.features.meals.contract.AggregatedIngredientNeedView;
 import app.lifelinq.features.meals.contract.ContributorMealReferenceView;
 import app.lifelinq.features.meals.contract.RecipeLibraryItemView;
 import app.lifelinq.features.meals.contract.RecipeLifecycleView;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakeKind;
-import app.lifelinq.features.meals.contract.RecipeAssetIntakeReference;
 import app.lifelinq.features.meals.contract.RecipeProvenanceView;
 import app.lifelinq.features.meals.contract.RecipeSourceView;
 import app.lifelinq.features.meals.contract.RecentPlannedMealView;
@@ -70,7 +66,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -276,153 +271,6 @@ class MealsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mealTitle\":\"Pasta\",\"recipeId\":\"" + recipeId + "\",\"mealType\":\"DINNER\",\"targetShoppingListId\":\"" + targetListId + "\"}"))
                 .andExpect(status().isConflict());
-    }
-
-    @Test
-    void stageRecipeImageAssetReturnsStagedReferenceForPhotoImport() throws Exception {
-        UUID groupId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        userRepository.withUser(userId, groupId);
-        String token = createToken(userId, Instant.now().plusSeconds(60));
-
-        when(mealsApplicationService.stageRecipeImageAsset(
-                groupId,
-                userId,
-                "recipe-photo.jpg",
-                "recipe-photo.jpg",
-                "image/jpeg",
-                "photo".getBytes(StandardCharsets.UTF_8)
-        )).thenReturn(new RecipeAssetIntakeReference(
-                RecipeAssetIntakeKind.IMAGE,
-                "image-ref-1",
-                "recipe-photo.jpg",
-                "recipe-photo.jpg",
-                "image/jpeg"
-        ));
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "recipe-photo.jpg",
-                "image/jpeg",
-                "photo".getBytes(StandardCharsets.UTF_8)
-        );
-
-        mockMvc.perform(multipart("/meals/recipe-assets/images")
-                        .file(file)
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.assetKind").value("image"))
-                .andExpect(jsonPath("$.referenceId").value("image-ref-1"))
-                .andExpect(jsonPath("$.sourceLabel").value("recipe-photo.jpg"))
-                .andExpect(jsonPath("$.mimeType").value("image/jpeg"));
-
-        verify(mealsApplicationService).stageRecipeImageAsset(
-                groupId,
-                userId,
-                "recipe-photo.jpg",
-                "recipe-photo.jpg",
-                "image/jpeg",
-                "photo".getBytes(StandardCharsets.UTF_8)
-        );
-    }
-
-    @Test
-    void createRecipeDraftFromAssetReturnsDraftFromSharedIntakeFoundation() throws Exception {
-        UUID groupId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        UUID draftId = UUID.randomUUID();
-        userRepository.withUser(userId, groupId);
-        String token = createToken(userId, Instant.now().plusSeconds(60));
-
-        when(mealsApplicationService.createRecipeDraftFromAsset(
-                groupId,
-                userId,
-                new RecipeAssetIntakeReference(
-                        RecipeAssetIntakeKind.DOCUMENT,
-                        "asset-ref-1",
-                        "Shared PDF",
-                        "recipe.pdf",
-                        "application/pdf"
-                )
-        )).thenReturn(new RecipeDraftView(
-                draftId,
-                groupId,
-                "draft_needs_review",
-                "Shared PDF",
-                new RecipeSourceView("Shared PDF", null),
-                new RecipeProvenanceView("document_import", null),
-                "4 servings",
-                null,
-                "Bake gently",
-                Instant.parse("2026-03-24T10:00:00Z"),
-                Instant.parse("2026-03-24T10:00:00Z"),
-                List.of()
-        ));
-
-        mockMvc.perform(post("/meals/recipe-drafts/from-asset")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "assetKind": "document",
-                                  "referenceId": "asset-ref-1",
-                                  "sourceLabel": "Shared PDF",
-                                  "originalFilename": "recipe.pdf",
-                                  "mimeType": "application/pdf"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.draftId").value(draftId.toString()))
-                .andExpect(jsonPath("$.provenance.originKind").value("document_import"))
-                .andExpect(jsonPath("$.source.sourceName").value("Shared PDF"));
-
-        verify(mealsApplicationService).createRecipeDraftFromAsset(
-                groupId,
-                userId,
-                new RecipeAssetIntakeReference(
-                        RecipeAssetIntakeKind.DOCUMENT,
-                        "asset-ref-1",
-                        "Shared PDF",
-                        "recipe.pdf",
-                        "application/pdf"
-                )
-        );
-    }
-
-    @Test
-    void createRecipeDraftFromAssetReturnsCalmUnavailableStateWhenAssetIntakeIsNotConfigured() throws Exception {
-        UUID groupId = UUID.randomUUID();
-        UUID userId = UUID.randomUUID();
-        userRepository.withUser(userId, groupId);
-        String token = createToken(userId, Instant.now().plusSeconds(60));
-
-        when(mealsApplicationService.createRecipeDraftFromAsset(
-                groupId,
-                userId,
-                new RecipeAssetIntakeReference(
-                        RecipeAssetIntakeKind.IMAGE,
-                        "asset-ref-2",
-                        "Shared image",
-                        "recipe.jpg",
-                        "image/jpeg"
-                )
-        )).thenThrow(new RecipeAssetIntakeUnavailableException("Recipe file and image import is not available yet"));
-
-        mockMvc.perform(post("/meals/recipe-drafts/from-asset")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "assetKind": "image",
-                                  "referenceId": "asset-ref-2",
-                                  "sourceLabel": "Shared image",
-                                  "originalFilename": "recipe.jpg",
-                                  "mimeType": "image/jpeg"
-                                }
-                                """))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("RECIPE_ASSET_INTAKE_UNAVAILABLE"))
-                .andExpect(jsonPath("$.message").value("Recipe file and image import is not available yet"));
     }
 
     @Test
