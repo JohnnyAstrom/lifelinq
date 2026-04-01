@@ -20,7 +20,7 @@ final class ImageRecipeImportShaper {
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
     );
     private static final Pattern SIMPLE_SERVINGS_PATTERN = Pattern.compile(
-            "^(?<value>\\d+(?:[\\.,]\\d+)?)\\s*(?:portioner?|port|servings?)\\.?$",
+            "^(?:(?:för|for)\\s+)?(?<value>\\d+(?:[\\.,]\\d+)?)\\s*(?:portioner?|personer?|port|servings?)\\.?$",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
     );
     private static final Pattern DURATION_PATTERN = Pattern.compile(
@@ -110,7 +110,21 @@ final class ImageRecipeImportShaper {
     }
 
     ParsedRecipeImportData shape(RecipeAssetIntakeReference reference, String extractedText) {
-        return documentImportShaper.shape(reference, cleanOcrText(extractedText));
+        String cleanedText = cleanOcrText(extractedText);
+        ParsedRecipeImportData shaped = documentImportShaper.shape(reference, cleanedText);
+        String preservedTitle = extractPreservedTopTitle(cleanedText);
+        if (shouldPreferPreservedImageTitle(reference, shaped.name(), preservedTitle)) {
+            return new ParsedRecipeImportData(
+                    preservedTitle,
+                    shaped.sourceName(),
+                    shaped.sourceUrl(),
+                    shaped.servings(),
+                    shaped.shortNote(),
+                    shaped.instructions(),
+                    shaped.ingredientLines()
+            );
+        }
+        return shaped;
     }
 
     private String cleanOcrText(String extractedText) {
@@ -300,7 +314,7 @@ final class ImageRecipeImportShaper {
     }
 
     private List<String> mergeTopTitleLines(List<String> lines) {
-        int scanLimit = Math.min(lines.size(), 4);
+        int scanLimit = Math.min(lines.size(), 6);
         List<String> titleFragments = new ArrayList<>();
         int consumed = 0;
 
@@ -314,7 +328,7 @@ final class ImageRecipeImportShaper {
             }
             titleFragments.add(line);
             consumed += 1;
-            if (titleFragments.size() >= 3) {
+            if (titleFragments.size() >= 4) {
                 break;
             }
         }
@@ -355,6 +369,7 @@ final class ImageRecipeImportShaper {
         }
         if (isSectionHeading(normalized)
                 || looksLikeRecipeMetadataLine(normalized)
+                || isSimpleServingsLine(normalized)
                 || containsPromotionalMarker(normalized)
                 || looksLikeSourceLine(normalized)
                 || startsMethodFlow(normalized)
@@ -363,9 +378,11 @@ final class ImageRecipeImportShaper {
         }
         int wordCount = normalized.split("\\s+").length;
         return wordCount >= 1
-                && wordCount <= 5
-                && normalized.length() <= 40
-                && (isMostlyUppercase(normalized) || isMostlyTitleCase(normalized));
+                && wordCount <= 6
+                && normalized.length() <= 56
+                && (isMostlyUppercase(normalized)
+                || isMostlyTitleCase(normalized)
+                || looksLikeLeadingTitleFragment(normalized));
     }
 
     private boolean looksLikeTitleContinuation(String line, List<String> titleFragments) {
@@ -375,6 +392,7 @@ final class ImageRecipeImportShaper {
         }
         if (isSectionHeading(normalized)
                 || looksLikeRecipeMetadataLine(normalized)
+                || isSimpleServingsLine(normalized)
                 || containsPromotionalMarker(normalized)
                 || looksLikeSourceLine(normalized)
                 || startsMethodFlow(normalized)
@@ -383,7 +401,7 @@ final class ImageRecipeImportShaper {
         }
 
         int wordCount = normalized.split("\\s+").length;
-        if (wordCount == 0 || wordCount > 4 || normalized.length() > 32) {
+        if (wordCount == 0 || wordCount > 5 || normalized.length() > 40) {
             return false;
         }
 
@@ -395,7 +413,24 @@ final class ImageRecipeImportShaper {
                 && !looksLikeSentenceProse(normalized)
                 && (!looksLikeIngredientLine(normalized)
                 || looksLikeTitleContinuationCue(normalized)
+                || looksLikeTitleNounPhraseContinuation(normalized)
                 || wordCount == 1);
+    }
+
+    private boolean looksLikeTitleNounPhraseContinuation(String value) {
+        String normalized = normalizeLine(value);
+        if (normalized == null) {
+            return false;
+        }
+        String[] tokens = normalized.split("\\s+");
+        if (tokens.length < 2 || tokens.length > 3) {
+            return false;
+        }
+        return normalized.contains(",")
+                && !startsWithQuantity(normalized)
+                && !startsWithActionVerb(normalized)
+                && !looksLikeSourceLine(normalized)
+                && !looksLikeRecipeMetadataLine(normalized);
     }
 
     private boolean looksLikeIngredientLine(String line) {
@@ -541,6 +576,28 @@ final class ImageRecipeImportShaper {
                 && !startsWithActionVerb(normalized);
     }
 
+    private boolean looksLikeLeadingTitleFragment(String value) {
+        String normalized = normalizeLine(value);
+        if (normalized == null) {
+            return false;
+        }
+        String[] tokens = normalized.split("\\s+");
+        if (tokens.length < 2 || tokens.length > 5) {
+            return false;
+        }
+        return Character.isUpperCase(normalized.charAt(0))
+                && (looksLikeTitleContinuationCue(normalized) || normalized.contains(","));
+    }
+
+    private String extractPreservedTopTitle(String cleanedText) {
+        List<String> normalizedLines = normalizeLines(cleanedText);
+        if (normalizedLines.isEmpty()) {
+            return null;
+        }
+        String candidate = normalizeLine(normalizedLines.get(0));
+        return looksLikePromotedImageTitle(candidate) ? candidate : null;
+    }
+
     private boolean looksLikeTitleContinuationCue(String value) {
         String lowercase = value.toLowerCase(Locale.ROOT);
         return lowercase.startsWith("med ")
@@ -550,6 +607,72 @@ final class ImageRecipeImportShaper {
                 || lowercase.endsWith(" med")
                 || lowercase.endsWith(" till")
                 || containsSentenceConnector(lowercase);
+    }
+
+    private boolean shouldPreferPreservedImageTitle(
+            RecipeAssetIntakeReference reference,
+            String currentTitle,
+            String preservedTitle
+    ) {
+        if (reference == null || preservedTitle == null || !looksLikePromotedImageTitle(preservedTitle)) {
+            return false;
+        }
+        String normalizedCurrentTitle = normalizeLine(currentTitle);
+        if (normalizedCurrentTitle == null) {
+            return true;
+        }
+        if (!looksLikeNumericCameraFallback(normalizedCurrentTitle) && !isSimpleServingsLine(normalizedCurrentTitle)) {
+            return false;
+        }
+        String fallbackTitle = normalizeReferenceFallback(reference);
+        return isSimpleServingsLine(normalizedCurrentTitle)
+                || fallbackTitle == null
+                || normalizedCurrentTitle.equalsIgnoreCase(fallbackTitle);
+    }
+
+    private boolean looksLikePromotedImageTitle(String value) {
+        String normalized = normalizeLine(value);
+        if (normalized == null) {
+            return false;
+        }
+        int wordCount = normalized.split("\\s+").length;
+        if (wordCount < 2 || wordCount > 10 || normalized.length() < 6 || normalized.length() > 90) {
+            return false;
+        }
+        if (isSectionHeading(normalized)
+                || looksLikeRecipeMetadataLine(normalized)
+                || isSimpleServingsLine(normalized)
+                || containsPromotionalMarker(normalized)
+                || looksLikeSourceLine(normalized)
+                || startsMethodFlow(normalized)
+                || endsWithSentencePunctuation(normalized)
+                || looksLikeNumericCameraFallback(normalized)) {
+            return false;
+        }
+        return isMostlyUppercase(normalized)
+                || isMostlyTitleCase(normalized)
+                || looksLikeTitleContinuationCue(normalized)
+                || normalized.contains(",");
+    }
+
+    private String normalizeReferenceFallback(RecipeAssetIntakeReference reference) {
+        String candidate = firstNonBlank(reference.sourceLabel(), reference.originalFilename());
+        if (candidate == null) {
+            return null;
+        }
+        String lastPathSegment = candidate.replace('\\', '/').replaceFirst("^.+/", "");
+        String withoutExtension = lastPathSegment.replaceFirst("\\.[\\p{Alnum}]{1,8}$", "");
+        return normalizeLine(withoutExtension.replace('_', ' '));
+    }
+
+    private boolean looksLikeNumericCameraFallback(String value) {
+        String normalized = normalizeLine(value);
+        if (normalized == null) {
+            return false;
+        }
+        String lowercase = normalized.toLowerCase(Locale.ROOT);
+        return lowercase.matches("^\\d{6,}$")
+                || lowercase.matches("^(?:img|image|photo|scan)[-_ ]?\\d{3,}$");
     }
 
     private boolean looksMeaningfullyUsable(List<String> lines) {
@@ -613,6 +736,15 @@ final class ImageRecipeImportShaper {
                 .replaceAll("[^\\p{L}]", "")
                 .toLowerCase(Locale.ROOT);
         return ACTION_VERBS.contains(firstToken);
+    }
+
+    private boolean startsWithQuantity(String value) {
+        String normalized = normalizeLine(value);
+        if (normalized == null) {
+            return false;
+        }
+        return LEADING_QUANTITY_PATTERN.matcher(normalized).matches()
+                || ATTACHED_UNIT_PATTERN.matcher(normalized).matches();
     }
 
     private boolean containsSentenceConnector(String value) {

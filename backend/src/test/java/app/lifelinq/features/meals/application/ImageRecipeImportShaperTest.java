@@ -183,6 +183,52 @@ class ImageRecipeImportShaperTest {
         assertThat(shaped.instructions()).doesNotContain("En mustig rödvinsgryta");
     }
 
+    @Test
+    void prefersPreservedImageTitleOverNumericCameraFallbackAndKeepsTitleOutOfIngredients() {
+        String extractedText = """
+                Ugnsbakad ryggbiff med
+                potatismynt, småtomater
+                och kaprissmör
+                För 6 personer
+
+                Ingredienser
+                1 dl kapris
+                1 tsk rivet citronskal
+                75 g smör
+                900 g fast potatis
+
+                Gör så här
+                Hacka kaprisen och blanda med rivet citronskal och smör.
+                Tvätta potatisen och skiva den i cirka 5 mm tjocka skivor.
+                """;
+        String handoffText = cleanedText(extractedText);
+        ParsedRecipeImportData shaped = shaper.shape(
+                new RecipeAssetIntakeReference(
+                        RecipeAssetIntakeKind.IMAGE,
+                        "image-ref-6",
+                        "1000000039.jpg",
+                        "1000000039.jpg",
+                        "image/jpeg"
+                ),
+                extractedText
+        );
+
+        assertThat(handoffText).startsWith("Ugnsbakad ryggbiff med potatismynt, småtomater och kaprissmör");
+        assertThat(shaped.name()).isEqualTo("Ugnsbakad ryggbiff med potatismynt, småtomater och kaprissmör");
+        assertThat(shaped.name()).isNotEqualTo("1000000039");
+        assertThat(shaped.ingredientLines()).contains(
+                "1 dl kapris",
+                "1 tsk rivet citronskal",
+                "75 g smör",
+                "900 g fast potatis"
+        );
+        assertThat(shaped.ingredientLines()).doesNotContain(
+                "Ugnsbakad ryggbiff med",
+                "potatismynt, småtomater",
+                "och kaprissmör"
+        );
+    }
+
     private String cleanedText(String extractedText) {
         try {
             Method method = ImageRecipeImportShaper.class.getDeclaredMethod("cleanOcrText", String.class);
