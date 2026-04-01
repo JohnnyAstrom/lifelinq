@@ -176,7 +176,9 @@ final class RecipeImportDraftSupport {
             throw new RecipeImportFailedException("Imported asset is missing recipe content");
         }
 
-        List<Ingredient> ingredients = normalizeIngredientsAllowEmpty(parsed.ingredientLines());
+        List<Ingredient> ingredients = reference.kind() == RecipeAssetIntakeKind.IMAGE
+                ? normalizeIngredientsAllowEmpty(parsed.ingredientLines(), true)
+                : normalizeIngredientsAllowEmpty(parsed.ingredientLines());
         String normalizedServings = normalizeOptionalText(parsed.servings());
         String normalizedShortNote = normalizeOptionalText(parsed.shortNote());
         RecipeInstructions instructions = new RecipeInstructions(parsed.instructions());
@@ -250,6 +252,13 @@ final class RecipeImportDraftSupport {
     }
 
     private static List<Ingredient> normalizeIngredientsAllowEmpty(List<String> ingredientLines) {
+        return normalizeIngredientsAllowEmpty(ingredientLines, false);
+    }
+
+    private static List<Ingredient> normalizeIngredientsAllowEmpty(
+            List<String> ingredientLines,
+            boolean tolerateInvalidStructuredQuantity
+    ) {
         if (ingredientLines == null || ingredientLines.isEmpty()) {
             return List.of();
         }
@@ -261,13 +270,17 @@ final class RecipeImportDraftSupport {
             if (normalizedLine == null || isIgnorableIngredientLine(normalizedLine)) {
                 continue;
             }
-            ingredients.add(toIngredient(normalizedLine, nextPosition));
+            ingredients.add(toIngredient(normalizedLine, nextPosition, tolerateInvalidStructuredQuantity));
             nextPosition += 1;
         }
         return List.copyOf(ingredients);
     }
 
     private static Ingredient toIngredient(String line, int position) {
+        return toIngredient(line, position, false);
+    }
+
+    private static Ingredient toIngredient(String line, int position, boolean tolerateInvalidStructuredQuantity) {
         String normalizedLine = normalizeIngredientLine(line);
         Matcher matcher = LEADING_QUANTITY_PATTERN.matcher(normalizedLine);
         if (!matcher.matches()) {
@@ -288,6 +301,9 @@ final class RecipeImportDraftSupport {
                 return new Ingredient(UUID.randomUUID(), normalizedLine, normalizedLine, null, null, position);
             }
             if (unitResult != null) {
+                if (tolerateInvalidStructuredQuantity && quantity.signum() <= 0) {
+                    return createRawIngredientFallback(unitResult.ingredientName(), normalizedLine, position);
+                }
                 return new Ingredient(
                         UUID.randomUUID(),
                         unitResult.ingredientName(),
@@ -308,6 +324,9 @@ final class RecipeImportDraftSupport {
             return new Ingredient(UUID.randomUUID(), normalizedLine, normalizedLine, null, null, position);
         }
         if (unitResult != null) {
+            if (tolerateInvalidStructuredQuantity && quantity.signum() <= 0) {
+                return createRawIngredientFallback(unitResult.ingredientName(), normalizedLine, position);
+            }
             return new Ingredient(
                     UUID.randomUUID(),
                     unitResult.ingredientName(),
@@ -320,6 +339,9 @@ final class RecipeImportDraftSupport {
 
         UnitParseResult bareCountResult = parseBareCountIngredient(rest);
         if (bareCountResult != null) {
+            if (tolerateInvalidStructuredQuantity && quantity.signum() <= 0) {
+                return createRawIngredientFallback(bareCountResult.ingredientName(), normalizedLine, position);
+            }
             return new Ingredient(
                     UUID.randomUUID(),
                     bareCountResult.ingredientName(),
@@ -331,6 +353,13 @@ final class RecipeImportDraftSupport {
         }
 
         return new Ingredient(UUID.randomUUID(), normalizedLine, normalizedLine, null, null, position);
+    }
+
+    private static Ingredient createRawIngredientFallback(String candidateName, String rawText, int position) {
+        String normalizedName = normalizeOptionalText(candidateName);
+        String normalizedRawText = normalizeOptionalText(rawText);
+        String safeName = normalizedName != null ? normalizedName : normalizedRawText;
+        return new Ingredient(UUID.randomUUID(), safeName, normalizedRawText, null, null, position);
     }
 
     private static boolean isReviewableAssetImport(

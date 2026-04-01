@@ -355,6 +355,64 @@ class MealsApplicationServiceTest {
     }
 
     @Test
+    void imageAssetDraftFailsSoftWhenOneParsedIngredientRowHasInvalidQuantity() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        EnsureGroupMemberUseCase membership = (h, u) -> {};
+        InMemoryWeekPlanRepository weekPlans = new InMemoryWeekPlanRepository();
+        InMemoryRecipeRepository recipes = new InMemoryRecipeRepository();
+        InMemoryRecipeDraftRepository drafts = new InMemoryRecipeDraftRepository();
+        RecipeAssetIntakePort assetIntakePort = reference -> new ParsedRecipeImportData(
+                "OCR omelette",
+                null,
+                null,
+                null,
+                "Quick stovetop fallback",
+                "Whisk and cook gently",
+                List.of("0 g salt", "2 eggs")
+        );
+        MealsApplicationService service = new MealsApplicationService(
+                weekPlans,
+                recipes,
+                drafts,
+                null,
+                assetIntakePort,
+                membership,
+                mock(MealsShoppingPort.class),
+                Clock.fixed(Instant.parse("2026-03-24T10:00:00Z"), ZoneOffset.UTC)
+        );
+
+        var created = service.createRecipeDraftFromAsset(
+                groupId,
+                userId,
+                new RecipeAssetIntakeReference(
+                        RecipeAssetIntakeKind.IMAGE,
+                        "asset-ref-image-1",
+                        "recipe-photo.jpg",
+                        "recipe-photo.jpg",
+                        "image/jpeg"
+                )
+        );
+
+        assertThat(created.state()).isEqualTo("draft_needs_review");
+        assertThat(created.name()).isEqualTo("OCR omelette");
+        assertThat(created.ingredients()).hasSize(2);
+        assertThat(created.ingredients()).anySatisfy(ingredient -> {
+            assertThat(ingredient.name()).isEqualTo("salt");
+            assertThat(ingredient.rawText()).isEqualTo("0 g salt");
+            assertThat(ingredient.quantity()).isNull();
+            assertThat(ingredient.unit()).isNull();
+        });
+        assertThat(created.ingredients()).anySatisfy(ingredient -> {
+            assertThat(ingredient.name()).isEqualTo("eggs");
+            assertThat(ingredient.rawText()).isEqualTo("2 eggs");
+            assertThat(ingredient.quantity()).isEqualByComparingTo("2");
+            assertThat(ingredient.unit().name()).isEqualTo("PCS");
+        });
+        assertThat(created.instructions()).contains("Whisk and cook gently");
+    }
+
+    @Test
     void program2FoundationExposesRecentIdentityAndRecipeUsageMemoryFromWeekPlans() {
         UUID groupId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
