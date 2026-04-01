@@ -31,6 +31,14 @@ final class ImageRecipeImportShaper {
             "^\\d+\\s*(?:ingredienser|ingredients?)\\.?$",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
     );
+    private static final Pattern INGREDIENT_COUNT_AND_DURATION_PATTERN = Pattern.compile(
+            "^\\d+\\s*(?:ingredienser|ingredients?)\\s+\\d+(?:[\\.,]\\d+)?\\s*(?:min|mins?|tim|timmar?|h|hr|hrs|hour|hours)\\.?$",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
+    private static final Pattern SHORT_ALPHA_NOISE_PATTERN = Pattern.compile(
+            "^[\\p{L}]{1,2}$",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
     private static final Set<String> INGREDIENT_HEADINGS = Set.of(
             "ingredients",
             "ingredienser",
@@ -112,11 +120,14 @@ final class ImageRecipeImportShaper {
         }
 
         List<String> mergedLines = mergeTopTitleLines(normalizedLines);
-        List<String> filteredLines = filterNoiseBySection(mergedLines);
-        if (!looksMeaningfullyUsable(filteredLines)) {
-            filteredLines = mergedLines;
+        List<String> handoffLines = buildSectionAwareHandoff(mergedLines);
+        if (!looksMeaningfullyUsable(handoffLines)) {
+            handoffLines = filterNoiseBySection(mergedLines);
         }
-        return String.join("\n", filteredLines);
+        if (!looksMeaningfullyUsable(handoffLines)) {
+            handoffLines = mergedLines;
+        }
+        return String.join("\n", handoffLines);
     }
 
     private List<String> filterNoiseBySection(List<String> lines) {
@@ -156,6 +167,107 @@ final class ImageRecipeImportShaper {
         return result;
     }
 
+    private List<String> buildSectionAwareHandoff(List<String> lines) {
+        List<String> preamble = new ArrayList<>();
+        List<String> ingredientLines = new ArrayList<>();
+        List<String> instructionLines = new ArrayList<>();
+        List<String> noteLines = new ArrayList<>();
+        String ingredientHeading = null;
+        String instructionHeading = null;
+        String noteHeading = null;
+        Section currentSection = Section.NONE;
+        int promotionalSuppressionBudget = 0;
+        boolean instructionFlowStarted = false;
+
+        for (String rawLine : lines) {
+            String line = normalizeLine(rawLine);
+            if (line == null) {
+                continue;
+            }
+
+            if (containsPromotionalMarker(line)) {
+                promotionalSuppressionBudget = 2;
+                continue;
+            }
+
+            if (isSectionHeading(line)) {
+                currentSection = classifySection(line);
+                promotionalSuppressionBudget = 0;
+                switch (currentSection) {
+                    case INGREDIENTS -> ingredientHeading = firstNonBlank(ingredientHeading, line);
+                    case INSTRUCTIONS -> instructionHeading = firstNonBlank(instructionHeading, line);
+                    case NOTES -> noteHeading = firstNonBlank(noteHeading, line);
+                    case NONE -> {
+                    }
+                }
+                continue;
+            }
+
+            if (promotionalSuppressionBudget > 0 && looksLikePromotionalContinuation(line)) {
+                promotionalSuppressionBudget -= 1;
+                continue;
+            }
+
+            if (!shouldKeepLine(currentSection, line)) {
+                continue;
+            }
+
+            switch (currentSection) {
+                case NONE -> preamble.add(line);
+                case INGREDIENTS -> {
+                    if (startsMethodFlow(line)) {
+                        instructionHeading = firstNonBlank(instructionHeading, "Gör så här");
+                        instructionLines.add(line);
+                        instructionFlowStarted = true;
+                    } else {
+                        ingredientLines.add(line);
+                    }
+                }
+                case INSTRUCTIONS -> {
+                    if (startsMethodFlow(line)) {
+                        instructionFlowStarted = true;
+                        instructionLines.add(line);
+                    } else if (instructionFlowStarted && shouldKeepInstructionSectionLine(line)) {
+                        instructionLines.add(line);
+                    }
+                }
+                case NOTES -> noteLines.add(line);
+            }
+        }
+
+        if (ingredientHeading != null && !instructionLines.isEmpty()) {
+            List<String> rescuedIngredientLines = new ArrayList<>();
+            List<String> retainedInstructionLines = new ArrayList<>();
+            for (String line : instructionLines) {
+                if (looksLikeIngredientLine(line) && !startsMethodFlow(line)) {
+                    rescuedIngredientLines.add(line);
+                } else {
+                    retainedInstructionLines.add(line);
+                }
+            }
+            if (!rescuedIngredientLines.isEmpty()) {
+                ingredientLines.addAll(rescuedIngredientLines);
+                instructionLines.clear();
+                instructionLines.addAll(retainedInstructionLines);
+            }
+        }
+
+        List<String> result = new ArrayList<>();
+        result.addAll(preamble);
+        appendSection(result, ingredientHeading, "Ingredienser", ingredientLines);
+        appendSection(result, instructionHeading, "Gör så här", instructionLines);
+        appendSection(result, noteHeading, "Tips", noteLines);
+        return result;
+    }
+
+    private void appendSection(List<String> result, String heading, String fallbackHeading, List<String> lines) {
+        if (lines == null || lines.isEmpty()) {
+            return;
+        }
+        result.add(firstNonBlank(heading, fallbackHeading));
+        result.addAll(lines);
+    }
+
     private boolean shouldKeepLine(Section currentSection, String line) {
         if (looksLikeSourceLine(line) || looksLikeRecipeMetadataLine(line)) {
             return false;
@@ -171,7 +283,7 @@ final class ImageRecipeImportShaper {
 
     private boolean shouldKeepIngredientSectionLine(String line) {
         if (isSimpleServingsLine(line)) {
-            return true;
+            return false;
         }
         if (looksLikeIngredientLine(line) || isIngredientSubheading(line)) {
             return true;
@@ -194,7 +306,10 @@ final class ImageRecipeImportShaper {
 
         for (int index = 0; index < scanLimit; index += 1) {
             String line = lines.get(index);
-            if (!looksLikeTitleFragment(line)) {
+            boolean titleLike = index == 0
+                    ? looksLikeStrongTitleFragment(line)
+                    : looksLikeTitleContinuation(line, titleFragments);
+            if (!titleLike) {
                 break;
             }
             titleFragments.add(line);
@@ -233,7 +348,7 @@ final class ImageRecipeImportShaper {
         return builder.toString().replaceAll("\\s+", " ").trim();
     }
 
-    private boolean looksLikeTitleFragment(String line) {
+    private boolean looksLikeStrongTitleFragment(String line) {
         String normalized = normalizeLine(line);
         if (normalized == null) {
             return false;
@@ -242,7 +357,6 @@ final class ImageRecipeImportShaper {
                 || looksLikeRecipeMetadataLine(normalized)
                 || containsPromotionalMarker(normalized)
                 || looksLikeSourceLine(normalized)
-                || looksLikeIngredientLine(normalized)
                 || startsMethodFlow(normalized)
                 || endsWithSentencePunctuation(normalized)) {
             return false;
@@ -254,12 +368,45 @@ final class ImageRecipeImportShaper {
                 && (isMostlyUppercase(normalized) || isMostlyTitleCase(normalized));
     }
 
+    private boolean looksLikeTitleContinuation(String line, List<String> titleFragments) {
+        String normalized = normalizeLine(line);
+        if (normalized == null || titleFragments == null || titleFragments.isEmpty()) {
+            return false;
+        }
+        if (isSectionHeading(normalized)
+                || looksLikeRecipeMetadataLine(normalized)
+                || containsPromotionalMarker(normalized)
+                || looksLikeSourceLine(normalized)
+                || startsMethodFlow(normalized)
+                || endsWithSentencePunctuation(normalized)) {
+            return false;
+        }
+
+        int wordCount = normalized.split("\\s+").length;
+        if (wordCount == 0 || wordCount > 4 || normalized.length() > 32) {
+            return false;
+        }
+
+        if (isMostlyUppercase(normalized) || isMostlyTitleCase(normalized)) {
+            return true;
+        }
+
+        return Character.isLowerCase(normalized.charAt(0))
+                && !looksLikeSentenceProse(normalized)
+                && (!looksLikeIngredientLine(normalized)
+                || looksLikeTitleContinuationCue(normalized)
+                || wordCount == 1);
+    }
+
     private boolean looksLikeIngredientLine(String line) {
         String normalized = normalizeLine(line);
         if (normalized == null || normalized.length() > 90) {
             return false;
         }
         if (isSectionHeading(normalized) || looksLikeRecipeMetadataLine(normalized) || looksLikeSourceLine(normalized)) {
+            return false;
+        }
+        if (looksLikeShortOcrNoise(normalized) || looksLikeLikelyProductCaption(normalized)) {
             return false;
         }
         if (LEADING_QUANTITY_PATTERN.matcher(normalized).matches()
@@ -274,7 +421,10 @@ final class ImageRecipeImportShaper {
             return false;
         }
         if (tokens.length == 1) {
-            return true;
+            return normalized.length() >= 4;
+        }
+        if (tokens.length >= 3 && isMostlyTitleCase(normalized)) {
+            return false;
         }
         return !containsSentenceConnector(normalized) && !looksLikeSentenceProse(normalized);
     }
@@ -301,6 +451,7 @@ final class ImageRecipeImportShaper {
             return false;
         }
         return INGREDIENT_COUNT_PATTERN.matcher(normalized).matches()
+                || INGREDIENT_COUNT_AND_DURATION_PATTERN.matcher(normalized).matches()
                 || DURATION_PATTERN.matcher(normalized).matches();
     }
 
@@ -367,6 +518,38 @@ final class ImageRecipeImportShaper {
         return (isMostlyTitleCase(normalized) || isMostlyUppercase(normalized) || looksLikeSentenceProse(normalized))
                 && wordCount >= 2
                 && wordCount <= 12;
+    }
+
+    private boolean looksLikeShortOcrNoise(String line) {
+        String normalized = normalizeLine(line);
+        if (normalized == null) {
+            return false;
+        }
+        return SHORT_ALPHA_NOISE_PATTERN.matcher(normalized).matches();
+    }
+
+    private boolean looksLikeLikelyProductCaption(String line) {
+        String normalized = normalizeLine(line);
+        if (normalized == null) {
+            return false;
+        }
+        String[] tokens = normalized.split("\\s+");
+        return tokens.length >= 3
+                && tokens.length <= 6
+                && isMostlyTitleCase(normalized)
+                && !containsSentenceConnector(normalized)
+                && !startsWithActionVerb(normalized);
+    }
+
+    private boolean looksLikeTitleContinuationCue(String value) {
+        String lowercase = value.toLowerCase(Locale.ROOT);
+        return lowercase.startsWith("med ")
+                || lowercase.startsWith("och ")
+                || lowercase.startsWith("till ")
+                || lowercase.endsWith(" och")
+                || lowercase.endsWith(" med")
+                || lowercase.endsWith(" till")
+                || containsSentenceConnector(lowercase);
     }
 
     private boolean looksMeaningfullyUsable(List<String> lines) {
@@ -471,6 +654,19 @@ final class ImageRecipeImportShaper {
             }
         }
         return letterTokens > 0 && titleCasedTokens >= Math.max(1, letterTokens - 1);
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            String normalized = normalizeLine(value);
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+        return null;
     }
 
     private enum Section {
