@@ -228,4 +228,56 @@ class JpaTodoRepositoryAdapterTest {
         assertEquals(dayWithoutTime.getId(), result.get(1).getId());
         assertEquals(later.getId(), result.get(2).getId());
     }
+
+    @Test
+    void listByGroupNormalizesLegacySchedulingRows() {
+        JpaTodoRepositoryAdapter adapter = new JpaTodoRepositoryAdapter(todoJpaRepository, new TodoMapper());
+        UUID groupId = UUID.randomUUID();
+        UUID legacyDayId = UUID.randomUUID();
+        UUID legacyMonthId = UUID.randomUUID();
+
+        todoJpaRepository.save(new TodoEntity(
+                legacyDayId,
+                groupId,
+                "Legacy due date row",
+                TodoStatus.OPEN,
+                TodoScope.LATER,
+                LocalDate.of(2026, 4, 6),
+                java.time.LocalTime.of(18, 0),
+                null,
+                null,
+                null,
+                null,
+                Instant.parse("2026-04-01T00:00:00Z"),
+                null
+        ));
+        todoJpaRepository.save(new TodoEntity(
+                legacyMonthId,
+                groupId,
+                "Legacy month row",
+                TodoStatus.OPEN,
+                TodoScope.DAY,
+                null,
+                null,
+                2026,
+                null,
+                4,
+                null,
+                Instant.parse("2026-04-02T00:00:00Z"),
+                null
+        ));
+
+        List<Todo> result = adapter.listByGroup(groupId, TodoStatus.ALL);
+
+        assertEquals(2, result.size());
+        Todo legacyDay = result.stream().filter(todo -> todo.getId().equals(legacyDayId)).findFirst().orElseThrow();
+        assertEquals(TodoScope.DAY, legacyDay.getScope());
+        assertEquals(LocalDate.of(2026, 4, 6), legacyDay.getDueDate());
+        assertEquals(java.time.LocalTime.of(18, 0), legacyDay.getDueTime());
+
+        Todo legacyMonth = result.stream().filter(todo -> todo.getId().equals(legacyMonthId)).findFirst().orElseThrow();
+        assertEquals(TodoScope.MONTH, legacyMonth.getScope());
+        assertEquals(Integer.valueOf(2026), legacyMonth.getScopeYear());
+        assertEquals(Integer.valueOf(4), legacyMonth.getScopeMonth());
+    }
 }
